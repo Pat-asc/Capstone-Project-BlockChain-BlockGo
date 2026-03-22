@@ -215,10 +215,9 @@ func (cc *SmartContract) finalizeRecord(stub shim.ChaincodeStubInterface, args [
 	}
 
 	isRegistrar := mspID == "RegistrarMSP" && role == "registrar"
-	isDeptAdmin := mspID == "DepartmentMSP" && role == "department_admin"
 
-	if !isRegistrar && !isDeptAdmin {
-		return shim.Error("OBAC/ABAC Denied: Only Registrar or Department Admin can finalize records.")
+	if !isRegistrar {
+		return shim.Error("OBAC/ABAC Denied: Only the Master Registrar can finalize records to the ledger.")
 	}
 
 	recordJSON, _ := stub.GetPrivateData("collectionGrades", args[0])

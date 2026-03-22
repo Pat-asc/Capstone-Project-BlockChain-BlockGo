@@ -1,30 +1,50 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import { fetchAllGrades } from './api';
 
 const StudentPortal = ({ studentData, onLogout }) => {
-  // 1. Conversion Logic: Percentage to PLV Point Scale
-  const getPLVPoint = (midterm, finals) => {
-    const average = (midterm + finals) / 2;
-    if (average >= 97) return 1.00;
-    if (average >= 94) return 1.25;
-    if (average >= 91) return 1.50;
-    if (average >= 88) return 1.75;
-    if (average >= 85) return 2.00;
-    if (average >= 75) return 3.00;
-    return 5.00;
-  };
+  const [grades, setGrades] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const loadGrades = async () => {
+      setLoading(true);
+      try {
+        const response = await fetchAllGrades(studentData.email);
+        let allGrades = [];
+        
+        // Handle different backend response structures safely
+        if (Array.isArray(response)) {
+            allGrades = response;
+        } else if (response.status === 'Success' && response.data) {
+            allGrades = response.data;
+        }
+
+        // Filter strictly to only show the logged-in student's records
+        const myGrades = allGrades.filter(g => 
+            g.student_hash === studentData.email || 
+            g.studentId === studentData.email ||
+            g.studentId === studentData.email.split('@')[0]
+        );
+        
+        setGrades(myGrades);
+      } catch (error) {
+        console.error('Error fetching grades from blockchain:', error);
+      }
+      setLoading(false);
+    };
+
+    loadGrades();
+  }, [studentData.email]);
 
   // 2. Calculate Semester Totals
-  const totalUnits = studentData.subjects.reduce((sum, sub) => sum + sub.units, 0);
+  const totalUnits = grades.length * 3; // Assuming 3 units per subject block for now
   
-  const totalWeight = studentData.subjects.reduce((sum, sub) => {
-    const point = getPLVPoint(sub.midterm, sub.finals);
-    return sum + (point * sub.units);
-  }, 0);
+  const totalWeight = grades.reduce((sum, sub) => sum + ((parseFloat(sub.grade) || 0) * 3), 0);
 
   const calculatedGWA = totalUnits > 0 ? (totalWeight / totalUnits).toFixed(2) : "0.00";
 
   // 3. Status logic: Dean's List eligibility check
-  const isDeansLister = calculatedGWA <= 1.75 && studentData.subjects.every(s => getPLVPoint(s.midterm, s.finals) <= 2.25);
+  const isDeansLister = grades.length > 0 && calculatedGWA <= 1.75 && grades.every(s => parseFloat(s.grade) <= 2.25);
 
   return (
     <div className="portal-container">
@@ -55,45 +75,55 @@ const StudentPortal = ({ studentData, onLogout }) => {
 
       {/* 2. Grade Table */}
       <div className="table-container">
+        {loading ? (
+            <div style={{ padding: '40px', textAlign: 'center', fontSize: '1.2rem', color: '#003366', fontWeight: 'bold' }}>
+                ⏳ Syncing Records with Blockchain Ledger...
+            </div>
+        ) : (
         <table className="plv-table">
           <thead>
             <tr>
               <th>Code</th>
-              <th>Subject Title</th>
+              <th>Course</th>
               <th>Units</th>
-              <th>Midterm</th>
-              <th>Finals</th>
               <th>Final Grade</th>
-              <th>Status</th>
-              <th>Action</th>
+              <th>Ledger Status</th>
+              <th>Remarks</th>
             </tr>
           </thead>
           <tbody>
-            {studentData.subjects.map((sub, index) => {
-              const finalPoint = getPLVPoint(sub.midterm, sub.finals);
-              const passed = finalPoint <= 3.0;
+            {grades.length === 0 ? (
+                <tr>
+                    <td colSpan="6" style={{ padding: '20px', textAlign: 'center', color: '#777' }}>No ledger records found for your account yet.</td>
+                </tr>
+            ) : (
+            grades.map((sub, index) => {
+              const finalPoint = parseFloat(sub.grade) || 0;
+              const passed = finalPoint <= 3.0 && finalPoint > 0;
 
               return (
                 <tr key={index}>
-                  <td className="sub-code">{sub.code || 'IT-XXX'}</td>
-                  <td className="sub-title">{sub.name}</td>
-                  <td className="units-count">{sub.units}</td>
-                  <td>{sub.midterm}</td>
-                  <td>{sub.finals}</td>
+                  <td className="sub-code">{sub.subject_code || 'N/A'}</td>
+                  <td className="sub-title">{sub.course || 'N/A'}</td>
+                  <td className="units-count">3</td>
                   <td className="final-point">{finalPoint.toFixed(2)}</td>
+                  <td>
+                    <span className="status-pill passed" style={{ backgroundColor: sub.status === 'Finalized' ? '#e6f4ea' : '#e8f0fe', color: sub.status === 'Finalized' ? '#1e8e3e' : '#1967d2' }}>
+                      {sub.status || "Issued"}
+                    </span>
+                  </td>
                   <td>
                     <span className={`status-pill ${passed ? 'passed' : 'failed'}`}>
                       {passed ? "PASSED" : "FAILED"}
                     </span>
                   </td>
-                  <td>
-                    <button className="drop-btn-small">Drop</button>
-                  </td>
                 </tr>
               );
-            })}
+            })
+            )}
           </tbody>
         </table>
+        )}
       </div>
     </div>
   );

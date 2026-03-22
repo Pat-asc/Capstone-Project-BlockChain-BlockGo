@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import "./style.css"; 
 import "./App.css";   
 import Login from "./Login";
@@ -35,30 +35,52 @@ const TEST_REGISTRAR = {
 function App() {
   const [user, setUser] = useState(null);
 
-  const handleLoginSuccess = (email) => {
-    const lowerEmail = email.toLowerCase();
-    
-    // Extract a display name from the email and clean up prefixes
-    let rawName = email.split('@')[0];
-    rawName = rawName.replace('prof.', '').replace('student.', '').replace('dean.', '').replace('registrar.', '');
-    let displayName = rawName.charAt(0).toUpperCase() + rawName.slice(1);
+  // --- ADDED: Check for existing valid token on page load ---
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      try {
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        // Check if token is expired
+        if (payload.exp * 1000 > Date.now()) {
+          handleLoginSuccess(token);
+        } else {
+          localStorage.removeItem('token');
+        }
+      } catch (e) {
+        localStorage.removeItem('token');
+      }
+    }
+  }, []);
 
-    // Logic to separate roles based on email domain
-    if (lowerEmail.includes("faculty") || lowerEmail.includes("prof")) {
-      setUser({ ...TEST_FACULTY, name: `Prof. ${displayName}`, email });
-    } else if (lowerEmail.includes("student")) {
-      setUser({ ...TEST_STUDENT, name: displayName, email });
-    } else if (lowerEmail.includes("dean")) {
-      setUser({ ...TEST_REGISTRAR, name: `Dean ${displayName}`, email });
-    } else if (lowerEmail.includes("registrar")) {
-      setUser({ ...TEST_REGISTRAR, name: `Registrar ${displayName}`, email });
-    } else {
-      alert("Invalid email domain. Please use @faculty, @student, @registrar, or @dean.");
-      return;
+  const handleLoginSuccess = (token) => {
+    localStorage.setItem('token', token);
+    try {
+      // Decode the JWT to securely get the username and role signed by the backend
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      const email = payload.username;
+      
+      let rawName = email.split('@')[0];
+      rawName = rawName.replace('prof.', '').replace('student.', '').replace('dean.', '').replace('registrar.', '');
+      let displayName = rawName.charAt(0).toUpperCase() + rawName.slice(1);
+
+      // Map the Fabric MSP Role to the UI Dashboard Layout
+      if (payload.role === "FacultyMSP") {
+        setUser({ ...TEST_FACULTY, name: `Prof. ${displayName}`, email, role: 'faculty' });
+      } else if (payload.role === "DepartmentMSP") {
+        setUser({ ...TEST_REGISTRAR, name: `Dean ${displayName}`, email, role: 'dean' });
+      } else if (payload.role === "RegistrarMSP") {
+        setUser({ ...TEST_REGISTRAR, name: `Registrar ${displayName}`, email, role: 'registrar' });
+      } else {
+        setUser({ ...TEST_STUDENT, name: displayName, email, role: 'student' });
+      }
+    } catch (error) {
+      console.error("Invalid token format.");
     }
   };
 
   const handleLogout = () => {
+    localStorage.removeItem('token');
     setUser(null);
   };
 

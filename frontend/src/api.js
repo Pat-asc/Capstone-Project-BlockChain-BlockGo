@@ -1,50 +1,132 @@
-const BASE_URL = 'http://localhost:5000/api';
+const BASE_URL = '/api'; 
+
+// --- JWT Wrapper & Auto-Logout Handler ---
+const fetchWithAuth = async (endpoint, options = {}) => {
+    const token = localStorage.getItem('token');
+    
+    const headers = {
+        'Content-Type': 'application/json',
+        ...options.headers,
+    };
+
+    if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    const response = await fetch(`${BASE_URL}${endpoint}`, {
+        ...options,
+        headers,
+    });
+
+    if (response.status === 401 || response.status === 403) {
+        console.warn("Session expired or unauthorized. Logging out...");
+        localStorage.removeItem('token'); 
+        window.location.reload();         
+        throw new Error("Session expired");
+    }
+
+    if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'API Request Failed');
+    }
+
+    return await response.json();
+};
 
 // Fetch all grades from the blockchain
-export const fetchAllGrades = async (invokerId) => {
-    const response = await fetch(`${BASE_URL}/Grades/all?invokerId=${encodeURIComponent(invokerId)}`);
-    if (!response.ok) throw new Error('Failed to fetch grades');
-    return await response.json();
+export const fetchAllGrades = async () => {
+    return await fetchWithAuth(`/all-grades`);
 };
 
 // Faculty issues a new grade
-export const issueGrade = async (gradeData, invokerId) => {
-    const response = await fetch(`${BASE_URL}/Grades/record?invokerId=${encodeURIComponent(invokerId)}`, {
+export const issueGrade = async (gradeData) => {
+    return await fetchWithAuth(`/issue-grade`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(gradeData)
     });
-    if (!response.ok) throw new Error('Failed to issue grade');
-    return await response.json();
 };
 
-// Department Admin (Dean) approves the grade
-export const approveGrade = async (recordId, invokerId) => {
-    const response = await fetch(`${BASE_URL}/Grades/approve/${encodeURIComponent(recordId)}?invokerId=${encodeURIComponent(invokerId)}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' }
+// Department Admin approves the grade
+export const approveGrade = async (recordId) => {
+    return await fetchWithAuth(`/approve-grade/${encodeURIComponent(recordId)}`, {
+        method: 'POST'
     });
-    if (!response.ok) throw new Error('Failed to approve grade');
-    return await response.json();
 };
 
 // Registrar finalizes the grade
-export const finalizeGrade = async (recordId, invokerId) => {
-    const response = await fetch(`${BASE_URL}/Grades/finalize/${encodeURIComponent(recordId)}?invokerId=${encodeURIComponent(invokerId)}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' }
+export const finalizeGrade = async (recordId) => {
+    return await fetchWithAuth(`/finalize-grade/${encodeURIComponent(recordId)}`, {
+        method: 'POST'
     });
-    if (!response.ok) throw new Error('Failed to finalize grade');
-    return await response.json();
 };
 
 // Submit a registration request to the waitlist (PostgreSQL)
 export const submitRegistrationRequest = async (userData) => {
-    const response = await fetch(`${BASE_URL}/Auth/request`, {
+    return await fetchWithAuth(`/Auth/request`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(userData)
     });
-    if (!response.ok) throw new Error('Failed to submit request');
-    return await response.json();
+};
+
+// Fetch pending registration requests (Both Student and Staff)
+export const fetchPendingRequests = async () => {
+    return await fetchWithAuth(`/Auth/requests/pending`);
+};
+
+// Approve a registration request
+export const approveRegistrationRequest = async (id, type) => {
+    return await fetchWithAuth(`/Auth/requests/approve/${encodeURIComponent(type)}/${encodeURIComponent(id)}`, {
+        method: 'PUT'
+    });
+};
+
+// Fetch approved students for assignment
+export const fetchApprovedStudents = async () => {
+    return await fetchWithAuth(`/Auth/students/approved`);
+};
+
+// Submit department/section assignment for a student
+export const assignStudent = async (id, assignmentData) => {
+    return await fetchWithAuth(`/Auth/students/${encodeURIComponent(id)}/assign`, {
+        method: 'PUT',
+        body: JSON.stringify(assignmentData)
+    });
+};
+
+// Fetch approved department admins for assignment
+export const fetchApprovedAdmins = async () => {
+    return await fetchWithAuth(`/Auth/admins/department/approved`);
+};
+
+// Submit department assignment for an admin
+export const assignDepartmentAdmin = async (id, assignmentData) => {
+    return await fetchWithAuth(`/Auth/admins/department/${encodeURIComponent(id)}/assign`, {
+        method: 'PUT',
+        body: JSON.stringify(assignmentData)
+    });
+};
+
+// Fetch approved faculties for assignment
+export const fetchApprovedFaculties = async () => {
+    return await fetchWithAuth(`/Auth/faculty/approved`);
+};
+
+// Submit assignment for a faculty
+export const assignFaculty = async (id, assignmentData) => {
+    return await fetchWithAuth(`/Auth/faculty/${encodeURIComponent(id)}/assign`, {
+        method: 'PUT',
+        body: JSON.stringify(assignmentData)
+    });
+};
+
+// Fetch students assigned to department pending admin approval
+export const fetchDepartmentPendingStudents = async (email) => {
+    return await fetchWithAuth(`/Auth/department/${encodeURIComponent(email)}/students/pending`);
+};
+
+// Approve the student's assignment to the department
+export const approveStudentEnrollment = async (id) => {
+    return await fetchWithAuth(`/Auth/students/${encodeURIComponent(id)}/approve-enrollment`, {
+        method: 'PUT'
+    });
 };

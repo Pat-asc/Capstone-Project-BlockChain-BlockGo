@@ -23,6 +23,7 @@ try
     Log.Information("Application starting up...");
     
     var builder = WebApplication.CreateBuilder(args);
+    builder.WebHost.UseUrls("http://*:5000");
     
     builder.Host.UseSerilog();
 
@@ -109,8 +110,7 @@ try
     if (!app.Environment.IsDevelopment())
     {
         app.UseHsts();
-        app.UseHttpsRedirection();
-        Log.Information("HSTS and HTTPS redirection enabled");
+        Log.Information("HSTS enabled (HTTPS Redirection disabled for Nginx)");
     }
 
     app.UseAuthorization();

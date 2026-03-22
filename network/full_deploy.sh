@@ -1,5 +1,124 @@
 #!/bin/bash
 
+# --- 0. DEPENDENCY CHECK & INSTALLATION ---
+echo "--- CHECKING AND INSTALLING DEPENDENCIES ---"
+
+# Determine if sudo is needed
+SUDO=""
+if [ "$(id -u)" -ne 0 ] && command -v sudo >/dev/null 2>&1; then
+    SUDO="sudo"
+fi
+
+install_deps() {
+    echo "Ensuring curl and wget are installed..."
+    $SUDO apt-get install -y curl wget >/dev/null 2>&1
+
+    echo "Checking Node.js and npm..."
+    if ! command -v node >/dev/null 2>&1; then
+        echo "Installing Node.js and npm..."
+        curl -fsSL https://deb.nodesource.com/setup_20.x | $SUDO bash -
+        $SUDO apt-get install -y nodejs
+    else
+        echo "Node.js is already installed ($(node -v))"
+    fi
+
+    echo "Checking .NET SDK..."
+    if ! command -v dotnet >/dev/null 2>&1; then
+        echo "Installing .NET SDK..."
+        # Assumes Ubuntu 22.04/20.04 for the package configuration
+        wget https://packages.microsoft.com/config/ubuntu/22.04/packages-microsoft-prod.deb -O packages-microsoft-prod.deb
+        $SUDO dpkg -i packages-microsoft-prod.deb
+        rm packages-microsoft-prod.deb
+        $SUDO apt-get update
+        $SUDO apt-get install -y dotnet-sdk-8.0
+    else
+        echo ".NET SDK is already installed ($(dotnet --version))"
+    fi
+
+    echo "Checking React tools..."
+    if ! command -v create-react-app >/dev/null 2>&1; then
+        echo "Installing React tools (create-react-app)..."
+        $SUDO npm install -g create-react-app
+    else
+        echo "React tools are already installed"
+    fi
+
+    echo "Checking Hyperledger Fabric binaries..."
+    if ! command -v peer >/dev/null 2>&1; then
+        echo "Installing Hyperledger Fabric binaries..."
+        curl -sSL https://bit.ly/2ysbOFE | bash -s -- 2.5.4 1.5.7 -d -s
+        export PATH=$PATH:$(pwd)/bin
+        export FABRIC_CFG_PATH=$(pwd)/config
+    else
+        echo "Hyperledger Fabric binaries are already installed"
+    fi
+
+    echo "Checking PostgreSQL..."
+    if ! command -v psql >/dev/null 2>&1; then
+        echo "Installing PostgreSQL..."
+        $SUDO apt-get install -y postgresql postgresql-contrib
+        $SUDO systemctl enable --now postgresql || true
+    else
+        echo "PostgreSQL is already installed ($(psql -V | head -n 1))"
+    fi
+}
+
+if command -v apt-get >/dev/null 2>&1; then
+    # Suppress apt-get update output, but run it
+    $SUDO apt-get update -yqq >/dev/null 2>&1 || true
+    install_deps
+else
+    echo "'apt-get' not found (Not Debian/Ubuntu). Skipping automated dependency installation."
+fi
+echo "--- DEPENDENCIES READY ---"
+
+# --- 0.2 GENERATE SECURE .ENV CREDENTIALS ---
+echo "--- CHECKING/GENERATING SECURE CREDENTIALS ---"
+ENV_FILE="$(pwd)/.env"
+if [ ! -f "$ENV_FILE" ]; then
+    touch "$ENV_FILE"
+fi
+
+add_to_env_if_missing() {
+    local KEY=$1
+    local VAL=$2
+    if ! grep -q "^${KEY}=" "$ENV_FILE"; then
+        echo "${KEY}=${VAL}" >> "$ENV_FILE"
+        echo "✅ Generated new secure value for ${KEY}"
+    fi
+}
+
+# Generate random, strong hex passwords and users (ensuring standard chars only)
+add_to_env_if_missing "COUCHDB_USER" "admin_$(openssl rand -hex 4)"
+add_to_env_if_missing "COUCHDB_PASS" "$(openssl rand -hex 12)"
+add_to_env_if_missing "POSTGRES_USER" "pg_user_$(openssl rand -hex 4)"
+add_to_env_if_missing "POSTGRES_PASS" "$(openssl rand -hex 12)"
+add_to_env_if_missing "POSTGRES_DB" "ActivityLogs"
+
+echo "--- SECURE CREDENTIALS READY IN .ENV ---"
+
+# --- 0.5 DOCKER NETWORK STARTUP ---
+echo "--- STARTING DOCKER CONTAINERS ---"
+if command -v docker >/dev/null 2>&1; then
+    # Ensure build directory exists before docker mounts it (prevents root permission issues)
+    if [ -d "../frontend" ]; then
+        mkdir -p ../frontend/build
+    fi
+
+    if [ -f "docker-compose.yaml" ] || [ -f "docker-compose.yml" ]; then
+        echo "Bringing up Docker Compose services..."
+        # Support both 'docker compose' (v2) and 'docker-compose' (v1)
+        docker compose up -d 2>/dev/null || docker-compose up -d
+        echo "Waiting 15 seconds for containers to properly initialize..."
+        sleep 15
+    else
+        echo "No docker-compose.yaml found in $(pwd). Skipping automated container startup."
+    fi
+else
+    echo "Docker is not installed! Please install Docker to proceed."
+    exit 1
+fi
+
 # --- 1. CONFIGURATION ---
 export CHANNEL_NAME="registrar-channel"
 export CC_NAME="registrar"
@@ -10,7 +129,7 @@ export CC_POLICY="OR('RegistrarMSP.member', 'FacultyMSP.member', 'DepartmentMSP.
 export CC_LABEL="${CC_NAME}_${CC_VERSION}"
 
 # TLS Cert Paths
-export CRYPTO_PATH="/etc/hyperledger/fabric/crypto-config"
+export CRYPTO_PATH="$(pwd)/crypto-config"
 export ORDERER_CA="${CRYPTO_PATH}/ordererOrganizations/capstone.com/orderers/orderer.capstone.com/tls/ca.crt"
 
 # Peer TLS Root Certs
@@ -24,12 +143,12 @@ echo "--- STARTING FAIL-PROOF DEPLOYMENT ---"
 echo "Checking TLS certificates..."
 for cert in "$ORDERER_CA" "$REGISTRAR_CA" "$FACULTY_CA" "$DEPT_CA"; do
     if [ ! -f "$cert" ]; then
-        echo "❌ FATAL ERROR: TLS Certificate not found at $cert"
+        echo "FATAL ERROR: TLS Certificate not found at $cert"
         echo "Make sure your crypto-config folder is properly generated and mounted to the CLI container."
         exit 1
     fi
 done
-echo "✅ All TLS certificates verified."
+echo "All TLS certificates verified."
 
 # --- 2. HELPER: SWITCH IDENTITY ---
 setIdentity() {
@@ -60,14 +179,14 @@ MAX_RETRY=5
 COUNTER=1
 while [ $COUNTER -le $MAX_RETRY ]; do
     peer channel create -o orderer.capstone.com:7050 -c $CHANNEL_NAME \
-        -f /opt/fabric-config/network/channel-artifacts/${CHANNEL_NAME}.tx \
+        -f $(pwd)/channel-artifacts/${CHANNEL_NAME}.tx \
         --tls true --cafile $ORDERER_CA --outputBlock ./${CHANNEL_NAME}.block
     
     if [ $? -eq 0 ]; then
-        echo "✅ Channel created successfully!"
+        echo "Channel created successfully!"
         break
     else
-        echo "⏳ Orderer not ready yet (Attempt $COUNTER/$MAX_RETRY). Waiting 5s..."
+        echo "Orderer not ready yet (Attempt $COUNTER/$MAX_RETRY). Waiting 5s..."
         sleep 5
         COUNTER=$((COUNTER+1))
     fi
@@ -141,6 +260,82 @@ peer lifecycle chaincode commit -o orderer.capstone.com:7050 --tls true --cafile
     --peerAddresses peer0.faculty.capstone.com:7051 --tlsRootCertFiles $FACULTY_CA \
     --peerAddresses peer0.department.capstone.com:7051 --tlsRootCertFiles $DEPT_CA
 
-echo "🎉 --- DEPLOYMENT SUCCESSFUL --- 🎉"
+echo "--- DEPLOYMENT SUCCESSFUL --- "
 echo "Final Package ID: $PACKAGE_ID"
 echo "Private Data Collections injected seamlessly."
+
+# --- 7.5 UPDATE ENV AND RESTART CHAINCODE ---
+echo "--- UPDATING CHAINCODE ENVIRONMENT ---"
+if [ ! -f ".env" ]; then
+    touch .env
+fi
+
+if grep -q "^CHAINCODE_ID=" .env; then
+    sed -i "s|^CHAINCODE_ID=.*|CHAINCODE_ID=$PACKAGE_ID|" .env
+else
+    echo "CHAINCODE_ID=$PACKAGE_ID" >> .env
+fi
+echo "Updated .env with CHAINCODE_ID=$PACKAGE_ID"
+
+echo "Restarting registrar-chaincode container to pick up new ID..."
+docker compose up -d --no-deps --force-recreate registrar-chaincode 2>/dev/null || docker-compose up -d --no-deps --force-recreate registrar-chaincode
+
+# --- 8. TEST CHAINCODE (INVOKE & QUERY) ---
+echo "--- TESTING CHAINCODE ---"
+echo "Waiting 10 seconds for chaincode containers to initialize..."
+sleep 10
+
+echo "Submitting an Invoke transaction (InitLedger)..."
+peer chaincode invoke -o orderer.capstone.com:7050 --tls true --cafile $ORDERER_CA \
+    -C $CHANNEL_NAME -n $CC_NAME \
+    --peerAddresses peer0.registrar.capstone.com:7051 --tlsRootCertFiles $REGISTRAR_CA \
+    --peerAddresses peer0.faculty.capstone.com:7051 --tlsRootCertFiles $FACULTY_CA \
+    --peerAddresses peer0.department.capstone.com:7051 --tlsRootCertFiles $DEPT_CA \
+    -c '{"Args":["InitLedger"]}'
+
+echo "Waiting 5 seconds for transaction to commit..."
+sleep 5
+
+echo "Querying the ledger to verify data..."
+peer chaincode query -C $CHANNEL_NAME -n $CC_NAME -c '{"Args":["GetAllAssets"]}' || echo "Note: Update 'GetAllAssets' to match your chaincode's query function if needed."
+
+# --- 9. START MIDDLEWARE & FRONTEND ---
+echo "--- STARTING APPLICATION SERVICES ---"
+
+echo "Starting C# Backend (client-app)..."
+if [ -d "../client-app" ]; then
+    cd ../client-app
+    echo "Installing C# packages and restoring dependencies..."
+    dotnet restore
+    echo "Starting C# backend in background..."
+    nohup dotnet run > backend.log 2>&1 &
+    cd - > /dev/null
+else
+    echo "C# Backend directory not found at ../client-app. Skipping."
+fi
+
+echo "Starting Node.js Middleware..."
+if [ -d "../middleware" ]; then
+    cd ../middleware
+    echo "Installing middleware dependencies..."
+    npm install
+    echo "Applying generated database credentials to middleware environment..."
+    cp ../network/.env .env
+    echo "Starting middleware in background..."
+    nohup npm start > middleware.log 2>&1 &
+    cd - > /dev/null
+else
+    echo "Middleware directory not found at ../middleware. Skipping."
+fi
+
+echo "Starting React Frontend..."
+if [ -d "../frontend" ]; then
+    cd ../frontend
+    echo "Installing frontend dependencies..."
+    npm install
+    echo "Building frontend for production..."
+    npm run build
+    cd - > /dev/null
+else
+    echo "Frontend directory not found at ../frontend. Skipping."
+fi
