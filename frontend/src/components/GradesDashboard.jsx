@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { fetchAllGrades, approveGrade, finalizeGrade, issueGrade, fetchPendingRequests, approveRegistrationRequest, fetchApprovedStudents, assignStudent, fetchApprovedAdmins, assignDepartmentAdmin, fetchDepartmentPendingStudents, approveStudentEnrollment, fetchApprovedFaculties, assignFaculty } from '../services/api';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { fetchAllGrades, approveGrade, finalizeGrade, issueGrade, fetchPendingRequests, approveRegistrationRequest, denyRegistrationRequest, fetchApprovedStudents, assignStudent, fetchApprovedAdmins, assignDepartmentAdmin, fetchDepartmentPendingStudents, approveStudentEnrollment, fetchApprovedFaculties, assignFaculty } from '../services/api';
 
 const HoverableID = ({ fullId, isAuthorized }) => {
     const [isRevealed, setIsRevealed] = useState(false);
@@ -29,13 +29,15 @@ const HoverableID = ({ fullId, isAuthorized }) => {
     );
 };
 
-const GradesDashboard = ({ loggedInEmail = '', loggedInName = '' }) => {
+const GradesDashboard = ({ loggedInEmail, loggedInName }) => {
     const [grades, setGrades] = useState([]);
     const [loading, setLoading] = useState(true);
     const [errorMsg, setErrorMsg] = useState(null); 
     
     const [mainTab, setMainTab] = useState('grades'); 
-    const [pendingRequests, setPendingRequests] = useState([]); 
+    const [pendingRequests, setPendingRequests] = useState([]);
+    const [requestSearchTerm, setRequestSearchTerm] = useState('');
+    const [sortConfig, setSortConfig] = useState({ key: 'requestid', direction: 'descending' });
 
     const [approvedStudents, setApprovedStudents] = useState([]);
     const [studentAssignments, setStudentAssignments] = useState({});
@@ -68,28 +70,34 @@ const GradesDashboard = ({ loggedInEmail = '', loggedInName = '' }) => {
         { id: "12-CE301", student_hash: "student.maria@plv.edu.ph", studentId: "student.maria", subject_code: "CE301", course: "BSCE", grade: "1.50", facultyId: "prof.civil@plv.edu.ph", status: "Finalized" }
     ];
 
-    const loadGrades = async (isBackground = false) => {
+    const loadGrades = useCallback(async (isBackground = false) => {
         if (!isBackground) setLoading(true);
         if (!isBackground) setErrorMsg(null);
         try {
-            const response = await fetchAllGrades(loggedInEmail); 
-
-            if (response.status === 'Success' && response.data && Array.isArray(response.data) && response.data.length > 0) {
+            const response = await fetchAllGrades(loggedInEmail);
+            
+            // Your C# backend returns an array directly, not an object with a status
+            if (Array.isArray(response)) {
+                if (response.length > 0) {
+                    setGrades(response);
+                } else {
+                    setGrades(mockupGrades);
+                }
+            } else if (response.status === 'Success' && response.data && response.data.length > 0) {
                 setGrades(response.data);
-            } else if (response.status === 'Success' && response.data && Array.isArray(response.data) && response.data.length === 0) {
-                setGrades([]); 
             } else {
                 setGrades(mockupGrades);
             }
         } catch (error) {
             console.error('Error loading grades:', error);
             if (!isBackground) setErrorMsg(`Could not fetch latest blockchain data. Showing unhashed mockup data for UI testing.`);
+            // Inject unhashed mockup data for testing on network failure
             setGrades(mockupGrades);
         }
         if (!isBackground) setLoading(false);
-    };
+    }, [loggedInEmail]);
 
-    const loadRequests = async () => {
+    const loadRequests = useCallback(async () => {
         try {
             const response = await fetchPendingRequests();
             if (response.status === 'Success') {
@@ -102,9 +110,9 @@ const GradesDashboard = ({ loggedInEmail = '', loggedInName = '' }) => {
         } catch (error) {
             console.error('Error loading registration requests:', error);
         }
-    };
+    }, []);
 
-    const loadApprovedStudents = async () => {
+    const loadApprovedStudents = useCallback(async () => {
         try {
             const response = await fetchApprovedStudents();
             if (response.status === 'Success') {
@@ -113,9 +121,9 @@ const GradesDashboard = ({ loggedInEmail = '', loggedInName = '' }) => {
         } catch (error) {
             console.error('Error loading approved students:', error);
         }
-    };
+    }, []);
 
-    const loadApprovedAdmins = async () => {
+    const loadApprovedAdmins = useCallback(async () => {
         try {
             const response = await fetchApprovedAdmins();
             if (response.status === 'Success') {
@@ -124,9 +132,9 @@ const GradesDashboard = ({ loggedInEmail = '', loggedInName = '' }) => {
         } catch (error) {
             console.error('Error loading approved admins:', error);
         }
-    };
+    }, []);
 
-    const loadApprovedFaculties = async () => {
+    const loadApprovedFaculties = useCallback(async () => {
         try {
             const response = await fetchApprovedFaculties();
             if (response.status === 'Success') {
@@ -135,9 +143,9 @@ const GradesDashboard = ({ loggedInEmail = '', loggedInName = '' }) => {
         } catch (error) {
             console.error('Error loading approved faculties:', error);
         }
-    };
+    }, []);
 
-    const loadDeptPendingStudents = async () => {
+    const loadDeptPendingStudents = useCallback(async () => {
         try {
             const response = await fetchDepartmentPendingStudents(loggedInEmail);
             if (response.status === 'Success') {
@@ -146,7 +154,7 @@ const GradesDashboard = ({ loggedInEmail = '', loggedInName = '' }) => {
         } catch (error) {
             console.error('Error loading department students:', error);
         }
-    };
+    }, [loggedInEmail]);
 
     const submitStudentAssignment = async (id) => {
         const assignment = studentAssignments[id];
@@ -193,14 +201,14 @@ const GradesDashboard = ({ loggedInEmail = '', loggedInName = '' }) => {
         }
     };
 
-    useEffect(() => {
+    useEffect(() => { // Initial load for grades
         loadGrades();
-    }, [loggedInEmail]);
+    }, [loadGrades]);
 
     // AUTO-REFRESH (POLLING) for Pending Requests
-    useEffect(() => {
+    useEffect(() => { // Handles loading and polling for the requests tab
         let interval;
-        if (loggedInEmail.includes('registrar') && mainTab === 'Requests') {
+        if (loggedInEmail?.includes('registrar') && mainTab === 'Requests') {
             loadRequests(); // Load immediately on tab open
             interval = setInterval(() => {
                 loadRequests(); // Fetch quietly in the background every 3 seconds
@@ -209,7 +217,7 @@ const GradesDashboard = ({ loggedInEmail = '', loggedInName = '' }) => {
         return () => {
             if (interval) clearInterval(interval); // Cleanup when changing tabs
         };
-    }, [loggedInEmail, mainTab]);
+    }, [loggedInEmail, mainTab, loadRequests]);
 
     // AUTO-REFRESH (POLLING) for Grades Ledger
     useEffect(() => {
@@ -299,6 +307,57 @@ const GradesDashboard = ({ loggedInEmail = '', loggedInName = '' }) => {
         }
     };
 
+    const handleDenyRequest = async (id) => {
+        // eslint-disable-next-line no-restricted-globals
+        if (confirm('Are you sure you want to deny and permanently delete this registration request?')) {
+            try {
+                await denyRegistrationRequest(id);
+                alert("Registration request has been denied and removed.");
+                loadRequests(); // Refresh the list
+            } catch (error) {
+                alert(`Failed to deny request: ${error.message}`);
+            }
+        }
+    };
+
+    const requestSort = (key) => {
+        let direction = 'ascending';
+        if (sortConfig.key === key && sortConfig.direction === 'ascending') {
+            direction = 'descending';
+        }
+        setSortConfig({ key, direction });
+    };
+
+    const sortedAndFilteredRequests = useMemo(() => {
+        let sortableItems = [...pendingRequests];
+
+        // Sorting
+        if (sortConfig.key !== null) {
+            sortableItems.sort((a, b) => {
+                const valA = a[sortConfig.key] || '';
+                const valB = b[sortConfig.key] || '';
+                if (valA < valB) {
+                    return sortConfig.direction === 'ascending' ? -1 : 1;
+                }
+                if (valA > valB) {
+                    return sortConfig.direction === 'ascending' ? 1 : -1;
+                }
+                return 0;
+            });
+        }
+
+        // Filtering
+        if (!requestSearchTerm) {
+            return sortableItems;
+        }
+        const searchTerm = requestSearchTerm.toLowerCase();
+        return sortableItems.filter(req =>
+            Object.values(req).some(val =>
+                String(val).toLowerCase().includes(searchTerm)
+            )
+        );
+    }, [pendingRequests, sortConfig, requestSearchTerm]);
+
     const filteredGrades = grades.filter(grade => {
         if (!loggedInEmail) {
             return false;
@@ -361,7 +420,7 @@ const GradesDashboard = ({ loggedInEmail = '', loggedInName = '' }) => {
             {/* --- TAB NAVIGATION (Registrar Only) --- */}
             {loggedInEmail.includes('registrar') && (
                 <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
-                    <button onClick={() => setMainTab('grades')} style={{ padding: '10px 20px', fontWeight: 'bold', backgroundColor: mainTab === 'grades' ? '#003366' : '#f0f2f5', color: mainTab === 'grades' ? 'white' : '#333', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>Grades Ledger</button>                    
+                    <button onClick={() => setMainTab('grades')} style={{ padding: '10px 20px', fontWeight: 'bold', backgroundColor: mainTab === 'grades' ? '#003366' : '#f0f2f5', color: mainTab === 'grades' ? 'white' : '#333', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>Grades Ledger</button>
                     <button onClick={() => setMainTab('Requests')} style={{ padding: '10px 20px', fontWeight: 'bold', backgroundColor: mainTab === 'Requests' ? '#003366' : '#f0f2f5', color: mainTab === 'Requests' ? 'white' : '#333', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>Pending Requests</button>
                     <button onClick={() => setMainTab('assignStudents')} style={{ padding: '10px 20px', fontWeight: 'bold', backgroundColor: mainTab === 'assignStudents' ? '#003366' : '#f0f2f5', color: mainTab === 'assignStudents' ? 'white' : '#333', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>Assign Students</button>
                     <button onClick={() => setMainTab('assignAdmins')} style={{ padding: '10px 20px', fontWeight: 'bold', backgroundColor: mainTab === 'assignAdmins' ? '#003366' : '#f0f2f5', color: mainTab === 'assignAdmins' ? 'white' : '#333', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>Assign Department Admin</button>
@@ -500,34 +559,48 @@ const GradesDashboard = ({ loggedInEmail = '', loggedInName = '' }) => {
             {/* Faculty Requests Tab */}
             {mainTab === 'Requests' && (
                 <div style={{ backgroundColor: 'white', borderRadius: '8px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
+                    <div style={{ padding: '15px', borderBottom: '1px solid #eee' }}>
+                        <input
+                            type="text"
+                            placeholder="Search by name, email, role, or student no..."
+                            value={requestSearchTerm}
+                            onChange={e => setRequestSearchTerm(e.target.value)}
+                            style={{ width: '100%', padding: '10px', borderRadius: '4px', border: '1px solid #ccc', boxSizing: 'border-box' }}
+                        />
+                    </div>
                     <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
                         <thead>
                             <tr style={{ backgroundColor: '#003366', color: 'white' }}>
-                                <th style={{ padding: '15px' }}>Role</th>
-                                <th style={{ padding: '15px' }}>Name</th>
-                                <th style={{ padding: '15px' }}>Student No.</th>
-                                <th style={{ padding: '15px' }}>Email</th>
-                                <th style={{ padding: '15px' }}>Department</th>
-                                <th style={{ padding: '15px' }}>Status</th>
+                                <th onClick={() => requestSort('role')} style={{ padding: '15px', cursor: 'pointer' }}>Role</th>
+                                <th onClick={() => requestSort('fullname')} style={{ padding: '15px', cursor: 'pointer' }}>Name</th>
+                                <th onClick={() => requestSort('studentno')} style={{ padding: '15px', cursor: 'pointer' }}>Student No.</th>
+                                <th onClick={() => requestSort('email')} style={{ padding: '15px', cursor: 'pointer' }}>Email</th>
+                                <th onClick={() => requestSort('department')} style={{ padding: '15px', cursor: 'pointer' }}>Department</th>
+                                <th onClick={() => requestSort('requeststatus')} style={{ padding: '15px', cursor: 'pointer' }}>Status</th>
                                 <th style={{ padding: '15px' }}>Actions</th>
                             </tr>
                         </thead>
+
                         <tbody>
-                            {pendingRequests.length === 0 ? (
-                                <tr>
-                                    <td colSpan="7" style={{ padding: '20px', textAlign: 'center', color: '#777' }}>No pending registration requests.</td>
+                            {sortedAndFilteredRequests.length === 0 ? (
+                                <tr >
+
+                                    <td colSpan="7" style={{ padding: '20px', textAlign: 'center', color: '#777' }}>
+                                        {pendingRequests.length > 0 ? 'No requests match your search.' : 'No pending registration requests.'}
+                                    </td>
                                 </tr>
                             ) : (
-                                pendingRequests.map((req, index) => (
+                                sortedAndFilteredRequests.map((req, index) => (
                                     <tr key={req.requestid} style={{ backgroundColor: index % 2 === 0 ? '#ffffff' : '#f8f9fa', borderBottom: '1px solid #eee' }}>
-                                        <td style={{ padding: '15px', fontWeight: 'bold', textTransform: 'capitalize' }}>{req.role}</td>
+                                    <td style={{ padding: '15px', fontWeight: 'bold', textTransform: 'capitalize' }}>{req.role}</td>
                                         <td style={{ padding: '15px' }}>{req.fullname}</td>
                                         <td style={{ padding: '15px' }}>{req.studentno || 'N/A'}</td>
                                         <td style={{ padding: '15px', color: '#666' }}>{req.email}</td>
                                         <td style={{ padding: '15px' }}>{req.department}</td>
+
                                         <td style={{ padding: '15px' }}>{req.requeststatus}</td>
                                         <td style={{ padding: '15px' }}>
-                                            <button style={{ backgroundColor: '#dc3545', color: 'white', border: 'none', padding: '6px 12px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', marginRight: '5px' }}>Deny</button>
+                                            <button onClick={() => handleDenyRequest(req.requestid)} style={{ backgroundColor: '#dc3545', color: 'white', border: 'none', padding: '6px 12px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', marginRight: '5px' }}>Deny</button>
                                             <button onClick={() => handleApproveRequest(req.requestid, req.role)} style={{ backgroundColor: '#34a853', color: 'white', border: 'none', padding: '6px 12px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>Approve</button>
                                         </td>
                                     </tr>

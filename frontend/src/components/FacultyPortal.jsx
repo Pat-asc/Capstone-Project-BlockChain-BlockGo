@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { fetchPendingRequests, approveRegistrationRequest, issueGrade } from './api';
+import React, { useState, useEffect, useCallback } from 'react';
+import { fetchPendingRequests, approveRegistrationRequest, issueGrade } from '../services/api';
 
 const FacultyPortal = ({ facultyData, onLogout }) => {
   const [sections, setSections] = useState({
@@ -22,11 +22,7 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
   const [uploadingSection, setUploadingSection] = useState(null);
   const [approvingId, setApprovingId] = useState(null);
 
-  useEffect(() => {
-      loadRequests();
-  }, []);
-
-  const loadRequests = async () => {
+  const loadRequests = useCallback(async () => {
       try {
           const response = await fetchPendingRequests();
           if (response.status === 'Success') {
@@ -46,7 +42,11 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
       } catch (error) {
           console.error('Error loading registration requests:', error);
       }
-  };
+  }, [facultyData.department]);
+
+  useEffect(() => {
+      loadRequests();  // Load on component mount
+  }, [loadRequests]);
 
   const handleApproveRequest = async (id) => {
       setApprovingId(id);
@@ -209,10 +209,10 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
     </header>
 
       {/* 2. Dynamic View Content */}
-      {showRequests ? (
+       {showRequests ? (
         <div>
           <button className="drop-btn-small" onClick={() => setShowRequests(false)} style={{ marginBottom: '15px' }}>
-            ← Back to Sections
+            Back to Sections
           </button>
           <div className="table-container">
             <div className="table-header-custom">
@@ -279,7 +279,7 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
         /* 3. Grading Table View */
         <div>
           <button className="drop-btn-small" onClick={() => setActiveSection(null)} style={{ marginBottom: '15px' }}>
-            ← Back to Sections
+            Back to Sections
           </button>
           <div className="table-container">
             <div className="table-header-custom">

@@ -11,7 +11,7 @@ fi
 
 install_deps() {
     echo "Ensuring curl and wget are installed..."
-    $SUDO apt-get install -y curl wget >/dev/null 2>&1
+    $SUDO apt-get install -y curl wget netcat >/dev/null 2>&1
 
     echo "Checking Node.js and npm..."
     if ! command -v node >/dev/null 2>&1; then
@@ -84,39 +84,72 @@ add_to_env_if_missing() {
     local VAL=$2
     if ! grep -q "^${KEY}=" "$ENV_FILE"; then
         echo "${KEY}=${VAL}" >> "$ENV_FILE"
-        echo "✅ Generated new secure value for ${KEY}"
+        echo "Generated new secure value for ${KEY}"
     fi
 }
 
 # Generate random, strong hex passwords and users (ensuring standard chars only)
 add_to_env_if_missing "COUCHDB_USER" "admin_$(openssl rand -hex 4)"
 add_to_env_if_missing "COUCHDB_PASS" "$(openssl rand -hex 12)"
+
+LOCAL_COUCH_USER=$(grep "^COUCHDB_USER=" "$ENV_FILE" | cut -d '=' -f 2)
+LOCAL_COUCH_PASS=$(grep "^COUCHDB_PASS=" "$ENV_FILE" | cut -d '=' -f 2)
+add_to_env_if_missing "COUCHDB_WALLET_URL" "http://${LOCAL_COUCH_USER}:${LOCAL_COUCH_PASS}@127.0.0.1:5985"
+add_to_env_if_missing "WALLET_ENCRYPTION_KEY" "$(openssl rand -hex 32)"
+
 add_to_env_if_missing "POSTGRES_USER" "pg_user_$(openssl rand -hex 4)"
 add_to_env_if_missing "POSTGRES_PASS" "$(openssl rand -hex 12)"
 add_to_env_if_missing "POSTGRES_DB" "ActivityLogs"
+# Add placeholders for email service credentials
+add_to_env_if_missing "EMAIL_HOST" "smtp.gmail.com"
+add_to_env_if_missing "EMAIL_PORT" "587"
+add_to_env_if_missing "EMAIL_USER" "plv.registrar.blockgo@gmail.com"
+add_to_env_if_missing "EMAIL_PASS" "wrqs zerf chfx xcrm"
+add_to_env_if_missing "EMAIL_FROM" "'PLV Registrar' <noreply@capstone.com>"
 
 echo "--- SECURE CREDENTIALS READY IN .ENV ---"
 
 # --- 0.5 DOCKER NETWORK STARTUP ---
 echo "--- STARTING DOCKER CONTAINERS ---"
-if command -v docker >/dev/null 2>&1; then
+if ! command -v docker >/dev/null 2>&1; then
+    echo "Docker is not installed! Please install Docker to proceed."
+    exit 1
+fi
+
+if ! docker info >/dev/null 2>&1; then
+    echo "Docker daemon is not running or you do not have permissions to access it."
+    echo "Please ensure Docker is running and your user is in the 'docker' group (e.g., 'sudo usermod -aG docker $USER && newgrp docker')."
+    exit 1
+fi
+
+if ! command -v docker compose >/dev/null 2>&1 && ! command -v docker-compose >/dev/null 2>&1; then
+    echo "Docker Compose (v1 or v2) is not installed! Please install it to proceed."
+    exit 1
+fi
+
+if [ -f "docker-compose.yaml" ] || [ -f "docker-compose.yml" ]; then
     # Ensure build directory exists before docker mounts it (prevents root permission issues)
     if [ -d "../frontend" ]; then
         mkdir -p ../frontend/build
     fi
 
-    if [ -f "docker-compose.yaml" ] || [ -f "docker-compose.yml" ]; then
-        echo "Bringing up Docker Compose services..."
-        # Support both 'docker compose' (v2) and 'docker-compose' (v1)
-        docker compose up -d 2>/dev/null || docker-compose up -d
-        echo "Waiting 15 seconds for containers to properly initialize..."
-        sleep 15
-    else
-        echo "No docker-compose.yaml found in $(pwd). Skipping automated container startup."
-    fi
+    echo "Bringing up Docker Compose services..."
+    # Support both 'docker compose' (v2) and 'docker-compose' (v1)
+    docker compose up -d 2>/dev/null || docker-compose up -d
+    echo "Waiting 15 seconds for containers to properly initialize..."
+    sleep 15
 else
-    echo "Docker is not installed! Please install Docker to proceed."
-    exit 1
+    echo "No docker-compose.yaml found in $(pwd). Skipping automated container startup."
+fi
+
+echo "--- STARTING COUCHDB FOR WALLETS ---"
+# Run a dedicated CouchDB container for wallets on port 5985 to avoid conflicts with Fabric state DBs
+if docker ps -a --format '{{.Names}}' | grep -Eq "^couchdb-wallet\$"; then
+    docker start couchdb-wallet >/dev/null
+    echo "CouchDB for wallets (existing) started on port 5985."
+else
+    docker run -d --name couchdb-wallet -p 5985:5984 -e COUCHDB_USER=${LOCAL_COUCH_USER} -e COUCHDB_PASSWORD=${LOCAL_COUCH_PASS} couchdb:3.3 >/dev/null
+    echo "New CouchDB container for wallets created and started on port 5985."
 fi
 
 # --- 1. CONFIGURATION ---
@@ -202,12 +235,23 @@ done
 # --- 5. PACKAGE CCAAS & PRIVATE DATA ---
 echo "Packaging Chaincode-as-a-Service and generating Private Data Collections..."
 
+# --- Production Hardening: Generate TLS certs for chaincode service ---
+mkdir -p ./chaincode-tls
+if [ ! -f "./chaincode-tls/server.key" ]; then
+    echo "Generating self-signed TLS certificate for chaincode service..."
+    openssl req -newkey rsa:2048 -nodes -keyout ./chaincode-tls/server.key -x509 -days 3650 -out ./chaincode-tls/server.crt -subj "/CN=registrar-chaincode.capstone.com"
+fi
+
 # Create the inner code package containing connection.json
+# For production, we enable TLS and provide the chaincode's root cert to the peer.
+CC_TLS_CERT_B64=$(base64 -w 0 ./chaincode-tls/server.crt)
 cat <<EOF > connection.json
 {
   "address": "registrar-chaincode:9999",
   "dial_timeout": "10s",
-  "tls_required": false
+  "tls_required": true,
+  "client_auth_required": true,
+  "root_cert": "${CC_TLS_CERT_B64}"
 }
 EOF
 tar cfz code.tar.gz connection.json

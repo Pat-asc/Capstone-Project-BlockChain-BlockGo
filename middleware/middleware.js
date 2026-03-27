@@ -1,5 +1,4 @@
 const FabricCAServices = require('fabric-ca-client');
-require('dotenv').config();
 const express = require('express');
 const jwt = require('jsonwebtoken');
 const { Pool } = require('pg');
@@ -8,9 +7,13 @@ const crypto = require('crypto');
 const { Gateway, Wallets } = require('fabric-network');
 const fs = require('fs');
 const path = require('path');
+require('dotenv').config();
+require('dotenv').config({ path: path.resolve(__dirname, '../network/.env'), override: true });
 const multer = require('multer');
 const { spawn } = require('child_process');
+const nodemailer = require('nodemailer');
 const upload = multer({ dest: 'uploads/' });
+const rateLimit = require('express-rate-limit');
 
 const app = express();
 app.use(express.json());
@@ -18,22 +21,73 @@ app.use(express.json());
 // --- 1. POSTGRESQL CONNECTION & INITIALIZATION ---
 const db = new Pool({
     user: process.env.POSTGRES_USER || 'postgres',
-    host: process.env.POSTGRES_HOST || 'localhost',
+    host: process.env.POSTGRES_HOST === 'postgres' ? '127.0.0.1' : (process.env.POSTGRES_HOST || '127.0.0.1'),
     database: process.env.POSTGRES_DB || 'ActivityLogs',
     password: process.env.POSTGRES_PASS || 'password',
     port: process.env.POSTGRES_PORT || 5432,
 });
 
+db.query(`
+    ALTER TABLE Users 
+    ADD COLUMN IF NOT EXISTS password_reset_token VARCHAR(255),
+    ADD COLUMN IF NOT EXISTS password_reset_expires BIGINT;
+`).catch(err => console.error("Error updating database schema:", err));
+
 async function getWallet() {
-    // Example: COUCHDB_WALLET_URL="http://admin:password@localhost:5984"
-    if (process.env.COUCHDB_WALLET_URL) {
-        return await Wallets.newCouchDBWallet(process.env.COUCHDB_WALLET_URL, 'fabric_wallet');
+    // Construct CouchDB URL from individual credentials if main URL is missing
+    let couchUrl = process.env.COUCHDB_WALLET_URL;
+    if (!couchUrl && process.env.COUCHDB_USER && process.env.COUCHDB_PASS) {
+        couchUrl = `http://${process.env.COUCHDB_USER}:${process.env.COUCHDB_PASS}@127.0.0.1:5985`;
+    }
+
+    if (couchUrl) {
+        const wallet = await Wallets.newCouchDBWallet(couchUrl, 'fabric_wallet');
+        
+        // --- APPLICATION-LEVEL ENCRYPTION WRAPPER ---
+        const encryptionKey = process.env.WALLET_ENCRYPTION_KEY;
+        if (encryptionKey) {
+            const originalPut = wallet.put.bind(wallet);
+            const originalGet = wallet.get.bind(wallet);
+
+            wallet.put = async (label, identity) => {
+                if (identity && identity.credentials && identity.credentials.privateKey) {
+                    const key = crypto.scryptSync(encryptionKey, 'salt', 32);
+                    const iv = crypto.randomBytes(16);
+                    const cipher = crypto.createCipheriv('aes-256-gcm', key, iv);
+                    
+                    let encrypted = cipher.update(identity.credentials.privateKey, 'utf8', 'hex');
+                    encrypted += cipher.final('hex');
+                    const authTag = cipher.getAuthTag().toString('hex');
+                    
+                    // Replace plain text private key with encrypted payload
+                    identity.credentials.privateKey = `ENC:${iv.toString('hex')}:${authTag}:${encrypted}`;
+                }
+                return originalPut(label, identity);
+            };
+
+            wallet.get = async (label) => {
+                const identity = await originalGet(label);
+                if (identity && identity.credentials && identity.credentials.privateKey && identity.credentials.privateKey.startsWith('ENC:')) {
+                    const parts = identity.credentials.privateKey.split(':');
+                    const [prefix, ivHex, authTagHex, encryptedHex] = parts;
+                    
+                    const key = crypto.scryptSync(encryptionKey, 'salt', 32);
+                    const decipher = crypto.createDecipheriv('aes-256-gcm', key, Buffer.from(ivHex, 'hex'));
+                    decipher.setAuthTag(Buffer.from(authTagHex, 'hex'));
+                    
+                    // Decrypt and restore the plain text private key for the Fabric SDK to use in-memory
+                    identity.credentials.privateKey = decipher.update(encryptedHex, 'hex', 'utf8') + decipher.final('utf8');
+                }
+                return identity;
+            };
+        }
+        return wallet;
     }
     const walletPath = path.resolve(__dirname, process.env.WALLET_PATH || 'wallet');
     return await Wallets.newFileSystemWallet(walletPath);
 }
 
-const JWT_SECRET = process.env.JWT_SECRET || 'capstone-super-secret-key';
+const JWT_SECRET = process.env.JWT_SECRET || ',1fO97$)5QZLn[!v;&F[OPBsWqQEkXN%ogZm5Js3_6w';
 
 const authenticateJWT = (req, res, next) => {
     const authHeader = req.headers.authorization;
@@ -135,7 +189,8 @@ app.post('/api/login', async (req, res) => {
         }
 
         const wallet = await getWallet();
-        const identity = await wallet.get(username);
+        let identity = await wallet.get(username);
+        
         if (!identity) {
             return res.status(401).json({ error: "Blockchain Identity not found in wallet. Please contact admin." });
         }
@@ -229,7 +284,16 @@ app.get('/api/bootstrap', async (req, res) => {
     }
 });
 
-app.post('/api/forgot-password', async (req, res) => {
+// --- Rate Limiter for sensitive endpoints like password reset ---
+const passwordResetLimiter = rateLimit({
+	windowMs: 15 * 60 * 1000, // 15 minutes
+	max: 5, // Limit each IP to 5 password reset requests per window
+	message: { error: 'Too many password reset requests from this IP, please try again after 15 minutes.' },
+    standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
+	legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+});
+
+app.post('/api/forgot-password', passwordResetLimiter, async (req, res) => {
     try {
         const { email } = req.body;
         
@@ -241,13 +305,34 @@ app.post('/api/forgot-password', async (req, res) => {
         const resetToken = crypto.randomBytes(32).toString('hex');
         const tokenExpiry = Date.now() + 3600000; // 1 hour
 
-        await db.query('UPDATE Users SET reset_token = $1, reset_token_expiry = $2 WHERE email = $3', [resetToken, tokenExpiry, email]);
+        await db.query('UPDATE Users SET password_reset_token = $1, password_reset_expires = $2 WHERE email = $3', [resetToken, tokenExpiry, email]);
 
-        // Emulating email delivery in console for testing
-        console.log(`[DEV MODE] Email Sent to ${email}\nReset Link: http://localhost/reset-password?token=${resetToken}\n`);
+        const resetURL = `http://localhost:3000/reset-password?token=${resetToken}`;
+        
+        console.log(`[DEV MODE] Reset Link generated: ${resetURL}\n`);
+
+        const transporter = nodemailer.createTransport({
+            host: process.env.EMAIL_HOST || 'smtp.gmail.com',
+            port: process.env.EMAIL_PORT || 587,
+            secure: false, // true for 465, false for other ports
+            auth: {
+                user: process.env.EMAIL_USER,
+                pass: process.env.EMAIL_PASS
+            }
+        });
+
+        await transporter.sendMail({
+            from: process.env.EMAIL_FROM || '"PLV Registrar BLOCKGO" <noreply@capstone.com>',
+            to: email,
+            subject: 'Password Reset Request',
+            text: `You requested a password reset. Please click the following link to reset your password:\n\n${resetURL}\n\nIf you did not request this, please ignore this email.`,
+            html: `<p>You requested a password reset. Please click the following link to reset your password:</p><p><a href="${resetURL}">${resetURL}</a></p><p>If you did not request this, please ignore this email.</p>`
+        });
+        console.log(`[PROD MODE] Actual email sent to ${email}`);
 
         res.status(200).json({ message: "If that email exists, a reset link has been sent." });
     } catch (error) {
+        console.error("Forgot Password Error:", error);
         res.status(500).json({ error: "Server error during password reset request." });
     }
 });
@@ -256,7 +341,7 @@ app.post('/api/reset-password', async (req, res) => {
     try {
         const { token, newPassword } = req.body;
 
-        const userResult = await db.query('SELECT * FROM Users WHERE reset_token = $1 AND reset_token_expiry > $2', [token, Date.now()]);
+        const userResult = await db.query('SELECT * FROM Users WHERE password_reset_token = $1 AND password_reset_expires > $2', [token, Date.now()]);
         if (userResult.rows.length === 0) {
             return res.status(400).json({ error: "Invalid or expired token" });
         }
@@ -264,7 +349,7 @@ app.post('/api/reset-password', async (req, res) => {
         const user = userResult.rows[0];
         const hashedPassword = await bcrypt.hash(newPassword, 10);
 
-        await db.query('UPDATE Users SET password_hash = $1, reset_token = NULL, reset_token_expiry = NULL WHERE id = $2', [hashedPassword, user.id]);
+        await db.query('UPDATE Users SET password_hash = $1, password_reset_token = NULL, password_reset_expires = NULL WHERE id = $2', [hashedPassword, user.id]);
 
         res.status(200).json({ message: "Password updated successfully. You can now log in." });
     } catch (error) {

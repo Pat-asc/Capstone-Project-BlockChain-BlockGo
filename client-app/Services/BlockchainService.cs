@@ -9,7 +9,7 @@ namespace BlockGo.Services
     public class BlockchainService : IBlockchainService
     {
         private readonly HttpClient _httpClient;
-        private readonly ILogger<BlockchainService> _logger;
+        private readonly ILogger<BlockchainService>? _logger;
         private const string MiddlewareBaseUrl = "http://localhost:4000";
 
         public BlockchainService(HttpClient httpClient, ILogger<BlockchainService>? logger = null)

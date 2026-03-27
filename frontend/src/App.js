@@ -1,41 +1,15 @@
 import React, { useState, useEffect } from "react";
-import "./style.css"; 
-import "./App.css";   
-import Login from "./Login";
-import StudentPortal from './StudentPortal';
-import FacultyPortal from './FacultyPortal';
-import GradesDashboard from './GradesDashboard.jsx';
-
-// Mock Data
-const TEST_STUDENT = {
-  name: "Mayumi",
-  role: "student",
-  subjects: [
-    { code: "IT-221", name: "Object Oriented Programming", units: 3, midterm: 85, finals: 95 },
-    { code: "IT-222", name: "Data Structures", units: 3, midterm: 88, finals: 90 },
-    { code: "IT-223", name: "Web Development", units: 3, midterm: 94, finals: 96 },
-    { code: "GE-101", name: "Discrete Math", units: 3, midterm: 78, finals: 82 }
-  ]
-};
-
-const TEST_FACULTY = {
-  name: "Juan Rodriguez",
-  role: "faculty",
-  department: "College of Information Technology",
-  status: "Full-Time",
-  assignedClass: "IT-221: Object Oriented Programming"
-};
-
-const TEST_REGISTRAR = {
-  name: "System Registrar",
-  role: "registrar",
-  department: "Administration"
-};
+import "./assets/style.css"; 
+import "./assets/App.css";   
+import Login from "./components/Login";
+import { fetchUserProfile } from './services/api'; // Import the new API function
+import StudentPortal from './components/StudentPortal';
+import FacultyPortal from './components/FacultyPortal';
+import GradesDashboard from './components/GradesDashboard';
 
 function App() {
   const [user, setUser] = useState(null);
 
-  // --- ADDED: Check for existing valid token on page load ---
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (token) {
@@ -53,29 +27,51 @@ function App() {
     }
   }, []);
 
-  const handleLoginSuccess = (token) => {
+  const handleLoginSuccess = async (token) => { // Made async
     localStorage.setItem('token', token);
     try {
       // Decode the JWT to securely get the username and role signed by the backend
       const payload = JSON.parse(atob(token.split('.')[1]));
       const email = payload.username;
-      
-      let rawName = email.split('@')[0];
-      rawName = rawName.replace('prof.', '').replace('student.', '').replace('dean.', '').replace('registrar.', '');
-      let displayName = rawName.charAt(0).toUpperCase() + rawName.slice(1);
+      const dbRole = payload.dbRole; // Get the database role from the JWT
 
-      // Map the Fabric MSP Role to the UI Dashboard Layout
-      if (payload.role === "FacultyMSP") {
-        setUser({ ...TEST_FACULTY, name: `Prof. ${displayName}`, email, role: 'faculty' });
-      } else if (payload.role === "DepartmentMSP") {
-        setUser({ ...TEST_REGISTRAR, name: `Dean ${displayName}`, email, role: 'dean' });
-      } else if (payload.role === "RegistrarMSP") {
-        setUser({ ...TEST_REGISTRAR, name: `Registrar ${displayName}`, email, role: 'registrar' });
+      // Fetch full user profile from the backend
+      const profileResponse = await fetchUserProfile(email, dbRole);
+
+      if (profileResponse.status === 'Success' && profileResponse.data) {
+        const fetchedUser = profileResponse.data;
+        
+        // Determine display name based on role
+        let displayName = fetchedUser.fullName;
+        if (fetchedUser.role === 'faculty') {
+          displayName = `Prof. ${fetchedUser.fullName}`;
+        } else if (fetchedUser.role === 'department_admin') {
+          displayName = `Dean ${fetchedUser.fullName}`;
+        } else if (fetchedUser.role === 'registrar') {
+          displayName = `Registrar ${fetchedUser.fullName}`;
+        }
+
+        // Set the user state with the fetched data
+        setUser({
+          id: fetchedUser.id,
+          name: displayName, // Use the formatted display name
+          email: fetchedUser.email,
+          role: fetchedUser.role, // Use the role from the fetched profile
+          studentNo: fetchedUser.studentNo,
+          department: fetchedUser.department,
+          section: fetchedUser.section,
+          yearLevel: fetchedUser.yearLevel,
+          status: fetchedUser.status // Add status if needed
+        });
       } else {
-        setUser({ ...TEST_STUDENT, name: displayName, email, role: 'student' });
+        console.error("Failed to fetch user profile:", profileResponse.message);
+        throw new Error("Failed to load user profile.");
       }
     } catch (error) {
-      console.error("Invalid token format.");
+      console.error("Error during login process:", error);
+      if (error instanceof SyntaxError) {
+        console.error("Invalid token format. It could not be parsed.");
+      }
     }
   };
 
@@ -100,7 +96,7 @@ function App() {
                 <button className="logout-btn" onClick={handleLogout} style={{ backgroundColor: '#003366', color: 'white', borderColor: '#003366', padding: '8px 16px', borderRadius: '4px', cursor: 'pointer' }}>Logout</button>
               </div>
               {/* Registrar and Dean see the full Blockchain Dashboard */}
-              <GradesDashboard loggedInEmail={user.email} loggedInName={user.name} />
+              <GradesDashboard loggedInEmail={user.email ?? ''} loggedInName={user.name ?? ''} />
             </div>
           )}
         </>

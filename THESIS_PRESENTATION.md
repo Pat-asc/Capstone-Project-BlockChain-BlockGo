@@ -1,4 +1,4 @@
-# Thesis Presentation: System Architecture & Flows
+# Guide: System Architecture & Flows
 
 This document is designed to help you explain the **Hybrid Web2/Web3 Architecture** to your thesis panel clearly and professionally.
 
@@ -88,4 +88,6 @@ sequenceDiagram
     N-->>UI: "Grade Finalized to Ledger"
 ```
 
-*(Note: If viewing this file in VS Code, install the "Markdown Preview Mermaid Support" extension to see the diagrams, or view the file directly on GitHub!)*
+
+REDIS is Free for local Development but in production and deployment it will require a paid subscription.
+REDIS is for memory caching.

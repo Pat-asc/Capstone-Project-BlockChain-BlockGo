@@ -3,6 +3,7 @@ using BlockGo.Services;
 using Microsoft.EntityFrameworkCore;
 using System.Threading.RateLimiting;
 using Client_app.Services;
+using Client_app.Middleware;
 using Client_app.Models;
 using For_Testing_Only_Capstone.Models;
 
@@ -38,8 +39,12 @@ try
     });
 
     builder.Services.AddControllers();
+    builder.Services.AddMemoryCache();
     builder.Services.AddEndpointsApiExplorer();
     builder.Services.AddSwaggerGen();
+
+    builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
+    builder.Services.AddProblemDetails();
 
     var rateLimitOptions = builder.Configuration.GetSection("RateLimiting");
     var permitLimit = int.Parse(rateLimitOptions["PermitLimit"] ?? "10");
@@ -69,6 +74,7 @@ try
 
     builder.Services.AddHttpClient<IBlockchainService, BlockchainService>();
     builder.Services.AddScoped<IFabricCaAuthService, FabricCaAuthService>();
+    builder.Services.AddScoped<IEmailService, EmailService>();
 
     builder.Services.AddHttpClient("FabricCAClient")
     .ConfigurePrimaryHttpMessageHandler(() =>
@@ -105,6 +111,8 @@ try
     app.UseSwagger();
     app.UseSwaggerUI();
     app.UseCors("AllowFrontend");
+
+    app.UseExceptionHandler(_ => { });
     app.UseRateLimiter();
 
     if (!app.Environment.IsDevelopment())

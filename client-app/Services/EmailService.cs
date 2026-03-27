@@ -1,0 +1,48 @@
+using System;
+using System.Net.Mail;
+using System.Threading.Tasks;
+using Microsoft.Extensions.Configuration;
+
+namespace Client_app.Services
+{
+    public class EmailService : IEmailService
+    {
+        private readonly IConfiguration _configuration;
+
+        public EmailService(IConfiguration configuration)
+        {
+            _configuration = configuration;
+        }
+
+        public async Task SendEmailAsync(string toEmail, string subject, string body, bool isHtml = false)
+        {
+            try
+            {
+                var smtpHost = _configuration["Smtp:Host"];
+                var smtpPort = int.Parse(_configuration["Smtp:Port"] ?? "587");
+                var smtpUser = _configuration["Smtp:Username"];
+                var smtpPass = _configuration["Smtp:Password"];
+
+                if (string.IsNullOrEmpty(smtpHost) || string.IsNullOrEmpty(smtpUser) || string.IsNullOrEmpty(smtpPass) || smtpPass.Contains("your-"))
+                {
+                    Console.WriteLine($"[EMAIL SKIPPED] SMTP not configured. Intended for: {toEmail}");
+                    return;
+                }
+
+                using var client = new SmtpClient(smtpHost, smtpPort)
+                {
+                    Credentials = new System.Net.NetworkCredential(smtpUser, smtpPass),
+                    EnableSsl = true
+                };
+
+                var mailMessage = new MailMessage(smtpUser, toEmail, subject, body) { IsBodyHtml = isHtml };
+                await client.SendMailAsync(mailMessage);
+                Console.WriteLine($"[EMAIL SENT] Successfully sent email to {toEmail} with subject '{subject}'");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[EMAIL ERROR] Failed to send email to {toEmail}: {ex.Message}");
+            }
+        }
+    }
+}

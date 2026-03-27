@@ -8,7 +8,7 @@
 
   <ItemGroup>
     <!-- Removed BouncyCastle.NetCore - using System.Security.Cryptography instead -->
-    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="8.0.0" />
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="9.0.0" />
     <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks" Version="9.0.0" />
     <!-- Note: System.Threading.RateLimiting is built-in to .NET 9 -->
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="9.0.0" />
@@ -27,5 +27,7 @@
     <PackageReference Include="Serilog.Sinks.File" Version="5.0.0" />
     <PackageReference Include="Swashbuckle.AspNetCore" Version="6.5.0" />
   </ItemGroup>
+
+
 
 </Project>

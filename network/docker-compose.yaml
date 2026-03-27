@@ -305,9 +305,17 @@ services:
     environment:
       - CHAINCODE_SERVER_ADDRESS=0.0.0.0:9999
       - CHAINCODE_ID=${CHAINCODE_ID}
-      - CHAINCODE_TLS_DISABLED=true
+      # --- PRODUCTION SETTING: Enable TLS ---
+      - CHAINCODE_TLS_DISABLED=false
+      - CHAINCODE_TLS_KEY_FILE=/etc/hyperledger/fabric/tls/server.key
+      - CHAINCODE_TLS_CERT_FILE=/etc/hyperledger/fabric/tls/server.crt
+      - CHAINCODE_CLIENT_CA_CERT_FILE=/etc/hyperledger/fabric/tls/ca.crt
     ports: ["9999:9999"]
     networks: [registrar-net]
+    volumes:
+      - ./chaincode-tls/server.key:/etc/hyperledger/fabric/tls/server.key:ro
+      - ./chaincode-tls/server.crt:/etc/hyperledger/fabric/tls/server.crt:ro
+      - ./crypto-config/ordererOrganizations/capstone.com/tlsca/tlsca.capstone.com-cert.pem:/etc/hyperledger/fabric/tls/ca.crt:ro
 
   cli:
     container_name: cli

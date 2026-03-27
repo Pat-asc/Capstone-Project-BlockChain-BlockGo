@@ -94,6 +94,13 @@ export const approveRegistrationRequest = async (id, type) => {
     });
 };
 
+// Deny/Delete a registration request
+export const denyRegistrationRequest = async (id) => {
+    return await fetchWithAuth(`/Auth/requests/deny/${encodeURIComponent(id)}`, {
+        method: 'DELETE'
+    });
+};
+
 // Fetch full user profile after login
 export const fetchUserProfile = async (email, role) => {
     return await fetchWithAuth(`/Auth/user-profile?email=${encodeURIComponent(email)}&role=${encodeURIComponent(role)}`);

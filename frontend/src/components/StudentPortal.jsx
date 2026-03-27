@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { fetchAllGrades } from './api';
+import { fetchAllGrades } from '../services/api';
 
 const StudentPortal = ({ studentData, onLogout }) => {
   const [grades, setGrades] = useState([]);
@@ -52,8 +52,8 @@ const StudentPortal = ({ studentData, onLogout }) => {
       <header className="student-header">
         <div className="student-info">
           <h2>{studentData.name}</h2>
-          <p>Student ID: 2024-10293-V</p>
-          {isDeansLister && <span className="deans-lister-badge">🌟 DEAN'S LISTER</span>}
+          <p>Student ID: {studentData.studentNo || 'N/A'}</p>
+          {isDeansLister && <span className="deans-lister-badge"> DEAN'S LISTER</span>}
         </div>
         
         <div className="summary-section">
@@ -77,7 +77,7 @@ const StudentPortal = ({ studentData, onLogout }) => {
       <div className="table-container">
         {loading ? (
             <div style={{ padding: '40px', textAlign: 'center', fontSize: '1.2rem', color: '#003366', fontWeight: 'bold' }}>
-                ⏳ Syncing Records with Blockchain Ledger...
+                 Syncing Records with Blockchain Ledger...
             </div>
         ) : (
         <table className="plv-table">
@@ -102,7 +102,7 @@ const StudentPortal = ({ studentData, onLogout }) => {
               const passed = finalPoint <= 3.0 && finalPoint > 0;
 
               return (
-                <tr key={index}>
+                <tr key={sub.id || index}>
                   <td className="sub-code">{sub.subject_code || 'N/A'}</td>
                   <td className="sub-title">{sub.course || 'N/A'}</td>
                   <td className="units-count">3</td>

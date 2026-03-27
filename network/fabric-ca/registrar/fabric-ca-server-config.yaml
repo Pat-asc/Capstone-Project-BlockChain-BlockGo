@@ -67,7 +67,7 @@ crlsizelimit: 512000
 tls:
   enabled: true
   certfile: ca-cert.pem
-  keyfile: msp/keystore/52a1bd2542eeefbd8ba1d99ba21d8a21251109e1647d1b54a54f7f9fef7161cb_sk
+  keyfile: # Leave blank; Fabric CA will auto-discover the key in msp/keystore/
   clientauth:
     type: noclientcert
     certfiles:

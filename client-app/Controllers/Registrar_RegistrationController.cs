@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using For_Testing_Only_Capstone.Models;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using Client_app.Models; // Added for RegistrationRequest
 
 namespace Client_app.Controllers
 {
@@ -26,8 +27,6 @@ namespace Client_app.Controllers
             _configuration = configuration;
             _logger = logger;
         }
-
-        public class RegistrationRequest { public string Password { get; set; } = string.Empty; }
 
         [HttpPost("grant/{sqlRequestId}")]
         public async Task<IActionResult> GrantAccess(int sqlRequestId, [FromBody] RegistrationRequest request)
