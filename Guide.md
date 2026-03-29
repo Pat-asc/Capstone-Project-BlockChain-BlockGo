@@ -110,8 +110,8 @@ graph LR
     E3 -- "Issue Grades" --> P0
     P0 -- "View Issued Grades" --> E3
 
-    E4 -- "Approve Grades" --> P0
-    P0 -- "View Department Grades" --> E4
+    E4 -- "Enroll Assigned Students & Verify Grades" --> P0
+    P0 -- "Assigned Students & Pending Grades" --> E4
 
     style P0 fill:#dae,stroke:#333,stroke-width:4px,stroke-dasharray: 5 5
 ```
@@ -130,29 +130,29 @@ graph TD
         P1("1.0<br>Frontend UI & Portal")
  
         subgraph "2.0 Web2 Profile & Log Management (C#)"
-            P2_1("2.1 Handle Waitlist & Self-Registration")
+            P2_1("2.1 Handle Waitlist & Registration (FR1)")
             P2_2("2.2 Profile Mgt & Password Recovery")
-            P2_3("2.3 Track & Export Activity Logs (PDF)")
+            P2_3("2.3 Track & Export Activity Logs as PDF (FR9)")
         end
  
         subgraph "3.0 Web3 Blockchain Bridge (Node.js)"
             P3_1("3.1 Auth & JWT Issuance")
-            P3_2("3.2 CA Identity Mgt & Revocation (CRL)")
-            P3_3("3.3 Grade Processing (Batch, Hash, IPFS)")
-            P3_4("3.4 ABAC Enforcement & Approvals")
-            P3_5("3.5 Ledger Queries & Audit Trail")
+            P3_2("3.2 CA Identity Mgt & Revocation / CRL (FR1, FR3)")
+            P3_3("3.3 Grade Entry: Single/Excel Batch, SHA-256 Anonymize, IPFS PDF (FR4, FR5, FR6, FR7)")
+            P3_4("3.4 ABAC Enforcement & Multi-Tier Approvals (FR2)")
+            P3_5("3.5 Query Grades & Immutable Audit Trail (FR8, FR10)")
         end
     end
  
     subgraph "Data Stores"
-        D1[(D1: PostgreSQL<br>Waitlist & Profiles)]
+        D1[(D1: PostgreSQL<br>Waitlist, Profiles, Logs)]
         D2[(D2: Fabric Ledger<br>Grades & History)]
-        D3[(D3: CouchDB Wallet<br>X.509 Identities)]
-        D4[(D4: IPFS<br>PDF Evidence)]
+        D3[(D3: CouchDB Wallet<br>X.509 Identities, CRL)]
+        D4[(D4: IPFS<br>PDF Evidence CIDs)]
     end
  
     %% --- Data Flows ---
-    U -- "Interact (Forms, Uploads, Clicks)" --> P1
+    U -- "Interact (Forms, Excel Uploads, PDFs)" --> P1
     P1 -- "UI Dashboards & Notifications" --> U
 
     P1 -- "Registration Request" --> P2_1
@@ -161,7 +161,7 @@ graph TD
 
     P1 -- "Login Request" --> P3_1
     P1 -- "Approve/Revoke Users" --> P3_2
-    P1 -- "Upload Grades/PDF Evidence" --> P3_3
+    P1 -- "Upload Grades (Excel/Single) & PDF" --> P3_3
     P1 -- "Verify/Finalize Grades" --> P3_4
     P1 -- "Query Grades/History" --> P3_5
 
@@ -172,11 +172,11 @@ graph TD
 
     P3_1 -- "Verify Password Hash" --> D1
     P3_1 -- "Check Identity Exists" --> D3
-    P3_2 -- "Issue/Revoke MSP" --> D3
+    P3_2 -- "Issue/Revoke MSP Certificates" --> D3
     P3_3 -- "Store PDF Evidence" --> D4
-    P3_3 -- "Submit Encrypted Grade Tx" --> D2
-    P3_4 -- "Validate User Attributes" --> D2
-    P3_5 -- "Fetch State & Audit Trail" --> D2
+    P3_3 -- "Check Idempotency, Hash IDs, Submit Tx" --> D2
+    P3_4 -- "Validate User ABAC Attributes" --> D2
+    P3_5 -- "Fetch Redacted State & Audit Trail" --> D2
 ```
 
 ---
