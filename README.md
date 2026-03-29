@@ -37,6 +37,61 @@ This system utilizes a clean separation of concerns, splitting standard database
 
 ---
 
+## Nginx Reverse Proxy Configuration
+
+The Nginx container (`nginx-shield`) acts as the single entry point for all incoming HTTP traffic. It intelligently routes requests to the appropriate backend microservice and serves the static React frontend, simplifying the architecture and enhancing security.
+
+The configuration, located at `middleware/nginx/nginx.conf`, is as follows:
+
+```nginx
+worker_processes 1;
+
+events {
+    worker_connections 1024;
+}
+
+http {
+    # Define upstream servers to allow for easy service discovery via Docker DNS
+    upstream client_app_backend {
+        # This should match the service name in docker-compose.yaml
+        server client-app:5000;
+    }
+
+    upstream middleware_backend {
+        # This should match the service name in docker-compose.yaml
+        server middleware:4000;
+    }
+
+    server {
+        listen 80;
+        server_name localhost;
+
+        # Route Web2 API calls to the C# Backend (most specific match first)
+        location /api/Auth/ {
+            proxy_pass http://client_app_backend;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+        }
+
+        # Route Web3/Crypto API calls to the Node.js Middleware
+        location /api/ {
+            proxy_pass http://middleware_backend;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+        }
+
+        # Serve React Frontend for all other requests
+        location / {
+            root   /usr/share/nginx/html;
+            index  index.html index.htm;
+            try_files $uri $uri/ /index.html; # Required for React Router
+        }
+    }
+}
+```
+
+---
+
 ##  User Roles & Workflows
 
 ### 1. The Registrar (Master Admin)
