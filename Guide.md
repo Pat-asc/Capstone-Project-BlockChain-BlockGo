@@ -91,9 +91,8 @@ graph TD
 This diagram shows the entire system as a single process and its interactions with external user roles, arranged for clarity.
  
 ```mermaid
-graph TD
+graph LR
     subgraph "External Entities"
-        direction LR
         E1[<fa:fa-user-tie> Registrar]
         E3[<fa:fa-chalkboard-teacher> Faculty]
         E4[<fa:fa-user-shield> Dept. Admin]
@@ -134,9 +133,9 @@ graph TD
     end
 
     subgraph "Data Stores"
-        D1[<fa:fa-database> D1: User Profiles<br>(PostgreSQL)]
-        D2[<fa:fa-link> D2: Grades Ledger<br>(Hyperledger Fabric)]
-        D3[<fa:fa-wallet> D3: Crypto Identities<br>(CouchDB Wallet)]
+        D1["<fa:fa-database> D1: User Profiles<br>(PostgreSQL)"]
+        D2["<fa:fa-link> D2: Grades Ledger<br>(Hyperledger Fabric)"]
+        D3["<fa:fa-wallet> D3: Crypto Identities<br>(CouchDB Wallet)"]
     end
 
     U -- "HTTP Requests (Login, View Data, Submit Forms)" --> P1
