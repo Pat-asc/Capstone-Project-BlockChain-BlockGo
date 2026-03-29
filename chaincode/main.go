@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path/filepath"
+	"strings"
 
 	"github.com/hyperledger/fabric-chaincode-go/v2/pkg/cid"
 	"github.com/hyperledger/fabric-chaincode-go/v2/shim"
@@ -46,6 +48,8 @@ func (cc *SmartContract) Invoke(stub shim.ChaincodeStubInterface) *pb.Response {
 	function, args := stub.GetFunctionAndParameters()
 
 	switch function {
+	case "InitLedger":
+		return shim.Success([]byte("Ledger Initialized Successfully"))
 	case "IssueGrade":
 		return cc.issueGrade(stub, args)
 	case "ReadGrade":
@@ -68,17 +72,10 @@ func (cc *SmartContract) issueGrade(stub shim.ChaincodeStubInterface, args []str
 		return shim.Error("Record data required")
 	}
 
-	// -----------------------------------------------------------------
-	// GATE 1: OBAC (Must belong to Faculty Organization)
-	// -----------------------------------------------------------------
 	mspID, _ := cid.GetMSPID(stub)
 	if mspID != "FacultyMSP" {
 		return shim.Error(fmt.Sprintf("OBAC Denied: Must belong to FacultyMSP. Your MSP is %s", mspID))
 	}
-
-	// -----------------------------------------------------------------
-	// GATE 2: ABAC (Must have the cryptographic 'faculty' role)
-	// -----------------------------------------------------------------
 	role, found := getSafeAttribute(stub, "role")
 	if !found || role != "faculty" {
 		return shim.Error("ABAC Denied: User belongs to FacultyMSP, but lacks the cryptographic 'faculty' role.")
@@ -90,12 +87,19 @@ func (cc *SmartContract) issueGrade(stub shim.ChaincodeStubInterface, args []str
 		return shim.Error("Invalid JSON input")
 	}
 
+	if record.Grade == "" {
+		return shim.Error("Grade field cannot be empty")
+	}
+
 	dept, deptFound := getSafeAttribute(stub, "dept")
 	if deptFound && record.University != dept {
 		return shim.Error("ABAC Denied: Faculty cannot issue grades for a different department")
 	}
 
-	existing, _ := stub.GetPrivateData("collectionGrades", record.ID)
+	existing, err := stub.GetPrivateData("collectionGrades", record.ID)
+	if err != nil {
+		return shim.Error(fmt.Sprintf("Failed to read from state database: %v", err))
+	}
 	if existing != nil {
 		return shim.Error("Record already exists")
 	}
@@ -144,13 +148,26 @@ func (cc *SmartContract) updateGrade(stub shim.ChaincodeStubInterface, args []st
 	var updated AcademicRecord
 	json.Unmarshal([]byte(args[0]), &updated)
 
-	existingJSON, _ := stub.GetPrivateData("collectionGrades", updated.ID)
+	// VALIDATION: Prevent empty grades from being submitted in an update.
+	if updated.Grade == "" {
+		return shim.Error("Grade field cannot be empty")
+	}
+
+	existingJSON, err := stub.GetPrivateData("collectionGrades", updated.ID)
+	if err != nil {
+		return shim.Error(fmt.Sprintf("Failed to read from state database: %v", err))
+	}
 	if existingJSON == nil {
 		return shim.Error("Record does not exist")
 	}
 
 	var existing AcademicRecord
 	json.Unmarshal(existingJSON, &existing)
+
+	// VALIDATION: Prevent modification of a finalized record.
+	if existing.Status == "Finalized" {
+		return shim.Error("Cannot update a grade that has been finalized")
+	}
 
 	submitterID, _ := cid.GetID(stub)
 	if existing.FacultyID != submitterID {
@@ -187,7 +204,10 @@ func (cc *SmartContract) approveGrade(stub shim.ChaincodeStubInterface, args []s
 		return shim.Error("OBAC/ABAC Denied: Only Department Admin or Registrar can approve grades.")
 	}
 
-	recordJSON, _ := stub.GetPrivateData("collectionGrades", args[0])
+	recordJSON, err := stub.GetPrivateData("collectionGrades", args[0])
+	if err != nil {
+		return shim.Error(fmt.Sprintf("Failed to read from state database: %v", err))
+	}
 	if recordJSON == nil {
 		return shim.Error("Record not found")
 	}
@@ -220,7 +240,10 @@ func (cc *SmartContract) finalizeRecord(stub shim.ChaincodeStubInterface, args [
 		return shim.Error("OBAC/ABAC Denied: Only the Master Registrar can finalize records to the ledger.")
 	}
 
-	recordJSON, _ := stub.GetPrivateData("collectionGrades", args[0])
+	recordJSON, err := stub.GetPrivateData("collectionGrades", args[0])
+	if err != nil {
+		return shim.Error(fmt.Sprintf("Failed to read from state database: %v", err))
+	}
 	if recordJSON == nil {
 		return shim.Error("Record not found")
 	}
@@ -285,9 +308,22 @@ func readFile(path string) []byte {
 	if path == "" {
 		return nil
 	}
+	if info, err := os.Stat(path); err == nil && info.IsDir() {
+		files, readDirErr := os.ReadDir(path)
+		if readDirErr != nil {
+		} else {
+			for _, f := range files {
+				if !f.IsDir() && strings.HasSuffix(f.Name(), "_sk") {
+					path = filepath.Join(path, f.Name())
+					break
+				}
+			}
+		}
+	}
+
 	content, err := os.ReadFile(path)
 	if err != nil {
-		log.Fatalf("Failed to read file: %s", path)
+		log.Fatalf("Failed to read file content from %s: %v", path, err)
 	}
 	return content
 }

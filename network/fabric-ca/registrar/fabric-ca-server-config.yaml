@@ -65,9 +65,11 @@ crlsizelimit: 512000
 #  when verifying client certificates.
 #############################################################################
 tls:
+  # Enable TLS (default: false)
   enabled: true
-  certfile: ca-cert.pem
-  keyfile: # Leave blank; Fabric CA will auto-discover the key in msp/keystore/
+  # TLS for the server's listening port
+  certfile:
+  keyfile:
   clientauth:
     type: noclientcert
     certfiles:
@@ -319,9 +321,6 @@ csr:
    hosts:
      - ca.registrar.capstone.com
      - localhost
-     - 127.0.0.1
-     - "*.capstone.com"
-     - "*.registrar.capstone.com"
    ca:
       expiry: 131400h
       pathlength: 1

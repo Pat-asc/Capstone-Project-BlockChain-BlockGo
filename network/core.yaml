@@ -1,24 +1,24 @@
 peer:
-  id: peer0.registrar.capstone.com
-  networkId: dev
-  listenAddress: 0.0.0.0:7051
-  chaincodeListenAddress: 0.0.0.0:7052 
-  addressAutoDetect: false
-  gomaxprocs: -1
-  
+  # This file provides settings that are common to all peers.
+  # Peer-specific settings (id, address, localMspId, and all TLS paths)
+  # are correctly defined via environment variables in the docker-compose.yaml file.
+  # By removing the hardcoded paths from this file, we allow the environment
+  # variables to properly configure each peer, which fixes the TLS handshake
+  # and identity validation errors.
+  #
+  # The only settings retained here are for CCaaS and the Docker VM network mode,
+  # which are common across all peers in this deployment.
   tls:
     enabled: true
     clientAuthRequired: false
-    cert:
-      file: /etc/hyperledger/fabric/crypto-config/peerOrganizations/registrar.capstone.com/peers/peer0.registrar.capstone.com/tls/server.crt
-    key:
-      file: /etc/hyperledger/fabric/crypto-config/peerOrganizations/registrar.capstone.com/peers/peer0.registrar.capstone.com/tls/server.key
-    rootcert:
-      file: /etc/hyperledger/fabric/crypto-config/peerOrganizations/registrar.capstone.com/peers/peer0.registrar.capstone.com/tls/ca.crt
-    clientRootCAs:
-      files:
-        - /etc/hyperledger/fabric/crypto-config/peerOrganizations/registrar.capstone.com/peers/peer0.registrar.capstone.com/tls/ca.crt
 
+vm:
+  endpoint: unix:///var/run/docker.sock
+  docker:
+    hostConfig:
+      NetworkMode: registrar-net
+
+chaincode:
   externalBuilders:
     - path: /usr/local/bin/ccaas_builder
       name: ccaas_builder
@@ -26,19 +26,3 @@ peer:
         - HOME
         - PATH
         - LD_LIBRARY_PATH
-
-vm:
-  endpoint: unix:///var/run/docker.sock
-
-chaincode:
-  externalBuilders:
-    - name: ccaas_builder
-      path: /usr/local/bin/ccaas_builder
-
-bccsp:
-  default: SW
-  sw:
-    hash: SHA2
-    security: 256
-    filekeystore:
-      keystore: /etc/hyperledger/fabric/crypto-config/peerOrganizations/registrar.capstone.com/peers/peer0.registrar.capstone.com/msp/keystore

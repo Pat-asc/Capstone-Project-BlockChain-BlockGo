@@ -34,7 +34,7 @@ Organizations:
       Endorsement: { Type: Signature, Rule: "OR('FacultyMSP.peer')" }
     AnchorPeers:
       - Host: peer0.faculty.capstone.com
-        Port: 9051
+        Port: 7051
 
   - &DepartmentOrg
     Name: DepartmentMSP
@@ -47,7 +47,7 @@ Organizations:
       Endorsement: { Type: Signature, Rule: "OR('DepartmentMSP.peer')" }
     AnchorPeers:
       - Host: peer0.department.capstone.com
-        Port: 11051
+        Port: 7051
 
 Capabilities:
   Channel: &ChannelCapabilities

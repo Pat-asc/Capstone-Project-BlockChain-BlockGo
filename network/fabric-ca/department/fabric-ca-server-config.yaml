@@ -319,7 +319,7 @@ csr:
         O: Hyperledger
         OU: Fabric
    hosts:
-     - ff12e6aa2e7e
+     - ca.department.capstone.com
      - localhost
    ca:
       expiry: 131400h

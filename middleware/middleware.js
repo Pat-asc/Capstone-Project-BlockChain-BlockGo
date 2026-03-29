@@ -27,6 +27,11 @@ const db = new Pool({
     port: process.env.POSTGRES_PORT || 5432,
 });
 
+// Catch idle client errors so they don't crash the server
+db.on('error', (err, client) => {
+    console.error('Unexpected error on idle PostgreSQL client:', err);
+});
+
 db.query(`
     ALTER TABLE Users 
     ADD COLUMN IF NOT EXISTS password_reset_token VARCHAR(255),
@@ -37,7 +42,7 @@ async function getWallet() {
     // Construct CouchDB URL from individual credentials if main URL is missing
     let couchUrl = process.env.COUCHDB_WALLET_URL;
     if (!couchUrl && process.env.COUCHDB_USER && process.env.COUCHDB_PASS) {
-        couchUrl = `http://${process.env.COUCHDB_USER}:${process.env.COUCHDB_PASS}@127.0.0.1:5985`;
+        couchUrl = `http://${process.env.COUCHDB_USER}:${process.env.COUCHDB_PASS}@127.0.0.1:5989`;
     }
 
     if (couchUrl) {

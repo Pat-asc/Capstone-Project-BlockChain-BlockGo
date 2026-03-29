@@ -12,10 +12,9 @@ obj/
 __pycache__/
 *.pyc
 network/crypto-config/
-network/fabric-ca/registrar/fabric-ca-server.db
+network/fabric-ca/**/*.db
 client-app/bin/
 client-app/obj/
-client-app/obj/Debug/
 *.cache
 *.cache.json
 network/postgres-data/
@@ -23,3 +22,26 @@ network/ipfs/
 network/bin/
 network/*.block
 network/*.tar.gz
+
+# Chaincode dynamically generated variables
+chaincode/.env
+
+# Build output
+frontend/build/
+
+# Logs
+*.log
+client-app/logs/
+
+# Hyperledger Fabric & Application Generated Artifacts
+network/channel-artifacts/
+middleware/wallet/
+network/fabric-samples/
+network/connection.json
+network/metadata.json
+network/collections.json
+
+# OS & Editor specific (good practice)
+.vscode/
+.idea/
+.DS_Store

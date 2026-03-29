@@ -14,7 +14,7 @@ async function migrate() {
     let couchUrl = process.env.COUCHDB_WALLET_URL;
     if (!couchUrl) {
         if (process.env.COUCHDB_USER && process.env.COUCHDB_PASS) {
-            couchUrl = `http://${process.env.COUCHDB_USER}:${process.env.COUCHDB_PASS}@127.0.0.1:5985`;
+            couchUrl = `http://${process.env.COUCHDB_USER}:${process.env.COUCHDB_PASS}@127.0.0.1:5989`;
         } else {
             console.error("ERROR: COUCHDB_WALLET_URL, or COUCHDB_USER and COUCHDB_PASS are not set in .env!");
             process.exit(1);
