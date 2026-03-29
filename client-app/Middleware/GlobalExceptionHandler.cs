@@ -22,8 +22,14 @@ namespace Client_app.Middleware
             CancellationToken cancellationToken)
         {
             _logger.LogError(exception, "An unhandled exception occurred: {Message}", exception.Message);
+            
+            var traceId = httpContext.TraceIdentifier;
             httpContext.Response.StatusCode = StatusCodes.Status500InternalServerError;
-            await httpContext.Response.WriteAsJsonAsync(new { status = "Error", message = "An internal server error has occurred." }, cancellationToken);
+            await httpContext.Response.WriteAsJsonAsync(new { 
+                status = "Error", 
+                message = "An internal server error has occurred.",
+                traceId = traceId
+            }, cancellationToken);
             return true;
         }
     }

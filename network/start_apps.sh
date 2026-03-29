@@ -9,7 +9,6 @@ cleanup_processes() {
     for pid in "${PIDS[@]}"; do
         if ps -p $pid > /dev/null 2>&1; then
             kill $pid 2>/dev/null
-            wait $pid 2>/dev/null # Wait for the process to actually terminate
         fi
     done
     echo "Background processes stopped."
@@ -32,7 +31,7 @@ wait_for_service() {
             echo "Error: $service_name ($host:$port) did not become available within $timeout seconds."
             exit 1
         fi
-        if nc -z $host $port > /dev/null 2>&1; then
+        if nc -z -w 2 $host $port > /dev/null 2>&1; then
             echo "$service_name is available!"
             return 0
         fi
@@ -79,7 +78,8 @@ if [ -d "../middleware" ]; then
     echo "Starting Node.js Middleware..."
     ( # Run in a subshell
         cd ../middleware || exit 1
-        cp ../network/.env .env
+        echo "Ensuring CA Admins are enrolled in CouchDB..."
+        node enrollAllAdmins.js || echo "Warning: Admin enrollment had issues."
         echo "Starting middleware in background (logs to middleware/middleware.log)..."
         nohup npm start > middleware.log 2>&1 &
         echo $! > /tmp/middleware_pid.tmp

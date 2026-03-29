@@ -344,13 +344,19 @@ services:
     ports: ["5432:5432"]
     networks: [registrar-net]
     volumes: ["pgdata:/var/lib/postgresql/data"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
 
   nginx-shield:
     image: nginx:stable-alpine
     container_name: nginx-shield
     ports: ["8080:80"]
     volumes:
-      - "../client-app/Controllers/default.conf:/etc/nginx/conf.d/default.conf:ro"
+      - "./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro"
       - "../frontend/build:/usr/share/nginx/html:ro"
     extra_hosts:
       - "host.docker.internal:host-gateway"

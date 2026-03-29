@@ -10,7 +10,7 @@ async function main() {
         // --- Use CouchDB Wallet ---
         let couchUrl = process.env.COUCHDB_WALLET_URL;
         if (!couchUrl && process.env.COUCHDB_USER && process.env.COUCHDB_PASS) {
-            couchUrl = `http://${process.env.COUCHDB_USER}:${process.env.COUCHDB_PASS}@127.0.0.1:5985`;
+            couchUrl = `http://${process.env.COUCHDB_USER}:${process.env.COUCHDB_PASS}@127.0.0.1:5989`;
         }
         if (!couchUrl) {
             throw new Error("CouchDB wallet URL or credentials not found in .env");
@@ -23,14 +23,15 @@ async function main() {
             const originalPut = wallet.put.bind(wallet);
             wallet.put = async (label, identity) => {
                 if (identity && identity.credentials && identity.credentials.privateKey) {
-                    const key = crypto.scryptSync(encryptionKey, 'salt', 32);
-                    const iv = crypto.randomBytes(16);
+                    const salt = crypto.randomBytes(16);
+                    const key = crypto.scryptSync(encryptionKey, salt, 32);
+                    const iv = crypto.randomBytes(12);
                     const cipher = crypto.createCipheriv('aes-256-gcm', key, iv);
                     let encrypted = cipher.update(identity.credentials.privateKey, 'utf8', 'hex');
                     encrypted += cipher.final('hex');
                     const authTag = cipher.getAuthTag().toString('hex');
                     // Replace plain text private key with encrypted payload
-                    identity.credentials.privateKey = `ENC:${iv.toString('hex')}:${authTag}:${encrypted}`;
+                    identity.credentials.privateKey = `ENC:${salt.toString('hex')}:${iv.toString('hex')}:${authTag}:${encrypted}`;
                 }
                 return originalPut(label, identity);
             };

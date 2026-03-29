@@ -24,14 +24,15 @@ namespace Client_app.Controllers
         private readonly IMemoryCache _cache;
         private readonly IConfiguration _configuration;
         private readonly IEmailService _emailService;
+        private readonly IHttpClientFactory _httpClientFactory;
 
-        public AuthController(IConfiguration configuration, IMemoryCache memoryCache, IEmailService emailService)
+        public AuthController(IConfiguration configuration, IMemoryCache memoryCache, IEmailService emailService, IHttpClientFactory httpClientFactory)
         {
-            _connectionString = configuration.GetConnectionString("PostgresConnection") 
-                ?? "Host=127.0.0.1;Database=ActivityLogs;Username=BLOCKGO;Password=PLVBLOCKGO";
+            _connectionString = configuration.GetConnectionString("PostgresConnection") ?? throw new InvalidOperationException("PostgreSQL connection string 'PostgresConnection' not found.");
             _cache = memoryCache;
             _configuration = configuration;
             _emailService = emailService;
+            _httpClientFactory = httpClientFactory;
         }
 
         [HttpPost("send-verification")]
@@ -40,6 +41,19 @@ namespace Client_app.Controllers
             if (string.IsNullOrEmpty(request.Email))
             {
                 return BadRequest(new { status = "Error", message = "Email is required." });
+            }
+
+            using var conn = new NpgsqlConnection(_connectionString);
+            await conn.OpenAsync();
+
+            using (var checkCmd = new NpgsqlCommand("SELECT COUNT(1) FROM Users WHERE email = @email", conn))
+            {
+                checkCmd.Parameters.AddWithValue("email", request.Email);
+                long userCount = (long)(await checkCmd.ExecuteScalarAsync() ?? 0);
+                if (userCount > 0)
+                {
+                    return BadRequest(new { status = "Error", message = "An account with this email already exists or is currently pending approval." });
+                }
             }
 
             var verificationCode = new Random().Next(100000, 999999).ToString();
@@ -67,13 +81,28 @@ namespace Client_app.Controllers
 
             using var conn = new NpgsqlConnection(_connectionString);
             await conn.OpenAsync();
+
+            // Check if user already exists before proceeding
+            using (var checkCmd = new NpgsqlCommand("SELECT COUNT(1) FROM Users WHERE email = @email", conn))
+            {
+                checkCmd.Parameters.AddWithValue("email", request.Email);
+                long userCount = (long)(await checkCmd.ExecuteScalarAsync() ?? 0);
+                if (userCount > 0)
+                {
+                    return BadRequest(new { status = "Error", message = "An account with this email already exists or is currently pending approval." });
+                }
+            }
+
             using var transaction = await conn.BeginTransactionAsync();
 
             // Request password hash from Node.js Middleware
-            using var client = new HttpClient();
+            using var client = _httpClientFactory.CreateClient();
+            var apiKey = _configuration["InternalApiKey"] ?? throw new InvalidOperationException("Internal API Key not configured.");
+            client.DefaultRequestHeaders.Add("x-api-key", apiKey);
             var hashPayload = new { password = request.Password };
             var hashContent = new StringContent(JsonSerializer.Serialize(hashPayload), Encoding.UTF8, "application/json");
-            var hashResponse = await client.PostAsync("http://localhost:4000/api/crypto/hash-password", hashContent);
+            var middlewareUrl = _configuration["Middleware:Url"] ?? throw new InvalidOperationException("Middleware URL not configured.");
+            var hashResponse = await client.PostAsync($"{middlewareUrl}/api/crypto/hash-password", hashContent);
             
             if (!hashResponse.IsSuccessStatusCode) {
                 return StatusCode(500, new { status = "Error", message = "Failed to secure password via middleware." });
@@ -197,10 +226,11 @@ namespace Client_app.Controllers
         {
             using var conn = new NpgsqlConnection(_connectionString);
             await conn.OpenAsync();
+            using var transaction = await conn.BeginTransactionAsync();
 
             string query = "UPDATE Users SET status = 'APPROVED' WHERE id = @id AND status = 'pending' RETURNING email, role";
 
-            using var cmd = new NpgsqlCommand(query, conn);
+            using var cmd = new NpgsqlCommand(query, conn, transaction);
             cmd.Parameters.AddWithValue("id", id); 
             
             using var reader = await cmd.ExecuteReaderAsync();
@@ -211,19 +241,27 @@ namespace Client_app.Controllers
             
             string userEmail = reader.GetString(0) ?? "";
             string userRole = reader.GetString(1) ?? "";
+            await reader.CloseAsync(); // MUST close the reader before committing or rolling back the transaction
 
             // Trigger the Node.js Middleware to Generate the Blockchain Wallet
-            using var client = new HttpClient();
+            using var client = _httpClientFactory.CreateClient("FabricCAClient");
+            var apiKey = _configuration["InternalApiKey"] ?? throw new InvalidOperationException("Internal API Key not configured.");
+            client.DefaultRequestHeaders.Add("x-api-key", apiKey);
+
             var payload = new { email = userEmail, role = userRole };
             var content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
             
             // Call the internal Fabric Gateway
-            var response = await client.PostAsync("http://localhost:4000/api/fabric/register-user", content);
+            var middlewareUrl = _configuration["Middleware:Url"] ?? throw new InvalidOperationException("Middleware URL not configured.");
+            var response = await client.PostAsync($"{middlewareUrl}/api/fabric/register-user", content);
             
             if (!response.IsSuccessStatusCode) {
+                await transaction.RollbackAsync();
                 string errorBody = await response.Content.ReadAsStringAsync();
                 return StatusCode(500, new { status = "Error", message = $"Approved in DB, but Blockchain Wallet failed: {errorBody}" });
             }
+
+            await transaction.CommitAsync();
 
             var emailSubject = "PLV System Access Approved";
             var emailContent = $"<p>Hello,</p><p>Your registration request for the role '<strong>{userRole}</strong>' has been approved. You can now log in to the system.</p>";
@@ -270,11 +308,41 @@ namespace Client_app.Controllers
             return Ok(new { status = "Success", message = "Request denied and removed." });
         }
 
+        [HttpDelete("requests/cleanup-pending")]
+        public async Task<IActionResult> CleanupPendingRequests()
+        {
+            // Require Internal API Key to prevent external abuse
+            var requestApiKey = Request.Headers["x-api-key"].ToString();
+            var configuredApiKey = _configuration["InternalApiKey"] ?? throw new InvalidOperationException("Internal API Key not configured.");
+            if (requestApiKey != configuredApiKey)
+            {
+                return StatusCode(403, new { status = "Error", message = "Unauthorized. Invalid Internal API Key." });
+            }
+
+            try
+            {
+                using var conn = new NpgsqlConnection(_connectionString);
+                await conn.OpenAsync();
+                
+                // Deletes pending users created more than 30 days ago
+                using var cmd = new NpgsqlCommand("DELETE FROM Users WHERE status = 'pending' AND created_at < NOW() - INTERVAL '30 days'", conn);
+                int deletedCount = await cmd.ExecuteNonQueryAsync();
+
+                _cache.Remove("pending_requests");
+
+                return Ok(new { status = "Success", message = $"Successfully cleaned up {deletedCount} orphaned pending requests." });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = "Error", message = $"Database error: {ex.Message}" });
+            }
+        }
+
         [HttpGet("students/approved")]
         public async Task<IActionResult> GetApprovedStudents()
         {
             const string cacheKey = "approved_students";
-            if (_cache.TryGetValue(cacheKey, out object cachedData))
+            if (_cache.TryGetValue(cacheKey, out object? cachedData) && cachedData != null)
             {
                 return Ok(cachedData);
             }
@@ -368,7 +436,7 @@ namespace Client_app.Controllers
         public async Task<IActionResult> GetApprovedDepartmentAdmins()
         {
             const string cacheKey = "approved_department_admins";
-            if (_cache.TryGetValue(cacheKey, out object cachedData))
+            if (_cache.TryGetValue(cacheKey, out object? cachedData) && cachedData != null)
             {
                 return Ok(cachedData);
             }
@@ -554,7 +622,7 @@ namespace Client_app.Controllers
             string cacheKey = $"department_pending_{email}";
             try
             {
-                if (_cache.TryGetValue(cacheKey, out object cachedData))
+                if (_cache.TryGetValue(cacheKey, out object? cachedData) && cachedData != null)
                 {
                     return Ok(cachedData);
                 }

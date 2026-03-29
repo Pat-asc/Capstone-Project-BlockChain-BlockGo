@@ -49,6 +49,13 @@ const Login = ({ onLogin }) => {
       return;
     }
 
+    // Validate password before proceeding to the next step
+    const passwordError = validatePassword(password);
+    if (passwordError) {
+      setError(passwordError);
+      return;
+    }
+
     if (!email) {
       setError('Email is required to send a verification code.');
       return;
@@ -69,12 +76,6 @@ const Login = ({ onLogin }) => {
 
   const handleSignupSubmit = async (e) => {
     e.preventDefault();
-    
-    const passwordError = validatePassword(password);
-    if (passwordError) {
-      setError(passwordError);
-      return;
-    }
 
     setIsLoading(true);
     setError('');
@@ -227,7 +228,6 @@ const Login = ({ onLogin }) => {
                   <select value={role} onChange={(e) => setRole(e.target.value)} style={{ width: '100%', padding: '12px', border: '1px solid #ddd', borderRadius: '8px', boxSizing: 'border-box' }}>
                     <option value="student">Student</option>
                     <option value="faculty">Faculty / Professor</option>
-                    <option value="department_admin">Department Admin / Dean</option>
                   </select>
                 </div>
                 {role === "student" && (

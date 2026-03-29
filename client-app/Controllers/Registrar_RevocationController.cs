@@ -38,6 +38,7 @@ public async Task<IActionResult> RevokeAccess(int sqlRequestId)
 
         var middlewareUrl = _configuration["Middleware:Url"] ?? "http://localhost:4000";
         using var client = _httpClientFactory.CreateClient("FabricCAClient");
+        client.DefaultRequestHeaders.Add("x-api-key", _configuration["InternalApiKey"] ?? "default-internal-secret-change-me");
         
         string mappedRole = "student";
         if (sqlRecord.Role != null)

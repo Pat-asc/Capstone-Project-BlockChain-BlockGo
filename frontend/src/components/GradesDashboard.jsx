@@ -64,35 +64,23 @@ const GradesDashboard = ({ loggedInEmail, loggedInName }) => {
         grade: ''
     });
 
-    const mockupGrades = [
-        { id: "10-CS202", student_hash: "student.mayumi@plv.edu.ph", studentId: "student.mayumi", subject_code: "CS202", course: "BSCS", grade: "1.25", facultyId: "prof.alden@plv.edu.ph", status: "Issued" },
-        { id: "11-IT101", student_hash: "student.juan@plv.edu.ph", studentId: "student.juan", subject_code: "IT-101", course: "BSIT", grade: "2.00", facultyId: "prof.engineering@plv.edu.ph", status: "DepartmentApproved" },
-        { id: "12-CE301", student_hash: "student.maria@plv.edu.ph", studentId: "student.maria", subject_code: "CE301", course: "BSCE", grade: "1.50", facultyId: "prof.civil@plv.edu.ph", status: "Finalized" }
-    ];
-
     const loadGrades = useCallback(async (isBackground = false) => {
         if (!isBackground) setLoading(true);
         if (!isBackground) setErrorMsg(null);
         try {
             const response = await fetchAllGrades(loggedInEmail);
             
-            // Your C# backend returns an array directly, not an object with a status
             if (Array.isArray(response)) {
-                if (response.length > 0) {
-                    setGrades(response);
-                } else {
-                    setGrades(mockupGrades);
-                }
-            } else if (response.status === 'Success' && response.data && response.data.length > 0) {
+                setGrades(response);
+            } else if (response.status === 'Success' && response.data) {
                 setGrades(response.data);
             } else {
-                setGrades(mockupGrades);
+                setGrades([]);
             }
         } catch (error) {
             console.error('Error loading grades:', error);
-            if (!isBackground) setErrorMsg(`Could not fetch latest blockchain data. Showing unhashed mockup data for UI testing.`);
-            // Inject unhashed mockup data for testing on network failure
-            setGrades(mockupGrades);
+            if (!isBackground) setErrorMsg(`Could not fetch latest blockchain data: ${error.message}`);
+            setGrades([]);
         }
         if (!isBackground) setLoading(false);
     }, [loggedInEmail]);

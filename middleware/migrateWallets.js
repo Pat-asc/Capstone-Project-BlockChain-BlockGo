@@ -29,13 +29,14 @@ async function migrate() {
         const originalPut = couchWallet.put.bind(couchWallet);
         couchWallet.put = async (label, identity) => {
             if (identity && identity.credentials && identity.credentials.privateKey) {
-                const key = crypto.scryptSync(encryptionKey, 'salt', 32);
-                const iv = crypto.randomBytes(16);
+                const salt = crypto.randomBytes(16);
+                const key = crypto.scryptSync(encryptionKey, salt, 32);
+                const iv = crypto.randomBytes(12);
                 const cipher = crypto.createCipheriv('aes-256-gcm', key, iv);
                 let encrypted = cipher.update(identity.credentials.privateKey, 'utf8', 'hex');
                 encrypted += cipher.final('hex');
                 const authTag = cipher.getAuthTag().toString('hex');
-                identity.credentials.privateKey = `ENC:${iv.toString('hex')}:${authTag}:${encrypted}`;
+                identity.credentials.privateKey = `ENC:${salt.toString('hex')}:${iv.toString('hex')}:${authTag}:${encrypted}`;
             }
             return originalPut(label, identity);
         };

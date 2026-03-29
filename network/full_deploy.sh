@@ -8,7 +8,6 @@ cleanup_processes() {
     for pid in "${PIDS[@]}"; do
         if ps -p $pid > /dev/null; then
             kill $pid 2>/dev/null
-            wait $pid 2>/dev/null # Wait for the process to actually terminate
         fi
     done
     echo "Background processes stopped."
@@ -102,7 +101,7 @@ wait_for_service() {
             echo "Error: $service_name ($host:$port) did not become available within $timeout seconds."
             exit 1
         fi
-        if nc -z $host $port; then
+        if nc -z -w 2 $host $port > /dev/null 2>&1; then
             echo "$service_name is available!"
             return 0
         fi
@@ -146,6 +145,15 @@ add_to_env_if_missing "EMAIL_PORT" "587"
 add_to_env_if_missing "EMAIL_USER" "plv.registrar.blockgo@gmail.com"
 add_to_env_if_missing "EMAIL_PASS" "wrqs zerf chfx xcrm"
 add_to_env_if_missing "EMAIL_FROM" "\"PLV Registrar <noreply@capstone.com>\""
+add_to_env_if_missing "JWT_SECRET" "$(openssl rand -base64 32)"
+
+# --- SYNCED C# BACKEND SECRETS ---
+SHARED_API_KEY=$(openssl rand -base64 32)
+add_to_env_if_missing "INTERNAL_API_KEY" "$SHARED_API_KEY"
+add_to_env_if_missing "InternalApiKey" "$SHARED_API_KEY"
+add_to_env_if_missing "Smtp__Password" "wrqs zerf chfx xcrm"
+add_to_env_if_missing "ConnectionStrings__PostgresConnection" "Host=127.0.0.1;Port=5432;Database=ActivityLogs;Username=BLOCKGO;Password=PLVBLOCKGO"
+
 echo "--- SECURE CREDENTIALS READY IN .ENV ---"
 echo ""
 
@@ -932,7 +940,8 @@ if [ -d "../middleware" ]; then
             cd ../middleware || { echo "Error: Cannot change directory to ../middleware"; exit 1; }
             echo "Installing middleware dependencies..."
             npm install || { echo "Error: npm install in middleware failed."; exit 1; }
-            cp ../network/.env .env
+            echo "Enrolling CA Admins into CouchDB Wallet..."
+            node enrollAllAdmins.js || echo "Warning: Admin enrollment had issues."
             echo "Starting middleware in background (logs to middleware.log)..."
             nohup npm start > middleware.log 2>&1 &
             # Capture PID of the background process for cleanup
@@ -1026,4 +1035,6 @@ echo " Press Ctrl+C to stop all services and exit."
 echo "================================================="
 
 # Keep the script running to prevent the EXIT trap from killing the background processes prematurely
-wait
+while true; do
+    sleep 86400
+done

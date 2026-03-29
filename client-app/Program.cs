@@ -100,10 +100,14 @@ try
     });
 
     builder.Services.AddDbContext<RegistrarDbContext>(options =>
-        options.UseNpgsql(
-            builder.Configuration.GetConnectionString("PostgresConnection")
-            ?? "Host=127.0.0.1;Database=ActivityLogs;Username=BLOCKGO;Password=PLVBLOCKGO",
-            npgsqlOptions => npgsqlOptions.CommandTimeout((int)TimeSpan.FromMinutes(5).TotalSeconds)));
+    {
+        var connectionString = builder.Configuration.GetConnectionString("PostgresConnection");
+        if (string.IsNullOrEmpty(connectionString))
+        {
+            throw new InvalidOperationException("PostgreSQL connection string 'PostgresConnection' not found in configuration.");
+        }
+        options.UseNpgsql(connectionString, npgsqlOptions => npgsqlOptions.CommandTimeout((int)TimeSpan.FromMinutes(5).TotalSeconds));
+    });
 
     var app = builder.Build();
 
