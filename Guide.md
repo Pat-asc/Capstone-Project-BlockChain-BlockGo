@@ -145,10 +145,10 @@ graph TD
     end
  
     subgraph "Data Stores"
-        D1["<fa:fa-database> D1: PostgreSQL (Logs, Waitlist, Profiles)"]
-        D2["<fa:fa-link> D2: Fabric Ledger (Grades, History)"]
-        D3["<fa:fa-wallet> D3: CouchDB Wallet (X.509 Identities)"]
-        D4["<fa:fa-cube> D4: IPFS (PDF Evidence)"]
+        D1[(D1: PostgreSQL<br>Waitlist & Profiles)]
+        D2[(D2: Fabric Ledger<br>Grades & History)]
+        D3[(D3: CouchDB Wallet<br>X.509 Identities)]
+        D4[(D4: IPFS<br>PDF Evidence)]
     end
  
     %% --- Data Flows ---
