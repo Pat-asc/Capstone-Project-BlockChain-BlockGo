@@ -118,50 +118,65 @@ graph LR
 
 ### DFD Level 1
 
-This diagram decomposes the system into its core functional processes, illustrating how data flows between them to fulfill key requirements like user onboarding, authentication, and grade management.
+This diagram decomposes the system into its core functional processes, illustrating how data flows to fulfill all functional requirements (e.g., ABAC enforcement, IPFS evidence storage, multi-tier grade verification, and immutable audit trails).
 
 ```mermaid
 graph TD
     subgraph "External Entities"
-        U[<fa:fa-user> User]
+        U["<fa:fa-users> Users (Students, Faculty, Deans, Registrar)"]
     end
  
     subgraph "System Processes"
-        P1("1.0<br>Frontend UI")
+        P1("1.0<br>Frontend UI & Portal")
  
-        subgraph "2.0 User & Profile Management (C#)"
-            P2_1("2.1<br>Handle Waitlist")
-            P2_2("2.2<br>Manage Profiles & Roles")
+        subgraph "2.0 Web2 Profile & Log Management (C#)"
+            P2_1("2.1 Handle Waitlist & Self-Registration")
+            P2_2("2.2 Profile Mgt & Password Recovery")
+            P2_3("2.3 Track & Export Activity Logs (PDF)")
         end
  
-        subgraph "3.0 Blockchain & Crypto Operations (Node.js)"
-            P3_1("3.1<br>Authenticate & Issue JWT")
-            P3_2("3.2<br>Manage Blockchain Identities")
-            P3_3("3.3<br>Process Grade Transactions")
+        subgraph "3.0 Web3 Blockchain Bridge (Node.js)"
+            P3_1("3.1 Auth & JWT Issuance")
+            P3_2("3.2 CA Identity Mgt & Revocation (CRL)")
+            P3_3("3.3 Grade Processing (Batch, Hash, IPFS)")
+            P3_4("3.4 ABAC Enforcement & Approvals")
+            P3_5("3.5 Ledger Queries & Audit Trail")
         end
     end
  
     subgraph "Data Stores"
-        D1["<fa:fa-database> D1: User Profiles & Waitlist<br>(PostgreSQL)"]
-        D2["<fa:fa-link> D2: Grades Ledger<br>(Hyperledger Fabric)"]
-        D3["<fa:fa-wallet> D3: Crypto Identities<br>(CouchDB Wallet)"]
+        D1["<fa:fa-database> D1: PostgreSQL (Logs, Waitlist, Profiles)"]
+        D2["<fa:fa-link> D2: Fabric Ledger (Grades, History)"]
+        D3["<fa:fa-wallet> D3: CouchDB Wallet (X.509 Identities)"]
+        D4["<fa:fa-cube> D4: IPFS (PDF Evidence)"]
     end
  
     %% --- Data Flows ---
-    U -- "Registration, Login, Grade Actions" --> P1
-    P1 -- "Dashboards, Forms, Status Updates" --> U
-    P1 -- "API: Registration Request" --> P2_1
-    P1 -- "API: Approve/Assign User, View Profiles" --> P2_2
-    P1 -- "API: Login, Grade Actions, View Grades" --> P3_1 & P3_3
-    P2_1 & P2_2 -- "Profile & Waitlist Data" --> P1
-    P3_1 & P3_3 -- "JWT, Grade Data, Tx Status" --> P1
+    U -- "Interact (Forms, Uploads, Clicks)" --> P1
+    P1 -- "UI Dashboards & Notifications" --> U
+
+    P1 -- "Registration Request" --> P2_1
+    P1 -- "Forgot/Reset Password" --> P2_2
+    P1 -- "Export Logs" --> P2_3
+
+    P1 -- "Login Request" --> P3_1
+    P1 -- "Approve/Revoke Users" --> P3_2
+    P1 -- "Upload Grades/PDF Evidence" --> P3_3
+    P1 -- "Verify/Finalize Grades" --> P3_4
+    P1 -- "Query Grades/History" --> P3_5
+
     P2_1 -- "Write Pending User" --> D1
-    P2_2 -- "Read/Write User Profiles & Roles" --> D1
-    P2_2 -- "Internal Request: Create Wallet" --> P3_2
-    P3_1 -- "Read Password Hash & Role" --> D1
-    P3_1 -- "Verify Wallet Identity Exists" --> D3
-    P3_2 -- "Write New Identity to Wallet" --> D3
-    P3_3 -- "Submit/Query Transactions" --> D2
+    P2_2 -- "Update Passwords/Profiles" --> D1
+    P2_3 -- "Query Immutable Activity" --> D1
+    P2_1 -- "Trigger Fabric Wallet Creation" --> P3_2
+
+    P3_1 -- "Verify Password Hash" --> D1
+    P3_1 -- "Check Identity Exists" --> D3
+    P3_2 -- "Issue/Revoke MSP" --> D3
+    P3_3 -- "Store PDF Evidence" --> D4
+    P3_3 -- "Submit Encrypted Grade Tx" --> D2
+    P3_4 -- "Validate User Attributes" --> D2
+    P3_5 -- "Fetch State & Audit Trail" --> D2
 ```
 
 ---

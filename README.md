@@ -1,10 +1,12 @@
-# PLV Blockchain Grades Ledger 🎓🔗
+# PLV Blockchain Grades Ledger 🔗
 
 A highly secure, microservices-based grading ledger and identity management system built for Pamantasan ng Lungsod ng Valenzuela (PLV). This project integrates traditional Web2 relational databases with Web3 Hyperledger Fabric blockchain technology to ensure absolute immutability, transparency, and security of student records.
 
+>  **Deep Dive:** For full System Architecture diagrams, Data Flow Diagrams (DFD), and detailed sequence workflows, please see the [System Architecture & Data Flow Guide (Guide.md)](./Guide.md).
+
 ---
 
-## 🏗️ System Architecture & Tech Stack
+##  System Architecture & Tech Stack
 
 This system utilizes a clean separation of concerns, splitting standard database orchestration from cryptographic blockchain operations.
 
@@ -25,7 +27,7 @@ This system utilizes a clean separation of concerns, splitting standard database
 - **Role:** Web3 & Cryptography gateway.
 - Integrates the **Hyperledger Fabric SDK**.
 - Manages X.509 Cryptographic Certificates, JWT generation, and bcrypt password hashing.
-- Submits and queries smart contract (Chaincode) transactions on the Fabric Ledger.
+- Submits and queries smart contract (Chaincode) transactions on the Fabric Ledger, mapping users to a secure CouchDB Wallet.
 
 ### 4. Distributed Network (Docker)
 - **Hyperledger Fabric (v2.5.4):** 3 Organizations (RegistrarMSP, FacultyMSP, DepartmentMSP) with 2 Peers each.
@@ -35,7 +37,7 @@ This system utilizes a clean separation of concerns, splitting standard database
 
 ---
 
-## 👥 User Roles & Workflows
+##  User Roles & Workflows
 
 ### 1. The Registrar (Master Admin)
 - **Waitlist Management:** Approves newly registered users (Students, Faculty, and Staff).
@@ -56,7 +58,7 @@ This system utilizes a clean separation of concerns, splitting standard database
 
 ---
 
-## 🚀 Quick Start & Deployment Guide
+## Quick Start & Deployment Guide
 
 ### Prerequisites
 - Ubuntu/Debian (or WSL2 on Windows)
@@ -76,7 +78,7 @@ chmod +x full_deploy.sh
 ### Step 2: Bootstrap the Root Registrar
 Because the system utilizes a strict waitlist, a "Catch-22" exists where you need an admin to approve an admin. To bypass this for the initial setup, navigate to the bootstrap endpoint in your browser:
 
-👉 **http://localhost/api/bootstrap**
+ **http://localhost/api/bootstrap**
 
 *This will securely inject `registrar@plv.edu.ph` into PostgreSQL and instantly generate their Hyperledger Fabric wallet.*
 
@@ -88,31 +90,34 @@ Log in using the bootstrapped credentials:
 
 ---
 
-## 📂 Directory Structure
+##  Directory Structure
 
 ```text
 Capstone-Project/
 ├── chaincode/               # Go Smart Contract (CCaaS)
-├── client-app/              # C# ASP.NET Core Backend (PostgreSQL Logic)
+├── client-app/              # C# ASP.NET Core Backend (Lobby/PostgreSQL Logic)
 │   ├── Controllers/         # AuthController.cs (Assignments & Waitlist)
 │   └── appsettings.json     # DB Connections & Smtp Config
-├── frontend/                # React.js UI
+├── frontend/                # React.js UI Portal
 │   ├── src/
 │   │   ├── api.js           # API Wrapper (Handles routing & JWTs)
 │   │   └── GradesDashboard.jsx # Main Dashboard UI
-├── middleware/              # Node.js Backend (Fabric Bridge)
+├── middleware/              # Node.js Backend (Vault/Fabric Bridge)
+│   ├── enrollAdmin.js       # Admin enrollment & CouchDB Wallet seeder
 │   ├── middleware.js        # Express API (Fabric SDK, Bcrypt, JWT)
 │   └── nginx/               # Nginx Reverse Proxy Configurations
+├── Guide.md                 # System Architecture, DFDs, and Sequence Diagrams
 └── network/                 # Docker Compose & Fabric Configs
     ├── crypto-config/       # Auto-generated X.509 certificates
     ├── fabric-ca/           # Certificate Authority Configs
     ├── channel-artifacts/   # Genesis block & channel transactions
+    ├── cleanup.ps1          # Complete environment reset utility
     └── full_deploy.sh       # Master startup script
 ```
 
 ---
 
-## 🔄 API Flow Example (Registration & Approval)
+##  API Flow Example (Registration & Approval)
 
 1. **Signup Request:**
    - Frontend (`React`) sends POST to `/api/Auth/request`.
@@ -130,7 +135,7 @@ Capstone-Project/
 
 ---
 
-## 🛠️ Troubleshooting & Helpful Commands
+## Troubleshooting & Helpful Commands
 
 **View Node.js Middleware Logs:**
 ```bash
