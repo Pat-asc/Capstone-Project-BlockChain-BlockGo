@@ -52,25 +52,41 @@ events {
 
 http {
     # Define upstream servers to allow for easy service discovery via Docker DNS
-    upstream client_app_backend {
-        # This should match the service name in docker-compose.yaml
-        server client-app:5000;
-    }
+    upstream client_app_backend { server client-app:5000; }
+    upstream middleware_backend { server middleware:4000; }
 
-    upstream middleware_backend {
-        # This should match the service name in docker-compose.yaml
-        server middleware:4000;
-    }
-
+    # Server block to redirect all HTTP traffic to HTTPS
     server {
         listen 80;
         server_name localhost;
+        return 301 https://$host$request_uri;
+    }
+
+    # Main server block to handle HTTPS traffic
+    server {
+        listen 443 ssl;
+        server_name localhost;
+
+        # SSL Certificate paths (inside the container)
+        ssl_certificate /etc/nginx/ssl/localhost.crt;
+        ssl_certificate_key /etc/nginx/ssl/localhost.key;
+
+        # --- Security Enhancements ---
+        # Use modern TLS protocols
+        ssl_protocols TLSv1.2 TLSv1.3;
+        # Use a strong cipher suite
+        ssl_ciphers 'TLS_AES_128_GCM_SHA256:TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-RSA-AES256-GCM-SHA384';
+        ssl_prefer_server_ciphers off;
+
+        # --- Application Routing ---
 
         # Route Web2 API calls to the C# Backend (most specific match first)
         location /api/Auth/ {
             proxy_pass http://client_app_backend;
             proxy_set_header Host $host;
             proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
         }
 
         # Route Web3/Crypto API calls to the Node.js Middleware
@@ -78,6 +94,8 @@ http {
             proxy_pass http://middleware_backend;
             proxy_set_header Host $host;
             proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
         }
 
         # Serve React Frontend for all other requests
