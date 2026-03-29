@@ -29,25 +29,30 @@ graph TD
     end
 
     subgraph "Web2 Services (The Lobby)"
-        CS[<fa:fa-server> C# ASP.NET Backend <br> Port 5000]
-        PG[<fa:fa-database> PostgreSQL DB <br> User Profiles, Waitlist]
+        CS["<fa:fa-server> C# ASP.NET Backend <br> Port 5000"]
+        PG["<fa:fa-database> PostgreSQL DB <br> User Profiles, Waitlist"]
     end
 
     subgraph "Web3 Services (The Vault)"
-        NODE[<fa:fa-cogs> Node.js Bridge <br> Port 4000 <br> Fabric SDK, JWT, Bcrypt]
+        NODE["<fa:fa-cogs> Node.js Bridge <br> Port 4000 <br> Fabric SDK, JWT, Bcrypt"]
         subgraph "Hyperledger Fabric Network"
             direction LR
             PEER_R[<fa:fa-cube> Registrar Peer]
             PEER_F[<fa:fa-cube> Faculty Peer]
             PEER_D[<fa:fa-cube> Dept. Peer]
-            CC[<fa:fa-file-code> Go Chaincode <br> (CCaaS)]
+            CC["<fa:fa-file-code> Go Chaincode <br> CCaaS"]
             ORD[<fa:fa-sitemap> Orderer]
         end
-        WALLET[<fa:fa-wallet> CouchDB Wallet <br> Stores X.509 Identities]
+        WALLET["<fa:fa-wallet> CouchDB Wallet <br> Stores X.509 Identities"]
     end
 
+    subgraph "Frontend Application"
+        FE["<fa:fa-window-maximize> React Frontend Build"]
+    end
+
+
     U --> NG
-    NG -- "/ (React App)" --> FE(React Frontend Build)
+    NG -- "/ (React App)" --> FE
     NG -- "/api/Auth/*" --> CS
     NG -- "/api/*" --> NODE
 
@@ -62,7 +67,7 @@ graph TD
     PEER_R -- "Invokes" --> CC
     PEER_F -- "Invokes" --> CC
     PEER_D -- "Invokes" --> CC
-    CC -- "Reads/Writes State" --> LEDGER(CouchDB State DB)
+    CC -- "Reads/Writes State" --> LEDGER["<fa:fa-database> CouchDB State DB"]
     
     PEER_R -- "Sends Blocks" --> ORD
     PEER_F -- "Sends Blocks" --> ORD
@@ -83,25 +88,25 @@ graph TD
 
 ### DFD Level 0 (Context Diagram)
 
-This diagram shows the entire system as a single process and its interactions with external user roles.
-
+This diagram shows the entire system as a single process and its interactions with external user roles, arranged for clarity.
+ 
 ```mermaid
 graph TD
     subgraph "External Entities"
         direction LR
         E1[<fa:fa-user-tie> Registrar]
-        E2[<fa:fa-user-graduate> Student]
         E3[<fa:fa-chalkboard-teacher> Faculty]
         E4[<fa:fa-user-shield> Dept. Admin]
+        E2[<fa:fa-user-graduate> Student]
     end
 
     P0("PLV Grades<br>Ledger System")
 
-    E1 -- "Manages Waitlist & Users" --> P0
-    P0 -- "Finalized Grade Reports" --> E1
-
     E2 -- "Registration & Login" --> P0
     P0 -- "View Own Grades" --> E2
+
+    E1 -- "Manages Waitlist & Users" --> P0
+    P0 -- "Finalized Grade Reports" --> E1
 
     E3 -- "Issue Grades" --> P0
     P0 -- "View Issued Grades" --> E3
@@ -109,7 +114,7 @@ graph TD
     E4 -- "Approve Grades" --> P0
     P0 -- "View Department Grades" --> E4
 
-    style P0 fill:#dae,stroke:#333,stroke-width:2px
+    style P0 fill:#dae,stroke:#333,stroke-width:4px,stroke-dasharray: 5 5
 ```
 
 ### DFD Level 1
