@@ -118,41 +118,50 @@ graph LR
 
 ### DFD Level 1
 
-This diagram breaks the system down into its main processes and shows the flow of data between them and the data stores.
+This diagram decomposes the system into its core functional processes, illustrating how data flows between them to fulfill key requirements like user onboarding, authentication, and grade management.
 
 ```mermaid
 graph TD
     subgraph "External Entities"
         U[<fa:fa-user> User]
     end
-
+ 
     subgraph "System Processes"
         P1("1.0<br>Frontend UI")
-        P2("2.0<br>User & Profile Mgt<br>(C# Backend)")
-        P3("3.0<br>Blockchain & Crypto Ops<br>(Node.js Bridge)")
+ 
+        subgraph "2.0 User & Profile Management (C#)"
+            P2_1("2.1<br>Handle Waitlist")
+            P2_2("2.2<br>Manage Profiles & Roles")
+        end
+ 
+        subgraph "3.0 Blockchain & Crypto Operations (Node.js)"
+            P3_1("3.1<br>Authenticate & Issue JWT")
+            P3_2("3.2<br>Manage Blockchain Identities")
+            P3_3("3.3<br>Process Grade Transactions")
+        end
     end
-
+ 
     subgraph "Data Stores"
-        D1["<fa:fa-database> D1: User Profiles<br>(PostgreSQL)"]
+        D1["<fa:fa-database> D1: User Profiles & Waitlist<br>(PostgreSQL)"]
         D2["<fa:fa-link> D2: Grades Ledger<br>(Hyperledger Fabric)"]
         D3["<fa:fa-wallet> D3: Crypto Identities<br>(CouchDB Wallet)"]
     end
-
-    U -- "HTTP Requests (Login, View Data, Submit Forms)" --> P1
-    P1 -- "UI Data (Grades, Profiles)" --> U
-
-    P1 -- "API Calls for User/Profile Data" --> P2
-    P2 -- "Profile/Waitlist Data" --> P1
-
-    P1 -- "API Calls for Grades/Crypto" --> P3
-    P3 -- "Grade Data/JWT Token" --> P1
-
-    P2 -- "Read/Write User Data" --> D1
-    P2 -- "Request Wallet Creation" --> P3
-
-    P3 -- "Read/Write Crypto Identities" --> D3
-    P3 -- "Read/Write Grade Transactions" --> D2
-    P3 -- "Read User Info for Login" --> D1
+ 
+    %% --- Data Flows ---
+    U -- "Registration, Login, Grade Actions" --> P1
+    P1 -- "Dashboards, Forms, Status Updates" --> U
+    P1 -- "API: Registration Request" --> P2_1
+    P1 -- "API: Approve/Assign User, View Profiles" --> P2_2
+    P1 -- "API: Login, Grade Actions, View Grades" --> P3_1 & P3_3
+    P2_1 & P2_2 -- "Profile & Waitlist Data" --> P1
+    P3_1 & P3_3 -- "JWT, Grade Data, Tx Status" --> P1
+    P2_1 -- "Write Pending User" --> D1
+    P2_2 -- "Read/Write User Profiles & Roles" --> D1
+    P2_2 -- "Internal Request: Create Wallet" --> P3_2
+    P3_1 -- "Read Password Hash & Role" --> D1
+    P3_1 -- "Verify Wallet Identity Exists" --> D3
+    P3_2 -- "Write New Identity to Wallet" --> D3
+    P3_3 -- "Submit/Query Transactions" --> D2
 ```
 
 ---
