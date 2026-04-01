@@ -21,6 +21,7 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
   const [studentRequests, setStudentRequests] = useState([]);
   const [uploadingSection, setUploadingSection] = useState(null);
   const [approvingId, setApprovingId] = useState(null);
+  const [uploadResult, setUploadResult] = useState(null);
 
   const loadRequests = useCallback(async () => {
       try {
@@ -65,15 +66,27 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
                       ...prevSections,
                       [firstSection]: [...prevSections[firstSection], { id: approvedStudent.studentno, name: approvedStudent.fullname, midterm: 0, finals: 0 }]
                   }));
-                  alert(`${approvedStudent.fullname} approved and automatically added to ${firstSection}!`);
+                  setUploadResult({
+                    type: 'success',
+                    title: 'Student Approved',
+                    message: `${approvedStudent.fullname} approved and automatically added to ${firstSection}!`
+                  });
               }
           } else {
-              alert("Student request approved successfully!");
+              setUploadResult({
+                type: 'success',
+                title: 'Student Approved',
+                message: "Student request approved successfully!"
+              });
           }
           
           loadRequests(); // Refresh the waitlist automatically
       } catch (error) {
-          alert(`Failed to approve request: ${error.message}`);
+          setUploadResult({
+            type: 'error',
+            title: 'Approval Failed',
+            message: error.message
+          });
       } finally {
           setApprovingId(null);
       }
@@ -102,7 +115,11 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
   const handleUploadToRegistrar = async (sectionName) => {
     const students = sections[sectionName];
     if (students.length === 0) {
-      alert("No students in this section to upload.");
+      setUploadResult({
+        type: 'error',
+        title: 'Upload Failed',
+        message: "No students in this section to upload."
+      });
       return;
     }
 
@@ -133,10 +150,18 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
         await issueGrade(payload, facultyData.email);
       }
       
-      alert(`All grades for ${sectionName} have been successfully uploaded to the Registrar/Blockchain!`);
+      setUploadResult({
+        type: 'success',
+        title: 'Upload Successful',
+        message: `All grades for ${sectionName} have been successfully uploaded to the Registrar/Blockchain!`
+      });
     } catch (error) {
       console.error(error);
-      alert(`Failed to upload grades: ${error.message}`);
+      setUploadResult({
+        type: 'error',
+        title: 'Upload Failed',
+        message: `Failed to upload grades: ${error.message}`
+      });
     } finally {
       setUploadingSection(null);
     }
@@ -159,13 +184,23 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
 
       const data = await response.json();
       if (response.ok) {
-        alert(data.message);
+        setUploadResult({
+          type: 'success',
+          title: 'Upload Successful',
+          message: data.message,
+          details: data.output
+        });
       } else {
-        alert(`Batch upload failed: ${data.error || data.details}`);
+        setUploadResult({
+          type: 'error',
+          title: 'Batch Upload Failed',
+          message: data.error || data.details || 'Unknown error',
+          details: data.output || data.errorOutput || ''
+        });
       }
     } catch (err) {
       console.error(err);
-      alert(`Upload error: ${err.message}`);
+      setUploadResult({ type: 'error', title: 'Upload Error', message: err.message });
     } finally {
       setUploadingSection(null);
     }
@@ -313,6 +348,40 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
                 })}
               </tbody>
             </table>
+          </div>
+        </div>
+      )}
+
+      {/* Status & Error Modal */}
+      {uploadResult && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          backgroundColor: 'rgba(0,0,0,0.6)', display: 'flex',
+          alignItems: 'center', justifyContent: 'center', zIndex: 1000
+        }}>
+          <div style={{
+            backgroundColor: 'white', padding: '24px', borderRadius: '8px',
+            maxWidth: '650px', width: '90%', maxHeight: '85vh', display: 'flex',
+            flexDirection: 'column', boxShadow: '0 10px 25px rgba(0,0,0,0.2)'
+          }}>
+            <h2 style={{ color: uploadResult.type === 'error' ? '#d32f2f' : '#2e7d32', marginTop: 0, marginBottom: '10px' }}>
+              {uploadResult.title}
+            </h2>
+            <p style={{ margin: '0 0 15px 0', fontWeight: 'bold' }}>{uploadResult.message}</p>
+            
+            {uploadResult.details && (
+              <div style={{ backgroundColor: '#1e1e1e', color: '#4caf50', padding: '15px', borderRadius: '6px', overflowY: 'auto', flexGrow: 1, marginBottom: '20px' }}>
+                <pre style={{ margin: 0, whiteSpace: 'pre-wrap', fontFamily: 'monospace', fontSize: '0.85rem' }}>
+                  {uploadResult.details}
+                </pre>
+              </div>
+            )}
+            
+            <div style={{ textAlign: 'right', marginTop: uploadResult.details ? '0' : '20px' }}>
+              <button className="sign-in-btn" onClick={() => setUploadResult(null)} style={{ width: 'auto', margin: 0, padding: '8px 24px' }}>
+                Close
+              </button>
+            </div>
           </div>
         </div>
       )}

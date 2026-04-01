@@ -9,6 +9,7 @@ using System;
 using System.Collections.Generic;
 using System.Net.Http;
 using System.Net.Mail;
+using System.IO;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
@@ -715,7 +716,18 @@ namespace Client_app.Controllers
         private string CreateHtmlEmail(string subject, string content)
         {
             var year = DateTime.UtcNow.Year;
-            var logoUrl = "/plvlogo.png";
+            var imagePath = Path.Combine(Directory.GetCurrentDirectory(), "..", "frontend", "src", "assets", "plvlogo.png");
+            string logoSrc;
+            
+            if (File.Exists(imagePath))
+            {
+                byte[] imageBytes = File.ReadAllBytes(imagePath);
+                logoSrc = $"data:image/png;base64,{Convert.ToBase64String(imageBytes)}";
+            }
+            else
+            {
+                logoSrc = "https://upload.wikimedia.org/wikipedia/en/5/52/Pamantasan_ng_Lungsod_ng_Valenzuela_logo.png";
+            }
 
             return $@"
             <!DOCTYPE html>
@@ -724,7 +736,7 @@ namespace Client_app.Controllers
             <body style='font-family: Arial, sans-serif; margin: 0; padding: 20px; background-color: #f4f4f4;'>
                 <div style='max-width: 600px; margin: auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);'>
                     <div style='text-align: center; padding-bottom: 20px; border-bottom: 1px solid #ddd;'>
-                        <img src='{logoUrl}' alt='PLV Logo' style='max-width: 100px;'>
+                        <img src='{logoSrc}' alt='PLV Logo' style='max-width: 100px;'>
                         <h2 style='margin: 10px 0 0 0; color: #003366;'>Pamantasan ng Lungsod ng Valenzuela</h2>
                     </div>
                     <div style='padding: 20px 0; line-height: 1.6; color: #333;'>

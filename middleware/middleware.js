@@ -12,12 +12,27 @@ require('dotenv').config({ path: path.resolve(__dirname, '../network/.env'), ove
 const multer = require('multer');
 const { spawn } = require('child_process');
 const nodemailer = require('nodemailer');
-const upload = multer({ dest: 'uploads/' });
+
+const uploadDir = path.join(__dirname, 'uploads');
+if (!fs.existsSync(uploadDir)) {
+    fs.mkdirSync(uploadDir, { recursive: true });
+}
+const upload = multer({ dest: uploadDir });
 const rateLimit = require('express-rate-limit');
 
 const app = express();
 app.set('trust proxy', 1);
 app.use(express.json());
+
+app.use((req, res, next) => {
+    res.header('Access-Control-Allow-Origin', '*');
+    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization, x-api-key, x-user-identity');
+    if (req.method === 'OPTIONS') {
+        return res.sendStatus(200);
+    }
+    next();
+});
 
 // --- 1. POSTGRESQL CONNECTION & INITIALIZATION ---
 const db = new Pool({
@@ -117,14 +132,12 @@ if (!JWT_SECRET) {
 }
 
 const authenticateJWT = (req, res, next) => {
-    // 1. Allow internal C# backend microservice calls via API Key
     const internalApiKey = process.env.INTERNAL_API_KEY || 'default-internal-secret-change-me';
     if (req.headers['x-api-key'] === internalApiKey) {
         req.isInternal = true;
         return next();
     }
 
-    // 2. Validate external JWT tokens
     const authHeader = req.headers.authorization;
     if (authHeader && authHeader.startsWith('Bearer ')) {
         const token = authHeader.split(' ')[1];
@@ -134,7 +147,6 @@ const authenticateJWT = (req, res, next) => {
             next();
         });
     } else {
-        // BLOCK unauthenticated requests immediately
         return res.status(401).json({ error: "Authentication required. Please provide a valid JWT or Internal API Key." });
     }
 };
@@ -151,23 +163,23 @@ const authorizeRole = (allowedRoles) => {
     };
 };
 
-    const requireRegistrarOrInternal = (req, res, next) => {
+const requireRegistrarOrInternal = (req, res, next) => {
     const internalApiKey = process.env.INTERNAL_API_KEY || 'default-internal-secret-change-me';
     if (req.headers['x-api-key'] === internalApiKey) {
-            return next();
-        }
+        return next();
+    }
 
-        if (req.user && req.user.role === 'RegistrarMSP') {
-            return next();
-        }
+    if (req.user && req.user.role === 'RegistrarMSP') {
+        return next();
+    }
 
-        return res.status(403).json({ 
+    return res.status(403).json({ 
         error: "Access denied. Cryptographic operations require Registrar privileges or a valid Internal API Key." 
-        });
-    };
+    });
+};
 
 const userGatewayCache = new Map();
-const IDLE_TIMEOUT_MS = 60 * 60 * 1000; // 1 hour timeout
+const IDLE_TIMEOUT_MS = 60 * 60 * 1000;
 setInterval(() => {
     const now = Date.now();
     for (const [username, cached] of userGatewayCache.entries()) {
@@ -177,7 +189,7 @@ setInterval(() => {
             userGatewayCache.delete(username);
         }
     }
-}, 15 * 60 * 1000); // Run sweep every 15 minutes
+}, 15 * 60 * 1000);
 
 const clearCacheOnError = (username, error) => {
     if (!username || !error || !error.message) return;
@@ -229,7 +241,7 @@ async function getContractForUser(username) {
 
     if (userGatewayCache.has(username)) {
         const cached = userGatewayCache.get(username);
-        cached.lastAccessed = Date.now(); // Reset the idle timer
+        cached.lastAccessed = Date.now();
         return { contract: cached.contract, gateway: cached.gateway };
     }
 
@@ -244,8 +256,6 @@ async function getContractForUser(username) {
         throw new Error(`Access Denied: Wallet identity for '${username}' not found. The Registrar must register this user first.`);
     }
 
-    // --- BYPASS CA MISMATCH ---
-    // Use the natively trusted cryptogen admin proxy for ledger queries to prevent "creator is malformed" errors.
     const systemLabel = identity.mspId === 'FacultyMSP' ? 'system-admin-faculty' :
                         identity.mspId === 'DepartmentMSP' ? 'system-admin-department' :
                         'system-admin-registrar';
@@ -281,30 +291,35 @@ async function getContractForUser(username) {
     const network = await gateway.getNetwork(process.env.CHANNEL_NAME || 'registrar-channel');
     const contract = network.getContract(process.env.CHAINCODE_NAME || 'registrar');
 
-    // Cache the contract as well to save async fetching time, and attach a timestamp
     userGatewayCache.set(username, { gateway, contract, lastAccessed: Date.now() });
 
     return { contract, gateway }; 
 }
 
 const getCallerIdentity = (req) => {
-    // 1. Authenticated via frontend JWT
     if (req.user && req.user.username) return req.user.username;
     
-    // 2. Authenticated via internal C# backend API Key
     if (req.isInternal) {
         return req.headers['x-user-identity'] || req.body.facultyId || req.body.ApprovedBy;
     }
     throw new Error("Unauthorized caller identity access attempt.");
 };  
 
-app.post('/api/login', async (req, res) => {
+const loginLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 5, // Limit each IP to 5 requests per windowMs
+    message: { error: 'Too many login attempts from this IP, please try again after 15 minutes.' },
+    standardHeaders: true,
+    legacyHeaders: false,
+});
+
+app.post('/api/login', loginLimiter, async (req, res) => {
     try {
         const { username, password } = req.body;
         
         const userResult = await db.query('SELECT * FROM Users WHERE email = $1', [username]);
         if (userResult.rows.length === 0) {
-            return res.status(401).json({ error: "Invalid credentials." });
+            return res.status(401).json({ error: "Invalid email or password." });
         }
         
         const userRecord = userResult.rows[0];
@@ -315,7 +330,7 @@ app.post('/api/login', async (req, res) => {
 
         const validPassword = await bcrypt.compare(password, userRecord.password_hash);
         if (!validPassword) {
-            return res.status(401).json({ error: "Invalid credentials." });
+            return res.status(401).json({ error: "Invalid email or password." });
         }
 
         const wallet = await getWallet();
@@ -345,7 +360,7 @@ app.post('/api/crypto/hash-password', async (req, res) => {
     }
 });
 
-    app.post('/api/fabric/register-user', authenticateJWT, requireRegistrarOrInternal, async (req, res) => {
+app.post('/api/fabric/register-user', authenticateJWT, requireRegistrarOrInternal, async (req, res) => {
     try {
         const { email, role } = req.body;
         
@@ -386,7 +401,6 @@ app.post('/api/crypto/hash-password', async (req, res) => {
     }
 });
 
-// --- BOOTSTRAP ROOT ADMIN (Solves the Catch-22 of needing an admin to approve an admin) ---
 app.get('/api/bootstrap', async (req, res) => {
     try {
         const email = 'registrar@plv.edu.ph';
@@ -413,12 +427,10 @@ app.get('/api/bootstrap', async (req, res) => {
             return res.json({ message: "Registrar already exists in DB and Wallet." });
         }
 
-        // 1. Insert Master Admin into Database as APPROVED
         const hash = await bcrypt.hash(pass, 10);
         const userRes = await db.query("INSERT INTO Users (email, password_hash, role, status) VALUES ($1, $2, 'registrar', 'APPROVED') RETURNING id", [email, hash]);
         await db.query("INSERT INTO AdminProfiles (user_id, full_name, admin_level) VALUES ($1, 'System Registrar', 'registrar')", [userRes.rows[0].id]);
 
-        // 2. Call the internal bridge to create the Fabric wallet
         const result = await fetch(`http://127.0.0.1:${process.env.PORT || 4000}/api/fabric/register-user`, {
             method: 'POST',
             headers: { 
@@ -435,13 +447,12 @@ app.get('/api/bootstrap', async (req, res) => {
     }
 });
 
-// --- Rate Limiter for sensitive endpoints like password reset ---
 const passwordResetLimiter = rateLimit({
-	windowMs: 15 * 60 * 1000, // 15 minutes
-	max: 5, // Limit each IP to 5 password reset requests per window
+	windowMs: 15 * 60 * 1000,
+	max: 5,
 	message: { error: 'Too many password reset requests from this IP, please try again after 15 minutes.' },
-    standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
-	legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+    standardHeaders: true,
+	legacyHeaders: false,
 });
 
 app.post('/api/forgot-password', passwordResetLimiter, async (req, res) => {
@@ -454,7 +465,7 @@ app.post('/api/forgot-password', passwordResetLimiter, async (req, res) => {
         }
 
         const resetToken = crypto.randomBytes(32).toString('hex');
-        const tokenExpiry = Date.now() + 3600000; // 1 hour
+        const tokenExpiry = Date.now() + 3600000;
 
         await db.query('UPDATE Users SET password_reset_token = $1, password_reset_expires = $2 WHERE email = $3', [resetToken, tokenExpiry, email]);
 
@@ -465,7 +476,7 @@ app.post('/api/forgot-password', passwordResetLimiter, async (req, res) => {
         const transporter = nodemailer.createTransport({
             host: process.env.EMAIL_HOST || 'smtp.gmail.com',
             port: process.env.EMAIL_PORT || 587,
-            secure: false, // true for 465, false for other ports
+            secure: false,
             auth: {
                 user: process.env.EMAIL_USER,
                 pass: process.env.EMAIL_PASS
@@ -508,10 +519,9 @@ app.post('/api/reset-password', async (req, res) => {
     }
 });
 
-    app.post('/api/enroll', authenticateJWT, requireRegistrarOrInternal, async (req, res) => {
+app.post('/api/enroll', authenticateJWT, requireRegistrarOrInternal, async (req, res) => {
     try {
         const { username, password, role } = req.body;
-        const FabricCAServices = require('fabric-ca-client');
         let caURL, caName, mspId;
         
         if (role === 'faculty') {
@@ -529,7 +539,6 @@ app.post('/api/reset-password', async (req, res) => {
         }
 
         const ca = new FabricCAServices(caURL, { verify: false }, caName);
-
         const wallet = await getWallet();
 
         if (await wallet.get(username)) {
@@ -557,7 +566,8 @@ app.post('/api/reset-password', async (req, res) => {
         res.status(500).json({ error: error.message });
     }
 });
-    app.post('/api/register', authenticateJWT, requireRegistrarOrInternal, async (req, res) => {
+
+app.post('/api/register', authenticateJWT, requireRegistrarOrInternal, async (req, res) => {
     try {
         const { username, password, role } = req.body;
         const wallet = await getWallet();
@@ -608,7 +618,8 @@ app.post('/api/reset-password', async (req, res) => {
         res.status(500).json({ error: "Server Exception", details: error.message }); 
     }
 });
-    app.post('/api/revoke', authenticateJWT, requireRegistrarOrInternal, async (req, res) => {
+
+app.post('/api/revoke', authenticateJWT, requireRegistrarOrInternal, async (req, res) => {
     try {
         const { username, role } = req.body;
         const wallet = await getWallet();
@@ -654,7 +665,6 @@ app.post('/api/reset-password', async (req, res) => {
         await ca.revoke({ enrollmentID: username, reason: "Revoked by admin" }, adminUser);
         if (await wallet.get(username)) await wallet.remove(username);
 
-        // Safely evict and terminate active connections for the revoked user
         if (userGatewayCache.has(username)) {
             userGatewayCache.get(username).gateway.disconnect();
             userGatewayCache.delete(username);
@@ -666,6 +676,7 @@ app.post('/api/reset-password', async (req, res) => {
         res.status(500).json({ error: "Server Exception", details: error.message }); 
     }
 });
+
 app.get('/api/all-grades', authenticateJWT, async (req, res) => {
     let username;
     try {
@@ -704,6 +715,7 @@ app.post('/api/issue-grade', authenticateJWT, authorizeRole(['FacultyMSP']), asy
         res.status(500).json({ error: error.message });
     }
 });
+
 app.get('/api/get-grade/:id', authenticateJWT, async (req, res) => {
     let username;
     try {
@@ -719,6 +731,7 @@ app.get('/api/get-grade/:id', authenticateJWT, async (req, res) => {
         res.status(404).json({ error: "Record not found" });
     }
 });
+
 app.post('/api/update-grade', authenticateJWT, async (req, res) => {
     let username;
     try {
@@ -735,6 +748,7 @@ app.post('/api/update-grade', authenticateJWT, async (req, res) => {
         res.status(500).json({ error: error.message });
     }
 });
+
 app.post('/api/approve-grade/:id', authenticateJWT, async (req, res) => {
     let username;
     try {
@@ -748,6 +762,7 @@ app.post('/api/approve-grade/:id', authenticateJWT, async (req, res) => {
         res.status(500).json({ error: error.message });
     }
 });
+
 app.post('/api/finalize-grade/:id', authenticateJWT, async (req, res) => {
     let username;
     try {
@@ -761,6 +776,7 @@ app.post('/api/finalize-grade/:id', authenticateJWT, async (req, res) => {
         res.status(500).json({ error: error.message });
     }
 });
+
 app.delete('/api/wallet/:username', authenticateJWT, requireRegistrarOrInternal, async (req, res) => {
     try {
         const wallet = await getWallet();
@@ -780,6 +796,256 @@ app.delete('/api/wallet/:username', authenticateJWT, requireRegistrarOrInternal,
         res.status(500).json({ error: error.message });
     }
 });
+
+app.post('/api/upload-grades', (req, res, next) => {
+    upload.any()(req, res, (err) => {
+        if (err instanceof multer.MulterError) {
+            return res.status(400).json({ error: `Upload error: ${err.message}.` });
+        } else if (err) {
+            return res.status(500).json({ error: `Unknown upload error: ${err.message}` });
+        }
+        next();
+    });
+}, async (req, res) => {
+    try {
+        if (!req.files || req.files.length === 0) {
+            return res.status(400).json({ error: 'No file uploaded' });
+        }
+        req.file = req.files[0]; 
+
+        console.log(`[UploadGrades] File received: ${req.file.filename}`);
+        const filePath = req.file.path;
+        const username = req.body.username || 'admin';
+        const internalApiKey = process.env.INTERNAL_API_KEY || 'default-internal-secret-change-me';
+
+        const pythonProcess = spawn('python', [
+            path.join(__dirname, 'mapper.py'),
+            filePath,
+            path.join(__dirname, 'evidence.pdf'),
+            internalApiKey
+        ]);
+
+        let output = '';
+        let errorOutput = '';
+
+        pythonProcess.on('error', (err) => {
+            console.error('[Mapper] Failed to start python process:', err);
+            if (!res.headersSent) {
+                res.status(500).json({ status: 'error', error: 'Failed to start mapper process: ' + err.message });
+            }
+        });
+
+        pythonProcess.stdout.on('data', (data) => {
+            output += data.toString();
+            console.log(`[Mapper] ${data}`);
+        });
+
+        pythonProcess.stderr.on('data', (data) => {
+            errorOutput += data.toString();
+            console.error(`[Mapper Error] ${data}`);
+        });
+
+        pythonProcess.on('close', (code) => {
+            fs.unlink(filePath, (err) => {
+                if (err) console.error('File cleanup error:', err);
+            });
+
+            if (!res.headersSent) {
+                if (code === 0) {
+                    res.status(200).json({ 
+                        status: 'success', 
+                        message: 'Grades processed and submitted to blockchain',
+                        output: output
+                    });
+                } else {
+                    res.status(500).json({ 
+                        status: 'error',
+                        error: 'Mapper process failed',
+                        output: output,
+                        errorOutput: errorOutput
+                    });
+                }
+            }
+        });
+    } catch (error) {
+        console.error('[UploadGrades] Error:', error.message);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+
+
+// Alias for upload-grades
+
+
+app.post('/api/batch-issue-grade', async (req, res) => {
+    let username;
+    try {
+        const internalApiKey = process.env.INTERNAL_API_KEY || 'default-internal-secret-change-me';
+        if (req.headers['x-api-key'] !== internalApiKey) {
+            return res.status(401).json({ error: 'Invalid or missing API key' });
+        }
+
+        // FIX: Get ACTUAL faculty identity from request (not hardcoded system-admin)
+        username = req.headers['x-user-identity'] || req.body.facultyId;
+        if (!username) {
+            return res.status(400).json({ 
+                error: 'Missing faculty identity',
+                hint: 'Provide x-user-identity header or facultyId in body'
+            });
+        }
+
+        // Verify faculty identity exists in wallet
+        const wallet = await getWallet();
+        const identity = await wallet.get(username);
+        if (!identity) {
+            return res.status(401).json({ 
+                error: `Faculty ${username} not found in wallet`,
+                hint: 'Faculty must be registered and enrolled first'
+            });
+        }
+
+        // Verify it's actually a faculty identity
+        if (identity.mspId !== 'FacultyMSP') {
+            return res.status(403).json({ 
+                error: `Access denied: ${username} is not a faculty member (MSP: ${identity.mspId})`
+            });
+        }
+
+        // Get contract using ACTUAL faculty identity
+        const { contract } = await getContractForUser(username);
+
+        const gradeAsset = JSON.stringify(req.body);
+        console.log(`[BatchIssueGrade] Submitting as ${username}... Payload size: ${gradeAsset.length} bytes`);
+        
+        const result = await contract.submitTransaction('IssueGrade', gradeAsset);
+        res.status(201).json({ 
+            status: 'success', 
+            message: 'Grade recorded',
+            facultyId: username,
+            details: result.toString() 
+        });
+    } catch (error) {
+        clearCacheOnError(username, error);
+        console.error('[BatchIssueGrade] Error:', error.message);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.post('/api/batch-upload', (req, res, next) => {
+    const storage = multer.diskStorage({
+        destination: (req, file, cb) => {
+            if (!fs.existsSync(uploadDir)) {
+                fs.mkdirSync(uploadDir, { recursive: true });
+            }
+            cb(null, uploadDir);
+        },
+        filename: (req, file, cb) => {
+            // Preserve original filename
+            cb(null, Date.now() + '-' + file.originalname);
+        }
+    });
+    const uploadWithStorage = multer({ storage: storage });
+    uploadWithStorage.any()(req, res, (err) => {
+        if (err instanceof multer.MulterError) {
+            return res.status(400).json({ error: `Upload error: ${err.message}.` });
+        } else if (err) {
+            return res.status(500).json({ error: `Unknown upload error: ${err.message}` });
+        }
+        next();
+    });
+}, async (req, res) => {
+    try {
+        if (!req.files || req.files.length === 0) {
+            return res.status(400).json({ error: 'No file uploaded' });
+        }
+        req.file = req.files[0]; // Map the first dynamically uploaded file
+        const filePath = req.file.path;
+        console.log(`[BatchUpload] File received: ${req.file.filename}`);
+        console.log(`[BatchUpload] File path: ${filePath}`);
+        console.log(`[BatchUpload] File size: ${req.file.size} bytes`);
+
+        if (!fs.existsSync(filePath)) {
+            return res.status(500).json({ error: 'File upload failed - file not found on disk' });
+        }
+
+        const mapperPath = path.resolve(__dirname, '..', 'mapper.py');
+        
+        if (!fs.existsSync(mapperPath)) {
+            return res.status(500).json({ 
+                error: 'Mapper script not found',
+                expected: mapperPath
+            });
+        }
+
+        const internalApiKey = process.env.INTERNAL_API_KEY || 'default-internal-secret-change-me';
+
+        console.log(`[BatchUpload] Starting mapper: python3 ${mapperPath}`);
+        const pythonProcess = spawn('python3', [
+            mapperPath,
+            filePath,
+            internalApiKey
+        ]);
+
+        let output = '';
+        let errorOutput = '';
+
+        pythonProcess.on('error', (err) => {
+            console.error('[Mapper] Failed to start python process:', err);
+            if (!res.headersSent) {
+                res.status(500).json({ status: 'error', error: 'Failed to start mapper process: ' + err.message });
+            }
+        });
+
+        pythonProcess.stdout.on('data', (data) => {
+            output += data.toString();
+            console.log(`[Mapper] ${data}`);
+        });
+
+        pythonProcess.stderr.on('data', (data) => {
+            errorOutput += data.toString();
+            console.error(`[Mapper Error] ${data}`);
+        });
+
+        pythonProcess.on('close', (code) => {
+            fs.unlink(filePath, (err) => {
+                if (err) console.error('File cleanup error:', err);
+            });
+
+            if (!res.headersSent) {
+                if (code === 0) {
+                    res.status(200).json({ 
+                        status: 'success', 
+                        message: 'Batch grades processed successfully',
+                        output: output
+                    });
+                } else {
+                    res.status(500).json({ 
+                        status: 'error',
+                        error: 'Mapper process failed',
+                        exitCode: code,
+                        output: output,
+                        errorOutput: errorOutput
+                    });
+                }
+            }
+        });
+
+        const timeoutId = setTimeout(() => {
+            if (!res.headersSent) {
+                pythonProcess.kill('SIGTERM');
+                res.status(504).json({ error: 'Batch upload timeout' });
+            }
+        }, 5 * 60 * 1000);
+
+        pythonProcess.on('exit', () => clearTimeout(timeoutId));
+
+    } catch (error) {
+        console.error('[BatchUpload] Error:', error.message);
+        res.status(500).json({ error: error.message });
+    }
+});
+
 app.get('/api/health', (req, res) => res.status(200).json({ status: "operational", mode: 'Production Security (ABAC ACTIVE)' }));
 
 const PORT = process.env.PORT || 4000;

@@ -23,6 +23,19 @@ try
 {
     Log.Information("Application starting up...");
     
+    var envPath = Path.Combine(Directory.GetCurrentDirectory(), "..", "network", ".env");
+    if (File.Exists(envPath))
+    {
+        foreach (var line in File.ReadAllLines(envPath))
+        {
+            var parts = line.Split('=', 2, StringSplitOptions.RemoveEmptyEntries);
+            if (parts.Length == 2 && !line.StartsWith("#"))
+            {
+                Environment.SetEnvironmentVariable(parts[0].Trim(), parts[1].Trim().Trim('"', '\''));
+            }
+        }
+    }
+
     var builder = WebApplication.CreateBuilder(args);
     builder.WebHost.UseUrls("http://*:5000");
     

@@ -278,9 +278,13 @@ func (cc *SmartContract) getAllGrades(stub shim.ChaincodeStubInterface) *pb.Resp
 }
 
 func main() {
+	fmt.Println("[CHAINCODE] Starting registrar chaincode...")
+	
 	tlsDisabled := os.Getenv("CHAINCODE_TLS_DISABLED") == "true"
 	ccID := os.Getenv("CHAINCODE_ID")
 	address := os.Getenv("CHAINCODE_SERVER_ADDRESS")
+	
+	fmt.Println("[CHAINCODE] Config: TLS=", !tlsDisabled, " ID=", ccID, " Address=", address)
 
 	server := &shim.ChaincodeServer{
 		CCID:    ccID,
@@ -289,8 +293,10 @@ func main() {
 	}
 
 	if tlsDisabled {
+		fmt.Println("[CHAINCODE] TLS DISABLED")
 		server.TLSProps = shim.TLSProperties{Disabled: true}
 	} else {
+		fmt.Println("[CHAINCODE] TLS ENABLED")
 		server.TLSProps = shim.TLSProperties{
 			Disabled:      false,
 			Key:           readFile(os.Getenv("CHAINCODE_TLS_KEY_FILE")),
@@ -299,9 +305,11 @@ func main() {
 		}
 	}
 
+	fmt.Println("[CHAINCODE] Starting server...")
 	if err := server.Start(); err != nil {
-		log.Fatalf("Chaincode start error: %v", err)
+		log.Fatalf("[CHAINCODE] Server start error: %v", err)
 	}
+	fmt.Println("[CHAINCODE] Server started successfully")
 }
 
 func readFile(path string) []byte {

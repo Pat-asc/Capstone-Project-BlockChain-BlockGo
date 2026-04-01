@@ -65,7 +65,7 @@ const Login = ({ onLogin }) => {
     setError('');
     try {
         await sendVerificationCode(email);
-        alert(`Verification code sent to ${email}. Please check your inbox.`);
+        setMessage(`Verification code sent to ${email}. Please check your inbox.`);
         setSignupStep(2);
     } catch (error) {
         setError(error.message || 'Failed to send verification code.');
@@ -81,7 +81,7 @@ const Login = ({ onLogin }) => {
     setError('');
     try {
         await submitRegistrationRequest({ fullName, email, password, role, department, studentNo: role === 'student' ? studentNo : undefined, verificationCode });
-        alert("Registration request submitted successfully! Please wait for registrar approval.");
+        setMessage("Registration request submitted successfully! Please wait for registrar approval.");
         setCurrentView('signIn'); // Go back to login screen
         setSignupStep(1);   // Reset signup flow
     } catch (error) {
@@ -94,6 +94,8 @@ const Login = ({ onLogin }) => {
   const handleLoginSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
+    setError('');
+    setMessage('');
     try {
       const response = await fetch('/api/login', {
         method: 'POST',
@@ -102,9 +104,9 @@ const Login = ({ onLogin }) => {
       });
       const data = await response.json();
       if (response.ok && data.token) onLogin(data.token);
-      else alert(data.error || "Login failed. Please check your credentials.");
+      else setError(data.error || "Login failed. Invalid email or password.");
     } catch (error) {
-      alert("Error connecting to the server: " + error.message);
+      setError("Error connecting to the server: " + error.message);
     }
     setIsLoading(false);
   };

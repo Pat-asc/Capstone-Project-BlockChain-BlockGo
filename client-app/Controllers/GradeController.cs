@@ -11,6 +11,8 @@ using System.Text.Json;
 using System.Collections.Generic;
 using System.Linq;
 using BlockGo.Mappers;
+using System.Globalization;
+using System.IO;
 
 namespace BlockGo.Controllers
 {
@@ -36,116 +38,234 @@ namespace BlockGo.Controllers
         public async Task<IActionResult> RecordGrade([FromBody] GradeRequest request)
         {
             _logger.LogInformation("Recording grade for student: {StudentId}", request.StudentId);
-
             if (request == null)
-            {
-                _logger.LogWarning("Invalid grade data received");
                 return BadRequest(new { status = "Error", message = "Invalid grade data." });
-            }
 
             try
             {
                 var faculty = await _context.Userrequests
                     .FirstOrDefaultAsync(u => u.Email == request.FacultyId && u.Requeststatus == "APPROVED");
-                
                 if (faculty == null)
-                {
-                    _logger.LogWarning("Faculty not found or not approved: {FacultyId}", request.FacultyId);
-                    return Unauthorized(new { 
-                        status = "Error", 
-                        message = "Faculty not approved or does not exist.",
-                        tip = "Faculty must be registered and approved in the system first"
-                    });
-                }
+                    return Unauthorized(new { status = "Error", message = "Faculty not approved or does not exist." });
 
                 var student = await _context.Userrequests
                     .FirstOrDefaultAsync(u => u.Email == request.StudentHash && u.Role != null && u.Role.ToLower() == "student");
-
                 if (student == null)
-                {
-                    _logger.LogWarning("Student not found: {StudentHash}", request.StudentHash);
-                    return NotFound(new { 
-                        status = "Error", 
-                        message = "Student not found in registration logs." 
-                    });
-                }
+                    return NotFound(new { status = "Error", message = "Student not found in registration logs." });
 
-                if (string.IsNullOrEmpty(student.Department) || student.Department != faculty.Department)
-                {
-                    _logger.LogWarning("Department mismatch. Faculty: {FacultyDept}, Student: {StudentDept}",
-                        faculty.Department, student.Department);
-                    return Forbid($"Access Denied: You cannot grade students outside the {faculty.Department} department.");
-                }
+                if (student != null && !string.IsNullOrEmpty(student.Department) && student.Department != faculty.Department)
+                    return Forbid($"Access Denied: Cannot grade students outside the {faculty.Department} department.");
 
                 using var transaction = await _context.Database.BeginTransactionAsync();
                 try
                 {
-                    _logger.LogInformation("Converting grade request to blockchain record");
                     var blockchainRecord = request.ToBlockchainRecord("PLV");
-                    
-                    _logger.LogInformation("Submitting grade to blockchain via middleware (IssueGrade)");
                     var result = await _blockchainService.SubmitGradeAsync(blockchainRecord, request.FacultyId);
-
                     var initialLog = request.ToInitialLog();
                     _context.Gradecorrectionlogs.Add(initialLog);
-                    
                     await _context.SaveChangesAsync();
                     await transaction.CommitAsync();
 
-                    _logger.LogInformation("✓ Grade recorded successfully for student: {StudentId}", request.StudentId);
-                    
-                    return Ok(new { 
-                        status = "Success", 
-                        message = "Grade secured on Ledger and Logged in Postgres!",
-                        studentId = request.StudentId,
-                        grade = request.Grade,
-                        course = request.Course,
-                        blockchainDetails = result,
-                        timestamp = DateTime.UtcNow
-                    });
+                    return Ok(new { status = "Success", message = "Grade secured on Ledger and Logged in Postgres!" });
                 }
                 catch (Exception ex)
                 {
                     await transaction.RollbackAsync();
-                    _logger.LogError(ex, "Transaction failed");
-                    
-                    return StatusCode(500, new { 
-                        status = "Error", 
-                        message = $"Ledger/Sync Failed: {ex.Message}",
-                        details = ex.InnerException?.Message
-                    });
+                    return StatusCode(500, new { status = "Error", message = ex.Message });
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Unexpected error recording grade");
-                return StatusCode(500, new { 
-                    status = "Error", 
-                    message = "Internal server error",
-                    error = ex.Message 
+                _logger.LogError(ex, "Error recording grade");
+                return StatusCode(500, new { status = "Error", message = ex.Message });
+            }
+        }
+
+        [HttpPost("bulk-upload")]
+        [Consumes("multipart/form-data")]
+        public async Task<IActionResult> BulkUploadGradesCSV(IFormFile csvFile)
+        {
+            _logger.LogInformation("CSV bulk upload initiated");
+
+            if (csvFile == null || csvFile.Length == 0)
+                return BadRequest(new { status = "Error", message = "CSV file is required." });
+
+            var facultyId = Request.Headers["x-user-identity"].ToString();
+            if (string.IsNullOrEmpty(facultyId))
+                return BadRequest(new { status = "Error", message = "Faculty identity required." });
+
+            _logger.LogInformation("CSV upload for faculty: {FacultyId}", facultyId);
+
+            try
+            {
+                var successCount = 0;
+                var failureCount = 0;
+                var errors = new List<BulkUploadError>();
+
+                var tempFile = Path.Combine(Path.GetTempPath(), Guid.NewGuid() + ".csv");
+                
+                try
+                {
+                    using (var fileStream = new FileStream(tempFile, FileMode.Create))
+                        await csvFile.CopyToAsync(fileStream);
+
+                    using (var reader = new StreamReader(tempFile, System.Text.Encoding.UTF8))
+                    {
+                        string line;
+                        int lineNum = 0;
+                        Dictionary<string, int> headerMap = null;
+
+                        while ((line = await reader.ReadLineAsync()) != null)
+                        {
+                            lineNum++;
+                            line = line.Trim();
+                            if (string.IsNullOrEmpty(line)) continue;
+
+                            var fields = line.Split(',');
+
+                            // Parse header
+                            if (lineNum == 1)
+                            {
+                                headerMap = new Dictionary<string, int>();
+                                for (int i = 0; i < fields.Length; i++)
+                                    headerMap[fields[i].Trim()] = i;
+                                continue;
+                            }
+
+                            // Parse data row
+                            try
+                            {
+                                var studentId = GetCsvField(fields, headerMap, "student_id");
+                                var grade = GetCsvField(fields, headerMap, "grade");
+                                var course = GetCsvField(fields, headerMap, "course") ?? "Unknown";
+                                var semester = GetCsvField(fields, headerMap, "semester") ?? "Unknown";
+
+                                if (string.IsNullOrEmpty(studentId) || string.IsNullOrEmpty(grade))
+                                {
+                                    failureCount++;
+                                    errors.Add(new BulkUploadError { StudentId = studentId ?? "UNKNOWN", Reason = "Missing student_id or grade" });
+                                    continue;
+                                }
+
+                                var student = await _context.Userrequests
+                                    .FirstOrDefaultAsync(u => u.Email == studentId && u.Role != null && u.Role.ToLower() == "student");
+
+                                if (student == null)
+                                {
+                                    failureCount++;
+                                    errors.Add(new BulkUploadError { StudentId = studentId, Reason = "Student not found" });
+                                    continue;
+                                }
+
+                                var faculty = await _context.Userrequests
+                                    .FirstOrDefaultAsync(u => 
+                                        u.Email == facultyId && 
+                                        u.Requeststatus == "APPROVED");
+
+                                if (faculty == null)
+                                {
+                                    failureCount++;
+                                    errors.Add(new BulkUploadError { StudentId = studentId, Reason = "Faculty not approved" });
+                                    continue;
+                                }
+
+                                if (!string.IsNullOrEmpty(student.Department) && student.Department != faculty.Department)
+                                {
+                                    failureCount++;
+                                    errors.Add(new BulkUploadError { StudentId = studentId, Reason = "Department mismatch" });
+                                    continue;
+                                }
+
+                                var gradeRequest = new GradeRequest
+                                {
+                                    StudentId = studentId,
+                                    StudentHash = student.Email,
+                                    Grade = grade,
+                                    Course = course,
+                                    FacultyId = facultyId,
+                                    Semester = semester
+                                };
+
+                                var blockchainRecord = gradeRequest.ToBlockchainRecord("PLV");
+                                
+                                using var transaction = await _context.Database.BeginTransactionAsync();
+                                try
+                                {
+                                    await _blockchainService.SubmitGradeAsync(blockchainRecord, facultyId);
+                                    var initialLog = gradeRequest.ToInitialLog();
+                                    _context.Gradecorrectionlogs.Add(initialLog);
+                                    await _context.SaveChangesAsync();
+                                    await transaction.CommitAsync();
+                                    successCount++;
+                                }
+                                catch (Exception txEx)
+                                {
+                                    await transaction.RollbackAsync();
+                                    failureCount++;
+                                    errors.Add(new BulkUploadError { StudentId = studentId, Reason = txEx.Message });
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                failureCount++;
+                                errors.Add(new BulkUploadError { StudentId = "ERROR", Reason = ex.Message });
+                            }
+                        }
+                    }
+                }
+                finally
+                {
+                    if (System.IO.File.Exists(tempFile))
+                        System.IO.File.Delete(tempFile);
+                }
+
+                return Ok(new
+                {
+                    status = failureCount == 0 ? "Success" : "Partial Success",
+                    totalProcessed = successCount + failureCount,
+                    successful = successCount,
+                    failed = failureCount,
+                    errors = errors.Any() ? errors : null,
+                    timestamp = DateTime.UtcNow
                 });
             }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "CSV upload failed");
+                return StatusCode(500, new { status = "Error", message = ex.Message });
+            }
+        }
+
+        private string GetCsvField(string[] fields, Dictionary<string, int> headerMap, string fieldName)
+        {
+            if (headerMap != null && headerMap.ContainsKey(fieldName))
+            {
+                int idx = headerMap[fieldName];
+                if (idx < fields.Length)
+                    return fields[idx].Trim();
+            }
+            return null;
         }
 
         [HttpPost("correct")]
         public async Task<IActionResult> CorrectGrade([FromBody] GradeCorrectionRequest correction)
         {
-            _logger.LogInformation("Correcting grade for record: {RecordID}", correction.RecordID);
-            if (string.IsNullOrEmpty(correction.RecordID)) return BadRequest(new { status = "Error", message = "RecordID is required." });
+            if (string.IsNullOrEmpty(correction.RecordID)) 
+                return BadRequest(new { status = "Error", message = "RecordID is required." });
 
             using var transaction = await _context.Database.BeginTransactionAsync();
             try
             {
                 string existingGradeJson = await _blockchainService.GetGradeAsync(correction.RecordID, correction.ApprovedBy);
                 var gradeToUpdate = JsonSerializer.Deserialize<AcademicRecord>(existingGradeJson, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-
-                if (gradeToUpdate == null) return NotFound(new { status = "Error", message = "Original grade record not found on blockchain." });
+                if (gradeToUpdate == null) 
+                    return NotFound(new { status = "Error", message = "Original grade record not found on blockchain." });
 
                 gradeToUpdate.Grade = correction.NewGrade;
                 gradeToUpdate.FacultyId = correction.ApprovedBy;
                 gradeToUpdate.Date = DateTime.UtcNow.ToString("yyyy-MM-dd");
                 
-                var bcResult = await _blockchainService.UpdateGradeAsync(gradeToUpdate, correction.ApprovedBy);
+                await _blockchainService.UpdateGradeAsync(gradeToUpdate, correction.ApprovedBy);
 
                 var auditLog = new Gradecorrectionlog {
                     Recordid = correction.RecordID,
@@ -168,6 +288,7 @@ namespace BlockGo.Controllers
                 return StatusCode(500, new { status = "Error", message = ex.Message });
             }
         }
+
         [HttpGet("all")]
         public async Task<IActionResult> GetAllGrades([FromQuery] string invokerId)
         {
@@ -185,15 +306,9 @@ namespace BlockGo.Controllers
                         dataElement.GetRawText(), 
                         new JsonSerializerOptions { PropertyNameCaseInsensitive = true }
                     );
-
-                    return Ok(new { 
-                        status = "Success", 
-                        count = grades?.Count ?? 0, 
-                        data = grades 
-                    });
+                    return Ok(new { status = "Success", count = grades?.Count ?? 0, data = grades });
                 }
-                
-                return StatusCode(500, new { status = "Error", message = "Unexpected response format from Middleware" });
+                return StatusCode(500, new { status = "Error", message = "Unexpected response format" });
             }
             catch (Exception ex)
             {
@@ -205,7 +320,8 @@ namespace BlockGo.Controllers
         [HttpGet("{recordId}")]
         public async Task<IActionResult> GetGrade(string recordId, [FromQuery] string invokerId)
         {
-            if (string.IsNullOrEmpty(invokerId)) return BadRequest(new { status = "Error", message = "invokerId query parameter is required for ABAC." });
+            if (string.IsNullOrEmpty(invokerId)) 
+                return BadRequest(new { status = "Error", message = "invokerId query parameter is required." });
 
             try
             {
@@ -227,10 +343,13 @@ namespace BlockGo.Controllers
             
             try
             {
-                var result = await _blockchainService.ApproveGradeAsync(recordId, invokerId);
+                await _blockchainService.ApproveGradeAsync(recordId, invokerId);
                 return Ok(new { status = "Success", message = "Grade approved by Department successfully." });
             }
-            catch (Exception ex) { return StatusCode(500, new { status = "Error", message = ex.Message }); }
+            catch (Exception ex) 
+            { 
+                return StatusCode(500, new { status = "Error", message = ex.Message }); 
+            }
         }
 
         [HttpPost("finalize/{recordId}")]
@@ -241,10 +360,13 @@ namespace BlockGo.Controllers
             
             try
             {
-                var result = await _blockchainService.FinalizeGradeAsync(recordId, invokerId);
+                await _blockchainService.FinalizeGradeAsync(recordId, invokerId);
                 return Ok(new { status = "Success", message = "Grade finalized by Registrar successfully." });
             }
-            catch (Exception ex) { return StatusCode(500, new { status = "Error", message = ex.Message }); }
+            catch (Exception ex) 
+            { 
+                return StatusCode(500, new { status = "Error", message = ex.Message }); 
+            }
         }
     }
 }

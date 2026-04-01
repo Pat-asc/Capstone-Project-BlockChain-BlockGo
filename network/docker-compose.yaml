@@ -290,7 +290,7 @@ services:
     container_name: ipfs0
     environment: [IPFS_PROFILE=server]
     networks: [registrar-net]
-    ports: ["5001:5001","8080:8080"]
+    ports: ["5001:5001"]
     volumes: ["./ipfs/peer0:/data/ipfs"]
 
   ipfs1:
@@ -350,18 +350,23 @@ services:
       timeout: 5s
       retries: 5
       start_period: 10s
-
+ 
   nginx-shield:
     image: nginx:stable-alpine
     container_name: nginx-shield
     ports: ["8080:80"]
     volumes:
-      - "./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro"
+      - "../middleware/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro"
       - "../frontend/build:/usr/share/nginx/html:ro"
     extra_hosts:
       - "host.docker.internal:host-gateway"
     networks: [registrar-net]
-    depends_on: [postgres]
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
   registrar-chaincode:
     container_name: registrar-chaincode
     build:
@@ -370,7 +375,7 @@ services:
     environment:
       - CHAINCODE_SERVER_ADDRESS=0.0.0.0:9999
       - CHAINCODE_ID=${CHAINCODE_ID}
-      # --- PRODUCTION SETTING: Enable TLS ---
+      # --- PRODUCTION: TLS ENABLED ---
       - CHAINCODE_TLS_DISABLED=false
       - CHAINCODE_TLS_KEY_FILE=/etc/hyperledger/fabric/tls/server.key
       - CHAINCODE_TLS_CERT_FILE=/etc/hyperledger/fabric/tls/server.crt
@@ -379,7 +384,6 @@ services:
     volumes:
       - ./crypto-config/peerOrganizations/registrar.capstone.com/peers/registrar-chaincode.registrar.capstone.com/tls/server.key:/etc/hyperledger/fabric/tls/server.key:ro
       - ./crypto-config/peerOrganizations/registrar.capstone.com/peers/registrar-chaincode.registrar.capstone.com/tls/server.crt:/etc/hyperledger/fabric/tls/server.crt:ro
-      - ./crypto-config/peerOrganizations/registrar.capstone.com/peers/registrar-chaincode.registrar.capstone.com/tls/ca.crt:/etc/hyperledger/fabric/tls/ca.crt:ro
 
   cli:
     container_name: cli

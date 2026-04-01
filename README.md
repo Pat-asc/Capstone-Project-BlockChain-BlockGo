@@ -1,4 +1,4 @@
-# PLV Blockchain Grades Ledger 🔗
+# PLV Blockchain Grades Ledger
 
 A highly secure, microservices-based grading ledger and identity management system built for Pamantasan ng Lungsod ng Valenzuela (PLV). This project integrates traditional Web2 relational databases with Web3 Hyperledger Fabric blockchain technology to ensure absolute immutability, transparency, and security of student records.
 
@@ -6,7 +6,7 @@ A highly secure, microservices-based grading ledger and identity management syst
 
 ---
 
-##  System Architecture & Tech Stack
+## System Architecture & Tech Stack
 
 This system utilizes a clean separation of concerns, splitting standard database orchestration from cryptographic blockchain operations.
 
