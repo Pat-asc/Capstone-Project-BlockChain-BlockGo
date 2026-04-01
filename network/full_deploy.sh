@@ -74,8 +74,22 @@ if command -v apt-get >/dev/null 2>&1; then
         $SUDO apt-get update -yqq >/dev/null 2>&1 || true
         $SUDO apt-get install -y curl wget netcat jq >/dev/null 2>&1
     fi
+
+    if ! command -v node >/dev/null 2>&1 || ! command -v npm >/dev/null 2>&1; then
+        log_info "Node.js or NPM not found. Installing Node.js 20.x LTS..."
+        curl -fsSL https://deb.nodesource.com/setup_20.x | $SUDO bash - >/dev/null 2>&1
+        $SUDO apt-get install -y nodejs >/dev/null 2>&1
+        log_info "Node.js and NPM installed successfully."
+    else
+        log_info "Node.js ($(node -v)) and NPM ($(npm -v)) are installed."
+    fi
 else
     log_warn "'apt-get' not found. Please ensure curl, wget, netcat, and jq are installed."
+fi
+
+log_info "Checking Docker accessibility..."
+if ! docker ps >/dev/null 2>&1; then
+    log_error "Cannot connect to the Docker daemon. Is Docker running? Does your user have permission to run Docker commands without sudo?"
 fi
 
 # ============================================================
@@ -113,15 +127,19 @@ add_to_env_if_missing "JWT_SECRET" "$(openssl rand -base64 32)"
 log_info "Phase 2: Installing project NPM dependencies..."
 
 # Frontend
-if [ ! -d "../frontend/node_modules" ]; then
-    log_info "Installing frontend dependencies..."
-    (cd ../frontend && npm install) > /dev/null 2>&1 || log_warn "npm install for frontend failed"
+if [ -d "../frontend" ]; then
+    if [ ! -d "../frontend/node_modules" ]; then
+        log_info "Installing frontend dependencies..."
+        (cd ../frontend && npm install) > /dev/null 2>&1 || log_warn "npm install for frontend failed"
+    fi
 fi
 
 # Middleware
-if [ ! -d "../middleware/node_modules" ]; then
-    log_info "Installing middleware dependencies..."
-    (cd ../middleware && npm install) > /dev/null 2>&1 || log_warn "npm install for middleware failed"
+if [ -d "../middleware" ]; then
+    if [ ! -d "../middleware/node_modules" ]; then
+        log_info "Installing middleware dependencies..."
+        (cd ../middleware && npm install) > /dev/null 2>&1 || log_warn "npm install for middleware failed"
+    fi
 fi
 
 log_info "Dependencies ready"
@@ -136,9 +154,43 @@ export FABRIC_CFG_PATH=$(pwd)
 export CHANNEL_NAME="registrar-channel"
 export CC_NAME="registrar"
 export CC_VERSION="1.0"
+export EXPECTED_FABRIC_VERSION="2.5.9" # Change this if your project requires a different version
 
-[ ! -f "./bin/cryptogen" ] && log_error "cryptogen binary not found"
-[ ! -f "./bin/configtxgen" ] && log_error "configtxgen binary not found"
+verify_fabric_version() {
+    if [ -f "./bin/cryptogen" ]; then
+        local current_version=$(./bin/cryptogen version | grep -i 'version:' | awk '{print $2}' | tr -d '\r')
+        if [ "$current_version" == "$EXPECTED_FABRIC_VERSION" ]; then
+            return 0
+        fi
+        log_warn "Fabric version mismatch. Expected $EXPECTED_FABRIC_VERSION but found $current_version."
+    fi
+    return 1
+}
+
+verify_fabric_images() {
+    if [ -z "$(docker images -q hyperledger/fabric-peer:$EXPECTED_FABRIC_VERSION 2> /dev/null)" ]; then
+        return 1
+    fi
+    return 0
+}
+
+DOWNLOAD_ARGS=""
+if ! verify_fabric_version || [ ! -f "./bin/configtxgen" ]; then DOWNLOAD_ARGS="b"; fi
+if ! verify_fabric_images; then DOWNLOAD_ARGS="$DOWNLOAD_ARGS d"; fi
+
+if [ -n "$DOWNLOAD_ARGS" ]; then
+    log_info "Fabric binaries or Docker images (v$EXPECTED_FABRIC_VERSION) missing. Downloading them now..."
+    curl -sSLO https://raw.githubusercontent.com/hyperledger/fabric/main/scripts/install-fabric.sh
+    chmod +x install-fabric.sh
+    ./install-fabric.sh --fabric-version $EXPECTED_FABRIC_VERSION $DOWNLOAD_ARGS > /dev/null 2>&1
+    rm install-fabric.sh
+    log_info "Fabric components downloaded successfully."
+else
+    log_info "Fabric binaries and Docker images (v$EXPECTED_FABRIC_VERSION) already exist. Skipping download."
+fi
+
+[ ! -f "./bin/cryptogen" ] && log_error "cryptogen binary still not found after download attempt."
+[ ! -f "./bin/configtxgen" ] && log_error "configtxgen binary still not found after download attempt."
 [ ! -f "./configtx.yaml" ] && log_error "configtx.yaml not found"
 
 log_info "All binaries and files OK"
@@ -175,7 +227,7 @@ fi
 # ============================================================
 log_info "Phase 6: Starting Docker containers..."
 
-if docker compose ps | grep -q "registrar-chaincode"; then
+if docker compose ps | grep -q "orderer"; then
     log_info "Containers already running"
 else
     docker compose up -d 2>/dev/null || log_error "docker compose up failed"
@@ -272,7 +324,18 @@ CURRENT_SEQUENCE=$(docker exec -e CORE_PEER_LOCALMSPID=RegistrarMSP \
     -e CORE_PEER_TLS_ROOTCERT_FILE=/etc/hyperledger/fabric/crypto-config/peerOrganizations/registrar.capstone.com/peers/peer0.registrar.capstone.com/tls/ca.crt \
     cli peer lifecycle chaincode querycommitted -C $CHANNEL_NAME -O json 2>/dev/null | jq -r '.chaincode_definitions[] | select(.name == "'$CC_NAME'") | .sequence' || echo "")
 
-if [[ -z "$CURRENT_SEQUENCE" || "$CURRENT_SEQUENCE" == "null" ]]; then
+COMMITTED_PACKAGE_ID=$(docker exec -e CORE_PEER_LOCALMSPID=RegistrarMSP \
+    -e CORE_PEER_ADDRESS=peer0.registrar.capstone.com:7051 \
+    -e CORE_PEER_MSPCONFIGPATH=/etc/hyperledger/fabric/crypto-config/peerOrganizations/registrar.capstone.com/users/Admin@registrar.capstone.com/msp \
+    -e CORE_PEER_TLS_ROOTCERT_FILE=/etc/hyperledger/fabric/crypto-config/peerOrganizations/registrar.capstone.com/peers/peer0.registrar.capstone.com/tls/ca.crt \
+    cli peer lifecycle chaincode querycommitted -C $CHANNEL_NAME -O json 2>/dev/null | jq -r '.chaincode_definitions[] | select(.name == "'$CC_NAME'") | .package_id' || echo "")
+
+SKIP_COMMIT=false
+if [ "$CC_PACKAGE_ID" == "$COMMITTED_PACKAGE_ID" ] && [ -n "$CC_PACKAGE_ID" ]; then
+    log_info "Chaincode package is already committed at sequence $CURRENT_SEQUENCE. Skipping upgrade."
+    SKIP_COMMIT=true
+    CC_SEQUENCE=$CURRENT_SEQUENCE
+elif [[ -z "$CURRENT_SEQUENCE" || "$CURRENT_SEQUENCE" == "null" ]]; then
     CC_SEQUENCE=1
     log_info "No existing chaincode definition found. Setting sequence to 1."
 else
@@ -287,6 +350,7 @@ sleep 3
 # ============================================================
 log_info "Phase 11: Approving chaincode (sequence $CC_SEQUENCE)..."
 
+if [ "$SKIP_COMMIT" = false ]; then
 approve_cc() {
     ORG=$1
     PEER=$2
@@ -307,12 +371,16 @@ approve_cc "faculty.capstone.com" "peer0.faculty.capstone.com:7051"
 approve_cc "department.capstone.com" "peer0.department.capstone.com:7051"
 
 sleep 5
+else
+    log_info "Skipping approval phase."
+fi
 
 # ============================================================
 # PHASE 12: COMMIT CHAINCODE
 # ============================================================
 log_info "Phase 12: Committing chaincode (sequence $CC_SEQUENCE)..."
 
+if [ "$SKIP_COMMIT" = false ]; then
 docker exec -e CORE_PEER_LOCALMSPID=RegistrarMSP \
     -e CORE_PEER_ADDRESS=peer0.registrar.capstone.com:7051 \
     -e CORE_PEER_MSPCONFIGPATH=/etc/hyperledger/fabric/crypto-config/peerOrganizations/registrar.capstone.com/users/Admin@registrar.capstone.com/msp \
@@ -327,6 +395,9 @@ docker exec -e CORE_PEER_LOCALMSPID=RegistrarMSP \
 
 sleep 5
 log_info "Chaincode committed successfully"
+else
+    log_info "Skipping commit phase."
+fi
 
 # ============================================================
 # PHASE 13: UPDATE .ENV AND RESTART CHAINCODE
@@ -344,7 +415,7 @@ log_info "Restarting registrar-chaincode container to pick up new ID..."
 export CHAINCODE_ID=$CC_PACKAGE_ID
 docker compose stop registrar-chaincode 2>/dev/null || true
 docker compose rm -f registrar-chaincode 2>/dev/null || true
-docker compose up -d --no-deps --force-recreate registrar-chaincode
+docker compose up -d --no-deps --force-recreate registrar-chaincode || log_error "Failed to restart chaincode container"
 
 # ============================================================
 # PHASE 14: START APPLICATION SERVICES AND FRONTEND
@@ -354,11 +425,10 @@ log_info "Phase 14: Starting application services..."
 # Build React Frontend
 if [ -d "../frontend" ]; then
     log_info "Building React Frontend..."
-    ( 
+    if ! ( 
         cd ../frontend || exit 1
         npm run build > frontend_build.log 2>&1
-    )
-    if [ $? -ne 0 ]; then
+    ); then
         log_error "React Frontend build failed. Check frontend/frontend_build.log"
     fi
     log_info "React Frontend built successfully."
@@ -387,7 +457,14 @@ if [ -d "../client-app" ]; then
     (
         cd ../client-app || exit 1
         if [ -f ../network/.env ]; then
-            export $(grep -v '^#' ../network/.env | xargs)
+            while IFS='=' read -r key value || [ -n "$key" ]; do
+                if [[ -n "$key" && "$key" != \#* ]]; then
+                    value=$(echo "$value" | tr -d '\r')
+                    [[ "$value" == \"*\" ]] && value="${value:1:-1}"
+                    [[ "$value" == \'*\' ]] && value="${value:1:-1}"
+                    export "$key"="$value"
+                fi
+            done < ../network/.env
         fi
         nohup dotnet run > backend.log 2>&1 &
         echo $! > /tmp/client_app_pid.tmp
