@@ -55,11 +55,13 @@ services:
       - ORDERER_GENERAL_TLS_PRIVATEKEY=/var/hyperledger/orderer/tls/server.key
       - ORDERER_GENERAL_TLS_CERTIFICATE=/var/hyperledger/orderer/tls/server.crt
       - ORDERER_GENERAL_TLS_ROOTCAS=/var/hyperledger/orderer/tls/ca.crt
+      - ORDERER_GENERAL_TLS_CLIENTAUTHREQUIRED=false
       - ORDERER_ADMIN_LISTENADDRESS=0.0.0.0:7053
       - ORDERER_ADMIN_TLS_ENABLED=true
       - ORDERER_ADMIN_TLS_PRIVATEKEY=/var/hyperledger/orderer/tls/server.key
       - ORDERER_ADMIN_TLS_CERTIFICATE=/var/hyperledger/orderer/tls/server.crt
       - ORDERER_ADMIN_TLS_ROOTCAS=/var/hyperledger/orderer/tls/ca.crt
+      - ORDERER_ADMIN_TLS_CLIENTAUTHREQUIRED=true
     ports: ["7050:7050", "7053:7053"]
     networks: [registrar-net]
     volumes:
@@ -142,16 +144,14 @@ services:
       - CORE_LEDGER_STATE_COUCHDBCONFIG_USERNAME=${COUCHDB_USER}
       - CORE_LEDGER_STATE_COUCHDBCONFIG_PASSWORD=${COUCHDB_PASS}
       - CORE_PEER_TLS_ENABLED=true
+      - CORE_PEER_TLS_ROOTCERT_FILE=/etc/hyperledger/fabric/crypto-config/peerOrganizations/registrar.capstone.com/peers/peer0.registrar.capstone.com/tls/ca.crt
       - CORE_PEER_TLS_CERT_FILE=/etc/hyperledger/fabric/crypto-config/peerOrganizations/registrar.capstone.com/peers/peer0.registrar.capstone.com/tls/server.crt
       - CORE_PEER_TLS_KEY_FILE=/etc/hyperledger/fabric/crypto-config/peerOrganizations/registrar.capstone.com/peers/peer0.registrar.capstone.com/tls/server.key
-      - CORE_PEER_TLS_ROOTCERT_FILE=/etc/hyperledger/fabric/crypto-config/peerOrganizations/registrar.capstone.com/peers/peer0.registrar.capstone.com/tls/ca.crt
-      - CORE_PEER_TLS_CLIENTCERT_FILE=/etc/hyperledger/fabric/crypto-config/peerOrganizations/registrar.capstone.com/peers/peer0.registrar.capstone.com/tls/server.crt
-      - CORE_PEER_TLS_CLIENTKEY_FILE=/etc/hyperledger/fabric/crypto-config/peerOrganizations/registrar.capstone.com/peers/peer0.registrar.capstone.com/tls/server.key
-      - CORE_PEER_TLS_CLIENTAUTHREQUIRED=false
       - CORE_PEER_MSPCONFIGPATH=/etc/hyperledger/fabric/crypto-config/peerOrganizations/registrar.capstone.com/peers/peer0.registrar.capstone.com/msp
     ports: ["7051:7051"]
     networks: [registrar-net]
-    volumes: ["./crypto-config:/etc/hyperledger/fabric/crypto-config"]
+    volumes: 
+      - ./crypto-config:/etc/hyperledger/fabric/crypto-config
     depends_on: [couchdb_registrar]
 
   peer1.registrar.capstone.com:
@@ -167,13 +167,7 @@ services:
       - CORE_LEDGER_STATE_COUCHDBCONFIG_COUCHDBADDRESS=couchdb_registrar_peer1:5984
       - CORE_LEDGER_STATE_COUCHDBCONFIG_USERNAME=${COUCHDB_USER}
       - CORE_LEDGER_STATE_COUCHDBCONFIG_PASSWORD=${COUCHDB_PASS}
-      - CORE_PEER_TLS_ENABLED=true
-      - CORE_PEER_TLS_CERT_FILE=/etc/hyperledger/fabric/crypto-config/peerOrganizations/registrar.capstone.com/peers/peer1.registrar.capstone.com/tls/server.crt
-      - CORE_PEER_TLS_KEY_FILE=/etc/hyperledger/fabric/crypto-config/peerOrganizations/registrar.capstone.com/peers/peer1.registrar.capstone.com/tls/server.key
-      - CORE_PEER_TLS_ROOTCERT_FILE=/etc/hyperledger/fabric/crypto-config/peerOrganizations/registrar.capstone.com/peers/peer1.registrar.capstone.com/tls/ca.crt
-      - CORE_PEER_TLS_CLIENTCERT_FILE=/etc/hyperledger/fabric/crypto-config/peerOrganizations/registrar.capstone.com/peers/peer1.registrar.capstone.com/tls/server.crt
-      - CORE_PEER_TLS_CLIENTKEY_FILE=/etc/hyperledger/fabric/crypto-config/peerOrganizations/registrar.capstone.com/peers/peer1.registrar.capstone.com/tls/server.key
-      - CORE_PEER_TLS_CLIENTAUTHREQUIRED=false
+      - CORE_PEER_TLS_ENABLED=false
       - CORE_PEER_MSPCONFIGPATH=/etc/hyperledger/fabric/crypto-config/peerOrganizations/registrar.capstone.com/peers/peer1.registrar.capstone.com/msp
     ports: ["8051:7051"]
     networks: [registrar-net]
@@ -194,16 +188,14 @@ services:
       - CORE_LEDGER_STATE_COUCHDBCONFIG_USERNAME=${COUCHDB_USER}
       - CORE_LEDGER_STATE_COUCHDBCONFIG_PASSWORD=${COUCHDB_PASS}
       - CORE_PEER_TLS_ENABLED=true
+      - CORE_PEER_TLS_ROOTCERT_FILE=/etc/hyperledger/fabric/crypto-config/peerOrganizations/faculty.capstone.com/peers/peer0.faculty.capstone.com/tls/ca.crt
       - CORE_PEER_TLS_CERT_FILE=/etc/hyperledger/fabric/crypto-config/peerOrganizations/faculty.capstone.com/peers/peer0.faculty.capstone.com/tls/server.crt
       - CORE_PEER_TLS_KEY_FILE=/etc/hyperledger/fabric/crypto-config/peerOrganizations/faculty.capstone.com/peers/peer0.faculty.capstone.com/tls/server.key
-      - CORE_PEER_TLS_ROOTCERT_FILE=/etc/hyperledger/fabric/crypto-config/peerOrganizations/faculty.capstone.com/peers/peer0.faculty.capstone.com/tls/ca.crt
-      - CORE_PEER_TLS_CLIENTCERT_FILE=/etc/hyperledger/fabric/crypto-config/peerOrganizations/faculty.capstone.com/peers/peer0.faculty.capstone.com/tls/server.crt
-      - CORE_PEER_TLS_CLIENTKEY_FILE=/etc/hyperledger/fabric/crypto-config/peerOrganizations/faculty.capstone.com/peers/peer0.faculty.capstone.com/tls/server.key
-      - CORE_PEER_TLS_CLIENTAUTHREQUIRED=false
       - CORE_PEER_MSPCONFIGPATH=/etc/hyperledger/fabric/crypto-config/peerOrganizations/faculty.capstone.com/peers/peer0.faculty.capstone.com/msp
     ports: ["9051:7051"]
     networks: [registrar-net]
-    volumes: ["./crypto-config:/etc/hyperledger/fabric/crypto-config"]
+    volumes: 
+      - ./crypto-config:/etc/hyperledger/fabric/crypto-config
     depends_on: [couchdb_faculty]
 
   peer1.faculty.capstone.com:
@@ -219,13 +211,7 @@ services:
       - CORE_LEDGER_STATE_COUCHDBCONFIG_COUCHDBADDRESS=couchdb_faculty_peer1:5984
       - CORE_LEDGER_STATE_COUCHDBCONFIG_USERNAME=${COUCHDB_USER}
       - CORE_LEDGER_STATE_COUCHDBCONFIG_PASSWORD=${COUCHDB_PASS}
-      - CORE_PEER_TLS_ENABLED=true
-      - CORE_PEER_TLS_CERT_FILE=/etc/hyperledger/fabric/crypto-config/peerOrganizations/faculty.capstone.com/peers/peer1.faculty.capstone.com/tls/server.crt
-      - CORE_PEER_TLS_KEY_FILE=/etc/hyperledger/fabric/crypto-config/peerOrganizations/faculty.capstone.com/peers/peer1.faculty.capstone.com/tls/server.key
-      - CORE_PEER_TLS_ROOTCERT_FILE=/etc/hyperledger/fabric/crypto-config/peerOrganizations/faculty.capstone.com/peers/peer1.faculty.capstone.com/tls/ca.crt
-      - CORE_PEER_TLS_CLIENTCERT_FILE=/etc/hyperledger/fabric/crypto-config/peerOrganizations/faculty.capstone.com/peers/peer1.faculty.capstone.com/tls/server.crt
-      - CORE_PEER_TLS_CLIENTKEY_FILE=/etc/hyperledger/fabric/crypto-config/peerOrganizations/faculty.capstone.com/peers/peer1.faculty.capstone.com/tls/server.key
-      - CORE_PEER_TLS_CLIENTAUTHREQUIRED=false
+      - CORE_PEER_TLS_ENABLED=false
       - CORE_PEER_MSPCONFIGPATH=/etc/hyperledger/fabric/crypto-config/peerOrganizations/faculty.capstone.com/peers/peer1.faculty.capstone.com/msp
     ports: ["10051:7051"]
     networks: [registrar-net]
@@ -246,16 +232,14 @@ services:
       - CORE_LEDGER_STATE_COUCHDBCONFIG_USERNAME=${COUCHDB_USER}
       - CORE_LEDGER_STATE_COUCHDBCONFIG_PASSWORD=${COUCHDB_PASS}
       - CORE_PEER_TLS_ENABLED=true
+      - CORE_PEER_TLS_ROOTCERT_FILE=/etc/hyperledger/fabric/crypto-config/peerOrganizations/department.capstone.com/peers/peer0.department.capstone.com/tls/ca.crt
       - CORE_PEER_TLS_CERT_FILE=/etc/hyperledger/fabric/crypto-config/peerOrganizations/department.capstone.com/peers/peer0.department.capstone.com/tls/server.crt
       - CORE_PEER_TLS_KEY_FILE=/etc/hyperledger/fabric/crypto-config/peerOrganizations/department.capstone.com/peers/peer0.department.capstone.com/tls/server.key
-      - CORE_PEER_TLS_ROOTCERT_FILE=/etc/hyperledger/fabric/crypto-config/peerOrganizations/department.capstone.com/peers/peer0.department.capstone.com/tls/ca.crt
-      - CORE_PEER_TLS_CLIENTCERT_FILE=/etc/hyperledger/fabric/crypto-config/peerOrganizations/department.capstone.com/peers/peer0.department.capstone.com/tls/server.crt
-      - CORE_PEER_TLS_CLIENTKEY_FILE=/etc/hyperledger/fabric/crypto-config/peerOrganizations/department.capstone.com/peers/peer0.department.capstone.com/tls/server.key
-      - CORE_PEER_TLS_CLIENTAUTHREQUIRED=false
       - CORE_PEER_MSPCONFIGPATH=/etc/hyperledger/fabric/crypto-config/peerOrganizations/department.capstone.com/peers/peer0.department.capstone.com/msp
     ports: ["11051:7051"]
     networks: [registrar-net]
-    volumes: ["./crypto-config:/etc/hyperledger/fabric/crypto-config"]
+    volumes: 
+      - ./crypto-config:/etc/hyperledger/fabric/crypto-config
     depends_on: [couchdb_department]
 
   peer1.department.capstone.com:
@@ -271,13 +255,7 @@ services:
       - CORE_LEDGER_STATE_COUCHDBCONFIG_COUCHDBADDRESS=couchdb_department_peer1:5984
       - CORE_LEDGER_STATE_COUCHDBCONFIG_USERNAME=${COUCHDB_USER}
       - CORE_LEDGER_STATE_COUCHDBCONFIG_PASSWORD=${COUCHDB_PASS}
-      - CORE_PEER_TLS_ENABLED=true
-      - CORE_PEER_TLS_CERT_FILE=/etc/hyperledger/fabric/crypto-config/peerOrganizations/department.capstone.com/peers/peer1.department.capstone.com/tls/server.crt
-      - CORE_PEER_TLS_KEY_FILE=/etc/hyperledger/fabric/crypto-config/peerOrganizations/department.capstone.com/peers/peer1.department.capstone.com/tls/server.key
-      - CORE_PEER_TLS_ROOTCERT_FILE=/etc/hyperledger/fabric/crypto-config/peerOrganizations/department.capstone.com/peers/peer1.department.capstone.com/tls/ca.crt
-      - CORE_PEER_TLS_CLIENTCERT_FILE=/etc/hyperledger/fabric/crypto-config/peerOrganizations/department.capstone.com/peers/peer1.department.capstone.com/tls/server.crt
-      - CORE_PEER_TLS_CLIENTKEY_FILE=/etc/hyperledger/fabric/crypto-config/peerOrganizations/department.capstone.com/peers/peer1.department.capstone.com/tls/server.key
-      - CORE_PEER_TLS_CLIENTAUTHREQUIRED=false
+      - CORE_PEER_TLS_ENABLED=false
       - CORE_PEER_MSPCONFIGPATH=/etc/hyperledger/fabric/crypto-config/peerOrganizations/department.capstone.com/peers/peer1.department.capstone.com/msp
     ports: ["12051:7051"]
     networks: [registrar-net]
@@ -343,7 +321,9 @@ services:
       - POSTGRES_DB=${POSTGRES_DB}
     ports: ["5432:5432"]
     networks: [registrar-net]
-    volumes: ["pgdata:/var/lib/postgresql/data"]
+    volumes: 
+      - "pgdata:/var/lib/postgresql/data"
+      - "./init-db-schema.sql:/docker-entrypoint-initdb.d/init.sql:ro"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 10s
@@ -375,15 +355,9 @@ services:
     environment:
       - CHAINCODE_SERVER_ADDRESS=0.0.0.0:9999
       - CHAINCODE_ID=${CHAINCODE_ID}
-      # --- PRODUCTION: TLS ENABLED ---
-      - CHAINCODE_TLS_DISABLED=false
-      - CHAINCODE_TLS_KEY_FILE=/etc/hyperledger/fabric/tls/server.key
-      - CHAINCODE_TLS_CERT_FILE=/etc/hyperledger/fabric/tls/server.crt
+      - CHAINCODE_TLS_DISABLED=true
     ports: ["9999:9999"]
     networks: [registrar-net]
-    volumes:
-      - ./crypto-config/peerOrganizations/registrar.capstone.com/peers/registrar-chaincode.registrar.capstone.com/tls/server.key:/etc/hyperledger/fabric/tls/server.key:ro
-      - ./crypto-config/peerOrganizations/registrar.capstone.com/peers/registrar-chaincode.registrar.capstone.com/tls/server.crt:/etc/hyperledger/fabric/tls/server.crt:ro
 
   cli:
     container_name: cli
@@ -399,8 +373,8 @@ services:
       - CORE_PEER_ADDRESS=peer0.registrar.capstone.com:7051
       - CORE_PEER_LOCALMSPID=RegistrarMSP
       - CORE_PEER_TLS_ENABLED=true
-      - CORE_PEER_MSPCONFIGPATH=/etc/hyperledger/fabric/crypto-config/peerOrganizations/registrar.capstone.com/users/Admin@registrar.capstone.com/msp
       - CORE_PEER_TLS_ROOTCERT_FILE=/etc/hyperledger/fabric/crypto-config/peerOrganizations/registrar.capstone.com/peers/peer0.registrar.capstone.com/tls/ca.crt
+      - CORE_PEER_MSPCONFIGPATH=/etc/hyperledger/fabric/crypto-config/peerOrganizations/registrar.capstone.com/users/Admin@registrar.capstone.com/msp
     working_dir: /opt/fabric-config/network
     networks: [registrar-net]
     volumes:

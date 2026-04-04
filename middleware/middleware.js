@@ -131,9 +131,14 @@ if (!JWT_SECRET) {
     process.exit(1);
 }
 
+const INTERNAL_API_KEY = process.env.INTERNAL_API_KEY;
+if (!INTERNAL_API_KEY) {
+    console.error("FATAL ERROR: INTERNAL_API_KEY environment variable is missing. Please set it in your .env file.");
+    process.exit(1);
+}
+
 const authenticateJWT = (req, res, next) => {
-    const internalApiKey = process.env.INTERNAL_API_KEY || 'default-internal-secret-change-me';
-    if (req.headers['x-api-key'] === internalApiKey) {
+    if (req.headers['x-api-key'] === INTERNAL_API_KEY) {
         req.isInternal = true;
         return next();
     }
@@ -164,8 +169,7 @@ const authorizeRole = (allowedRoles) => {
 };
 
 const requireRegistrarOrInternal = (req, res, next) => {
-    const internalApiKey = process.env.INTERNAL_API_KEY || 'default-internal-secret-change-me';
-    if (req.headers['x-api-key'] === internalApiKey) {
+    if (req.headers['x-api-key'] === INTERNAL_API_KEY) {
         return next();
     }
 
@@ -368,7 +372,7 @@ app.post('/api/fabric/register-user', authenticateJWT, requireRegistrarOrInterna
         let caURL, caName, adminLabel, mspId;
         if (role === 'faculty') {
             caURL = 'https://localhost:8054'; caName = 'ca-faculty'; adminLabel = 'admin-faculty'; mspId = 'FacultyMSP';
-        } else if (role === 'department_admin' || role === 'dean') {
+        } else if (role === 'department_admin' || role === 'admin') {
             caURL = 'https://localhost:9054'; caName = 'ca-department'; adminLabel = 'admin-department'; mspId = 'DepartmentMSP';
         } else {
             caURL = 'https://localhost:7054'; caName = 'ca-registrar'; adminLabel = 'admin-registrar'; mspId = 'RegistrarMSP';
@@ -383,15 +387,23 @@ app.post('/api/fabric/register-user', authenticateJWT, requireRegistrarOrInterna
         const provider = wallet.getProviderRegistry().getProvider(adminIdentity.type);
         const adminUser = await provider.getUserContext(adminIdentity, 'admin');
 
-        const randomSecret = crypto.randomBytes(12).toString('hex');
-        await ca.register({
-            enrollmentID: email,
-            enrollmentSecret: randomSecret,
-            role: 'client',
-            attrs: [{ name: 'role', value: role, ecert: true }, { name: 'grade.manage', value: role === 'faculty' ? 'true' : 'false', ecert: true }]
-        }, adminUser);
+        const secret = req.body.password || crypto.randomBytes(12).toString('hex');
+        try {
+            await ca.register({
+                enrollmentID: email,
+                enrollmentSecret: secret,
+                role: 'client',
+                attrs: [{ name: 'role', value: role, ecert: true }, { name: 'grade.manage', value: role === 'faculty' ? 'true' : 'false', ecert: true }]
+            }, adminUser);
+        } catch (regErr) {
+            if (regErr.toString().includes('code: 74') || regErr.toString().includes('is already registered')) {
+                console.log(`[Fabric CA] ${email} is already registered. Skipping registration and attempting to enroll...`);
+            } else {
+                throw regErr;
+            }
+        }
 
-        const enrollment = await ca.enroll({ enrollmentID: email, enrollmentSecret: randomSecret });
+        const enrollment = await ca.enroll({ enrollmentID: email, enrollmentSecret: secret });
         const x509Identity = { credentials: { certificate: enrollment.certificate, privateKey: enrollment.key.toBytes() }, mspId: mspId, type: 'X.509' };
         await wallet.put(email, x509Identity);
 
@@ -403,8 +415,11 @@ app.post('/api/fabric/register-user', authenticateJWT, requireRegistrarOrInterna
 
 app.get('/api/bootstrap', async (req, res) => {
     try {
-        const email = 'registrar@plv.edu.ph';
-        const pass = 'admin123';
+        const email = process.env.BOOTSTRAP_REGISTRAR_EMAIL || 'registrar@plv.edu.ph';
+        const pass = process.env.BOOTSTRAP_REGISTRAR_PASS;
+        if (!pass) {
+            return res.status(500).json({ error: "BOOTSTRAP_REGISTRAR_PASS environment variable is missing. Cannot bootstrap." });
+        }
 
         const userCheck = await db.query('SELECT * FROM Users WHERE email = $1', [email]);
         const wallet = await getWallet();
@@ -417,9 +432,9 @@ app.get('/api/bootstrap', async (req, res) => {
                     method: 'POST',
                     headers: { 
                         'Content-Type': 'application/json',
-                        'x-api-key': process.env.INTERNAL_API_KEY || 'default-internal-secret-change-me'
+                        'x-api-key': INTERNAL_API_KEY
                     },
-                    body: JSON.stringify({ email: email, role: 'registrar' })
+                body: JSON.stringify({ email: email, role: 'registrar', password: pass })
                 });
                 const walletResponse = await result.json();
                 return res.json({ message: "Registrar was in DB but missing wallet. Wallet healed successfully!", wallet: walletResponse });
@@ -435,9 +450,9 @@ app.get('/api/bootstrap', async (req, res) => {
             method: 'POST',
             headers: { 
                 'Content-Type': 'application/json',
-                'x-api-key': process.env.INTERNAL_API_KEY || 'default-internal-secret-change-me'
+                'x-api-key': INTERNAL_API_KEY
             },
-            body: JSON.stringify({ email: email, role: 'registrar' })
+            body: JSON.stringify({ email: email, role: 'registrar', password: pass })
         });
 
         const walletResponse = await result.json();
@@ -816,13 +831,12 @@ app.post('/api/upload-grades', (req, res, next) => {
         console.log(`[UploadGrades] File received: ${req.file.filename}`);
         const filePath = req.file.path;
         const username = req.body.username || 'admin';
-        const internalApiKey = process.env.INTERNAL_API_KEY || 'default-internal-secret-change-me';
 
-        const pythonProcess = spawn('python', [
-            path.join(__dirname, 'mapper.py'),
+        const pythonProcess = spawn('python3', [
+            path.resolve(__dirname, '..', 'mapper.py'),
             filePath,
-            path.join(__dirname, 'evidence.pdf'),
-            internalApiKey
+            username,
+            INTERNAL_API_KEY
         ]);
 
         let output = '';
@@ -881,8 +895,7 @@ app.post('/api/upload-grades', (req, res, next) => {
 app.post('/api/batch-issue-grade', async (req, res) => {
     let username;
     try {
-        const internalApiKey = process.env.INTERNAL_API_KEY || 'default-internal-secret-change-me';
-        if (req.headers['x-api-key'] !== internalApiKey) {
+        if (req.headers['x-api-key'] !== INTERNAL_API_KEY) {
             return res.status(401).json({ error: 'Invalid or missing API key' });
         }
 
@@ -978,13 +991,11 @@ app.post('/api/batch-upload', (req, res, next) => {
             });
         }
 
-        const internalApiKey = process.env.INTERNAL_API_KEY || 'default-internal-secret-change-me';
-
         console.log(`[BatchUpload] Starting mapper: python3 ${mapperPath}`);
         const pythonProcess = spawn('python3', [
             mapperPath,
             filePath,
-            internalApiKey
+            INTERNAL_API_KEY
         ]);
 
         let output = '';

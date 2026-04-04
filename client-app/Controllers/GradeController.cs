@@ -236,7 +236,7 @@ namespace BlockGo.Controllers
             }
         }
 
-        private string GetCsvField(string[] fields, Dictionary<string, int> headerMap, string fieldName)
+        private string? GetCsvField(string[] fields, Dictionary<string, int> headerMap, string fieldName)
         {
             if (headerMap != null && headerMap.ContainsKey(fieldName))
             {

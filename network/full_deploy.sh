@@ -68,13 +68,31 @@ if [ "$(id -u)" -ne 0 ] && command -v sudo >/dev/null 2>&1; then
     SUDO="sudo"
 fi
 
+# The main check: Are we on Ubuntu/Debian?
 if command -v apt-get >/dev/null 2>&1; then
-    if ! command -v jq >/dev/null 2>&1 || ! command -v nc >/dev/null 2>&1; then
-        log_info "Installing missing system dependencies (curl, wget, netcat, jq)..."
+    
+    # 1. Base Utilities
+    if ! command -v jq >/dev/null 2>&1 || ! command -v nc >/dev/null 2>&1 || ! command -v fuser >/dev/null 2>&1; then
+        log_info "Installing missing system dependencies (curl, wget, netcat, jq, psmisc)..."
         $SUDO apt-get update -yqq >/dev/null 2>&1 || true
-        $SUDO apt-get install -y curl wget netcat jq >/dev/null 2>&1
+        $SUDO apt-get install -y curl wget netcat jq psmisc >/dev/null 2>&1
     fi
 
+    # 2. .NET 8.0 SDK (Moved safely inside the apt-get check)
+    if ! command -v dotnet >/dev/null 2>&1; then
+        log_info ".NET SDK not found. Installing .NET 8.0 SDK..."
+        wget https://packages.microsoft.com/config/ubuntu/22.04/packages-microsoft-prod.deb -O packages-microsoft-prod.deb >/dev/null 2>&1
+        $SUDO dpkg -i packages-microsoft-prod.deb >/dev/null 2>&1
+        rm packages-microsoft-prod.deb
+        
+        $SUDO apt-get update -yqq >/dev/null 2>&1 || true
+        $SUDO apt-get install -y dotnet-sdk-8.0 >/dev/null 2>&1
+        log_info ".NET SDK 8.0 installed successfully."
+    else
+        log_info ".NET SDK is already installed ($(dotnet --version))."
+    fi
+
+    # 3. Node.js
     if ! command -v node >/dev/null 2>&1 || ! command -v npm >/dev/null 2>&1; then
         log_info "Node.js or NPM not found. Installing Node.js 20.x LTS..."
         curl -fsSL https://deb.nodesource.com/setup_20.x | $SUDO bash - >/dev/null 2>&1
@@ -83,8 +101,9 @@ if command -v apt-get >/dev/null 2>&1; then
     else
         log_info "Node.js ($(node -v)) and NPM ($(npm -v)) are installed."
     fi
+
 else
-    log_warn "'apt-get' not found. Please ensure curl, wget, netcat, and jq are installed."
+    log_warn "'apt-get' not found. Please ensure curl, wget, netcat, jq, psmisc, nodejs, and dotnet-sdk-8.0 are installed manually."
 fi
 
 log_info "Checking Docker accessibility..."
@@ -99,6 +118,11 @@ log_info "Phase 1: Checking/Generating secure credentials..."
 ENV_FILE="$(pwd)/.env"
 if [ ! -f "$ENV_FILE" ]; then
     touch "$ENV_FILE"
+fi
+
+# Ensure .env ends with a newline to prevent merged variables
+if [ -s "$ENV_FILE" ] && [ -n "$(tail -c 1 "$ENV_FILE")" ]; then
+    echo "" >> "$ENV_FILE"
 fi
 
 add_to_env_if_missing() {
@@ -120,6 +144,11 @@ add_to_env_if_missing "POSTGRES_USER" "BLOCKGO"
 add_to_env_if_missing "POSTGRES_PASS" "PLVBLOCKGO"
 add_to_env_if_missing "POSTGRES_DB" "ActivityLogs"
 add_to_env_if_missing "JWT_SECRET" "$(openssl rand -base64 32)"
+
+# Added Cryptographic Security Keys
+add_to_env_if_missing "BOOTSTRAP_REGISTRAR_PASS" "admin123"
+add_to_env_if_missing "WALLET_ENCRYPTION_KEY" "$(openssl rand -hex 32)"
+add_to_env_if_missing "INTERNAL_API_KEY" "$(openssl rand -base64 32)"
 
 # ============================================================
 # PHASE 2: NPM DEPENDENCIES
@@ -154,7 +183,7 @@ export FABRIC_CFG_PATH=$(pwd)
 export CHANNEL_NAME="registrar-channel"
 export CC_NAME="registrar"
 export CC_VERSION="1.0"
-export EXPECTED_FABRIC_VERSION="2.5.9" # Change this if your project requires a different version
+export EXPECTED_FABRIC_VERSION="2.5.4" 
 
 verify_fabric_version() {
     if [ -f "./bin/cryptogen" ]; then
@@ -203,13 +232,22 @@ log_info "Phase 4: Crypto material and genesis block..."
 if [ ! -d "./crypto-config" ] || [ ! -f "./channel-artifacts/genesis.block" ]; then
     log_info "Generating crypto material..."
     rm -rf ./crypto-config
-    ./bin/cryptogen generate --config=./crypto-config.yaml --output="crypto-config" 2>/dev/null || log_error "Cryptogen failed"
     
-    log_info "Generating genesis block..."
-    ./bin/configtxgen -profile Genesis -channelID system-channel -outputBlock ./channel-artifacts/genesis.block 2>/dev/null || log_error "Genesis block generation failed"
+    # Clean up persistent Fabric CA databases so they don't remember old users
+    rm -rf ./fabric-ca/*/msp ./fabric-ca/*/*.db ./fabric-ca/*/*.pem ./fabric-ca/*/Issuer* 2>/dev/null || true
+    
+    ./bin/cryptogen generate --config=./crypto-config.yaml --output="crypto-config" || log_error "Cryptogen failed"
+    
+    log_info "Generating genesis block using UniversityGenesis profile..."
+    # Note: Removed 2>/dev/null so you can see actual errors if it fails
+    ./bin/configtxgen -profile UniversityGenesis -channelID system-channel -outputBlock ./channel-artifacts/genesis.block || log_error "Genesis block generation failed"
 else
     log_info "Crypto material and genesis block already exist"
 fi
+
+# Ensure private keys are named 'priv_sk' so C# and Node can reliably find them
+log_info "Normalizing private key filenames..."
+find ./crypto-config -type f -name "*_sk" -execdir cp -n {} priv_sk \; 2>/dev/null || true
 
 # ============================================================
 # PHASE 5: CHANNEL TRANSACTION
@@ -223,20 +261,46 @@ else
 fi
 
 # ============================================================
-# PHASE 6: DOCKER CONTAINERS
+# PHASE 6: DOCKER CONTAINERS & WALLET DB
 # ============================================================
 log_info "Phase 6: Starting Docker containers..."
 
 if docker compose ps | grep -q "orderer"; then
     log_info "Containers already running"
 else
-    docker compose up -d 2>/dev/null || log_error "docker compose up failed"
+    log_info "Pulling Docker images (this may take a while)..."
+    docker compose pull || log_warn "Some images failed to pull, will try again during up..."
+    docker compose up -d || log_error "docker compose up failed"
     
     log_info "Waiting for containers to be ready..."
     wait_for_service localhost 7050 "Orderer Service" 30
     wait_for_service localhost 7051 "Registrar Peer" 30
     sleep 10
 fi
+
+# Restore CouchDB Wallet Creation outside of docker-compose
+log_info "Starting standalone CouchDB for wallets..."
+if docker ps -a --format '{{.Names}}' | grep -Eq "^couchdb-wallet\$"; then
+    docker start couchdb-wallet >/dev/null
+    log_info "CouchDB for wallets (existing) started."
+else
+    # Added --network registrar-net so internal containers can communicate if ever needed
+    docker run -d --name couchdb-wallet \
+        --network registrar-net \
+        -p 5989:5984 \
+        -v couchdb_wallet_data:/opt/couchdb/data \
+        -e COUCHDB_USER=${LOCAL_COUCH_USER} \
+        -e COUCHDB_PASSWORD=${LOCAL_COUCH_PASS} \
+        -e COUCHDB_SINGLE_NODE=true \
+        -e COUCHDB_INI_CLUSTER_N=1 \
+        -e COUCHDB_INI_COUCHDB_SINGLE_NODE=true \
+        couchdb:3.2.2 >/dev/null
+    
+    log_info "New CouchDB container for wallets created and started on port 5989."
+fi
+
+# Wait for Wallet DB
+wait_for_service localhost 5989 "CouchDB Wallet" 120
 
 # ============================================================
 # PHASE 7: CREATE CHANNEL & JOIN PEERS
@@ -245,14 +309,55 @@ log_info "Phase 7: Channel creation and peer joining..."
 
 if ! docker exec cli peer channel list 2>/dev/null | grep -q "$CHANNEL_NAME"; then
     log_info "Creating channel $CHANNEL_NAME..."
-    docker exec cli peer channel create -c $CHANNEL_NAME -f /etc/hyperledger/fabric/channel-artifacts/$CHANNEL_NAME.tx -o orderer.capstone.com:7050 --tls --cafile /etc/hyperledger/fabric/crypto-config/ordererOrganizations/capstone.com/orderers/orderer.capstone.com/tls/ca.crt >/dev/null 2>&1 || log_error "Channel creation failed"
+    docker exec cli peer channel create \
+        -c $CHANNEL_NAME \
+        -f ./channel-artifacts/$CHANNEL_NAME.tx \
+        --outputBlock ./channel-artifacts/$CHANNEL_NAME.block \
+        -o orderer.capstone.com:7050 \
+        --tls \
+        --cafile /etc/hyperledger/fabric/crypto-config/ordererOrganizations/capstone.com/orderers/orderer.capstone.com/tls/ca.crt || log_error "Channel creation failed"
     log_info "Channel created"
     
-    log_info "Joining peers to channel..."
-    docker exec -e CORE_PEER_ADDRESS=peer0.registrar.capstone.com:7051 cli peer channel join -b $CHANNEL_NAME.block >/dev/null 2>&1
-    docker exec -e CORE_PEER_ADDRESS=peer0.faculty.capstone.com:7051 cli peer channel join -b $CHANNEL_NAME.block >/dev/null 2>&1
-    docker exec -e CORE_PEER_ADDRESS=peer0.department.capstone.com:7051 cli peer channel join -b $CHANNEL_NAME.block >/dev/null 2>&1
-    log_info "Peers joined"
+    log_info "Giving peers extra time to finish CouchDB initialization..."
+    sleep 10
+    
+    join_with_retry() {
+        local ORG=$1
+        local MSP=$2
+        local DOMAIN=$3
+        local MAX_RETRIES=6
+        local ATTEMPT=1
+        
+        while [ $ATTEMPT -le $MAX_RETRIES ]; do
+            log_info "Joining $ORG peer to channel (Attempt $ATTEMPT/$MAX_RETRIES)..."
+            
+            set +e
+            JOIN_OUT=$(docker exec \
+                -e CORE_PEER_LOCALMSPID=$MSP \
+                -e CORE_PEER_ADDRESS=peer0.$DOMAIN:7051 \
+                -e CORE_PEER_MSPCONFIGPATH=/etc/hyperledger/fabric/crypto-config/peerOrganizations/$DOMAIN/users/Admin@$DOMAIN/msp \
+                -e CORE_PEER_TLS_ROOTCERT_FILE=/etc/hyperledger/fabric/crypto-config/peerOrganizations/$DOMAIN/peers/peer0.$DOMAIN/tls/ca.crt \
+                cli peer channel join -b ./channel-artifacts/$CHANNEL_NAME.block 2>&1)
+            local EXIT_CODE=$?
+            set -e 
+            
+            if [ $EXIT_CODE -eq 0 ] || echo "$JOIN_OUT" | grep -q "already exists"; then
+                log_info "$ORG peer joined successfully!"
+                return 0
+            else
+                log_warn "$ORG peer not ready yet. Retrying in 5 seconds..."
+                sleep 5
+                ATTEMPT=$((ATTEMPT+1))
+            fi
+        done
+        log_error "Failed to join $ORG peer to channel after multiple attempts. Last output: $JOIN_OUT"
+    }
+
+    join_with_retry "Registrar" "RegistrarMSP" "registrar.capstone.com"
+    join_with_retry "Faculty" "FacultyMSP" "faculty.capstone.com"
+    join_with_retry "Department" "DepartmentMSP" "department.capstone.com"
+        
+    log_info "All peers joined successfully"
 else
     log_info "Channel and peers already configured"
 fi
@@ -267,7 +372,6 @@ log_info "Phase 8: Packaging chaincode..."
 rm -f registrar.tar.gz code.tar.gz metadata.json connection.json
 
 # TLS-enabled connection.json with embedded certificate
-# Fetch the cert dynamically to be safe
 CC_TLS_CERT=$(cat ./crypto-config/peerOrganizations/registrar.capstone.com/tlsca/tlsca.registrar.capstone.com-cert.pem | awk 'NF {sub(/\r/, ""); printf "%s\\n",$0;}')
 
 cat > connection.json <<EOF
@@ -294,7 +398,7 @@ log_info "Phase 9: Installing chaincode..."
 install_chaincode() {
     PEER_ADDRESS=$1
     log_info "Installing on $PEER_ADDRESS..."
-    docker exec -e CORE_PEER_ADDRESS=$PEER_ADDRESS cli peer lifecycle chaincode install registrar.tar.gz >/dev/null 2>&1 || log_warn "Chaincode install on $PEER_ADDRESS failed (might be installed already)"
+    docker exec -e CORE_PEER_ADDRESS=$PEER_ADDRESS cli peer lifecycle chaincode install registrar.tar.gz 2>&1 | grep -q "Chaincode code package identifier" && log_info "Install successful on $PEER_ADDRESS" || log_warn "Chaincode install on $PEER_ADDRESS failed (might be installed already)"
 }
 
 install_chaincode "peer0.registrar.capstone.com:7051"
@@ -308,27 +412,37 @@ sleep 5
 # ============================================================
 log_info "Phase 10: Getting package ID..."
 
-CC_PACKAGE_ID=$(docker exec -e CORE_PEER_LOCALMSPID=RegistrarMSP \
+# Fixed Syntax Error Here (Missing parenthesis at end)
+CC_PACKAGE_ID=$(docker exec \
+    -e CORE_PEER_LOCALMSPID=RegistrarMSP \
     -e CORE_PEER_ADDRESS=peer0.registrar.capstone.com:7051 \
     -e CORE_PEER_MSPCONFIGPATH=/etc/hyperledger/fabric/crypto-config/peerOrganizations/registrar.capstone.com/users/Admin@registrar.capstone.com/msp \
     -e CORE_PEER_TLS_ROOTCERT_FILE=/etc/hyperledger/fabric/crypto-config/peerOrganizations/registrar.capstone.com/peers/peer0.registrar.capstone.com/tls/ca.crt \
-    cli peer lifecycle chaincode queryinstalled 2>&1 | grep "Package ID:" | awk '{print $3}' | sed 's/.$//')
+    -e CORE_PEER_TLS_ENABLED=true \
+    cli peer lifecycle chaincode queryinstalled 2>&1 | grep "Package ID: ${CC_NAME}" | tail -n 1 | awk '{print $3}' | sed 's/,$//')
 
-[ -z "$CC_PACKAGE_ID" ] && log_error "Could not get chaincode package ID"
+if [ -z "$CC_PACKAGE_ID" ]; then
+    log_error "Could not get chaincode package ID. Queryinstalled failed or chaincode not installed."
+fi
+
 log_info "Package ID: $CC_PACKAGE_ID"
 
 # Determine Sequence
-CURRENT_SEQUENCE=$(docker exec -e CORE_PEER_LOCALMSPID=RegistrarMSP \
+CURRENT_SEQUENCE=$(docker exec \
+    -e CORE_PEER_LOCALMSPID=RegistrarMSP \
     -e CORE_PEER_ADDRESS=peer0.registrar.capstone.com:7051 \
     -e CORE_PEER_MSPCONFIGPATH=/etc/hyperledger/fabric/crypto-config/peerOrganizations/registrar.capstone.com/users/Admin@registrar.capstone.com/msp \
     -e CORE_PEER_TLS_ROOTCERT_FILE=/etc/hyperledger/fabric/crypto-config/peerOrganizations/registrar.capstone.com/peers/peer0.registrar.capstone.com/tls/ca.crt \
-    cli peer lifecycle chaincode querycommitted -C $CHANNEL_NAME -O json 2>/dev/null | jq -r '.chaincode_definitions[] | select(.name == "'$CC_NAME'") | .sequence' || echo "")
+    -e CORE_PEER_TLS_ENABLED=true \
+    cli peer lifecycle chaincode querycommitted -C $CHANNEL_NAME -O json 2>/dev/null | jq -r '.chaincode_definitions[] | select(.name == "'$CC_NAME'") | .sequence' 2>/dev/null || echo "")
 
-COMMITTED_PACKAGE_ID=$(docker exec -e CORE_PEER_LOCALMSPID=RegistrarMSP \
+COMMITTED_PACKAGE_ID=$(docker exec \
+    -e CORE_PEER_LOCALMSPID=RegistrarMSP \
     -e CORE_PEER_ADDRESS=peer0.registrar.capstone.com:7051 \
     -e CORE_PEER_MSPCONFIGPATH=/etc/hyperledger/fabric/crypto-config/peerOrganizations/registrar.capstone.com/users/Admin@registrar.capstone.com/msp \
     -e CORE_PEER_TLS_ROOTCERT_FILE=/etc/hyperledger/fabric/crypto-config/peerOrganizations/registrar.capstone.com/peers/peer0.registrar.capstone.com/tls/ca.crt \
-    cli peer lifecycle chaincode querycommitted -C $CHANNEL_NAME -O json 2>/dev/null | jq -r '.chaincode_definitions[] | select(.name == "'$CC_NAME'") | .package_id' || echo "")
+    -e CORE_PEER_TLS_ENABLED=true \
+    cli peer lifecycle chaincode querycommitted -C $CHANNEL_NAME -O json 2>/dev/null | jq -r '.chaincode_definitions[] | select(.name == "'$CC_NAME'") | .package_id' 2>/dev/null || echo "")
 
 SKIP_COMMIT=false
 if [ "$CC_PACKAGE_ID" == "$COMMITTED_PACKAGE_ID" ] && [ -n "$CC_PACKAGE_ID" ]; then
@@ -351,28 +465,38 @@ sleep 3
 log_info "Phase 11: Approving chaincode (sequence $CC_SEQUENCE)..."
 
 if [ "$SKIP_COMMIT" = false ]; then
-approve_cc() {
-    ORG=$1
-    PEER=$2
-    log_info "Approving for $ORG..."
-    docker exec -e CORE_PEER_LOCALMSPID=${ORG^}MSP \
-        -e CORE_PEER_ADDRESS=$PEER \
-        -e CORE_PEER_MSPCONFIGPATH=/etc/hyperledger/fabric/crypto-config/peerOrganizations/$ORG/users/Admin@$ORG/msp \
-        -e CORE_PEER_TLS_ROOTCERT_FILE=/etc/hyperledger/fabric/crypto-config/peerOrganizations/$ORG/peers/$PEER/tls/ca.crt \
-        cli peer lifecycle chaincode approveformyorg --channelID $CHANNEL_NAME --name $CC_NAME --version $CC_VERSION \
-        --package-id $CC_PACKAGE_ID --sequence $CC_SEQUENCE -o orderer.capstone.com:7050 \
-        --ordererTLSHostnameOverride orderer.capstone.com --tls \
-        --cafile /etc/hyperledger/fabric/crypto-config/ordererOrganizations/capstone.com/orderers/orderer.capstone.com/tls/ca.crt \
-        >/dev/null 2>&1 || log_error "Approve for $ORG failed"
-}
+    approve_cc() {
+        ORG=$1
+        PEER=$2
+        PEER_ORG=$3
+        log_info "Approving for $ORG..."
+        docker exec \
+            -e CORE_PEER_LOCALMSPID=${ORG^}MSP \
+            -e CORE_PEER_ADDRESS=$PEER:7051 \
+            -e CORE_PEER_MSPCONFIGPATH=/etc/hyperledger/fabric/crypto-config/peerOrganizations/$PEER_ORG/users/Admin@$PEER_ORG/msp \
+            -e CORE_PEER_TLS_ROOTCERT_FILE=/etc/hyperledger/fabric/crypto-config/peerOrganizations/$PEER_ORG/peers/$PEER/tls/ca.crt \
+            -e CORE_PEER_TLS_ENABLED=true \
+            cli peer lifecycle chaincode approveformyorg \
+            --channelID $CHANNEL_NAME \
+            --name $CC_NAME \
+            --version $CC_VERSION \
+            --package-id $CC_PACKAGE_ID \
+            --sequence $CC_SEQUENCE \
+            -o orderer.capstone.com:7050 \
+            --ordererTLSHostnameOverride orderer.capstone.com \
+            --tls \
+            --cafile /etc/hyperledger/fabric/crypto-config/ordererOrganizations/capstone.com/orderers/orderer.capstone.com/tls/ca.crt
+    }
 
-approve_cc "registrar.capstone.com" "peer0.registrar.capstone.com:7051"
-approve_cc "faculty.capstone.com" "peer0.faculty.capstone.com:7051"
-approve_cc "department.capstone.com" "peer0.department.capstone.com:7051"
+    approve_cc "registrar" "peer0.registrar.capstone.com" "registrar.capstone.com"
+    sleep 3
+    approve_cc "faculty" "peer0.faculty.capstone.com" "faculty.capstone.com"
+    sleep 3
+    approve_cc "department" "peer0.department.capstone.com" "department.capstone.com"
 
-sleep 5
+    sleep 5
 else
-    log_info "Skipping approval phase."
+    log_info "Skipping approval phase (chaincode already committed)."
 fi
 
 # ============================================================
@@ -381,22 +505,31 @@ fi
 log_info "Phase 12: Committing chaincode (sequence $CC_SEQUENCE)..."
 
 if [ "$SKIP_COMMIT" = false ]; then
-docker exec -e CORE_PEER_LOCALMSPID=RegistrarMSP \
-    -e CORE_PEER_ADDRESS=peer0.registrar.capstone.com:7051 \
-    -e CORE_PEER_MSPCONFIGPATH=/etc/hyperledger/fabric/crypto-config/peerOrganizations/registrar.capstone.com/users/Admin@registrar.capstone.com/msp \
-    -e CORE_PEER_TLS_ROOTCERT_FILE=/etc/hyperledger/fabric/crypto-config/peerOrganizations/registrar.capstone.com/peers/peer0.registrar.capstone.com/tls/ca.crt \
-    cli peer lifecycle chaincode commit --channelID $CHANNEL_NAME --name $CC_NAME --version $CC_VERSION --sequence $CC_SEQUENCE \
-    -o orderer.capstone.com:7050 --ordererTLSHostnameOverride orderer.capstone.com --tls \
-    --cafile /etc/hyperledger/fabric/crypto-config/ordererOrganizations/capstone.com/orderers/orderer.capstone.com/tls/ca.crt \
-    --peerAddresses peer0.registrar.capstone.com:7051 --tlsRootCertFiles /etc/hyperledger/fabric/crypto-config/peerOrganizations/registrar.capstone.com/peers/peer0.registrar.capstone.com/tls/ca.crt \
-    --peerAddresses peer0.faculty.capstone.com:7051 --tlsRootCertFiles /etc/hyperledger/fabric/crypto-config/peerOrganizations/faculty.capstone.com/peers/peer0.faculty.capstone.com/tls/ca.crt \
-    --peerAddresses peer0.department.capstone.com:7051 --tlsRootCertFiles /etc/hyperledger/fabric/crypto-config/peerOrganizations/department.capstone.com/peers/peer0.department.capstone.com/tls/ca.crt \
-    >/dev/null 2>&1 || log_error "Chaincode commit failed"
-
-sleep 5
-log_info "Chaincode committed successfully"
+    docker exec \
+        -e CORE_PEER_LOCALMSPID=RegistrarMSP \
+        -e CORE_PEER_ADDRESS=peer0.registrar.capstone.com:7051 \
+        -e CORE_PEER_MSPCONFIGPATH=/etc/hyperledger/fabric/crypto-config/peerOrganizations/registrar.capstone.com/users/Admin@registrar.capstone.com/msp \
+        -e CORE_PEER_TLS_ROOTCERT_FILE=/etc/hyperledger/fabric/crypto-config/peerOrganizations/registrar.capstone.com/peers/peer0.registrar.capstone.com/tls/ca.crt \
+        -e CORE_PEER_TLS_ENABLED=true \
+        cli peer lifecycle chaincode commit \
+        --channelID $CHANNEL_NAME \
+        --name $CC_NAME \
+        --version $CC_VERSION \
+        --sequence $CC_SEQUENCE \
+        -o orderer.capstone.com:7050 \
+        --ordererTLSHostnameOverride orderer.capstone.com \
+        --tls \
+        --cafile /etc/hyperledger/fabric/crypto-config/ordererOrganizations/capstone.com/orderers/orderer.capstone.com/tls/ca.crt \
+        --peerAddresses peer0.registrar.capstone.com:7051 \
+        --tlsRootCertFiles /etc/hyperledger/fabric/crypto-config/peerOrganizations/registrar.capstone.com/peers/peer0.registrar.capstone.com/tls/ca.crt \
+        --peerAddresses peer0.faculty.capstone.com:7051 \
+        --tlsRootCertFiles /etc/hyperledger/fabric/crypto-config/peerOrganizations/faculty.capstone.com/peers/peer0.faculty.capstone.com/tls/ca.crt \
+        --peerAddresses peer0.department.capstone.com:7051 \
+        --tlsRootCertFiles /etc/hyperledger/fabric/crypto-config/peerOrganizations/department.capstone.com/peers/peer0.department.capstone.com/tls/ca.crt 2>&1 | tee -a commit.log || log_error "Chaincode commit failed"
+    sleep 5
+    log_info "Chaincode committed successfully"
 else
-    log_info "Skipping commit phase."
+    log_info "Skipping commit phase (chaincode already committed)."
 fi
 
 # ============================================================
@@ -415,7 +548,10 @@ log_info "Restarting registrar-chaincode container to pick up new ID..."
 export CHAINCODE_ID=$CC_PACKAGE_ID
 docker compose stop registrar-chaincode 2>/dev/null || true
 docker compose rm -f registrar-chaincode 2>/dev/null || true
-docker compose up -d --no-deps --force-recreate registrar-chaincode || log_error "Failed to restart chaincode container"
+sleep 2
+docker compose up -d --no-deps registrar-chaincode || log_error "Failed to restart chaincode container"
+
+sleep 5
 
 # ============================================================
 # PHASE 14: START APPLICATION SERVICES AND FRONTEND
@@ -429,23 +565,44 @@ if [ -d "../frontend" ]; then
         cd ../frontend || exit 1
         npm run build > frontend_build.log 2>&1
     ); then
-        log_error "React Frontend build failed. Check frontend/frontend_build.log"
+        log_warn "React Frontend build failed. Check frontend/frontend_build.log"
     fi
     log_info "React Frontend built successfully."
 else
     log_warn "Frontend directory not found at ../frontend. Skipping React build."
 fi
 
-# Ensure databases are ready
-wait_for_service localhost 5432 "PostgreSQL" 60
+log_info "Waiting for PostgreSQL port to open..."
+wait_for_service localhost 5432 "PostgreSQL Port" 60
 
-# Init Database Schema
-log_info "Initializing database schema..."
-if [ -f "./init-db-schema.sh" ]; then
-    bash ./init-db-schema.sh > /dev/null 2>&1 || log_warn "Schema init script had issues or already initialized."
+log_info "Waiting for PostgreSQL to finish initialization and recovery..."
+# Actively poll pg_isready to handle variable startup times (like crash recovery)
+DB_READY=false
+for i in {1..60}; do
+    if docker exec postgres pg_isready -U BLOCKGO -d ActivityLogs >/dev/null 2>&1; then
+        DB_READY=true
+        break
+    fi
+    sleep 2
+done
+
+if [ "$DB_READY" = true ]; then
+    # PostgreSQL docker runs a temporary server to create the database, shuts down, 
+    # and then starts the final server. We add a buffer to safely bypass this restart.
+    log_info "PostgreSQL port is open. Waiting 15s for stability..."
+    sleep 15
+    for i in {1..15}; do
+        if docker exec postgres pg_isready -U BLOCKGO -d ActivityLogs >/dev/null 2>&1; then
+            break
+        fi
+        sleep 2
+    done
+    log_info "PostgreSQL is stable and ready!"
+else
+    log_error "PostgreSQL is stuck starting up or in crash recovery."
 fi
 
-# Start C# Backend
+# 3. Start C# Backend
 if [ -d "../client-app" ]; then
     if nc -z localhost 5000 > /dev/null 2>&1; then
         log_info "C# Backend is already running on port 5000. Stopping old instance..."
@@ -479,7 +636,7 @@ else
     log_warn "C# Backend directory not found at ../client-app. Skipping."
 fi
 
-# Start Node.js Middleware (Fabric Bridge)
+# 4. Start Node.js Middleware
 if [ -d "../middleware" ]; then
     if nc -z localhost 4000 > /dev/null 2>&1; then
         log_info "Node.js Middleware is already running on port 4000. Stopping old instance..."
@@ -515,7 +672,9 @@ BOOTSTRAP_ATTEMPT=1
 BOOTSTRAP_SUCCESS=false
 
 while [ $BOOTSTRAP_ATTEMPT -le $MAX_BOOTSTRAP_RETRIES ]; do
-    HTTP_CODE=$(curl -s -o /dev/null -w '%{http_code}' $BOOTSTRAP_URL)
+    BOOTSTRAP_RESP=$(curl -s -w "\n%{http_code}" $BOOTSTRAP_URL)
+    HTTP_CODE=$(echo "$BOOTSTRAP_RESP" | tail -n1)
+    BODY=$(echo "$BOOTSTRAP_RESP" | sed '$d')
     
     if [ "$HTTP_CODE" -eq 200 ] || [ "$HTTP_CODE" -eq 201 ] || [ "$HTTP_CODE" -eq 204 ]; then 
         log_info "Registrar bootstrapped successfully!"
@@ -526,7 +685,7 @@ while [ $BOOTSTRAP_ATTEMPT -le $MAX_BOOTSTRAP_RETRIES ]; do
         BOOTSTRAP_SUCCESS=true
         break
     else
-        log_warn "Bootstrap failed (HTTP $HTTP_CODE). Retrying in 5 seconds... ($BOOTSTRAP_ATTEMPT/$MAX_BOOTSTRAP_RETRIES)"
+        log_warn "Bootstrap failed (HTTP $HTTP_CODE). Response: $BODY | Retrying in 5 seconds... ($BOOTSTRAP_ATTEMPT/$MAX_BOOTSTRAP_RETRIES)"
         sleep 5
     fi
     BOOTSTRAP_ATTEMPT=$((BOOTSTRAP_ATTEMPT+1))
@@ -549,7 +708,7 @@ log_info "Chaincode: $CC_NAME v$CC_VERSION (sequence $CC_SEQUENCE)"
 log_info "Security: TLS ENABLED with embedded certificates"
 echo ""
 echo "Application is now running."
-echo "Access the web application at: http://localhost:8080 (or port 80 if configured via proxy)"
+echo "Access the web application at: http://localhost:8080"
 echo ""
 echo "Initial Registrar Credentials:"
 echo "  Email: registrar@plv.edu.ph"

@@ -38,7 +38,12 @@ public async Task<IActionResult> RevokeAccess(int sqlRequestId)
 
         var middlewareUrl = _configuration["Middleware:Url"] ?? "http://localhost:4000";
         using var client = _httpClientFactory.CreateClient("FabricCAClient");
-        client.DefaultRequestHeaders.Add("x-api-key", _configuration["InternalApiKey"] ?? "default-internal-secret-change-me");
+        var internalApiKey = _configuration["InternalApiKey"];
+        if (string.IsNullOrEmpty(internalApiKey))
+        {
+            return StatusCode(500, new { status = "Error", message = "Internal API Key is not configured." });
+        }
+        client.DefaultRequestHeaders.Add("x-api-key", internalApiKey);
         
         string mappedRole = "student";
         if (sqlRecord.Role != null)
