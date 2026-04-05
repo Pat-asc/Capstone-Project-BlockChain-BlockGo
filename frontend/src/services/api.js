@@ -156,3 +156,44 @@ export const approveStudentEnrollment = async (id) => {
         method: 'PUT'
     });
 };
+// ─────────────────────────────────────────────────────────────────────────────
+// SEARCH INDEX
+// Unified search across blockchain grades, PostgreSQL users, and profiles.
+//
+// Params:
+//   query   {string}  – the search term (required, min 2 chars)
+//   type    {string}  – 'all' | 'grades' | 'users' | 'profiles'  (default: 'all')
+//   page    {number}  – 1-based page number                       (default: 1)
+//   limit   {number}  – results per page, max 25                  (default: 20)
+//
+// Returns:
+//   { status, type, results: { grades, users, profiles }, errors? }
+//
+// Security notes:
+//   [H2] Minimum 2-char query enforced here AND server-side
+//   [M2] limit capped at 25 client-side to match server cap
+//   [M3] type validated client-side before the request is sent
+// ─────────────────────────────────────────────────────────────────────────────
+const ALLOWED_SEARCH_TYPES = new Set(['all', 'grades', 'users', 'profiles']);
+
+export const searchIndex = async ({ query, type = 'all', page = 1, limit = 20 } = {}) => {
+    const trimmed = (query || '').trim();
+
+    // [H2] Enforce minimum length client-side (server also enforces this)
+    if (trimmed.length < 2) throw new Error('Search query must be at least 2 characters.');
+    if (trimmed.length > 100) throw new Error('Search query must be 100 characters or fewer.');
+
+    // [M3] Validate type before sending
+    if (!ALLOWED_SEARCH_TYPES.has(type)) throw new Error('Invalid search type.');
+
+    // [M2] Cap limit at 25 to match server
+    const safLimit = Math.min(25, Math.max(1, parseInt(limit, 10) || 20));
+
+    const params = new URLSearchParams({
+        q:     trimmed,
+        type,
+        page:  String(Math.max(1, parseInt(page, 10) || 1)),
+        limit: String(safLimit),
+    });
+    return await fetchWithAuth(`/search?${params.toString()}`);
+};

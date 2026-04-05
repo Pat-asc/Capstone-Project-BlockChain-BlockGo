@@ -273,8 +273,8 @@ else
     docker compose up -d || log_error "docker compose up failed"
     
     log_info "Waiting for containers to be ready..."
-    wait_for_service localhost 7050 "Orderer Service" 30
-    wait_for_service localhost 7051 "Registrar Peer" 30
+    wait_for_service localhost 7050 "Orderer Service" 120
+    wait_for_service localhost 7051 "Registrar Peer" 120
     sleep 10
 fi
 

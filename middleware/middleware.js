@@ -1057,6 +1057,282 @@ app.post('/api/batch-upload', (req, res, next) => {
     }
 });
 
+// --- SEARCH INDEX ---
+// Fixes applied:
+//   [C1] Role determined from JWT claims only — never from email string-matching
+//   [C2] Raw error messages not sent to client — logged server-side only
+//   [C3] User-controlled query string not echoed in response body
+//   [H1] Rate limiter: 60 requests per minute per IP
+//   [H2] Minimum query length of 2 characters enforced server-side
+//   [H3] Ledger fetch capped at MAX_GRADES_FETCH (500) to prevent DoS
+//   [H4] Student ABAC filters on student_hash only — studentId fallback removed
+//   [M2] Per-page limit capped at 25
+//   [M3] type parameter validated against explicit allowlist
+//   [M4] ipfs_cid stripped from results for all roles except Registrar
+//   [L1] Every search call written to audit_logs
+
+const SEARCH_ALLOWED_TYPES = new Set(['all', 'grades', 'users', 'profiles']);
+const MAX_GRADES_FETCH = 500; // [H3] Hard cap on ledger records fetched per search
+
+const searchLimiter = rateLimit({                          // [H1]
+    windowMs: 60 * 1000,
+    max: 60,
+    message: { error: 'Too many search requests. Please slow down.' },
+    standardHeaders: true,
+    legacyHeaders: false,
+});
+
+app.get('/api/search', authenticateJWT, searchLimiter, async (req, res) => {
+    const { q = '', type = 'all', page = '1', limit = '20' } = req.query;
+
+    // [M3] Validate type against allowlist
+    if (!SEARCH_ALLOWED_TYPES.has(type)) {
+        return res.status(400).json({ error: 'Invalid type parameter.' });
+    }
+
+    const searchTerm = q.trim();
+
+    // [H2] Enforce minimum query length server-side
+    if (!searchTerm || searchTerm.length < 2) {
+        return res.status(400).json({ error: 'Search query must be at least 2 characters.' });
+    }
+
+    // [H2] Also enforce a maximum to prevent absurdly long patterns
+    if (searchTerm.length > 100) {
+        return res.status(400).json({ error: 'Search query must be 100 characters or fewer.' });
+    }
+
+    const pageNum  = Math.max(1, parseInt(page, 10)  || 1);
+    const limitNum = Math.min(25, Math.max(1, parseInt(limit, 10) || 20)); // [M2] Cap at 25
+    const offset   = (pageNum - 1) * limitNum;
+
+    // [C1] Role is read exclusively from the verified JWT payload — never from email
+    const callerUsername = req.user?.username || '';
+    const mspRole        = req.user?.role     || '';   // identity.mspId set at login
+    const dbRole         = req.user?.dbRole   || '';   // DB role set at login
+
+    const isRegistrar = mspRole === 'RegistrarMSP';
+    const isFaculty   = mspRole === 'FacultyMSP';
+    const isDeptAdmin = mspRole === 'DepartmentMSP';
+    const isStudent   = dbRole  === 'student';
+
+    // Deny unrecognised roles entirely
+    if (!isRegistrar && !isFaculty && !isDeptAdmin && !isStudent) {
+        return res.status(403).json({ error: 'Access denied: unrecognised role.' });
+    }
+
+    const results = { grades: {}, users: {}, profiles: {} };
+    const errors  = [];
+
+    // ── 1. BLOCKCHAIN GRADES (via Hyperledger Fabric) ──────────────────────
+    if (type === 'all' || type === 'grades') {
+        let username;
+        try {
+            username = getCallerIdentity(req);
+            const { contract } = await getContractForUser(username);
+            const raw = await contract.evaluateTransaction('GetAllGrades');
+            let allGrades = [];
+            try { allGrades = JSON.parse(raw.toString()) || []; } catch (_) {}
+
+            // [H3] Abort if ledger is too large — force a more specific query
+            if (allGrades.length > MAX_GRADES_FETCH) {
+                return res.status(400).json({
+                    error: `Ledger has too many records to search (>${MAX_GRADES_FETCH}). Please contact the administrator to enable chaincode-level search.`
+                });
+            }
+
+            const lc = searchTerm.toLowerCase();
+
+            let filtered = allGrades.filter(g => {
+                const haystack = [
+                    g.id, g.student_hash, g.course,
+                    g.subject_code, g.grade, g.semester, g.school_year,
+                    g.status, g.faculty_id, g.section, g.university
+                    // Note: g.studentId intentionally excluded — not a trusted identity field
+                ].join(' ').toLowerCase();
+                return haystack.includes(lc);
+            });
+
+            // [C1] + [H4] ABAC enforcement using JWT role claims only
+            if (isStudent) {
+                // [H4] Filter ONLY on student_hash — the canonical verified identity
+                filtered = filtered.filter(g => g.student_hash === callerUsername);
+            } else if (isFaculty) {
+                // Faculty sees only grades they personally issued
+                filtered = filtered.filter(g =>
+                    (g.faculty_id || g.facultyId) === callerUsername
+                );
+            } else if (isDeptAdmin) {
+                // Department admin: scoped to their assigned department from JWT
+                const dept = req.user?.dept || '';
+                if (dept) {
+                    filtered = filtered.filter(g =>
+                        g.university === dept ||
+                        g.subject_code?.toUpperCase().startsWith(dept.toUpperCase())
+                    );
+                } else {
+                    // No dept claim in token — return nothing rather than everything
+                    filtered = [];
+                }
+            }
+            // Registrar: no additional filter — sees all
+
+            const total = filtered.length;
+            results.grades = {
+                total,
+                page: pageNum,
+                limit: limitNum,
+                data: filtered.slice(offset, offset + limitNum).map(g => ({
+                    id:           g.id,
+                    student:      g.student_hash,        // [H4] only canonical hash
+                    course:       g.course,
+                    subject_code: g.subject_code,
+                    grade:        g.grade,
+                    semester:     g.semester,
+                    school_year:  g.school_year,
+                    section:      g.section,
+                    faculty_id:   g.faculty_id || g.facultyId,
+                    status:       g.status,
+                    // [M4] ipfs_cid only returned to Registrar
+                    ...(isRegistrar ? { ipfs_cid: g.ipfs_cid } : {}),
+                    _source:      'blockchain'
+                }))
+            };
+        } catch (err) {
+            clearCacheOnError(username, err);
+            // [C2] Log full error server-side; send only a safe message to client
+            console.error('[Search:grades] Error:', err.message);
+            errors.push({ source: 'grades', message: 'Blockchain query failed. Please try again.' });
+        }
+    }
+
+    // ── 2. POSTGRES USERS & PROFILES (Registrar only) ─────────────────────
+    // [C1] isDeptAdmin no longer has access to raw user/profile tables
+    if ((type === 'all' || type === 'users' || type === 'profiles') && isRegistrar) {
+        try {
+            const like = `%${searchTerm}%`;
+
+            // Users
+            if (type === 'all' || type === 'users') {
+                const userQuery = await db.query(
+                    `SELECT id, email, role, status, created_at
+                     FROM users
+                     WHERE email ILIKE $1 OR role ILIKE $1
+                     ORDER BY created_at DESC
+                     LIMIT $2 OFFSET $3`,
+                    [like, limitNum, offset]
+                );
+                const countRes = await db.query(
+                    `SELECT COUNT(*) FROM users WHERE email ILIKE $1 OR role ILIKE $1`,
+                    [like]
+                );
+                results.users = {
+                    total: parseInt(countRes.rows[0].count, 10),
+                    page:  pageNum,
+                    limit: limitNum,
+                    data:  userQuery.rows.map(u => ({ ...u, _source: 'postgres:users' }))
+                };
+            }
+
+            // Profiles
+            if (type === 'all' || type === 'profiles') {
+                const profileQuery = await db.query(
+                    `SELECT
+                         sp.profile_id, sp.full_name, sp.student_no, sp.department,
+                         sp.section, sp.assignment_status, u.email, u.role,
+                         'student' AS profile_type
+                     FROM studentprofiles sp
+                     JOIN users u ON u.id = sp.user_id
+                     WHERE sp.full_name ILIKE $1
+                        OR sp.student_no ILIKE $1
+                        OR sp.department ILIKE $1
+                        OR sp.section    ILIKE $1
+                        OR u.email       ILIKE $1
+
+                     UNION ALL
+
+                     SELECT
+                         fp.profile_id, fp.full_name, NULL AS student_no,
+                         fp.department, fp.section, fp.year_level AS assignment_status,
+                         u.email, u.role,
+                         'faculty' AS profile_type
+                     FROM facultyprofiles fp
+                     JOIN users u ON u.id = fp.user_id
+                     WHERE fp.full_name   ILIKE $1
+                        OR fp.department  ILIKE $1
+                        OR fp.section     ILIKE $1
+                        OR u.email        ILIKE $1
+
+                     UNION ALL
+
+                     SELECT
+                         ap.profile_id, ap.full_name, NULL AS student_no,
+                         ap.department, NULL AS section,
+                         ap.admin_level AS assignment_status,
+                         u.email, u.role,
+                         'admin' AS profile_type
+                     FROM adminprofiles ap
+                     JOIN users u ON u.id = ap.user_id
+                     WHERE ap.full_name  ILIKE $1
+                        OR ap.department ILIKE $1
+                        OR u.email       ILIKE $1
+
+                     ORDER BY full_name
+                     LIMIT $2 OFFSET $3`,
+                    [like, limitNum, offset]
+                );
+
+                const profileCountRes = await db.query(
+                    `SELECT
+                         (SELECT COUNT(*) FROM studentprofiles sp JOIN users u ON u.id=sp.user_id
+                          WHERE sp.full_name ILIKE $1 OR sp.student_no ILIKE $1 OR sp.department ILIKE $1 OR u.email ILIKE $1)
+                       + (SELECT COUNT(*) FROM facultyprofiles fp JOIN users u ON u.id=fp.user_id
+                          WHERE fp.full_name ILIKE $1 OR fp.department ILIKE $1 OR u.email ILIKE $1)
+                       + (SELECT COUNT(*) FROM adminprofiles ap JOIN users u ON u.id=ap.user_id
+                          WHERE ap.full_name ILIKE $1 OR ap.department ILIKE $1 OR u.email ILIKE $1)
+                         AS total`,
+                    [like]
+                );
+
+                results.profiles = {
+                    total: parseInt(profileCountRes.rows[0].total, 10),
+                    page:  pageNum,
+                    limit: limitNum,
+                    data:  profileQuery.rows.map(p => ({ ...p, _source: 'postgres:profiles' }))
+                };
+            }
+        } catch (err) {
+            // [C2] Log full error server-side; send only a safe message to client
+            console.error('[Search:users/profiles] Error:', err.message);
+            errors.push({ source: 'users/profiles', message: 'Database query failed. Please try again.' });
+        }
+    }
+
+    // [L1] Write audit log — every search is recorded
+    db.query(
+        `INSERT INTO audit_logs (user_id, action, entity_type, entity_id, ip_address, timestamp)
+         VALUES (
+             (SELECT id FROM users WHERE email = $1 LIMIT 1),
+             'SEARCH',
+             $2,
+             NULL,
+             $3,
+             NOW()
+         )`,
+        [callerUsername, type, req.ip]
+    ).catch(auditErr => console.error('[Search:audit] Failed to write audit log:', auditErr.message));
+
+    // [C3] Query string NOT echoed back in response
+    const response = {
+        status:  'Success',
+        type,
+        results,
+    };
+    if (errors.length > 0) response.errors = errors;
+
+    res.status(200).json(response);
+});
+
 app.get('/api/health', (req, res) => res.status(200).json({ status: "operational", mode: 'Production Security (ABAC ACTIVE)' }));
 
 const PORT = process.env.PORT || 4000;
