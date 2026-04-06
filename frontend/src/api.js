@@ -149,3 +149,81 @@ export const approveStudentEnrollment = async (id) => {
         method: 'PUT'
     });
 };
+
+// --- SEARCH API FUNCTIONS ---
+
+/**
+ * Initialize/reindex the search database
+ * Should be called periodically to keep search index fresh
+ */
+export const reindexSearch = async () => {
+    return await fetchWithAuth(`/search/reindex`, {
+        method: 'POST'
+    });
+};
+
+/**
+ * Perform a global search across all indexed data
+ * @param {string} query - Search query
+ * @param {string} types - Comma-separated types: grades,users,registrations
+ * @param {Object} filters - Optional filters object
+ * @returns {Promise} Search results with breakdown by type
+ */
+export const globalSearch = async (query, types = 'grades,users,registrations', filters = {}) => {
+    const params = new URLSearchParams({
+        q: query,
+        types: types,
+        ...(Object.keys(filters).length > 0 && { filters: JSON.stringify(filters) })
+    });
+    return await fetchWithAuth(`/search?${params.toString()}`);
+};
+
+/**
+ * Search grades
+ * @param {string} query - Search query
+ * @param {Object} filters - Optional filters {studentId, courseCode, status, issuedBy}
+ * @returns {Promise} Array of matching grades
+ */
+export const searchGrades = async (query, filters = {}) => {
+    const params = new URLSearchParams({
+        q: query,
+        ...(Object.keys(filters).length > 0 && { filters: JSON.stringify(filters) })
+    });
+    return await fetchWithAuth(`/search/grades?${params.toString()}`);
+};
+
+/**
+ * Search users
+ * @param {string} query - Search query
+ * @param {Object} filters - Optional filters {role, mspid}
+ * @returns {Promise} Array of matching users
+ */
+export const searchUsers = async (query, filters = {}) => {
+    const params = new URLSearchParams({
+        q: query,
+        ...(Object.keys(filters).length > 0 && { filters: JSON.stringify(filters) })
+    });
+    return await fetchWithAuth(`/search/users?${params.toString()}`);
+};
+
+/**
+ * Search registration requests
+ * @param {string} query - Search query
+ * @param {Object} filters - Optional filters {status, role}
+ * @returns {Promise} Array of matching registrations
+ */
+export const searchRegistrations = async (query, filters = {}) => {
+    const params = new URLSearchParams({
+        q: query,
+        ...(Object.keys(filters).length > 0 && { filters: JSON.stringify(filters) })
+    });
+    return await fetchWithAuth(`/search/registrations?${params.toString()}`);
+};
+
+/**
+ * Get search index statistics
+ * @returns {Promise} Index stats { gradesCount, usersCount, registrationsCount, lastIndexTime }
+ */
+export const getSearchStats = async () => {
+    return await fetchWithAuth(`/search/stats`);
+};

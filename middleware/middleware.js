@@ -12,24 +12,88 @@ require('dotenv').config({ path: path.resolve(__dirname, '../network/.env'), ove
 const multer = require('multer');
 const { spawn } = require('child_process');
 const nodemailer = require('nodemailer');
+const helmet = require('helmet');  // Security headers
+const rateLimit = require('express-rate-limit');
 
 const uploadDir = path.join(__dirname, 'uploads');
 if (!fs.existsSync(uploadDir)) {
     fs.mkdirSync(uploadDir, { recursive: true });
 }
 const upload = multer({ dest: uploadDir });
-const rateLimit = require('express-rate-limit');
 
 const app = express();
+
+// --- SECURITY MIDDLEWARE ---
+// Apply helmet for security headers
+app.use(helmet({
+    contentSecurityPolicy: {
+        directives: {
+            defaultSrc: ["'self'"],
+            scriptSrc: ["'self'"],
+            styleSrc: ["'self'", "'unsafe-inline'"],
+            imgSrc: ["'self'", 'data:', 'https:'],
+            connectSrc: ["'self'"],
+            fontSrc: ["'self'"],
+            objectSrc: ["'none'"],
+            mediaSrc: ["'self'"],
+            frameSrc: ["'none'"]
+        }
+    },
+    hsts: {
+        maxAge: 31536000,           // 1 year
+        includeSubDomains: true,
+        preload: true
+    },
+    noSniff: true,                  // X-Content-Type-Options: nosniff
+    xssFilter: true,                // X-XSS-Protection
+    referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
+    dnsPrefetchControl: { allow: false }
+}));
+
 app.set('trust proxy', 1);
-app.use(express.json());
+app.use(express.json({ limit: '1mb' }));  // Limit request size
+app.use(express.urlencoded({ limit: '1mb', extended: true }));
+
+// --- RESTRICTIVE CORS CONFIGURATION ---
+const ALLOWED_ORIGINS = [
+    process.env.FRONTEND_URL || 'http://localhost:3000',
+    process.env.ADMIN_URL || 'http://localhost:3001',
+    'http://localhost',
+    'http://127.0.0.1'
+];
 
 app.use((req, res, next) => {
-    res.header('Access-Control-Allow-Origin', '*');
+    const origin = req.headers.origin;
+    
+    // For production, strictly validate origin
+    if (process.env.NODE_ENV === 'production') {
+        if (origin && ALLOWED_ORIGINS.includes(origin)) {
+            res.header('Access-Control-Allow-Origin', origin);
+        }
+    } else {
+        // Development: allow localhost variants
+        if (!origin || origin.includes('localhost') || origin.includes('127.0.0.1')) {
+            res.header('Access-Control-Allow-Origin', origin || 'http://localhost');
+        }
+    }
+    
     res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
     res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization, x-api-key, x-user-identity');
+    res.header('Access-Control-Allow-Credentials', 'true');
+    res.header('Access-Control-Max-Age', '86400');  // 24 hours
+    
     if (req.method === 'OPTIONS') {
         return res.sendStatus(200);
+    }
+    next();
+});
+
+// --- REQUEST LOGGING MIDDLEWARE ---
+app.use((req, res, next) => {
+    // Log only authenticated requests for sensitive operations
+    const isSensitive = req.path.includes('/api/search') || req.path.includes('/api/fabric');
+    if (isSensitive) {
+        console.log(`[${new Date().toISOString()}] ${req.method} ${req.path} from ${req.ip}`);
     }
     next();
 });
@@ -1046,6 +1110,320 @@ app.post('/api/batch-upload', (req, res, next) => {
     } catch (error) {
         console.error('[BatchUpload] Error:', error.message);
         res.status(500).json({ error: error.message });
+    }
+});
+
+// --- SEARCH INDEX API ENDPOINTS (HARDENED) ---
+const searchService = require('./searchService');
+
+/**
+ * Rate limiters for search endpoints
+ * Stricter limits on search than general API to prevent abuse
+ */
+const searchLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,  // 15 minutes
+    max: 100,                  // 100 requests per 15 minutes
+    message: { error: 'Too many search requests, please try again after 15 minutes.' },
+    standardHeaders: true,
+    legacyHeaders: false,
+    skip: (req) => req.isInternal,  // Skip limit for internal API key
+});
+
+const reindexLimiter = rateLimit({
+    windowMs: 60 * 60 * 1000,  // 60 minutes
+    max: 5,                    // 5 reindex requests per hour (admin only)
+    message: { error: 'Too many reindex requests, please try again later.' },
+    standardHeaders: true,
+    legacyHeaders: false,
+    skip: (req) => req.isInternal
+});
+
+/**
+ * Audit log for search operations
+ * @param {Object} req - Express request
+ * @param {string} operation - Operation type
+ * @param {Object} details - Operation details
+ */
+const logSearchAudit = (req, operation, details) => {
+    const timestamp = new Date().toISOString();
+    const userId = req.user?.email || 'unknown';
+    const ip = req.ip;
+    console.log(`[SEARCH_AUDIT] ${timestamp} | User: ${userId} | IP: ${ip} | Op: ${operation} | Details: ${JSON.stringify(details)}`);
+};
+
+/**
+ * Initialize search index with current data
+ * RESTRICTED: Admin and Registrar only
+ * Called periodically or on-demand to refresh the index
+ */
+app.post('/api/search/reindex', authenticateJWT, reindexLimiter, async (req, res) => {
+    try {
+        // Check admin/registrar privilege
+        if (!req.isInternal && req.user?.role !== 'RegistrarMSP' && req.user?.role !== 'AdminMSP') {
+            logSearchAudit(req, 'REINDEX_DENIED', { reason: 'Insufficient privileges' });
+            return res.status(403).json({ error: 'Reindex requires administrative privileges.' });
+        }
+
+        logSearchAudit(req, 'REINDEX_START', { timestamp: Date.now() });
+
+        try {
+            // Index users from database
+            const usersResult = await db.query('SELECT id, email, first_name, last_name, role, mspid FROM Users');
+            searchService.indexUsers(usersResult.rows);
+
+            // Index grades - fetch from blockchain via gateway
+            const gradesChaincodeResponse = await invokeChaincode(
+                'AcademicRecordChaincode',
+                'GetAllAcademicRecords',
+                [],
+                process.env.REGISTRAR_ID || 'registrar'
+            );
+            
+            if (gradesChaincodeResponse && gradesChaincodeResponse.trim()) {
+                try {
+                    const gradesData = JSON.parse(gradesChaincodeResponse);
+                    searchService.indexGrades(gradesData);
+                } catch (parseErr) {
+                    console.warn('[SearchIndex] Could not parse grades from chaincode:', parseErr.message);
+                }
+            }
+
+            // Index registrations from database
+            const registrationsResult = await db.query(
+                `SELECT id, email, first_name, last_name, role, status, created_at 
+                 FROM RegistrationRequests ORDER BY created_at DESC`
+            );
+            searchService.indexRegistrations(registrationsResult.rows);
+
+            const stats = searchService.getStats();
+            logSearchAudit(req, 'REINDEX_SUCCESS', stats);
+
+            res.json({
+                success: true,
+                stats: stats,
+                message: 'Search index updated successfully',
+                timestamp: new Date().toISOString()
+            });
+        } catch (error) {
+            logSearchAudit(req, 'REINDEX_ERROR', { error: error.message });
+            // Don't expose internal errors
+            console.error('[SearchIndex] Reindex error:', error.message);
+            res.status(500).json({ error: 'Index update failed. Please contact support.' });
+        }
+    } catch (error) {
+        console.error('[SearchIndex] Reindex error:', error.message);
+        res.status(500).json({ error: 'Index update failed. Please contact support.' });
+    }
+});
+
+/**
+ * Search across indexed data
+ * Query params:
+ *   - q: search query (required, validated)
+ *   - types: comma-separated types to search (grades,users,registrations)
+ *   - filters: JSON object for additional filtering (optional, validated)
+ */
+app.get('/api/search', authenticateJWT, searchLimiter, (req, res) => {
+    try {
+        const { q, types, filters } = req.query;
+
+        if (!q || !q.trim()) {
+            logSearchAudit(req, 'SEARCH_FAILED', { reason: 'Missing query' });
+            return res.status(400).json({ error: 'Search query (q) is required' });
+        }
+
+        try {
+            const searchTypes = types 
+                ? types.split(',').map(t => t.trim())
+                : ['grades', 'users', 'registrations'];
+
+            let filterObj = {};
+            if (filters) {
+                try {
+                    filterObj = JSON.parse(filters);
+                } catch (parseErr) {
+                    logSearchAudit(req, 'SEARCH_FAILED', { reason: 'Invalid filter JSON', query: q.substring(0, 50) });
+                    return res.status(400).json({ error: 'Invalid filters format. Must be valid JSON.' });
+                }
+            }
+
+            const results = searchService.search(q.trim(), searchTypes, filterObj);
+            const resultCount = Object.values(results).reduce((sum, arr) => sum + (Array.isArray(arr) ? arr.length : 0), 0);
+
+            logSearchAudit(req, 'SEARCH_SUCCESS', { query: q.substring(0, 50), types: searchTypes, resultCount });
+
+            res.json({
+                success: true,
+                query: q,
+                types: searchTypes,
+                results: results,
+                resultCount: resultCount,
+                stats: searchService.getStats()
+            });
+        } catch (validationError) {
+            logSearchAudit(req, 'SEARCH_FAILED', { reason: validationError.message, query: q.substring(0, 50) });
+            return res.status(400).json({ error: 'Invalid search parameters: ' + validationError.message });
+        }
+    } catch (error) {
+        console.error('[Search] Error:', error.message);
+        // Don't expose internal errors
+        res.status(500).json({ error: 'Search failed. Please try again.' });
+    }
+});
+
+/**
+ * Search grades only
+ * Supports: /api/search/grades
+ */
+app.get('/api/search/grades', authenticateJWT, searchLimiter, (req, res) => {
+    try {
+        const { q, filters } = req.query;
+        
+        if (!q || !q.trim()) {
+            logSearchAudit(req, 'SEARCH_GRADES_FAILED', { reason: 'Missing query' });
+            return res.status(400).json({ error: 'Search query (q) is required' });
+        }
+
+        try {
+            let filterObj = {};
+            if (filters) {
+                try {
+                    filterObj = JSON.parse(filters);
+                } catch (parseErr) {
+                    logSearchAudit(req, 'SEARCH_GRADES_FAILED', { reason: 'Invalid filter JSON' });
+                    return res.status(400).json({ error: 'Invalid filters format. Must be valid JSON.' });
+                }
+            }
+
+            const results = searchService.search(q.trim(), ['grades'], filterObj);
+            const gradeResults = results.grades || [];
+
+            logSearchAudit(req, 'SEARCH_GRADES_SUCCESS', { resultCount: gradeResults.length });
+
+            res.json({
+                success: true,
+                query: q,
+                results: gradeResults,
+                count: gradeResults.length
+            });
+        } catch (validationError) {
+            logSearchAudit(req, 'SEARCH_GRADES_FAILED', { reason: validationError.message });
+            return res.status(400).json({ error: 'Invalid search parameters: ' + validationError.message });
+        }
+    } catch (error) {
+        console.error('[SearchGrades] Error:', error.message);
+        res.status(500).json({ error: 'Search failed. Please try again.' });
+    }
+});
+
+/**
+ * Search users only
+ * Supports: /api/search/users
+ */
+app.get('/api/search/users', authenticateJWT, searchLimiter, (req, res) => {
+    try {
+        const { q, filters } = req.query;
+
+        if (!q || !q.trim()) {
+            logSearchAudit(req, 'SEARCH_USERS_FAILED', { reason: 'Missing query' });
+            return res.status(400).json({ error: 'Search query (q) is required' });
+        }
+
+        try {
+            let filterObj = {};
+            if (filters) {
+                try {
+                    filterObj = JSON.parse(filters);
+                } catch (parseErr) {
+                    logSearchAudit(req, 'SEARCH_USERS_FAILED', { reason: 'Invalid filter JSON' });
+                    return res.status(400).json({ error: 'Invalid filters format. Must be valid JSON.' });
+                }
+            }
+
+            const results = searchService.search(q.trim(), ['users'], filterObj);
+            const userResults = results.users || [];
+
+            logSearchAudit(req, 'SEARCH_USERS_SUCCESS', { resultCount: userResults.length });
+
+            res.json({
+                success: true,
+                query: q,
+                results: userResults,
+                count: userResults.length
+            });
+        } catch (validationError) {
+            logSearchAudit(req, 'SEARCH_USERS_FAILED', { reason: validationError.message });
+            return res.status(400).json({ error: 'Invalid search parameters: ' + validationError.message });
+        }
+    } catch (error) {
+        console.error('[SearchUsers] Error:', error.message);
+        res.status(500).json({ error: 'Search failed. Please try again.' });
+    }
+});
+
+/**
+ * Search registrations only
+ * Supports: /api/search/registrations
+ */
+app.get('/api/search/registrations', authenticateJWT, searchLimiter, (req, res) => {
+    try {
+        const { q, filters } = req.query;
+
+        if (!q || !q.trim()) {
+            logSearchAudit(req, 'SEARCH_REGISTRATIONS_FAILED', { reason: 'Missing query' });
+            return res.status(400).json({ error: 'Search query (q) is required' });
+        }
+
+        try {
+            let filterObj = {};
+            if (filters) {
+                try {
+                    filterObj = JSON.parse(filters);
+                } catch (parseErr) {
+                    logSearchAudit(req, 'SEARCH_REGISTRATIONS_FAILED', { reason: 'Invalid filter JSON' });
+                    return res.status(400).json({ error: 'Invalid filters format. Must be valid JSON.' });
+                }
+            }
+
+            const results = searchService.search(q.trim(), ['registrations'], filterObj);
+            const regResults = results.registrations || [];
+
+            logSearchAudit(req, 'SEARCH_REGISTRATIONS_SUCCESS', { resultCount: regResults.length });
+
+            res.json({
+                success: true,
+                query: q,
+                results: regResults,
+                count: regResults.length
+            });
+        } catch (validationError) {
+            logSearchAudit(req, 'SEARCH_REGISTRATIONS_FAILED', { reason: validationError.message });
+            return res.status(400).json({ error: 'Invalid search parameters: ' + validationError.message });
+        }
+    } catch (error) {
+        console.error('[SearchRegistrations] Error:', error.message);
+        res.status(500).json({ error: 'Search failed. Please try again.' });
+    }
+});
+
+/**
+ * Get search index statistics
+ * RESTRICTED: Admin and Registrar only
+ */
+app.get('/api/search/stats', authenticateJWT, (req, res) => {
+    try {
+        // Restrict stats to admin/registrar
+        if (!req.isInternal && req.user?.role !== 'RegistrarMSP' && req.user?.role !== 'AdminMSP') {
+            logSearchAudit(req, 'STATS_DENIED', { reason: 'Insufficient privileges' });
+            return res.status(403).json({ error: 'Index statistics require administrative privileges.' });
+        }
+
+        const stats = searchService.getStats();
+        logSearchAudit(req, 'STATS_ACCESSED', {});
+        res.json(stats);
+    } catch (error) {
+        console.error('[SearchStats] Error:', error.message);
+        res.status(500).json({ error: 'Failed to retrieve statistics.' });
     }
 });
 
