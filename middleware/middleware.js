@@ -47,13 +47,6 @@ const db = new Pool({
 db.on('error', (err, client) => {
     console.error('Unexpected error on idle PostgreSQL client:', err);
 });
-
-db.query(`
-    ALTER TABLE Users 
-    ADD COLUMN IF NOT EXISTS password_reset_token VARCHAR(255),
-    ADD COLUMN IF NOT EXISTS password_reset_expires BIGINT;
-`).catch(err => console.error("Error updating database schema:", err));
-
 async function getWallet() {
     let couchUrl = process.env.COUCHDB_WALLET_URL;
     if (!couchUrl && process.env.COUCHDB_USER && process.env.COUCHDB_PASS) {
@@ -443,7 +436,7 @@ app.get('/api/bootstrap', async (req, res) => {
         }
 
         const hash = await bcrypt.hash(pass, 10);
-        const userRes = await db.query("INSERT INTO Users (email, password_hash, role, status) VALUES ($1, $2, 'registrar', 'APPROVED') RETURNING id", [email, hash]);
+        const userRes = await db.query("INSERT INTO Users (username, email, password_hash, role, status) VALUES ($1, $2, $3, 'registrar', 'APPROVED') RETURNING id", ['registrar', email, hash]);
         await db.query("INSERT INTO AdminProfiles (user_id, full_name, admin_level) VALUES ($1, 'System Registrar', 'registrar')", [userRes.rows[0].id]);
 
         const result = await fetch(`http://127.0.0.1:${process.env.PORT || 4000}/api/fabric/register-user`, {

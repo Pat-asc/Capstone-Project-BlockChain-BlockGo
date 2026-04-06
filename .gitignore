@@ -8,10 +8,15 @@ obj/
 *.user
 *.suo
 .env
+.env.bak
 .fake
 __pycache__/
 *.pyc
-network/crypto-config/
+
+# Ignore generated certs but keep the directory (requires an empty .gitkeep file inside)
+network/crypto-config/*
+!network/crypto-config/.gitkeep
+
 network/fabric-ca/*/msp/
 network/fabric-ca/*/tls/
 network/fabric-ca/**/*.db
@@ -23,7 +28,11 @@ client-app/obj/
 *.cache.json
 network/postgres-data/
 network/ipfs/
-network/bin/
+
+# Ignore downloaded binaries but keep the directory
+network/bin/*
+!network/bin/.gitkeep
+
 network/*.block
 network/*.tar.gz
 
@@ -38,12 +47,11 @@ frontend/build/
 client-app/logs/
 
 # Hyperledger Fabric & Application Generated Artifacts
-network/channel-artifacts/
+network/channel-artifacts/*
+!network/channel-artifacts/.gitkeep
+
 middleware/wallet/
 network/fabric-samples/
-network/connection.json
-network/metadata.json
-network/collections.json
 
 # OS & Editor specific (good practice)
 .vscode/
