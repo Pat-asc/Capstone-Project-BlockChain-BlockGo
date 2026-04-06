@@ -29,7 +29,7 @@ const HoverableID = ({ fullId, isAuthorized }) => {
     );
 };
 
-const GradesDashboard = ({ loggedInEmail, loggedInName }) => {
+const GradesDashboard = ({ loggedInEmail = '', loggedInName = '' }) => {
     const [grades, setGrades] = useState([]);
     const [loading, setLoading] = useState(true);
     const [errorMsg, setErrorMsg] = useState(null); 
@@ -571,8 +571,7 @@ const GradesDashboard = ({ loggedInEmail, loggedInName }) => {
 
                         <tbody>
                             {sortedAndFilteredRequests.length === 0 ? (
-                                <tr >
-
+                                <tr>
                                     <td colSpan="7" style={{ padding: '20px', textAlign: 'center', color: '#777' }}>
                                         {pendingRequests.length > 0 ? 'No requests match your search.' : 'No pending registration requests.'}
                                     </td>
