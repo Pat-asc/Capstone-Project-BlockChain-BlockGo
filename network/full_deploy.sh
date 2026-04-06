@@ -79,17 +79,24 @@ if command -v apt-get >/dev/null 2>&1; then
     fi
 
     # 2. .NET 8.0 SDK (Moved safely inside the apt-get check)
+    NEED_DOTNET_8=false
     if ! command -v dotnet >/dev/null 2>&1; then
-        log_info ".NET SDK not found. Installing .NET 8.0 SDK..."
+        NEED_DOTNET_8=true
+    elif ! dotnet --list-runtimes | grep -q "Microsoft.AspNetCore.App 8.0"; then
+        NEED_DOTNET_8=true
+    fi
+
+    if [ "$NEED_DOTNET_8" = true ]; then
+        log_info "ASP.NET Core 8.0 runtime not found. Installing .NET 8.0 SDK and Runtime..."
         wget https://packages.microsoft.com/config/ubuntu/22.04/packages-microsoft-prod.deb -O packages-microsoft-prod.deb >/dev/null 2>&1
         $SUDO dpkg -i packages-microsoft-prod.deb >/dev/null 2>&1
         rm packages-microsoft-prod.deb
         
         $SUDO apt-get update -yqq >/dev/null 2>&1 || true
-        $SUDO apt-get install -y dotnet-sdk-8.0 >/dev/null 2>&1
-        log_info ".NET SDK 8.0 installed successfully."
+        $SUDO apt-get install -y dotnet-sdk-8.0 aspnetcore-runtime-8.0 >/dev/null 2>&1
+        log_info ".NET SDK 8.0 and ASP.NET Core Runtime installed successfully."
     else
-        log_info ".NET SDK is already installed ($(dotnet --version))."
+        log_info "ASP.NET Core 8.0 runtime is already installed."
     fi
 
     # 3. Node.js

@@ -667,7 +667,7 @@ const GradesDashboard = ({ loggedInEmail = '', loggedInName = '' }) => {
                         <tbody>
                             {approvedAdmins.length === 0 ? (
                                 <tr>
-                                    <td colSpan="6" style={{ padding: '20px', textAlign: 'center', color: '#777' }}>No approved department admins found.</td>
+                                    <td colSpan="6" style={{ padding: '20px', textAlign: 'center', color: '#777' }}>No approved department admins waiting for assignment.</td>
                                 </tr>
                             ) : (
                                 approvedAdmins.map((admin, index) => (
@@ -718,17 +718,23 @@ const GradesDashboard = ({ loggedInEmail = '', loggedInName = '' }) => {
                         <tbody>
                             {approvedFaculties.length === 0 ? (
                                 <tr>
-                                    <td colSpan="7" style={{ padding: '20px', textAlign: 'center', color: '#777' }}>No approved faculties found.</td>
+                                    <td colSpan="7" style={{ padding: '20px', textAlign: 'center', color: '#777' }}>No approved faculty members waiting for assignment.</td>
                                 </tr>
                             ) : (
                                 approvedFaculties.map((faculty, index) => (
                                     <tr key={faculty.id} style={{ backgroundColor: index % 2 === 0 ? '#ffffff' : '#f8f9fa', borderBottom: '1px solid #eee' }}>
                                         <td style={{ padding: '15px', fontWeight: 'bold' }}>{faculty.fullname}</td>
                                         <td style={{ padding: '15px' }}>{faculty.email}</td>
-                                        <td style={{ padding: '15px', fontSize: '0.85em' }}>
-                                            Dept: {faculty.department}<br/>
-                                            Sec: {faculty.section}<br/>
-                                            Yr: {faculty.yearLevel}
+                                        <td style={{ padding: '15px' }}>
+                                            {(!faculty.department || faculty.department === 'Unassigned') ? (
+                                                <span style={{ padding: '6px 12px', borderRadius: '20px', fontSize: '0.85em', fontWeight: 'bold', backgroundColor: '#ffebee', color: '#d32f2f' }}>
+                                                    Unassigned
+                                                </span>
+                                            ) : (
+                                                <span style={{ padding: '6px 12px', borderRadius: '8px', fontSize: '0.85em', fontWeight: 'bold', backgroundColor: '#e6f4ea', color: '#1e8e3e', display: 'inline-block' }}>
+                                                    {faculty.department} - {faculty.yearLevel}{faculty.section}
+                                                </span>
+                                            )}
                                         </td>
                                         <td style={{ padding: '15px' }}>
                                             <select defaultValue="" onChange={(e) => setFacultyAssignments(prev => ({...prev, [faculty.id]: {...prev[faculty.id], department: e.target.value}}))} style={{ padding: '8px', borderRadius: '4px', border: '1px solid #ccc' }}>

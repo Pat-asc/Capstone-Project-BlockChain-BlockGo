@@ -230,6 +230,7 @@ const Login = ({ onLogin }) => {
                   <select value={role} onChange={(e) => setRole(e.target.value)} style={{ width: '100%', padding: '12px', border: '1px solid #ddd', borderRadius: '8px', boxSizing: 'border-box' }}>
                     <option value="student">Student</option>
                     <option value="faculty">Faculty / Professor</option>
+                    <option value="department_admin">Department Admin</option>
                   </select>
                 </div>
                 {role === "student" && (
