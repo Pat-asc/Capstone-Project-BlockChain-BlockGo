@@ -13,71 +13,67 @@
 #
 ################################################################################
 Organizations:
-    - &OrdererOrg
-        Name: OrdererMSP
-        ID: OrdererMSP
-        MSPDir: ../crypto-config/ordererOrganizations/capstone.com/msp
-        Policies:
+
+    # SampleOrg defines an MSP using the sampleconfig. It should never be used
+    # in production but may be used as a template for other definitions.
+    - &SampleOrg
+        # Name is the key by which this org will be referenced in channel
+        # configuration transactions.
+        # Name can include alphanumeric characters as well as dots and dashes.
+        Name: SampleOrg
+
+        # SkipAsForeign can be set to true for org definitions which are to be
+        # inherited from the orderer system channel during channel creation.  This
+        # is especially useful when an admin of a single org without access to the
+        # MSP directories of the other orgs wishes to create a channel.  Note
+        # this property must always be set to false for orgs included in block
+        # creation.
+        SkipAsForeign: false
+
+        # ID is the key by which this org's MSP definition will be referenced.
+        # ID can include alphanumeric characters as well as dots and dashes.
+        ID: SampleOrg
+
+        # MSPDir is the filesystem path which contains the MSP configuration.
+        MSPDir: msp
+
+        # Policies defines the set of policies at this level of the config tree
+        # For organization policies, their canonical path is usually
+        #   /Channel/<Application|Orderer>/<OrgName>/<PolicyName>
+        Policies: &SampleOrgPolicies
             Readers:
                 Type: Signature
-                Rule: "OR('OrdererMSP.member')"
+                Rule: "OR('SampleOrg.member')"
+                # If your MSP is configured with the new NodeOUs, you might
+                # want to use a more specific rule like the following:
+                # Rule: "OR('SampleOrg.admin', 'SampleOrg.peer', 'SampleOrg.client')"
             Writers:
                 Type: Signature
-                Rule: "OR('OrdererMSP.member')"
+                Rule: "OR('SampleOrg.member')"
+                # If your MSP is configured with the new NodeOUs, you might
+                # want to use a more specific rule like the following:
+                # Rule: "OR('SampleOrg.admin', 'SampleOrg.client')"
             Admins:
                 Type: Signature
-                Rule: "OR('OrdererMSP.admin')"
+                Rule: "OR('SampleOrg.admin')"
+            Endorsement:
+                Type: Signature
+                Rule: "OR('SampleOrg.member')"
 
-    - &Registrar
-        Name: RegistrarMSP
-        ID: RegistrarMSP
-        MSPDir: ../crypto-config/peerOrganizations/registrar.capstone.com/msp
-        Policies:
-            Readers:
-                Type: Signature
-                Rule: "OR('RegistrarMSP.member')"
-            Writers:
-                Type: Signature
-                Rule: "OR('RegistrarMSP.member')"
-            Admins:
-                Type: Signature
-                Rule: "OR('RegistrarMSP.member')"
-
-    - &Faculty
-        Name: FacultyMSP
-        ID: FacultyMSP
-        MSPDir: ../crypto-config/peerOrganizations/faculty.capstone.com/msp
-        Policies:
-            Readers:
-                Type: Signature
-                Rule: "OR('FacultyMSP.member')"
-            Writers:
-                Type: Signature
-                Rule: "OR('FacultyMSP.member')"
-            Admins:
-                Type: Signature
-                Rule: "OR('FacultyMSP.member')"
-
-    - &Department
-        Name: DepartmentMSP
-        ID: DepartmentMSP
-        MSPDir: ../crypto-config/peerOrganizations/department.capstone.com/msp
-        Policies:
-            Readers:
-                Type: Signature
-                Rule: "OR('DepartmentMSP.member')"
-            Writers:
-                Type: Signature
-                Rule: "OR('DepartmentMSP.member')"
-            Admins:
-                Type: Signature
-                Rule: "OR('DepartmentMSP.member')"
-
+        # OrdererEndpoints is a list of all orderers this org runs which clients
+        # and peers may to connect to to push transactions and receive blocks respectively.
         OrdererEndpoints:
-            - "orderer.capstone.com:7050"
+            - "127.0.0.1:7050"
 
+        # AnchorPeers defines the location of peers which can be used for
+        # cross-org gossip communication.
+        #
+        # NOTE: this value should only be set when using the deprecated
+        # `configtxgen --outputAnchorPeersUpdate` command. It is recommended
+        # to instead use the channel configuration update process to set the
+        # anchor peers for each organization.
         AnchorPeers:
-            - Host: peer0.registrar.capstone.com
+            - Host: 127.0.0.1
               Port: 7051
 
 ################################################################################
@@ -445,27 +441,200 @@ Channel: &ChannelDefaults
 #
 ################################################################################
 Profiles:
-    UniversityGenesis:
+
+    # SampleSingleMSPSolo defines a configuration which uses the Solo orderer,
+    # and contains a single MSP definition (the MSP sampleconfig).
+    # The Consortium SampleConsortium has only a single member, SampleOrg.
+    SampleSingleMSPSolo:
         <<: *ChannelDefaults
         Orderer:
             <<: *OrdererDefaults
             Organizations:
-                - *OrdererOrg
-            Capabilities:
-                <<: *OrdererCapabilities
+                - *SampleOrg
         Consortiums:
-            UniversityConsortium:
+            SampleConsortium:
                 Organizations:
-                    - *Registrar
-                    - *Faculty
-                    - *Department
-    RegistrarChannel:
-        Consortium: UniversityConsortium
+                    - *SampleOrg
+
+    # SampleSingleMSPKafka defines a configuration that differs from the
+    # SampleSingleMSPSolo one only in that it uses the Kafka-based orderer.
+    SampleSingleMSPKafka:
+        <<: *ChannelDefaults
+        Orderer:
+            <<: *OrdererDefaults
+            OrdererType: kafka
+            Organizations:
+                - *SampleOrg
+        Consortiums:
+            SampleConsortium:
+                Organizations:
+                    - *SampleOrg
+
+    # SampleInsecureSolo defines a configuration which uses the Solo orderer,
+    # contains no MSP definitions, and allows all transactions and channel
+    # creation requests for the consortium SampleConsortium.
+    SampleInsecureSolo:
+        <<: *ChannelDefaults
+        Orderer:
+            <<: *OrdererDefaults
+        Consortiums:
+            SampleConsortium:
+                Organizations:
+
+    # SampleInsecureKafka defines a configuration that differs from the
+    # SampleInsecureSolo one only in that it uses the Kafka-based orderer.
+    SampleInsecureKafka:
+        <<: *ChannelDefaults
+        Orderer:
+            <<: *OrdererDefaults
+            OrdererType: kafka
+        Consortiums:
+            SampleConsortium:
+                Organizations:
+
+    # SampleDevModeSolo defines a configuration which uses the Solo orderer,
+    # contains the sample MSP as both orderer and consortium member, and
+    # requires only basic membership for admin privileges. It also defines
+    # an Application on the ordering system channel, which should usually
+    # be avoided.
+    SampleDevModeSolo:
+        <<: *ChannelDefaults
+        Orderer:
+            <<: *OrdererDefaults
+            Organizations:
+                - <<: *SampleOrg
+                  Policies:
+                      <<: *SampleOrgPolicies
+                      Admins:
+                          Type: Signature
+                          Rule: "OR('SampleOrg.member')"
         Application:
             <<: *ApplicationDefaults
             Organizations:
-                - *Registrar
-                - *Faculty
-                - *Department
-            Capabilities:
-                <<: *ApplicationCapabilities
+                - <<: *SampleOrg
+                  Policies:
+                      <<: *SampleOrgPolicies
+                      Admins:
+                          Type: Signature
+                          Rule: "OR('SampleOrg.member')"
+        Consortiums:
+            SampleConsortium:
+                Organizations:
+                    - <<: *SampleOrg
+                      Policies:
+                          <<: *SampleOrgPolicies
+                          Admins:
+                              Type: Signature
+                              Rule: "OR('SampleOrg.member')"
+
+    # SampleDevModeKafka defines a configuration that differs from the
+    # SampleDevModeSolo one only in that it uses the Kafka-based orderer.
+    SampleDevModeKafka:
+        <<: *ChannelDefaults
+        Orderer:
+            <<: *OrdererDefaults
+            OrdererType: kafka
+            Organizations:
+                - <<: *SampleOrg
+                  Policies:
+                      <<: *SampleOrgPolicies
+                      Admins:
+                          Type: Signature
+                          Rule: "OR('SampleOrg.member')"
+        Application:
+            <<: *ApplicationDefaults
+            Organizations:
+                - <<: *SampleOrg
+                  Policies:
+                      <<: *SampleOrgPolicies
+                      Admins:
+                          Type: Signature
+                          Rule: "OR('SampleOrg.member')"
+        Consortiums:
+            SampleConsortium:
+                Organizations:
+                    - <<: *SampleOrg
+                      Policies:
+                          <<: *SampleOrgPolicies
+                          Admins:
+                              Type: Signature
+                              Rule: "OR('SampleOrg.member')"
+
+    # SampleSingleMSPChannel defines a channel with only the sample org as a
+    # member. It is designed to be used in conjunction with SampleSingleMSPSolo
+    # and SampleSingleMSPKafka orderer profiles.   Note, for channel creation
+    # profiles, only the 'Application' section and consortium # name are
+    # considered.
+    SampleSingleMSPChannel:
+        <<: *ChannelDefaults
+        Consortium: SampleConsortium
+        Application:
+            <<: *ApplicationDefaults
+            Organizations:
+                - <<: *SampleOrg
+
+    # SampleDevModeEtcdRaft defines a configuration that differs from the
+    # SampleDevModeSolo one only in that it uses the etcd/raft-based orderer.
+    SampleDevModeEtcdRaft:
+        <<: *ChannelDefaults
+        Orderer:
+            <<: *OrdererDefaults
+            OrdererType: etcdraft
+            Organizations:
+                - <<: *SampleOrg
+                  Policies:
+                      <<: *SampleOrgPolicies
+                      Admins:
+                          Type: Signature
+                          Rule: "OR('SampleOrg.member')"
+        Application:
+            <<: *ApplicationDefaults
+            Organizations:
+                - <<: *SampleOrg
+                  Policies:
+                      <<: *SampleOrgPolicies
+                      Admins:
+                          Type: Signature
+                          Rule: "OR('SampleOrg.member')"
+        Consortiums:
+            SampleConsortium:
+                Organizations:
+                    - <<: *SampleOrg
+                      Policies:
+                          <<: *SampleOrgPolicies
+                          Admins:
+                              Type: Signature
+                              Rule: "OR('SampleOrg.member')"
+
+    # SampleAppChannelInsecureSolo defines an application channel configuration
+    # which uses the Solo orderer and contains no MSP definitions.
+    SampleAppChannelInsecureSolo:
+        <<: *ChannelDefaults
+        Orderer:
+            <<: *OrdererDefaults
+        Application:
+            <<: *ApplicationDefaults
+
+    # SampleAppChannelEtcdRaft defines an application channel configuration
+    # that uses the etcd/raft-based orderer.
+    SampleAppChannelEtcdRaft:
+        <<: *ChannelDefaults
+        Orderer:
+            <<: *OrdererDefaults
+            OrdererType: etcdraft
+            Organizations:
+                - <<: *SampleOrg
+                  Policies:
+                      <<: *SampleOrgPolicies
+                      Admins:
+                          Type: Signature
+                          Rule: "OR('SampleOrg.member')"
+        Application:
+            <<: *ApplicationDefaults
+            Organizations:
+                - <<: *SampleOrg
+                  Policies:
+                      <<: *SampleOrgPolicies
+                      Admins:
+                          Type: Signature
+                          Rule: "OR('SampleOrg.member')"

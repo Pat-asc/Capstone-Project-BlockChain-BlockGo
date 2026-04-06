@@ -273,7 +273,7 @@ peer:
     # TLS Settings
     tls:
         # Require server-side TLS
-        enabled:  true
+        enabled:  false
         # Require client certificates / mutual TLS for inbound connections.
         # Note that clients that are not configured to use a certificate will
         # fail to connect to the peer.
@@ -755,7 +755,7 @@ operations:
     # TLS configuration for the operations endpoint
     tls:
         # TLS enabled
-        enabled: true
+        enabled: false
 
         # path to PEM encoded server certificate for the operations server
         # The paths in this section may be relative to FABRIC_CFG_PATH or an absolute path.

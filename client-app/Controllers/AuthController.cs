@@ -13,6 +13,7 @@ using System.IO;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
+using System.Security.Cryptography;
 
 
 namespace Client_app.Controllers
@@ -57,7 +58,7 @@ namespace Client_app.Controllers
                 }
             }
 
-            var verificationCode = new Random().Next(100000, 999999).ToString();
+            var verificationCode = RandomNumberGenerator.GetInt32(100000, 1000000).ToString();
             var cacheKey = $"verification_{request.Email}";
             _cache.Set(cacheKey, verificationCode, TimeSpan.FromMinutes(10));
 
@@ -312,7 +313,6 @@ namespace Client_app.Controllers
         [HttpDelete("requests/cleanup-pending")]
         public async Task<IActionResult> CleanupPendingRequests()
         {
-            // Require Internal API Key to prevent external abuse
             var requestApiKey = Request.Headers["x-api-key"].ToString();
             var configuredApiKey = _configuration["InternalApiKey"] ?? throw new InvalidOperationException("Internal API Key not configured.");
             if (requestApiKey != configuredApiKey)
@@ -719,9 +719,9 @@ namespace Client_app.Controllers
             var imagePath = Path.Combine(Directory.GetCurrentDirectory(), "..", "frontend", "src", "assets", "plvlogo.png");
             string logoSrc;
             
-            if (File.Exists(imagePath))
+            if (System.IO.File.Exists(imagePath))
             {
-                byte[] imageBytes = File.ReadAllBytes(imagePath);
+                byte[] imageBytes = System.IO.File.ReadAllBytes(imagePath);
                 logoSrc = $"data:image/png;base64,{Convert.ToBase64String(imageBytes)}";
             }
             else
@@ -761,7 +761,7 @@ namespace Client_app.Controllers
 
                 string query = "";
                 NpgsqlCommand cmd;
-                UserProfileDto userProfile = null;
+                UserProfileDto? userProfile = null;
 
                 // Base query to get user info
                 string baseQuery = "SELECT u.id, u.email, u.role, u.status, ";

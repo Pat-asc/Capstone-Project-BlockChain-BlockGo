@@ -31,7 +31,7 @@ public partial class RegistrarDbContext : DbContext
             
             if (string.IsNullOrEmpty(connectionString))
             {
-                connectionString = "Host=127.0.0.1;Database=AcitivityLogs;Username=BLOCKGO;Password=PLVBLOCKGO";
+                throw new InvalidOperationException("The connection string 'PostgresConnection' is missing from configuration.");
             }
 
             optionsBuilder.UseNpgsql(connectionString);

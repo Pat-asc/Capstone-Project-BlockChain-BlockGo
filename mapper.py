@@ -3,16 +3,55 @@ import os
 import pandas as pd
 import json
 import requests
+import ipfshttpclient
 from pathlib import Path
 from dotenv import load_dotenv
 
 load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), 'network', '.env'), override=True)
 
 class GradeMapper:
-    def __init__(self, csharp_api_url='http://localhost:5000', api_key=None):
+    def __init__(self, csharp_api_url='http://localhost:5000', api_key=None, ipfs_api_url='/ip4/127.0.0.1/tcp/5001/http'):
         self.csharp_url = csharp_api_url
         self.api_endpoint = f"{csharp_api_url}/api/grades/bulk-upload"
-        self.api_key = api_key or os.getenv('INTERNAL_API_KEY', 'default-internal-secret-change-me')
+        self.api_key = api_key or os.getenv('INTERNAL_API_KEY')
+        if not self.api_key:
+            print("FATAL ERROR: INTERNAL_API_KEY environment variable is missing.")
+            sys.exit(1)
+        self.ipfs_url = os.getenv('IPFS_API_URL', ipfs_api_url)
+        self.ipfs_client = None
+
+    def connect_ipfs(self):
+        """Establish IPFS connection"""
+        try:
+            self.ipfs_client = ipfshttpclient.connect(self.ipfs_url)
+            print(f"Connected to IPFS at {self.ipfs_url}")
+            return True
+        except Exception as e:
+            print(f"IPFS Connection Error: {e}")
+            print(f"Make sure IPFS node is running at {self.ipfs_url}")
+            return False
+
+    def upload_to_ipfs(self, file_path):
+        """Upload file to IPFS and return hash"""
+        try:
+            if not Path(file_path).exists():
+                print(f"Error: File not found: {file_path}")
+                return "FILE_NOT_FOUND"
+            
+            if not self.ipfs_client:
+                if not self.connect_ipfs():
+                    return "CONNECTION_FAILED"
+            
+            try:
+                res = self.ipfs_client.add(file_path, encoding='utf-8')
+                return res['Hash']
+            except Exception:
+                res = self.ipfs_client.add(file_path)
+                return res['Hash']
+            
+        except Exception as e:
+            print(f"IPFS Upload Error: {e}")
+            return "UPLOAD_FAILED"
 
     def excel_to_csv(self, excel_path):
         try:
@@ -32,7 +71,7 @@ class GradeMapper:
             print(f"Error: {e}")
             return None
 
-    def validate_csv(self, csv_path):
+    def validate_csv(self, csv_path, ipfs_cid=None):
         try:
             df = None
             # Try multiple encodings for CSV
@@ -62,9 +101,14 @@ class GradeMapper:
             # Define the exact columns that the C# backend expects
             expected_columns = [
                 'student_id', 'grade', 'course', 'section', 'subject_code',
-                'semester', 'school_year', 'date', 'faculty_id', 'student_hash'
+                'semester', 'school_year', 'date', 'faculty_id', 'student_hash', 'ipfs_cid'
             ]
             
+            if ipfs_cid and ipfs_cid not in ["CONNECTION_FAILED", "UPLOAD_FAILED", "FILE_NOT_FOUND"]:
+                df['ipfs_cid'] = ipfs_cid
+            else:
+                df['ipfs_cid'] = "N/A"
+
             # Filter out any extra junk columns not in our expected list
             columns_to_keep = [col for col in df.columns if col in expected_columns]
             df = df[columns_to_keep]
@@ -115,20 +159,17 @@ def is_excel(file_path):
     try:
         with open(file_path, 'rb') as f:
             signature = f.read(8)
-            # XLSX (zip) starts with 'PK\x03\x04'
-            # XLS (BIFF8) starts with '\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1'
             return signature.startswith(b'PK\x03\x04') or signature.startswith(b'\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1')
     except Exception:
         return False
 
 def main():
     if len(sys.argv) < 3:
-        print("Usage: python mapper_updated.py <csv_or_xlsx> [faculty_id] [api_key]")
+        print("Usage: python mapper.py <csv_or_xlsx> [faculty_id] [api_key]")
         print("Error: Missing required arguments.")
         sys.exit(1)
     
     file_path = sys.argv[1]
-    # Make faculty_id a required argument
     faculty_id = sys.argv[2]
     api_key = sys.argv[3] if len(sys.argv) > 3 else None
 
@@ -137,6 +178,10 @@ def main():
         sys.exit(1)
     
     mapper = GradeMapper(api_key=api_key)
+    
+    print("Uploading grading sheet to IPFS...")
+    ipfs_cid = mapper.upload_to_ipfs(file_path)
+    print(f"File secured on IPFS. CID: {ipfs_cid}")
     
     if is_excel(file_path):
         print("Excel file format detected.")
@@ -148,7 +193,7 @@ def main():
         print("Assuming CSV file format.")
         path_to_process = file_path
 
-    if mapper.validate_csv(path_to_process):
+    if mapper.validate_csv(path_to_process, ipfs_cid):
         success = mapper.upload(path_to_process, faculty_id)
         sys.exit(0 if success else 1)
     else:

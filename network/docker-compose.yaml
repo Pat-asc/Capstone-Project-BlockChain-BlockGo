@@ -68,7 +68,7 @@ services:
       - ./crypto-config/ordererOrganizations/capstone.com/orderers/orderer.capstone.com/tls:/var/hyperledger/orderer/tls
 
   couchdb_registrar:
-    image: couchdb:3.2.2
+    image: couchdb:3.3.3
     container_name: couchdb_registrar
     environment:
       - COUCHDB_USER=${COUCHDB_USER}
@@ -78,7 +78,7 @@ services:
     networks: [registrar-net]
 
   couchdb_registrar_peer1:
-    image: couchdb:3.2.2
+    image: couchdb:3.3.3
     container_name: couchdb_registrar_peer1
     environment:
       - COUCHDB_USER=${COUCHDB_USER}
@@ -88,7 +88,7 @@ services:
     networks: [registrar-net]
 
   couchdb_faculty:
-    image: couchdb:3.2.2
+    image: couchdb:3.3.3
     container_name: couchdb_faculty
     environment:
       - COUCHDB_USER=${COUCHDB_USER}
@@ -98,7 +98,7 @@ services:
     networks: [registrar-net]
 
   couchdb_faculty_peer1:
-    image: couchdb:3.2.2
+    image: couchdb:3.3.3
     container_name: couchdb_faculty_peer1
     environment:
       - COUCHDB_USER=${COUCHDB_USER}
@@ -108,7 +108,7 @@ services:
     networks: [registrar-net]
 
   couchdb_department:
-    image: couchdb:3.2.2
+    image: couchdb:3.3.3
     container_name: couchdb_department
     environment:
       - COUCHDB_USER=${COUCHDB_USER}
@@ -118,7 +118,7 @@ services:
     networks: [registrar-net]
 
   couchdb_department_peer1:
-    image: couchdb:3.2.2
+    image: couchdb:3.3.3
     container_name: couchdb_department_peer1
     environment:
       - COUCHDB_USER=${COUCHDB_USER}

@@ -21,7 +21,7 @@ General:
     # TLS: TLS settings for the GRPC server.
     TLS:
         # Require server-side TLS
-        Enabled: true
+        Enabled: false
         # PrivateKey governs the file location of the private key of the TLS certificate.
         PrivateKey: tls/server.key
         # Certificate governs the file location of the server TLS certificate.
@@ -314,7 +314,7 @@ Operations:
     # TLS configuration for the operations endpoint
     TLS:
         # TLS enabled
-        Enabled: true
+        Enabled: false
 
         # Certificate is the location of the PEM encoded TLS certificate
         Certificate:
@@ -365,14 +365,12 @@ Metrics:
 ################################################################################
 Admin:
     # host and port for the admin server
-    # An empty ListenAddress disables the admin service.
-    # The admin service is not required for the basic functioning of the orderer.
-    ListenAddress: ""
+    ListenAddress: 127.0.0.1:9443
 
     # TLS configuration for the admin endpoint
     TLS:
         # TLS enabled
-        Enabled: true
+        Enabled: false
 
         # Certificate is the location of the PEM encoded TLS certificate
         Certificate:

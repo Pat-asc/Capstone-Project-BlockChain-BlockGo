@@ -1,0 +1,19 @@
+networks:
+  registrar-net:
+    external: true
+    name: registrar-net
+
+services:
+  # --- MIDDLEWARE WALLET DATABASE ---
+  couchdb-wallet:
+    image: couchdb:3.3.3
+    container_name: couchdb-wallet
+    env_file:
+      - ../network/.env
+    environment:
+      - COUCHDB_USER=${COUCHDB_USER}
+      - COUCHDB_PASSWORD=${COUCHDB_PASS}
+    ports:
+      - "5989:5984"
+    networks:
+      - registrar-net
