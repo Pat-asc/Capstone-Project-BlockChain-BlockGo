@@ -37,8 +37,7 @@ try
     }
 
     var builder = WebApplication.CreateBuilder(args);
-    builder.WebHost.UseUrls("http://*:5000");
-    
+builder.WebHost.UseUrls("http://0.0.0.0:5000");    
     builder.Host.UseSerilog();
 
     builder.Services.AddCors(options =>
@@ -98,12 +97,12 @@ try
 
         if (allowInsecure)
         {
-            Log.Warning("nternal Fabric CA connection: SSL validation BYPASSED (Development or Config Override)");
+            Log.Warning("internal Fabric CA connection: SSL validation BYPASSED (Development or Config Override)");
             handler.ServerCertificateCustomValidationCallback = (message, cert, chain, errors) => true;
         }
         else
         {
-            Log.Information("nternal Fabric CA connection: Strict SSL validation ENABLED (Production Mode)");
+            Log.Information("internal Fabric CA connection: Strict SSL validation ENABLED (Production Mode)");
             handler.ServerCertificateCustomValidationCallback = null; 
         }
 

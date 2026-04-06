@@ -78,8 +78,6 @@ jobs:
           pkill -f node || true
           pkill -f full_deploy || true
           
-          echo "=== CONSOLIDATED SYSTEM AUDIT ===" > full_system_report.log
-          cat ../network_deploy.log >> full_system_report.log || true
           echo "=== CONSOLIDATED SYSTEM AUDIT ===" > ../full_system_report.log
           cat ../network_deploy.log >> ../full_system_report.log || true
 
@@ -96,5 +94,4 @@ jobs:
         env:
           GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
           MERGE_METHOD: "squash"
-          MERGE_LABELS: "automerge"
           MERGE_LABELS: "automerge"

@@ -13,6 +13,17 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
+      # --- STAGE 0: DATABASE FIX VERIFICATION ---
+      - name: Verify Database Schema Fix
+        run: |
+          echo "Verifying init-db-schema.sql uses lowercase table names..."
+          if grep -q 'CREATE TABLE IF NOT EXISTS users' ./network/init-db-schema.sql; then
+            echo "✓ Database schema is correct (lowercase)"
+          else
+            echo "✗ Database schema may have case-sensitivity issues"
+            exit 1
+          fi
+
       # --- PHASE 1: INITIAL VERIFICATION ---
       - name: Start System (Phase 1)
         run: |
@@ -97,3 +108,12 @@ jobs:
         with:
           name: full-github-actions-audit
           path: full_system_audit.log
+
+      # --- STAGE 5: AUTOMATED MERGE ---
+      - name: Finalize Merge to Macbook
+        if: success()
+        uses: pascalgn/automerge-action@v0.16.3
+        env:
+          GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
+          MERGE_METHOD: "squash"
+          MERGE_LABELS: "automerge"

@@ -111,13 +111,6 @@ const db = new Pool({
 db.on('error', (err, client) => {
     console.error('Unexpected error on idle PostgreSQL client:', err);
 });
-
-db.query(`
-    ALTER TABLE Users 
-    ADD COLUMN IF NOT EXISTS password_reset_token VARCHAR(255),
-    ADD COLUMN IF NOT EXISTS password_reset_expires BIGINT;
-`).catch(err => console.error("Error updating database schema:", err));
-
 async function getWallet() {
     let couchUrl = process.env.COUCHDB_WALLET_URL;
     if (!couchUrl && process.env.COUCHDB_USER && process.env.COUCHDB_PASS) {
@@ -436,7 +429,7 @@ app.post('/api/fabric/register-user', authenticateJWT, requireRegistrarOrInterna
         let caURL, caName, adminLabel, mspId;
         if (role === 'faculty') {
             caURL = 'https://localhost:8054'; caName = 'ca-faculty'; adminLabel = 'admin-faculty'; mspId = 'FacultyMSP';
-        } else if (role === 'department_admin' || role === 'dean') {
+        } else if (role === 'department_admin' || role === 'admin') {
             caURL = 'https://localhost:9054'; caName = 'ca-department'; adminLabel = 'admin-department'; mspId = 'DepartmentMSP';
         } else {
             caURL = 'https://localhost:7054'; caName = 'ca-registrar'; adminLabel = 'admin-registrar'; mspId = 'RegistrarMSP';
@@ -451,15 +444,23 @@ app.post('/api/fabric/register-user', authenticateJWT, requireRegistrarOrInterna
         const provider = wallet.getProviderRegistry().getProvider(adminIdentity.type);
         const adminUser = await provider.getUserContext(adminIdentity, 'admin');
 
-        const randomSecret = crypto.randomBytes(12).toString('hex');
-        await ca.register({
-            enrollmentID: email,
-            enrollmentSecret: randomSecret,
-            role: 'client',
-            attrs: [{ name: 'role', value: role, ecert: true }, { name: 'grade.manage', value: role === 'faculty' ? 'true' : 'false', ecert: true }]
-        }, adminUser);
+        const secret = req.body.password || crypto.randomBytes(12).toString('hex');
+        try {
+            await ca.register({
+                enrollmentID: email,
+                enrollmentSecret: secret,
+                role: 'client',
+                attrs: [{ name: 'role', value: role, ecert: true }, { name: 'grade.manage', value: role === 'faculty' ? 'true' : 'false', ecert: true }]
+            }, adminUser);
+        } catch (regErr) {
+            if (regErr.toString().includes('code: 74') || regErr.toString().includes('is already registered')) {
+                console.log(`[Fabric CA] ${email} is already registered. Skipping registration and attempting to enroll...`);
+            } else {
+                throw regErr;
+            }
+        }
 
-        const enrollment = await ca.enroll({ enrollmentID: email, enrollmentSecret: randomSecret });
+        const enrollment = await ca.enroll({ enrollmentID: email, enrollmentSecret: secret });
         const x509Identity = { credentials: { certificate: enrollment.certificate, privateKey: enrollment.key.toBytes() }, mspId: mspId, type: 'X.509' };
         await wallet.put(email, x509Identity);
 
@@ -490,7 +491,7 @@ app.get('/api/bootstrap', async (req, res) => {
                         'Content-Type': 'application/json',
                         'x-api-key': INTERNAL_API_KEY
                     },
-                    body: JSON.stringify({ email: email, role: 'registrar' })
+                body: JSON.stringify({ email: email, role: 'registrar', password: pass })
                 });
                 const walletResponse = await result.json();
                 return res.json({ message: "Registrar was in DB but missing wallet. Wallet healed successfully!", wallet: walletResponse });
@@ -499,7 +500,7 @@ app.get('/api/bootstrap', async (req, res) => {
         }
 
         const hash = await bcrypt.hash(pass, 10);
-        const userRes = await db.query("INSERT INTO Users (email, password_hash, role, status) VALUES ($1, $2, 'registrar', 'APPROVED') RETURNING id", [email, hash]);
+        const userRes = await db.query("INSERT INTO Users (username, email, password_hash, role, status) VALUES ($1, $2, $3, 'registrar', 'APPROVED') RETURNING id", ['registrar', email, hash]);
         await db.query("INSERT INTO AdminProfiles (user_id, full_name, admin_level) VALUES ($1, 'System Registrar', 'registrar')", [userRes.rows[0].id]);
 
         const result = await fetch(`http://127.0.0.1:${process.env.PORT || 4000}/api/fabric/register-user`, {
@@ -508,7 +509,7 @@ app.get('/api/bootstrap', async (req, res) => {
                 'Content-Type': 'application/json',
                 'x-api-key': INTERNAL_API_KEY
             },
-            body: JSON.stringify({ email: email, role: 'registrar' })
+            body: JSON.stringify({ email: email, role: 'registrar', password: pass })
         });
 
         const walletResponse = await result.json();
@@ -1453,3 +1454,4 @@ process.on('SIGINT', () => {
     userGatewayCache.forEach(cached => cached.gateway.disconnect());
     process.exit(0);
 });
+// TDD Test Trigger: Sun Apr  5 23:42:49 PST 2026
