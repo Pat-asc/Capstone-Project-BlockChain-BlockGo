@@ -403,14 +403,22 @@ log_info "Chaincode package created (TLS enabled)"
 log_info "Phase 9: Installing chaincode..."
 
 install_chaincode() {
-    PEER_ADDRESS=$1
-    log_info "Installing on $PEER_ADDRESS..."
-    docker exec -e CORE_PEER_ADDRESS=$PEER_ADDRESS cli peer lifecycle chaincode install registrar.tar.gz 2>&1 | grep -q "Chaincode code package identifier" && log_info "Install successful on $PEER_ADDRESS" || log_warn "Chaincode install on $PEER_ADDRESS failed (might be installed already)"
+    ORG=$1
+    PEER=$2
+    PEER_ORG=$3
+    log_info "Installing on $PEER..."
+    docker exec \
+        -e CORE_PEER_LOCALMSPID=${ORG^}MSP \
+        -e CORE_PEER_ADDRESS=$PEER:7051 \
+        -e CORE_PEER_MSPCONFIGPATH=/etc/hyperledger/fabric/crypto-config/peerOrganizations/$PEER_ORG/users/Admin@$PEER_ORG/msp \
+        -e CORE_PEER_TLS_ROOTCERT_FILE=/etc/hyperledger/fabric/crypto-config/peerOrganizations/$PEER_ORG/peers/$PEER/tls/ca.crt \
+        -e CORE_PEER_TLS_ENABLED=true \
+        cli peer lifecycle chaincode install registrar.tar.gz 2>&1 | grep -q "Chaincode code package identifier" && log_info "Install successful on $PEER" || log_warn "Chaincode install on $PEER failed (might be installed already)"
 }
 
-install_chaincode "peer0.registrar.capstone.com:7051"
-install_chaincode "peer0.faculty.capstone.com:7051"
-install_chaincode "peer0.department.capstone.com:7051"
+install_chaincode "registrar" "peer0.registrar.capstone.com" "registrar.capstone.com"
+install_chaincode "faculty" "peer0.faculty.capstone.com" "faculty.capstone.com"
+install_chaincode "department" "peer0.department.capstone.com" "department.capstone.com"
 
 sleep 5
 
