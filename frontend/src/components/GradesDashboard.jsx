@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { fetchAllGrades, approveGrade, finalizeGrade, issueGrade, fetchPendingRequests, approveRegistrationRequest, denyRegistrationRequest, fetchApprovedStudents, assignStudent, fetchApprovedAdmins, assignDepartmentAdmin, fetchDepartmentPendingStudents, approveStudentEnrollment, fetchApprovedFaculties, assignFaculty } from '../services/api';
+import DepartmentAdminTemplateReview from './DepartmentAdminTemplateReview';
 
 const HoverableID = ({ fullId, isAuthorized }) => {
     const [isRevealed, setIsRevealed] = useState(false);
@@ -421,6 +422,7 @@ const GradesDashboard = ({ loggedInEmail = '', loggedInName = '' }) => {
                 <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
                     <button onClick={() => setMainTab('grades')} style={{ padding: '10px 20px', fontWeight: 'bold', backgroundColor: mainTab === 'grades' ? '#003366' : '#f0f2f5', color: mainTab === 'grades' ? 'white' : '#333', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>Grades Ledger</button>
                     <button onClick={() => setMainTab('deptStudents')} style={{ padding: '10px 20px', fontWeight: 'bold', backgroundColor: mainTab === 'deptStudents' ? '#003366' : '#f0f2f5', color: mainTab === 'deptStudents' ? 'white' : '#333', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>Pending Enrollments</button>
+                    <button onClick={() => setMainTab('reviewTemplates')} style={{ padding: '10px 20px', fontWeight: 'bold', backgroundColor: mainTab === 'reviewTemplates' ? '#003366' : '#f0f2f5', color: mainTab === 'reviewTemplates' ? 'white' : '#333', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>Review Grade Templates</button>
                 </div>
             )}
 
@@ -802,6 +804,11 @@ const GradesDashboard = ({ loggedInEmail = '', loggedInName = '' }) => {
                         </tbody>
                     </table>
                 </div>
+            )}
+
+            {/* Department Admin: Review Grade Templates Tab */}
+            {mainTab === 'reviewTemplates' && (
+                <DepartmentAdminTemplateReview adminData={{ fullName: loggedInName, department: filterDept === 'All' ? 'CS' : filterDept, email: loggedInEmail }} onLogout={() => {}} />
             )}
         </div>
     );

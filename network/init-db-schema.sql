@@ -132,6 +132,29 @@ CREATE TABLE IF NOT EXISTS audit_logs (
     ip_address VARCHAR(50),
     timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+CREATE TABLE GradeTemplates (
+    id SERIAL PRIMARY KEY,
+    template_name VARCHAR(255) NOT NULL,
+    department VARCHAR(100) NOT NULL,
+    formula_config JSONB NOT NULL,
+    status VARCHAR(50) DEFAULT 'Pending',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE FacultySections (
+    id SERIAL PRIMARY KEY,
+    user_id INT REFERENCES Users(id) ON DELETE CASCADE,
+    department VARCHAR(100) NOT NULL,
+    section VARCHAR(50) NOT NULL,
+    year_level VARCHAR(50),
+    assigned_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Optional: Prevent assigning the exact same section twice to the same professor
+CREATE UNIQUE INDEX idx_unique_faculty_section ON FacultySections(user_id, department, section);
+
+-- Optional: Create an index on the department for faster lookups
+CREATE INDEX idx_gradetemplates_department ON GradeTemplates(department);
+
 
 -- Create Indexes for performance
 CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);

@@ -309,6 +309,12 @@ fi
 # Wait for Wallet DB
 wait_for_service localhost 5989 "CouchDB Wallet" 120
 
+log_info "Initializing CouchDB system databases..."
+sleep 5
+curl -s -X PUT "http://${LOCAL_COUCH_USER}:${LOCAL_COUCH_PASS}@127.0.0.1:5989/_users" >/dev/null || true
+curl -s -X PUT "http://${LOCAL_COUCH_USER}:${LOCAL_COUCH_PASS}@127.0.0.1:5989/_replicator" >/dev/null || true
+curl -s -X PUT "http://${LOCAL_COUCH_USER}:${LOCAL_COUCH_PASS}@127.0.0.1:5989/_global_changes" >/dev/null || true
+
 # ============================================================
 # PHASE 7: CREATE CHANNEL & JOIN PEERS
 # ============================================================
@@ -662,8 +668,22 @@ if [ -d "../middleware" ]; then
     log_info "Starting Node.js Middleware..."
     (
         cd ../middleware || exit 1
+
+        # Explicitly load .env so Node.js connects to CouchDB instead of saving to a local folder!
+        if [ -f ../network/.env ]; then
+            while IFS='=' read -r key value || [ -n "$key" ]; do
+                if [[ -n "$key" && "$key" != \#* ]]; then
+                    value=$(echo "$value" | tr -d '\r')
+                    [[ "$value" == \"*\" ]] && value="${value:1:-1}"
+                    [[ "$value" == \'*\' ]] && value="${value:1:-1}"
+                    export "$key"="$value"
+                fi
+            done < ../network/.env
+        fi
+
         log_info "Enrolling CA Admins into CouchDB Wallet..."
-        node enrollAllAdmins.js || log_warn "Admin enrollment had issues."
+        node enrollAdmin.js || log_warn "Admin enrollment had issues."
+        
         nohup npm start > middleware.log 2>&1 &
         echo $! > /tmp/middleware_pid.tmp
     )

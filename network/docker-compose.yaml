@@ -12,7 +12,7 @@ services:
       - FABRIC_CA_SERVER_CA_NAME=ca-registrar
       - FABRIC_CA_SERVER_TLS_ENABLED=true
     ports: ["7054:7054"]
-    command: sh -c 'fabric-ca-server start -b admin:adminpw -d'
+    command: sh -c 'fabric-ca-server start -b admin:${BOOTSTRAP_REGISTRAR_PASS:-admin123} -d'
     volumes: ["./fabric-ca/registrar:/etc/hyperledger/fabric-ca-server"]
     networks: [registrar-net]
 
@@ -24,7 +24,7 @@ services:
       - FABRIC_CA_SERVER_CA_NAME=ca-faculty
       - FABRIC_CA_SERVER_TLS_ENABLED=true
     ports: ["8054:7054"]
-    command: sh -c 'fabric-ca-server start -b admin:adminpw -d'
+    command: sh -c 'fabric-ca-server start -b admin:${BOOTSTRAP_REGISTRAR_PASS:-admin123} -d'
     volumes: ["./fabric-ca/faculty:/etc/hyperledger/fabric-ca-server"]
     networks: [registrar-net]
 
@@ -36,7 +36,7 @@ services:
       - FABRIC_CA_SERVER_CA_NAME=ca-department
       - FABRIC_CA_SERVER_TLS_ENABLED=true
     ports: ["9054:7054"]
-    command: sh -c 'fabric-ca-server start -b admin:adminpw -d'
+    command: sh -c 'fabric-ca-server start -b admin:${BOOTSTRAP_REGISTRAR_PASS:-admin123} -d'
     volumes: ["./fabric-ca/department:/etc/hyperledger/fabric-ca-server"]
     networks: [registrar-net]
 
@@ -355,9 +355,14 @@ services:
     environment:
       - CHAINCODE_SERVER_ADDRESS=0.0.0.0:9999
       - CHAINCODE_ID=${CHAINCODE_ID}
-      - CHAINCODE_TLS_DISABLED=true
+      - CHAINCODE_TLS_DISABLED=false
+      - CHAINCODE_TLS_KEY_FILE=/etc/hyperledger/fabric/crypto-config/peerOrganizations/registrar.capstone.com/peers/peer0.registrar.capstone.com/tls/server.key
+      - CHAINCODE_TLS_CERT_FILE=/etc/hyperledger/fabric/crypto-config/peerOrganizations/registrar.capstone.com/peers/peer0.registrar.capstone.com/tls/server.crt
+      - CHAINCODE_CLIENT_CA_CERT_FILE=/etc/hyperledger/fabric/crypto-config/peerOrganizations/registrar.capstone.com/tlsca/tlsca.registrar.capstone.com-cert.pem
     ports: ["9999:9999"]
     networks: [registrar-net]
+    volumes:
+      - ./crypto-config:/etc/hyperledger/fabric/crypto-config
 
   cli:
     container_name: cli

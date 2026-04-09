@@ -39,6 +39,8 @@ network/*.tar.gz
 # Chaincode dynamically generated variables
 chaincode/.env
 
+network/ env.bak
+
 # Build output
 frontend/build/
 

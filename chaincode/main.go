@@ -49,7 +49,7 @@ func (cc *SmartContract) Invoke(stub shim.ChaincodeStubInterface) *pb.Response {
 
 	switch function {
 	case "InitLedger":
-		return shim.Success([]byte("Ledger Initialized Successfully"))
+		return cc.initLedger(stub)
 	case "IssueGrade":
 		return cc.issueGrade(stub, args)
 	case "ReadGrade":
@@ -65,6 +65,35 @@ func (cc *SmartContract) Invoke(stub shim.ChaincodeStubInterface) *pb.Response {
 	default:
 		return shim.Error("Invalid function name")
 	}
+}
+
+func (cc *SmartContract) initLedger(stub shim.ChaincodeStubInterface) *pb.Response {
+	records := []AcademicRecord{
+		{
+			ID:          "GENESIS-001",
+			StudentHash: "genesis.student@plv.edu.ph",
+			Section:     "A",
+			Course:      "BSCS",
+			SubjectCode: "CS-GENESIS",
+			Grade:       "1.00",
+			Semester:    "1st Semester",
+			SchoolYear:  "2024",
+			FacultyID:   "system",
+			Date:        "2024-01-01",
+			University:  "PLV",
+			Status:      "Finalized",
+			Version:     1,
+		},
+	}
+
+	for _, record := range records {
+		recordJSON, err := json.Marshal(record)
+		if err != nil {
+			return shim.Error(fmt.Sprintf("Failed to marshal genesis record: %v", err))
+		}
+		stub.PutPrivateData("collectionGrades", record.ID, recordJSON)
+	}
+	return shim.Success([]byte("Ledger Initialized Successfully with Genesis Data"))
 }
 
 func (cc *SmartContract) issueGrade(stub shim.ChaincodeStubInterface, args []string) *pb.Response {
@@ -89,11 +118,6 @@ func (cc *SmartContract) issueGrade(stub shim.ChaincodeStubInterface, args []str
 
 	if record.Grade == "" {
 		return shim.Error("Grade field cannot be empty")
-	}
-
-	dept, deptFound := getSafeAttribute(stub, "dept")
-	if deptFound && record.University != dept {
-		return shim.Error("ABAC Denied: Faculty cannot issue grades for a different department")
 	}
 
 	existing, err := stub.GetPrivateData("collectionGrades", record.ID)

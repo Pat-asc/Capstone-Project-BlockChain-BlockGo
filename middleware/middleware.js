@@ -17,7 +17,32 @@ const uploadDir = path.join(__dirname, 'uploads');
 if (!fs.existsSync(uploadDir)) {
     fs.mkdirSync(uploadDir, { recursive: true });
 }
-const upload = multer({ dest: uploadDir });
+
+const getCAConfig = (role) => {
+    if (role === 'faculty') return { caURL: 'https://localhost:8054', caName: 'ca-faculty', adminLabel: 'admin-faculty', mspId: 'FacultyMSP' };
+    if (role === 'department_admin' || role === 'admin' || role === 'dean') return { caURL: 'https://localhost:9054', caName: 'ca-department', adminLabel: 'admin-department', mspId: 'DepartmentMSP' };
+    return { caURL: 'https://localhost:7054', caName: 'ca-registrar', adminLabel: 'admin-registrar', mspId: 'RegistrarMSP' };
+};
+
+const uploadExcel = multer({
+    storage: multer.diskStorage({
+        destination: (req, file, cb) => cb(null, uploadDir),
+        filename: (req, file, cb) => {
+            const safeName = path.basename(file.originalname); 
+            cb(null, Date.now() + '-' + safeName);
+        }
+    }),
+    limits: { fileSize: 15 * 1024 * 1024 } 
+}).single('excel');
+
+const handleUploadMiddleware = (req, res, next) => {
+    uploadExcel(req, res, (err) => {
+        if (err instanceof multer.MulterError) return res.status(400).json({ error: `Upload error: ${err.message}.` });
+        if (err) return res.status(500).json({ error: `Unknown upload error: ${err.message}` });
+        next();
+    });
+};
+
 const rateLimit = require('express-rate-limit');
 
 const app = express();
@@ -34,7 +59,6 @@ app.use((req, res, next) => {
     next();
 });
 
-// --- 1. POSTGRESQL CONNECTION & INITIALIZATION ---
 const db = new Pool({
     user: process.env.POSTGRES_USER || 'postgres',
     host: process.env.POSTGRES_HOST === 'postgres' ? '127.0.0.1' : (process.env.POSTGRES_HOST || '127.0.0.1'),
@@ -43,7 +67,6 @@ const db = new Pool({
     port: process.env.POSTGRES_PORT || 5432,
 });
 
-// Catch idle client errors so they don't crash the server
 db.on('error', (err, client) => {
     console.error('Unexpected error on idle PostgreSQL client:', err);
 });
@@ -160,7 +183,6 @@ const authorizeRole = (allowedRoles) => {
         next();
     };
 };
-
 const requireRegistrarOrInternal = (req, res, next) => {
     if (req.headers['x-api-key'] === INTERNAL_API_KEY) {
         return next();
@@ -228,6 +250,30 @@ async function importCryptogenAdmins(wallet) {
         console.log("Cryptogen Admin certificates synced successfully.");
     } catch (err) {
         console.error("Failed to import cryptogen admins:", err.message);
+    }
+}
+
+async function ensureAdminEnrolled(caURL, caName, mspId, adminLabel) {
+    try {
+        const wallet = await getWallet();
+        const identity = await wallet.get(adminLabel);
+        if (identity) {
+            return; // Admin is already enrolled
+        }
+
+        console.log(`Admin identity '${adminLabel}' not found in wallet. Attempting to enroll...`);
+        const ca = new FabricCAServices(caURL, { verify: false }, caName);
+        const enrollment = await ca.enroll({ enrollmentID: 'admin', enrollmentSecret: 'adminpw' });
+        const x509Identity = {
+            credentials: { certificate: enrollment.certificate, privateKey: enrollment.key.toBytes() },
+            mspId: mspId,
+            type: 'X.509',
+        };
+        await wallet.put(adminLabel, x509Identity);
+        console.log(`Successfully enrolled admin and imported it into the wallet as '${adminLabel}'.`);
+    } catch (error) {
+        console.error(`Failed to enroll admin '${adminLabel}': ${error.message}`);
+        throw error;
     }
 }
 
@@ -362,14 +408,10 @@ app.post('/api/fabric/register-user', authenticateJWT, requireRegistrarOrInterna
         const { email, role } = req.body;
         
         const wallet = await getWallet();
-        let caURL, caName, adminLabel, mspId;
-        if (role === 'faculty') {
-            caURL = 'https://localhost:8054'; caName = 'ca-faculty'; adminLabel = 'admin-faculty'; mspId = 'FacultyMSP';
-        } else if (role === 'department_admin' || role === 'admin') {
-            caURL = 'https://localhost:9054'; caName = 'ca-department'; adminLabel = 'admin-department'; mspId = 'DepartmentMSP';
-        } else {
-            caURL = 'https://localhost:7054'; caName = 'ca-registrar'; adminLabel = 'admin-registrar'; mspId = 'RegistrarMSP';
-        }
+        const { caURL, caName, adminLabel, mspId } = getCAConfig(role);
+        
+        // Ensure Admin is enrolled before attempting to register a user
+        await ensureAdminEnrolled(caURL, caName, mspId, adminLabel);
 
         const ca = new FabricCAServices(caURL, { verify: false }, caName);
         const adminIdentity = await wallet.get(adminLabel);
@@ -391,6 +433,13 @@ app.post('/api/fabric/register-user', authenticateJWT, requireRegistrarOrInterna
         } catch (regErr) {
             if (regErr.toString().includes('code: 74') || regErr.toString().includes('is already registered')) {
                 console.log(`[Fabric CA] ${email} is already registered. Skipping registration and attempting to enroll...`);
+                try {
+                    const identityService = ca.newIdentityService();
+                    await identityService.update(email, { enrollmentSecret: secret }, adminUser);
+                    console.log(`[Fabric CA] Force-updated password for ${email} in CA.`);
+                } catch (updateErr) {
+                    console.warn(`[Fabric CA] Could not update password for ${email}: ${updateErr.message}`);
+                }
             } else {
                 throw regErr;
             }
@@ -430,13 +479,20 @@ app.get('/api/bootstrap', async (req, res) => {
                 body: JSON.stringify({ email: email, role: 'registrar', password: pass })
                 });
                 const walletResponse = await result.json();
+                
+                if (!result.ok) {
+                    console.error("[Bootstrap] Wallet Healing Failed:", walletResponse);
+                    return res.status(500).json({ error: "Failed to heal wallet. See details.", details: walletResponse });
+                }
+                
                 return res.json({ message: "Registrar was in DB but missing wallet. Wallet healed successfully!", wallet: walletResponse });
             }
             return res.json({ message: "Registrar already exists in DB and Wallet." });
         }
 
         const hash = await bcrypt.hash(pass, 10);
-        const userRes = await db.query("INSERT INTO Users (username, email, password_hash, role, status) VALUES ($1, $2, $3, 'registrar', 'APPROVED') RETURNING id", ['registrar', email, hash]);
+        // Fixed SQL Query to match your new schema (removed username column)
+        const userRes = await db.query("INSERT INTO Users (email, password_hash, role, status) VALUES ($1, $2, 'registrar', 'APPROVED') RETURNING id", [email, hash]);
         await db.query("INSERT INTO AdminProfiles (user_id, full_name, admin_level) VALUES ($1, 'System Registrar', 'registrar')", [userRes.rows[0].id]);
 
         const result = await fetch(`http://127.0.0.1:${process.env.PORT || 4000}/api/fabric/register-user`, {
@@ -449,6 +505,12 @@ app.get('/api/bootstrap', async (req, res) => {
         });
 
         const walletResponse = await result.json();
+        
+        if (!result.ok) {
+            console.error("[Bootstrap] Initial Wallet Generation Failed:", walletResponse);
+            return res.status(500).json({ error: "Failed to generate wallet during bootstrap", details: walletResponse });
+        }
+        
         res.json({ message: "Root registrar created successfully!", email, password: pass, wallet: walletResponse });
     } catch (error) {
         res.status(500).json({ error: error.message });
@@ -530,21 +592,7 @@ app.post('/api/reset-password', async (req, res) => {
 app.post('/api/enroll', authenticateJWT, requireRegistrarOrInternal, async (req, res) => {
     try {
         const { username, password, role } = req.body;
-        let caURL, caName, mspId;
-        
-        if (role === 'faculty') {
-            caURL = 'https://localhost:8054';
-            caName = 'ca-faculty';
-            mspId = 'FacultyMSP';
-        } else if (role === 'department_admin') {
-            caURL = 'https://localhost:9054'; 
-            caName = 'ca-department';
-            mspId = 'DepartmentMSP';
-        } else {
-            caURL = 'https://localhost:7054'; 
-            caName = 'ca-registrar';
-            mspId = 'RegistrarMSP';
-        }
+        const { caURL, caName, mspId } = getCAConfig(role);
 
         const ca = new FabricCAServices(caURL, { verify: false }, caName);
         const wallet = await getWallet();
@@ -580,20 +628,9 @@ app.post('/api/register', authenticateJWT, requireRegistrarOrInternal, async (re
         const { username, password, role } = req.body;
         const wallet = await getWallet();
         
-        let caURL, caName, adminLabel;
-        if (role === 'faculty') {
-            caURL = 'https://localhost:8054';
-            caName = 'ca-faculty';
-            adminLabel = 'admin-faculty';
-        } else if (role === 'department_admin') {
-            caURL = 'https://localhost:9054'; 
-            caName = 'ca-department';
-            adminLabel = 'admin-department';
-        } else {
-            caURL = 'https://localhost:7054'; 
-            caName = 'ca-registrar';
-            adminLabel = 'admin-registrar';
-        }
+        const { caURL, caName, adminLabel, mspId } = getCAConfig(role);
+        
+        await ensureAdminEnrolled(caURL, caName, mspId, adminLabel);
         
         const adminIdentity = await wallet.get(adminLabel);
 
@@ -610,15 +647,31 @@ app.post('/api/register', authenticateJWT, requireRegistrarOrInternal, async (re
         const provider = wallet.getProviderRegistry().getProvider(adminIdentity.type);
         const adminUser = await provider.getUserContext(adminIdentity, 'admin');
 
-        const secret = await ca.register({
-            enrollmentID: username,
-            enrollmentSecret: password,
-            role: 'client',
-            attrs: [
-                { name: 'role', value: role, ecert: true },
-                { name: 'grade.manage', value: role === 'faculty' ? 'true' : 'false', ecert: true }
-            ]
-        }, adminUser);
+        let secret = password;
+        try {
+            secret = await ca.register({
+                enrollmentID: username,
+                enrollmentSecret: password,
+                role: 'client',
+                attrs: [
+                    { name: 'role', value: role, ecert: true },
+                    { name: 'grade.manage', value: role === 'faculty' ? 'true' : 'false', ecert: true }
+                ]
+            }, adminUser);
+        } catch (regErr) {
+            if (regErr.toString().includes('code: 74') || regErr.toString().includes('is already registered')) {
+                console.log(`[Fabric CA] ${username} is already registered. Updating secret...`);
+                try {
+                    const identityService = ca.newIdentityService();
+                    await identityService.update(username, { enrollmentSecret: password }, adminUser);
+                    console.log(`[Fabric CA] Force-updated password for ${username} in CA.`);
+                } catch (updateErr) {
+                    console.warn(`[Fabric CA] Could not update password for ${username}: ${updateErr.message}`);
+                }
+            } else {
+                throw regErr;
+            }
+        }
 
         res.status(201).json({ status: "success", secret });
     } catch (error) { 
@@ -632,20 +685,9 @@ app.post('/api/revoke', authenticateJWT, requireRegistrarOrInternal, async (req,
         const { username, role } = req.body;
         const wallet = await getWallet();
         
-        let caURL, caName, adminLabel;
-        if (role === 'faculty') {
-            caURL = 'https://localhost:8054';
-            caName = 'ca-faculty';
-            adminLabel = 'admin-faculty';
-        } else if (role === 'department_admin') {
-            caURL = 'https://localhost:9054'; 
-            caName = 'ca-department';
-            adminLabel = 'admin-department';
-        } else {
-            caURL = 'https://localhost:7054'; 
-            caName = 'ca-registrar';
-            adminLabel = 'admin-registrar';
-        }
+        const { caURL, caName, adminLabel, mspId } = getCAConfig(role);
+        
+        await ensureAdminEnrolled(caURL, caName, mspId, adminLabel);
         
         const adminIdentity = await wallet.get(adminLabel);
 
@@ -805,30 +847,27 @@ app.delete('/api/wallet/:username', authenticateJWT, requireRegistrarOrInternal,
     }
 });
 
-app.post('/api/upload-grades', (req, res, next) => {
-    upload.any()(req, res, (err) => {
-        if (err instanceof multer.MulterError) {
-            return res.status(400).json({ error: `Upload error: ${err.message}.` });
-        } else if (err) {
-            return res.status(500).json({ error: `Unknown upload error: ${err.message}` });
-        }
-        next();
-    });
-}, async (req, res) => {
+const handleBatchUpload = async (req, res) => {
     try {
-        if (!req.files || req.files.length === 0) {
-            return res.status(400).json({ error: 'No file uploaded' });
+        if (!req.file) {
+            return res.status(400).json({ error: 'No file uploaded. Expected form-data field "excel".' });
         }
-        req.file = req.files[0]; 
 
-        console.log(`[UploadGrades] File received: ${req.file.filename}`);
         const filePath = req.file.path;
-        const username = req.body.username || 'admin';
+        const mapperPath = path.resolve(__dirname, '..', 'mapper.py');
+        
+        if (!fs.existsSync(mapperPath)) {
+            return res.status(500).json({ error: 'Mapper script not found', expected: mapperPath });
+        }
+
+        const facultyId = req.body.facultyId || req.body.username || req.user?.username || 'admin';
+        
+        console.log(`[BatchUpload] Starting mapper for ${facultyId}: python3 ${mapperPath}`);
 
         const pythonProcess = spawn('python3', [
-            path.resolve(__dirname, '..', 'mapper.py'),
+            mapperPath,
             filePath,
-            username,
+            facultyId,
             INTERNAL_API_KEY
         ]);
 
@@ -837,52 +876,38 @@ app.post('/api/upload-grades', (req, res, next) => {
 
         pythonProcess.on('error', (err) => {
             console.error('[Mapper] Failed to start python process:', err);
-            if (!res.headersSent) {
-                res.status(500).json({ status: 'error', error: 'Failed to start mapper process: ' + err.message });
-            }
+            if (!res.headersSent) res.status(500).json({ status: 'error', error: 'Failed to start mapper process: ' + err.message });
         });
 
-        pythonProcess.stdout.on('data', (data) => {
-            output += data.toString();
-            console.log(`[Mapper] ${data}`);
-        });
-
-        pythonProcess.stderr.on('data', (data) => {
-            errorOutput += data.toString();
-            console.error(`[Mapper Error] ${data}`);
-        });
+        pythonProcess.stdout.on('data', (data) => output += data.toString());
+        pythonProcess.stderr.on('data', (data) => errorOutput += data.toString());
 
         pythonProcess.on('close', (code) => {
-            fs.unlink(filePath, (err) => {
-                if (err) console.error('File cleanup error:', err);
-            });
+            fs.unlink(filePath, (err) => { if (err) console.error('File cleanup error:', err); });
 
             if (!res.headersSent) {
                 if (code === 0) {
-                    res.status(200).json({ 
-                        status: 'success', 
-                        message: 'Grades processed and submitted to blockchain',
-                        output: output
-                    });
+                    res.status(200).json({ status: 'success', message: 'Batch grades processed successfully', output });
                 } else {
-                    res.status(500).json({ 
-                        status: 'error',
-                        error: 'Mapper process failed',
-                        output: output,
-                        errorOutput: errorOutput
-                    });
+                    res.status(500).json({ status: 'error', error: 'Mapper process failed', exitCode: code, output, errorOutput });
                 }
             }
         });
+
+        const timeoutId = setTimeout(() => {
+            if (!res.headersSent) {
+                pythonProcess.kill('SIGTERM');
+                res.status(504).json({ error: 'Batch upload timeout' });
+            }
+        }, 5 * 60 * 1000);
+
+        pythonProcess.on('exit', () => clearTimeout(timeoutId));
     } catch (error) {
-        console.error('[UploadGrades] Error:', error.message);
         res.status(500).json({ error: error.message });
     }
-});
+};
 
-
-
-// Alias for upload-grades
+app.post(['/api/batch-upload', '/api/upload-grades'], authenticateJWT, handleUploadMiddleware, handleBatchUpload);
 
 
 app.post('/api/batch-issue-grade', async (req, res) => {
@@ -892,7 +917,6 @@ app.post('/api/batch-issue-grade', async (req, res) => {
             return res.status(401).json({ error: 'Invalid or missing API key' });
         }
 
-        // FIX: Get ACTUAL faculty identity from request (not hardcoded system-admin)
         username = req.headers['x-user-identity'] || req.body.facultyId;
         if (!username) {
             return res.status(400).json({ 
@@ -901,7 +925,6 @@ app.post('/api/batch-issue-grade', async (req, res) => {
             });
         }
 
-        // Verify faculty identity exists in wallet
         const wallet = await getWallet();
         const identity = await wallet.get(username);
         if (!identity) {
@@ -911,14 +934,12 @@ app.post('/api/batch-issue-grade', async (req, res) => {
             });
         }
 
-        // Verify it's actually a faculty identity
         if (identity.mspId !== 'FacultyMSP') {
             return res.status(403).json({ 
                 error: `Access denied: ${username} is not a faculty member (MSP: ${identity.mspId})`
             });
         }
 
-        // Get contract using ACTUAL faculty identity
         const { contract } = await getContractForUser(username);
 
         const gradeAsset = JSON.stringify(req.body);
@@ -934,118 +955,6 @@ app.post('/api/batch-issue-grade', async (req, res) => {
     } catch (error) {
         clearCacheOnError(username, error);
         console.error('[BatchIssueGrade] Error:', error.message);
-        res.status(500).json({ error: error.message });
-    }
-});
-
-app.post('/api/batch-upload', (req, res, next) => {
-    const storage = multer.diskStorage({
-        destination: (req, file, cb) => {
-            if (!fs.existsSync(uploadDir)) {
-                fs.mkdirSync(uploadDir, { recursive: true });
-            }
-            cb(null, uploadDir);
-        },
-        filename: (req, file, cb) => {
-            // Preserve original filename
-            cb(null, Date.now() + '-' + file.originalname);
-        }
-    });
-    const uploadWithStorage = multer({ storage: storage });
-    uploadWithStorage.any()(req, res, (err) => {
-        if (err instanceof multer.MulterError) {
-            return res.status(400).json({ error: `Upload error: ${err.message}.` });
-        } else if (err) {
-            return res.status(500).json({ error: `Unknown upload error: ${err.message}` });
-        }
-        next();
-    });
-}, async (req, res) => {
-    try {
-        if (!req.files || req.files.length === 0) {
-            return res.status(400).json({ error: 'No file uploaded' });
-        }
-        req.file = req.files[0]; // Map the first dynamically uploaded file
-        const filePath = req.file.path;
-        console.log(`[BatchUpload] File received: ${req.file.filename}`);
-        console.log(`[BatchUpload] File path: ${filePath}`);
-        console.log(`[BatchUpload] File size: ${req.file.size} bytes`);
-
-        if (!fs.existsSync(filePath)) {
-            return res.status(500).json({ error: 'File upload failed - file not found on disk' });
-        }
-
-        const mapperPath = path.resolve(__dirname, '..', 'mapper.py');
-        
-        if (!fs.existsSync(mapperPath)) {
-            return res.status(500).json({ 
-                error: 'Mapper script not found',
-                expected: mapperPath
-            });
-        }
-
-        console.log(`[BatchUpload] Starting mapper: python3 ${mapperPath}`);
-        const pythonProcess = spawn('python3', [
-            mapperPath,
-            filePath,
-            INTERNAL_API_KEY
-        ]);
-
-        let output = '';
-        let errorOutput = '';
-
-        pythonProcess.on('error', (err) => {
-            console.error('[Mapper] Failed to start python process:', err);
-            if (!res.headersSent) {
-                res.status(500).json({ status: 'error', error: 'Failed to start mapper process: ' + err.message });
-            }
-        });
-
-        pythonProcess.stdout.on('data', (data) => {
-            output += data.toString();
-            console.log(`[Mapper] ${data}`);
-        });
-
-        pythonProcess.stderr.on('data', (data) => {
-            errorOutput += data.toString();
-            console.error(`[Mapper Error] ${data}`);
-        });
-
-        pythonProcess.on('close', (code) => {
-            fs.unlink(filePath, (err) => {
-                if (err) console.error('File cleanup error:', err);
-            });
-
-            if (!res.headersSent) {
-                if (code === 0) {
-                    res.status(200).json({ 
-                        status: 'success', 
-                        message: 'Batch grades processed successfully',
-                        output: output
-                    });
-                } else {
-                    res.status(500).json({ 
-                        status: 'error',
-                        error: 'Mapper process failed',
-                        exitCode: code,
-                        output: output,
-                        errorOutput: errorOutput
-                    });
-                }
-            }
-        });
-
-        const timeoutId = setTimeout(() => {
-            if (!res.headersSent) {
-                pythonProcess.kill('SIGTERM');
-                res.status(504).json({ error: 'Batch upload timeout' });
-            }
-        }, 5 * 60 * 1000);
-
-        pythonProcess.on('exit', () => clearTimeout(timeoutId));
-
-    } catch (error) {
-        console.error('[BatchUpload] Error:', error.message);
         res.status(500).json({ error: error.message });
     }
 });

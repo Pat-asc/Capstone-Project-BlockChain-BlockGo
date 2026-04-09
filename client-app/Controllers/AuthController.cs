@@ -592,15 +592,32 @@ namespace Client_app.Controllers
                     }
                 }
 
-                string query = "UPDATE FacultyProfiles SET department = @dept, section = @section, year_level = @year WHERE user_id = @id";
-                using var cmd = new NpgsqlCommand(query, conn);
-                cmd.Parameters.AddWithValue("dept", request.Department);
-                cmd.Parameters.AddWithValue("section", request.Section);
-                cmd.Parameters.AddWithValue("year", request.YearLevel);
-                cmd.Parameters.AddWithValue("id", id);
+                // 1. Update their Primary Department in their main profile (if it's their first assignment)
+                string updateProfileQuery = "UPDATE FacultyProfiles SET department = @dept WHERE user_id = @id AND (department IS NULL OR department = 'Unassigned')";
+                using var cmdProfile = new NpgsqlCommand(updateProfileQuery, conn);
+                cmdProfile.Parameters.AddWithValue("dept", request.Department);
+                cmdProfile.Parameters.AddWithValue("id", id);
+                await cmdProfile.ExecuteNonQueryAsync();
+
+                // 2. Insert the specific class/section into the new FacultySections table
+                string insertSectionQuery = @"
+                    INSERT INTO FacultySections (user_id, department, section, year_level) 
+                    VALUES (@id, @dept, @section, @year)
+                    ON CONFLICT (user_id, department, section) DO NOTHING";
                 
-                int rows = await cmd.ExecuteNonQueryAsync();
-                if (rows == 0) return NotFound(new { status = "Error", message = "Faculty profile not found." });
+                using var cmdSection = new NpgsqlCommand(insertSectionQuery, conn);
+                cmdSection.Parameters.AddWithValue("id", id);
+                cmdSection.Parameters.AddWithValue("dept", request.Department);
+                cmdSection.Parameters.AddWithValue("section", request.Section);
+                cmdSection.Parameters.AddWithValue("year", request.YearLevel);
+
+                int rows = await cmdSection.ExecuteNonQueryAsync();
+                
+                if (rows == 0) 
+                {
+                    // This means the ON CONFLICT triggered, so they are already assigned to this section.
+                    return BadRequest(new { status = "Error", message = $"Faculty is already assigned to {request.Department} Section {request.Section}." });
+                }
 
                 var emailSubject = "PLV Faculty Assignment";
                 var emailContent = $"<p>Hello {userName},</p><p>You have been officially assigned to handle Section <strong>{request.Section}</strong> ({request.YearLevel}) for the <strong>{request.Department}</strong> department.</p>";
@@ -663,6 +680,103 @@ namespace Client_app.Controllers
                 _cache.Set(cacheKey, response, cacheEntryOptions);
                 return Ok(response);
             } 
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = "Error", message = ex.Message });
+            }
+        }
+
+        [HttpGet("faculty/{email}/assigned-sections")]
+        public async Task<IActionResult> GetFacultySections(string email)
+        {
+            try
+            {
+                using var conn = new NpgsqlConnection(_connectionString);
+                await conn.OpenAsync();
+
+                var sections = new List<object>();
+                using var cmd = new NpgsqlCommand(@"
+                    SELECT fs.department, fs.section, fs.year_level 
+                    FROM FacultySections fs 
+                    JOIN Users u ON fs.user_id = u.id 
+                    WHERE u.email = @email AND u.status = 'APPROVED'
+                    ORDER BY fs.department, fs.year_level, fs.section", conn);
+                
+                cmd.Parameters.AddWithValue("email", email);
+
+                using var reader = await cmd.ExecuteReaderAsync();
+                while (await reader.ReadAsync())
+                {
+                    sections.Add(new {
+                        department = reader.GetString(0),
+                        section = reader.GetString(1),
+                        yearLevel = reader.IsDBNull(2) ? "N/A" : reader.GetString(2)
+                    });
+                }
+
+                return Ok(new { status = "Success", sections });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = "Error", message = ex.Message });
+            }
+        }
+
+        [HttpGet("faculty/{email}/students")]
+        public async Task<IActionResult> GetFacultyStudents(string email)
+        {
+            try
+            {
+                using var conn = new NpgsqlConnection(_connectionString);
+                await conn.OpenAsync();
+
+                // 1. Get the faculty's assigned department and section
+                using var cmdFaculty = new NpgsqlCommand(
+                    "SELECT fp.department, fp.section FROM Users u JOIN FacultyProfiles fp ON u.id = fp.user_id WHERE u.email = @email AND u.status = 'APPROVED'", conn);
+                cmdFaculty.Parameters.AddWithValue("email", email);
+                
+                string? facultyDept = null;
+                string? facultySection = null;
+
+                using (var reader = await cmdFaculty.ExecuteReaderAsync())
+                {
+                    if (!await reader.ReadAsync())
+                        return NotFound(new { status = "Error", message = "Faculty not found or not approved." });
+                        
+                    facultyDept = reader.IsDBNull(0) ? null : reader.GetString(0);
+                    facultySection = reader.IsDBNull(1) ? null : reader.GetString(1);
+                }
+
+                if (string.IsNullOrEmpty(facultyDept) || string.IsNullOrEmpty(facultySection))
+                    return BadRequest(new { status = "Error", message = "Faculty is not fully assigned to a department and section yet." });
+
+                // 2. Fetch all approved students matching the faculty's department and section
+                var students = new List<object>();
+                using var cmdStudents = new NpgsqlCommand(@"
+                    SELECT u.id, sp.full_name, u.email, sp.student_no, sp.assignment_status
+                    FROM Users u JOIN StudentProfiles sp ON u.id = sp.user_id
+                    WHERE u.role = 'student' AND u.status = 'APPROVED' 
+                      AND sp.department = @dept AND sp.section = @section", conn);
+                
+                cmdStudents.Parameters.AddWithValue("dept", facultyDept);
+                cmdStudents.Parameters.AddWithValue("section", facultySection);
+
+                using (var reader = await cmdStudents.ExecuteReaderAsync())
+                {
+                    while (await reader.ReadAsync())
+                    {
+                        students.Add(new {
+                            id = reader.GetInt32(0),
+                            fullname = reader.GetString(1),
+                            email = reader.GetString(2),
+                            studentno = reader.IsDBNull(3) ? "N/A" : reader.GetString(3),
+                            enrollmentStatus = reader.IsDBNull(4) ? "Unassigned" : reader.GetString(4)
+                        });
+                    }
+                }
+
+                return Ok(new { status = "Success", department = facultyDept, section = facultySection, students });
+            }
             catch (Exception ex)
             {
                 return StatusCode(500, new { status = "Error", message = ex.Message });
