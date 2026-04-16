@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-CRYPTO_DIR="./crypto-config-final"
+CRYPTO_DIR="./crypto-config-final-v2"
 ARTIFACTS_DIR="./channel-artifacts-final"
 CHANNEL_NAME="registrar-channel"
 CC_NAME="registrar"
@@ -23,7 +23,10 @@ cleanup_processes() {
     echo ""
     log_info "Shutting down background application services..."
     for pid in "${PIDS[@]}"; do
-        if ps -p $pid > /dev/null 2>&1; then kill $pid 2>/dev/null || true; fi
+        if ps -p $pid > /dev/null 2>&1; then 
+            pkill -P $pid 2>/dev/null || true
+            kill $pid 2>/dev/null || true
+        fi
     done
 }
 
@@ -80,14 +83,20 @@ mkdir -p "$ARTIFACTS_DIR"
 
 find "$CRYPTO_DIR" -type f -name "*_sk" -execdir cp -n {} priv_sk \; 2>/dev/null || true
 
+log_info "Phase 5.5: Compiling Frontend Static Build (Pre-Docker)..."
+log_info "Cleaning up previous frontend build artifacts..."
+(cd ../frontend && rm -rf build && npm install && npm run build)
+
 log_info "Phase 6: Launching Network & Syncing Wallet..."
 docker compose up -d
 
-log_info "Giving Peers 45 seconds to settle internal databases..."
-sleep 45 
-
 wait_for_service 127.0.0.1 7050 "Orderer Service" 150
 wait_for_service 127.0.0.1 5990 "CouchDB Wallet" 150
+
+log_info "Waiting for peer services to become available..."
+wait_for_service 127.0.0.1 7051 "Registrar Peer" 150
+wait_for_service 127.0.0.1 8051 "Faculty Peer" 150
+wait_for_service 127.0.0.1 9051 "Department Peer" 150
 
 ENV_USER=$(grep "^COUCHDB_USER=" .env | cut -d '=' -f 2 | tr -d '\r' | tr -d '"' | tr -d "'")
 ENV_PASS=$(grep "^COUCHDB_PASS=" .env | cut -d '=' -f 2 | tr -d '\r' | tr -d '"' | tr -d "'")
@@ -101,7 +110,13 @@ log_info "Phase 7: Establishing the Channel..."
 
 CLI_MSP="/etc/hyperledger/fabric/crypto-config-final-v2/peerOrganizations/registrar.capstone.com/users/Admin@registrar.capstone.com/msp"
 
-docker exec -e CORE_PEER_MSPCONFIGPATH=$CLI_MSP cli peer channel create -c $CHANNEL_NAME -f ./channel-artifacts-final/$CHANNEL_NAME.tx --outputBlock ./channel-artifacts-final/$CHANNEL_NAME.block -o orderer.capstone.com:7050 --tls --cafile /etc/hyperledger/fabric/crypto-config-final-v2/ordererOrganizations/capstone.com/orderers/orderer.capstone.com/tls/ca.crt
+docker exec -e CORE_PEER_MSPCONFIGPATH=$CLI_MSP cli peer channel create \
+    -c $CHANNEL_NAME \
+    -f ./channel-artifacts-final/$CHANNEL_NAME.tx \
+    --outputBlock ./channel-artifacts-final/$CHANNEL_NAME.block \
+    -o orderer.capstone.com:7050 \
+    --tls \
+    --cafile /etc/hyperledger/fabric/crypto-config-final-v2/ordererOrganizations/capstone.com/orderers/orderer.capstone.com/tls/ca.crt
 
 log_info "Channel block created. Stabilizing..."
 sleep 10
@@ -140,7 +155,9 @@ for domain in registrar.capstone.com faculty.capstone.com department.capstone.co
                 cli peer lifecycle chaincode install registrar.tar.gz
 done
 
-CC_PACKAGE_ID=$(docker exec -e CORE_PEER_TLS_ENABLED=true -e CORE_PEER_TLS_ROOTCERT_FILE=/etc/hyperledger/fabric/crypto-config-final-v2/peerOrganizations/registrar.capstone.com/peers/peer0.registrar.capstone.com/tls/ca.crt cli peer lifecycle chaincode queryinstalled | grep "Package ID: ${CC_NAME}" | head -n 1 | awk '{print $3}' | sed 's/,$//')
+CC_PACKAGE_ID=$(docker exec -e CORE_PEER_TLS_ENABLED=true \
+    -e CORE_PEER_TLS_ROOTCERT_FILE=/etc/hyperledger/fabric/crypto-config-final-v2/peerOrganizations/registrar.capstone.com/peers/peer0.registrar.capstone.com/tls/ca.crt \
+    cli peer lifecycle chaincode queryinstalled | grep "Package ID: ${CC_NAME}" | head -n 1 | awk '{print $3}' | sed 's/,$//')
 
 log_info "Package ID: $CC_PACKAGE_ID"
 
@@ -156,7 +173,15 @@ for domain in registrar.capstone.com faculty.capstone.com department.capstone.co
                 -e CORE_PEER_MSPCONFIGPATH=/etc/hyperledger/fabric/crypto-config-final-v2/peerOrganizations/$domain/users/Admin@$domain/msp \
                 -e CORE_PEER_TLS_ROOTCERT_FILE=/etc/hyperledger/fabric/crypto-config-final-v2/peerOrganizations/$domain/peers/peer0.$domain/tls/ca.crt \
                 -e CORE_PEER_TLS_ENABLED=true \
-                cli peer lifecycle chaincode approveformyorg --channelID $CHANNEL_NAME --name $CC_NAME --version 1.0 --package-id $CC_PACKAGE_ID --sequence 1 -o orderer.capstone.com:7050 --tls --cafile /etc/hyperledger/fabric/crypto-config-final-v2/ordererOrganizations/capstone.com/orderers/orderer.capstone.com/tls/ca.crt
+            cli peer lifecycle chaincode approveformyorg \
+            --channelID $CHANNEL_NAME \
+            --name $CC_NAME \
+            --version 1.0 \
+            --package-id $CC_PACKAGE_ID \
+            --sequence 1 \
+            -o orderer.capstone.com:7050 \
+            --tls \
+            --cafile /etc/hyperledger/fabric/crypto-config-final-v2/ordererOrganizations/capstone.com/orderers/orderer.capstone.com/tls/ca.crt
         sleep 3
 done
 
@@ -167,13 +192,17 @@ docker exec -e CORE_PEER_LOCALMSPID="RegistrarMSP" \
             -e CORE_PEER_MSPCONFIGPATH=/etc/hyperledger/fabric/crypto-config-final-v2/peerOrganizations/registrar.capstone.com/users/Admin@registrar.capstone.com/msp \
             -e CORE_PEER_TLS_ROOTCERT_FILE=/etc/hyperledger/fabric/crypto-config-final-v2/peerOrganizations/registrar.capstone.com/peers/peer0.registrar.capstone.com/tls/ca.crt \
             -e CORE_PEER_TLS_ENABLED=true \
-            cli peer lifecycle chaincode commit --channelID $CHANNEL_NAME --name $CC_NAME --version 1.0 --sequence 1 -o orderer.capstone.com:7050 --tls --cafile /etc/hyperledger/fabric/crypto-config-final-v2/ordererOrganizations/capstone.com/orderers/orderer.capstone.com/tls/ca.crt \
+            cli peer lifecycle chaincode commit \
+            --channelID $CHANNEL_NAME \
+            --name $CC_NAME \
+            --version 1.0 \
+            --sequence 1 \
+            -o orderer.capstone.com:7050 \
+            --tls \
+            --cafile /etc/hyperledger/fabric/crypto-config-final-v2/ordererOrganizations/capstone.com/orderers/orderer.capstone.com/tls/ca.crt \
             --peerAddresses peer0.registrar.capstone.com:7051 --tlsRootCertFiles /etc/hyperledger/fabric/crypto-config-final-v2/peerOrganizations/registrar.capstone.com/peers/peer0.registrar.capstone.com/tls/ca.crt \
             --peerAddresses peer0.faculty.capstone.com:7051 --tlsRootCertFiles /etc/hyperledger/fabric/crypto-config-final-v2/peerOrganizations/faculty.capstone.com/peers/peer0.faculty.capstone.com/tls/ca.crt \
             --peerAddresses peer0.department.capstone.com:7051 --tlsRootCertFiles /etc/hyperledger/fabric/crypto-config-final-v2/peerOrganizations/department.capstone.com/peers/peer0.department.capstone.com/tls/ca.crt
-
-log_info "Phase 13.5: Compiling Frontend Static Build..."
-(cd ../frontend && npm install && npm run build)
 
 log_info "Phase 14: Starting App & Middleware..."
 
@@ -192,13 +221,20 @@ load_env_vars() {
     done < ../network/.env
 }
 
-(cd ../middleware && load_env_vars && node enrollAdmin.js && nohup npm start > middleware.log 2>&1 & echo $! > /tmp/mw.pid)
-PIDS+=($(cat /tmp/mw.pid))
+pushd ../middleware > /dev/null
+load_env_vars
+node enrollAdmin.js
+nohup npm start > middleware.log 2>&1 &
+PIDS+=($!)
+popd > /dev/null
 
 wait_for_service 127.0.0.1 4000 "Middleware" 150
 
-(cd ../client-app && load_env_vars && nohup dotnet run > backend.log 2>&1 & echo $! > /tmp/app.pid)
-PIDS+=($(cat /tmp/app.pid))
+pushd ../client-app > /dev/null
+load_env_vars
+nohup dotnet run > backend.log 2>&1 &
+PIDS+=($!)
+popd > /dev/null
 
 log_info "Phase 15: Final Bootstrap..."
 for i in {1..10}; do

@@ -27,14 +27,14 @@ log_error() { echo -e "${RED}[ERROR]${NC} $1"; exit 1; }
 log_phase "Stage 0: Pre-Flight Checks"
 
 log_info "Checking database schema fix..."
-if grep -q 'CREATE TABLE IF NOT EXISTS users' init-db-schema.sql; then
+if grep -q 'CREATE TABLE IF NOT EXISTS users' network/init-db-schema.sql; then
     log_info "✓ Database schema uses lowercase 'users'"
 else
     log_error "✗ Database schema has case-sensitivity issues"
 fi
 
 log_info "Checking middleware fix..."
-if ! grep -q 'ALTER TABLE Users' ../middleware/middleware.js; then
+if ! grep -q 'ALTER TABLE Users' middleware/middleware.js; then
     log_info "✓ Middleware ALTER TABLE removed"
 else
     log_error "✗ Middleware still has problematic ALTER TABLE"
@@ -53,6 +53,7 @@ fi
 log_phase "Stage 1: Network & Storage Cleanup"
 
 log_info "Stopping existing containers..."
+cd network
 docker compose down -v 2>&1 | grep -E "Removed|Stopping" | head -5
 sleep 5
 

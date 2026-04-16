@@ -68,7 +68,6 @@ const DepartmentAdminTemplateReview = ({ adminData, onLogout }) => {
       const data = await fetchDepartmentTemplates(dept);
       
       if (data.status === "Success") {
-        // Fallback to mock data if the database returns an empty array
         setTemplates(data.templates?.length > 0 ? data.templates : mockTemplates);
       }
     } catch (error) {

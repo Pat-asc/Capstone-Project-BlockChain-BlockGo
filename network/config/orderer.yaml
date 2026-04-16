@@ -13,7 +13,7 @@
 ################################################################################
 General:
     # Listen address: The IP on which to bind to listen.
-    ListenAddress: 127.0.0.1
+    ListenAddress: 0.0.0.0
 
     # Listen port: The port on which to bind to listen.
     ListenPort: 7050
@@ -21,7 +21,7 @@ General:
     # TLS: TLS settings for the GRPC server.
     TLS:
         # Require server-side TLS
-        Enabled: false
+        Enabled: true
         # PrivateKey governs the file location of the private key of the TLS certificate.
         PrivateKey: tls/server.key
         # Certificate governs the file location of the server TLS certificate.
@@ -112,10 +112,10 @@ General:
 
     # LocalMSPID is the identity to register the local MSP material with the MSP
     # manager. IMPORTANT: The local MSP ID of an orderer needs to match the MSP
-    # ID of one of the organizations defined in the orderer system channel's
-    # /Channel/Orderer configuration. The sample organization defined in the
-    # sample configuration provided has an MSP ID of "SampleOrg".
-    LocalMSPID: SampleOrg
+    # ID of one of the organizations defined in the orderer system channel's /Channel/Orderer
+    # configuration. This is typically overridden by environment variables, but we set a
+    # sensible default like 'OrdererMSP'.
+    LocalMSPID: OrdererMSP
 
     # Enable an HTTP service for Go "pprof" profiling as documented at:
     # https://golang.org/pkg/net/http/pprof
