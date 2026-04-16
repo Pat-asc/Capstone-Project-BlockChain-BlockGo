@@ -91,7 +91,9 @@ func (cc *SmartContract) initLedger(stub shim.ChaincodeStubInterface) *pb.Respon
 		if err != nil {
 			return shim.Error(fmt.Sprintf("Failed to marshal genesis record: %v", err))
 		}
-		stub.PutPrivateData("collectionGrades", record.ID, recordJSON)
+		if err := stub.PutState(record.ID, recordJSON); err != nil {
+			return shim.Error(fmt.Sprintf("Failed to put state for genesis record: %v", err))
+		}
 	}
 	return shim.Success([]byte("Ledger Initialized Successfully with Genesis Data"))
 }
@@ -101,7 +103,10 @@ func (cc *SmartContract) issueGrade(stub shim.ChaincodeStubInterface, args []str
 		return shim.Error("Record data required")
 	}
 
-	mspID, _ := cid.GetMSPID(stub)
+	mspID, err := cid.GetMSPID(stub)
+	if err != nil {
+		return shim.Error(fmt.Sprintf("Failed to get MSP ID: %v", err))
+	}
 	if mspID != "FacultyMSP" {
 		return shim.Error(fmt.Sprintf("OBAC Denied: Must belong to FacultyMSP. Your MSP is %s", mspID))
 	}
@@ -111,16 +116,15 @@ func (cc *SmartContract) issueGrade(stub shim.ChaincodeStubInterface, args []str
 	}
 
 	var record AcademicRecord
-	err := json.Unmarshal([]byte(args[0]), &record)
-	if err != nil {
-		return shim.Error("Invalid JSON input")
+	if err := json.Unmarshal([]byte(args[0]), &record); err != nil {
+		return shim.Error(fmt.Sprintf("Invalid JSON input: %v", err))
 	}
 
 	if record.Grade == "" {
 		return shim.Error("Grade field cannot be empty")
 	}
 
-	existing, err := stub.GetPrivateData("collectionGrades", record.ID)
+	existing, err := stub.GetState(record.ID)
 	if err != nil {
 		return shim.Error(fmt.Sprintf("Failed to read from state database: %v", err))
 	}
@@ -128,15 +132,20 @@ func (cc *SmartContract) issueGrade(stub shim.ChaincodeStubInterface, args []str
 		return shim.Error("Record already exists")
 	}
 
-	submitterID, _ := cid.GetID(stub)
+	submitterID, err := cid.GetID(stub)
+	if err != nil {
+		return shim.Error(fmt.Sprintf("Failed to get client identity: %v", err))
+	}
 	record.FacultyID = submitterID
 	record.Status = "Issued"
 	record.Version = 1
 
-	recordJSON, _ := json.Marshal(record)
-	err = stub.PutPrivateData("collectionGrades", record.ID, recordJSON)
+	recordJSON, err := json.Marshal(record)
 	if err != nil {
-		return shim.Error("Failed to write private data")
+		return shim.Error(fmt.Sprintf("Failed to marshal record: %v", err))
+	}
+	if err := stub.PutState(record.ID, recordJSON); err != nil {
+		return shim.Error(fmt.Sprintf("Failed to update state database: %v", err))
 	}
 
 	return shim.Success(recordJSON)
@@ -147,7 +156,7 @@ func (cc *SmartContract) readGrade(stub shim.ChaincodeStubInterface, args []stri
 		return shim.Error("ID required")
 	}
 
-	recordJSON, err := stub.GetPrivateData("collectionGrades", args[0])
+	recordJSON, err := stub.GetState(args[0])
 	if err != nil || recordJSON == nil {
 		return shim.Error("Record not found")
 	}
@@ -170,14 +179,16 @@ func (cc *SmartContract) updateGrade(stub shim.ChaincodeStubInterface, args []st
 	}
 
 	var updated AcademicRecord
-	json.Unmarshal([]byte(args[0]), &updated)
+	if err := json.Unmarshal([]byte(args[0]), &updated); err != nil {
+		return shim.Error(fmt.Sprintf("Failed to unmarshal updated record: %v", err))
+	}
 
 	// VALIDATION: Prevent empty grades from being submitted in an update.
 	if updated.Grade == "" {
 		return shim.Error("Grade field cannot be empty")
 	}
 
-	existingJSON, err := stub.GetPrivateData("collectionGrades", updated.ID)
+	existingJSON, err := stub.GetState(updated.ID)
 	if err != nil {
 		return shim.Error(fmt.Sprintf("Failed to read from state database: %v", err))
 	}
@@ -186,7 +197,9 @@ func (cc *SmartContract) updateGrade(stub shim.ChaincodeStubInterface, args []st
 	}
 
 	var existing AcademicRecord
-	json.Unmarshal(existingJSON, &existing)
+	if err := json.Unmarshal(existingJSON, &existing); err != nil {
+		return shim.Error(fmt.Sprintf("Failed to unmarshal existing record: %v", err))
+	}
 
 	// VALIDATION: Prevent modification of a finalized record.
 	if existing.Status == "Finalized" {
@@ -204,7 +217,9 @@ func (cc *SmartContract) updateGrade(stub shim.ChaincodeStubInterface, args []st
 	existing.Version++
 
 	recordJSON, _ := json.Marshal(existing)
-	stub.PutPrivateData("collectionGrades", existing.ID, recordJSON)
+	if err := stub.PutState(existing.ID, recordJSON); err != nil {
+		return shim.Error(fmt.Sprintf("Failed to update state database: %v", err))
+	}
 
 	return shim.Success(recordJSON)
 }
@@ -228,7 +243,7 @@ func (cc *SmartContract) approveGrade(stub shim.ChaincodeStubInterface, args []s
 		return shim.Error("OBAC/ABAC Denied: Only Department Admin or Registrar can approve grades.")
 	}
 
-	recordJSON, err := stub.GetPrivateData("collectionGrades", args[0])
+	recordJSON, err := stub.GetState(args[0])
 	if err != nil {
 		return shim.Error(fmt.Sprintf("Failed to read from state database: %v", err))
 	}
@@ -237,11 +252,15 @@ func (cc *SmartContract) approveGrade(stub shim.ChaincodeStubInterface, args []s
 	}
 
 	var record AcademicRecord
-	json.Unmarshal(recordJSON, &record)
+	if err := json.Unmarshal(recordJSON, &record); err != nil {
+		return shim.Error(fmt.Sprintf("Failed to unmarshal record: %v", err))
+	}
 
 	record.Status = "DepartmentApproved"
 	updatedJSON, _ := json.Marshal(record)
-	stub.PutPrivateData("collectionGrades", args[0], updatedJSON)
+	if err := stub.PutState(args[0], updatedJSON); err != nil {
+		return shim.Error(fmt.Sprintf("Failed to update state database: %v", err))
+	}
 
 	return shim.Success(updatedJSON)
 }
@@ -264,7 +283,7 @@ func (cc *SmartContract) finalizeRecord(stub shim.ChaincodeStubInterface, args [
 		return shim.Error("OBAC/ABAC Denied: Only the Master Registrar can finalize records to the ledger.")
 	}
 
-	recordJSON, err := stub.GetPrivateData("collectionGrades", args[0])
+	recordJSON, err := stub.GetState(args[0])
 	if err != nil {
 		return shim.Error(fmt.Sprintf("Failed to read from state database: %v", err))
 	}
@@ -273,17 +292,21 @@ func (cc *SmartContract) finalizeRecord(stub shim.ChaincodeStubInterface, args [
 	}
 
 	var record AcademicRecord
-	json.Unmarshal(recordJSON, &record)
+	if err := json.Unmarshal(recordJSON, &record); err != nil {
+		return shim.Error(fmt.Sprintf("Failed to unmarshal record: %v", err))
+	}
 
 	record.Status = "Finalized"
 	updatedJSON, _ := json.Marshal(record)
-	stub.PutPrivateData("collectionGrades", args[0], updatedJSON)
+	if err := stub.PutState(args[0], updatedJSON); err != nil {
+		return shim.Error(fmt.Sprintf("Failed to update state database: %v", err))
+	}
 
 	return shim.Success(updatedJSON)
 }
 
 func (cc *SmartContract) getAllGrades(stub shim.ChaincodeStubInterface) *pb.Response {
-	resultsIterator, err := stub.GetPrivateDataByRange("collectionGrades", "", "")
+	resultsIterator, err := stub.GetStateByRange("", "")
 	if err != nil {
 		return shim.Error("Query failed")
 	}
@@ -291,9 +314,14 @@ func (cc *SmartContract) getAllGrades(stub shim.ChaincodeStubInterface) *pb.Resp
 
 	var records []AcademicRecord
 	for resultsIterator.HasNext() {
-		queryResponse, _ := resultsIterator.Next()
+		queryResponse, err := resultsIterator.Next()
+		if err != nil {
+			return shim.Error(fmt.Sprintf("Failed to get next iteration: %v", err))
+		}
 		var record AcademicRecord
-		json.Unmarshal(queryResponse.Value, &record)
+		if err := json.Unmarshal(queryResponse.Value, &record); err != nil {
+			return shim.Error(fmt.Sprintf("Failed to unmarshal record: %v", err))
+		}
 		records = append(records, record)
 	}
 
@@ -343,12 +371,12 @@ func readFile(path string) []byte {
 	if info, err := os.Stat(path); err == nil && info.IsDir() {
 		files, readDirErr := os.ReadDir(path)
 		if readDirErr != nil {
-		} else {
-			for _, f := range files {
-				if !f.IsDir() && strings.HasSuffix(f.Name(), "_sk") {
-					path = filepath.Join(path, f.Name())
-					break
-				}
+			log.Fatalf("Failed to read directory %s: %v", path, readDirErr)
+		}
+		for _, f := range files {
+			if !f.IsDir() && strings.HasSuffix(f.Name(), "_sk") {
+				path = filepath.Join(path, f.Name())
+				break
 			}
 		}
 	}

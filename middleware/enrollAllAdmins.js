@@ -10,7 +10,7 @@ async function main() {
         // --- Use CouchDB Wallet ---
         let couchUrl = process.env.COUCHDB_WALLET_URL;
         if (!couchUrl && process.env.COUCHDB_USER && process.env.COUCHDB_PASS) {
-            couchUrl = `http://${process.env.COUCHDB_USER}:${process.env.COUCHDB_PASS}@127.0.0.1:5989`;
+            couchUrl = `http://${process.env.COUCHDB_USER}:${process.env.COUCHDB_PASS}@127.0.0.1:5990`;
         }
         if (!couchUrl) {
             throw new Error("CouchDB wallet URL or credentials not found in .env");

@@ -2,7 +2,7 @@ Organizations:
   - &OrdererOrg
     Name: OrdererMSP
     ID: OrdererMSP
-    MSPDir: crypto-config/ordererOrganizations/capstone.com/msp
+    MSPDir: crypto-config-final-v2/ordererOrganizations/capstone.com/msp
     Policies:
       Readers: { Type: Signature, Rule: "OR('OrdererMSP.member')" }
       Writers: { Type: Signature, Rule: "OR('OrdererMSP.member')" }
@@ -13,7 +13,7 @@ Organizations:
   - &RegistrarOrg
     Name: RegistrarMSP
     ID: RegistrarMSP
-    MSPDir: crypto-config/peerOrganizations/registrar.capstone.com/msp
+    MSPDir: crypto-config-final-v2/peerOrganizations/registrar.capstone.com/msp
     Policies:
       Readers: { Type: Signature, Rule: "OR('RegistrarMSP.admin', 'RegistrarMSP.peer', 'RegistrarMSP.client')" }
       Writers: { Type: Signature, Rule: "OR('RegistrarMSP.admin', 'RegistrarMSP.client')" }
@@ -26,7 +26,7 @@ Organizations:
   - &FacultyOrg
     Name: FacultyMSP
     ID: FacultyMSP
-    MSPDir: crypto-config/peerOrganizations/faculty.capstone.com/msp
+    MSPDir: crypto-config-final-v2/peerOrganizations/faculty.capstone.com/msp
     Policies:
       Readers: { Type: Signature, Rule: "OR('FacultyMSP.admin', 'FacultyMSP.peer', 'FacultyMSP.client')" }
       Writers: { Type: Signature, Rule: "OR('FacultyMSP.admin', 'FacultyMSP.client')" }
@@ -39,7 +39,7 @@ Organizations:
   - &DepartmentOrg
     Name: DepartmentMSP
     ID: DepartmentMSP
-    MSPDir: crypto-config/peerOrganizations/department.capstone.com/msp
+    MSPDir: crypto-config-final-v2/peerOrganizations/department.capstone.com/msp
     Policies:
       Readers: { Type: Signature, Rule: "OR('DepartmentMSP.admin', 'DepartmentMSP.peer', 'DepartmentMSP.client')" }
       Writers: { Type: Signature, Rule: "OR('DepartmentMSP.admin', 'DepartmentMSP.client')" }
@@ -82,8 +82,8 @@ Orderer: &OrdererDefaults
     Consenters:
       - Host: orderer.capstone.com
         Port: 7050
-        ClientTLSCert: crypto-config/ordererOrganizations/capstone.com/orderers/orderer.capstone.com/tls/server.crt
-        ServerTLSCert: crypto-config/ordererOrganizations/capstone.com/orderers/orderer.capstone.com/tls/server.crt
+        ClientTLSCert: crypto-config-final-v2/ordererOrganizations/capstone.com/orderers/orderer.capstone.com/tls/server.crt
+        ServerTLSCert: crypto-config-final-v2/ordererOrganizations/capstone.com/orderers/orderer.capstone.com/tls/server.crt
   Addresses:
     - orderer.capstone.com:7050
   BatchTimeout: 2s

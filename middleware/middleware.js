@@ -73,7 +73,7 @@ db.on('error', (err, client) => {
 async function getWallet() {
     let couchUrl = process.env.COUCHDB_WALLET_URL;
     if (!couchUrl && process.env.COUCHDB_USER && process.env.COUCHDB_PASS) {
-        couchUrl = `http://${process.env.COUCHDB_USER}:${process.env.COUCHDB_PASS}@127.0.0.1:5989`;
+        couchUrl = `http://${process.env.COUCHDB_USER}:${process.env.COUCHDB_PASS}@127.0.0.1:5990`;
     }
 
     if (couchUrl) {
@@ -299,12 +299,7 @@ async function getContractForUser(username) {
         throw new Error(`Access Denied: Wallet identity for '${username}' not found. The Registrar must register this user first.`);
     }
 
-    const systemLabel = identity.mspId === 'FacultyMSP' ? 'system-admin-faculty' :
-                        identity.mspId === 'DepartmentMSP' ? 'system-admin-department' :
-                        'system-admin-registrar';
-    const useIdentity = (await wallet.get(systemLabel)) ? systemLabel : username;
-    
-    console.log(`[Ledger Gateway] Routing transaction for ${username} via identity proxy: ${useIdentity}`);
+    console.log(`[Ledger Gateway] Routing transaction for ${username} securely via their own wallet identity.`);
 
     for (const [orgName, orgDetails] of Object.entries(ccp.organizations)) {
         if (orgDetails.mspid === identity.mspId) {
@@ -327,7 +322,7 @@ async function getContractForUser(username) {
     const gateway = new Gateway();
     await gateway.connect(ccp, {
         wallet,
-        identity: useIdentity, 
+        identity: username, 
         discovery: { enabled: false, asLocalhost: true }
     });
 
@@ -738,6 +733,33 @@ app.get('/api/all-grades', authenticateJWT, async (req, res) => {
         
         try {
             const grades = JSON.parse(result.toString());
+            if (req.user && req.user.dbRole === 'student') {
+                const studentGrades = grades.filter(g => 
+                    g.student_hash === username || 
+                    g.studentId === username ||
+                    g.studentId === username.split('@')[0]
+                );
+                return res.status(200).json({ status: 'success', data: studentGrades });
+            }
+            else if (req.user && req.user.dbRole === 'faculty') {
+                const facultyGrades = grades.filter(g => g.faculty_id === username);
+                return res.status(200).json({ status: 'success', data: facultyGrades });
+            }
+            else if (req.user && (req.user.dbRole === 'department_admin' || req.user.dbRole === 'dean')) {
+                // SECURITY FIX: Restrict Department Admins to only see grades for their assigned department
+                const profileRes = await db.query(
+                    'SELECT ap.department FROM AdminProfiles ap JOIN Users u ON ap.user_id = u.id WHERE u.email = $1',
+                    [username]
+                );
+                
+                if (profileRes.rows.length > 0 && profileRes.rows[0].department && profileRes.rows[0].department !== 'Unassigned') {
+                    const adminDept = profileRes.rows[0].department;
+                    const deptGrades = grades.filter(g => g.course?.includes(adminDept) || g.subject_code?.includes(adminDept));
+                    return res.status(200).json({ status: 'success', data: deptGrades });
+                }
+                return res.status(200).json({ status: 'success', data: [] }); // If no department assigned, return empty
+            }
+            
             res.status(200).json({ status: 'success', data: grades });
         } catch (e) {
             res.status(200).json({ status: 'success', data: result.toString() });

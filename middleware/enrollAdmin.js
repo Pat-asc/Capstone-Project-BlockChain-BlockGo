@@ -13,8 +13,8 @@ require('dotenv').config({ path: path.resolve(__dirname, '../network/.env'), ove
 async function getWallet() {
     let couchUrl = process.env.COUCHDB_WALLET_URL;
     if (!couchUrl && process.env.COUCHDB_USER && process.env.COUCHDB_PASS) {
-        // Default to localhost and the port exposed in docker-compose
-        couchUrl = `http://${process.env.COUCHDB_USER}:${process.env.COUCHDB_PASS}@127.0.0.1:5989`;
+        // Default to localhost and the port used by the native CouchDB installation
+        couchUrl = `http://${process.env.COUCHDB_USER}:${process.env.COUCHDB_PASS}@127.0.0.1:5990`;
     }
 
     if (couchUrl) {

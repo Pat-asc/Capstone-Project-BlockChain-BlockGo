@@ -132,7 +132,7 @@ CREATE TABLE IF NOT EXISTS audit_logs (
     ip_address VARCHAR(50),
     timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
-CREATE TABLE GradeTemplates (
+CREATE TABLE IF NOT EXISTS gradetemplates (
     id SERIAL PRIMARY KEY,
     template_name VARCHAR(255) NOT NULL,
     department VARCHAR(100) NOT NULL,
@@ -140,9 +140,9 @@ CREATE TABLE GradeTemplates (
     status VARCHAR(50) DEFAULT 'Pending',
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
-CREATE TABLE FacultySections (
+CREATE TABLE IF NOT EXISTS facultysections (
     id SERIAL PRIMARY KEY,
-    user_id INT REFERENCES Users(id) ON DELETE CASCADE,
+    user_id INT REFERENCES users(id) ON DELETE CASCADE,
     department VARCHAR(100) NOT NULL,
     section VARCHAR(50) NOT NULL,
     year_level VARCHAR(50),

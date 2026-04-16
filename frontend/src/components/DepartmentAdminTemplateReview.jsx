@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import plvlogo from '../assets/plvlogo.png';
+import { fetchDepartmentTemplates, reviewTemplate } from '../services/api';
 
 const DepartmentAdminTemplateReview = ({ adminData, onLogout }) => {
   const [templates, setTemplates] = useState([]);
@@ -10,8 +11,53 @@ const DepartmentAdminTemplateReview = ({ adminData, onLogout }) => {
 
   const fetchTemplates = useCallback(async () => {
     setLoading(true);
+
+    // --- MOCK DATA FOR TESTING UI ---
+    const mockTemplates = [
+      {
+        id: 101,
+        templateName: "Standard IT Midterm Grading",
+        status: "Pending",
+        createdAt: new Date().toISOString(),
+        formulaConfig: {
+          columns: [
+            { id: "C", header: "Quiz 1", type: "input", value: "" },
+            { id: "D", header: "Quiz 2", type: "input", value: "" },
+            { id: "E", header: "Exam", type: "input", value: "" },
+            { id: "F", header: "Total Grade", type: "formula", value: "=(C{row}*0.2) + (D{row}*0.2) + (E{row}*0.6)" }
+          ]
+        }
+      },
+      {
+        id: 102,
+        templateName: "CS Programming Fundamentals",
+        status: "Approved",
+        createdAt: new Date(Date.now() - 86400000).toISOString(),
+        formulaConfig: {
+          columns: [
+            { id: "C", header: "Machine Problem", type: "input", value: "" },
+            { id: "D", header: "Final Project", type: "input", value: "" },
+            { id: "E", header: "Final Grade", type: "formula", value: "=(C{row}*0.4) + (D{row}*0.6)" }
+          ]
+        }
+      },
+      {
+        id: 103,
+        templateName: "Rejected Legacy Template",
+        status: "Rejected",
+        createdAt: new Date(Date.now() - 172800000).toISOString(),
+        formulaConfig: {
+          columns: [
+            { id: "C", header: "Attendance", type: "input", value: "" },
+            { id: "D", header: "Finals", type: "input", value: "" },
+            { id: "E", header: "Total", type: "formula", value: "=(C{row}*0.1) + (D{row}*0.9)" }
+          ]
+        }
+      }
+    ];
+    // --------------------------------
+
     try {
-      const token = localStorage.getItem('token');
       // Fallback to empty string if department is undefined to avoid 404s
       const dept = adminData?.department || '';
       if (!dept) {
@@ -19,16 +65,16 @@ const DepartmentAdminTemplateReview = ({ adminData, onLogout }) => {
          return;
       }
 
-      const response = await fetch(`/api/GradeTemplate/department/${dept}`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      const data = await response.json();
+      const data = await fetchDepartmentTemplates(dept);
       
-      if (response.ok && data.status === "Success") {
-        setTemplates(data.templates || []);
+      if (data.status === "Success") {
+        // Fallback to mock data if the database returns an empty array
+        setTemplates(data.templates?.length > 0 ? data.templates : mockTemplates);
       }
     } catch (error) {
       console.error("Error fetching templates:", error);
+      // Fallback to mock data if the backend completely fails to connect
+      setTemplates(mockTemplates);
     }
     setLoading(false);
   }, [adminData]);
@@ -41,18 +87,8 @@ const DepartmentAdminTemplateReview = ({ adminData, onLogout }) => {
     if (!window.confirm(`Are you sure you want to ${status.toLowerCase()} this grading template?`)) return;
     
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`/api/GradeTemplate/${id}/review`, {
-        method: 'PUT',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ status })
-      });
-
-      const data = await response.json();
-      if (response.ok) {
+      const data = await reviewTemplate(id, status);
+      if (data.status === "Success") {
         alert(`Template successfully ${status.toLowerCase()}.`);
         setActiveTemplate(null);
         fetchTemplates(); // Refresh the list
@@ -182,7 +218,7 @@ const DepartmentAdminTemplateReview = ({ adminData, onLogout }) => {
                   </div>
                   <h2 className="subject-title" style={{ marginTop: '10px' }}>{t.templateName}</h2>
                   <div className="section-dept-row">
-                    <span className="section-name">{new Date(t.createdAt).toLocaleDateString()}</span>
+                    <span className="section-name">{t.createdAt ? new Date(t.createdAt).toLocaleDateString() : 'Unknown Date'}</span>
                     <span className="dept-pill">{colsCount + 2} Total Columns</span>
                   </div>
                   <hr className="card-divider" />

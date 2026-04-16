@@ -45,115 +45,134 @@ namespace Client_app.Controllers
                 return BadRequest(new { status = "Error", message = "Email is required." });
             }
 
-            using var conn = new NpgsqlConnection(_connectionString);
-            await conn.OpenAsync();
-
-            using (var checkCmd = new NpgsqlCommand("SELECT COUNT(1) FROM Users WHERE email = @email", conn))
+            try
             {
-                checkCmd.Parameters.AddWithValue("email", request.Email);
-                long userCount = (long)(await checkCmd.ExecuteScalarAsync() ?? 0);
-                if (userCount > 0)
+                var normalizedEmail = request.Email.Trim().ToLower();
+
+                using var conn = new NpgsqlConnection(_connectionString);
+                await conn.OpenAsync();
+
+                using (var checkCmd = new NpgsqlCommand("SELECT COUNT(1) FROM Users WHERE email = @email", conn))
                 {
-                    return BadRequest(new { status = "Error", message = "An account with this email already exists or is currently pending approval." });
+                    checkCmd.Parameters.AddWithValue("email", normalizedEmail);
+                    long userCount = (long)(await checkCmd.ExecuteScalarAsync() ?? 0);
+                    if (userCount > 0)
+                    {
+                        return BadRequest(new { status = "Error", message = "An account with this email already exists or is currently pending approval." });
+                    }
                 }
+
+                var verificationCode = RandomNumberGenerator.GetInt32(100000, 1000000).ToString();
+                var cacheKey = $"verification_{normalizedEmail}";
+                _cache.Set(cacheKey, verificationCode, TimeSpan.FromMinutes(10));
+
+                var subject = "Your PLV Account Verification Code";
+                var content = $"<p>Hello,</p><p>Thank you for registering. Please use the following verification code to complete your signup process. The code is valid for 10 minutes.</p><p style='font-size: 24px; font-weight: bold; text-align: center; letter-spacing: 5px; margin: 20px 0;'>{verificationCode}</p><p>If you did not request this, please ignore this email.</p>";
+                var htmlBody = CreateHtmlEmail(subject, content);
+
+                await _emailService.SendEmailAsync(normalizedEmail, subject, htmlBody, true);
+
+                return Ok(new { status = "Success", message = "Verification code sent to your email." });
             }
-
-            var verificationCode = RandomNumberGenerator.GetInt32(100000, 1000000).ToString();
-            var cacheKey = $"verification_{request.Email}";
-            _cache.Set(cacheKey, verificationCode, TimeSpan.FromMinutes(10));
-
-            var subject = "Your PLV Account Verification Code";
-            var content = $"<p>Hello,</p><p>Thank you for registering. Please use the following verification code to complete your signup process. The code is valid for 10 minutes.</p><p style='font-size: 24px; font-weight: bold; text-align: center; letter-spacing: 5px; margin: 20px 0;'>{verificationCode}</p><p>If you did not request this, please ignore this email.</p>";
-            var htmlBody = CreateHtmlEmail(subject, content);
-
-            await _emailService.SendEmailAsync(request.Email, subject, htmlBody, true);
-
-            return Ok(new { status = "Success", message = "Verification code sent to your email." });
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = "Error", message = $"Failed to process request: {ex.Message}" });
+            }
         }
 
         [HttpPost("request")]
         public async Task<IActionResult> RequestAccess([FromBody] SignupRequest request)
         {
+            var normalizedEmail = request.Email?.Trim().ToLower();
+            var inputCode = request.VerificationCode?.Trim();
+
             // 1. Verify Code
-            if (!_cache.TryGetValue($"verification_{request.Email}", out string? cachedCode) || cachedCode != request.VerificationCode)
+            if (!_cache.TryGetValue($"verification_{normalizedEmail}", out string? cachedCode) || cachedCode != inputCode)
             {
                 return BadRequest(new { status = "Error", message = "The verification code is incorrect or has expired. Please try again." });
             }
-            _cache.Remove($"verification_{request.Email}");
+            _cache.Remove($"verification_{normalizedEmail}");
 
-            using var conn = new NpgsqlConnection(_connectionString);
-            await conn.OpenAsync();
-
-            // Check if user already exists before proceeding
-            using (var checkCmd = new NpgsqlCommand("SELECT COUNT(1) FROM Users WHERE email = @email", conn))
+            try
             {
-                checkCmd.Parameters.AddWithValue("email", request.Email);
-                long userCount = (long)(await checkCmd.ExecuteScalarAsync() ?? 0);
-                if (userCount > 0)
+                using var conn = new NpgsqlConnection(_connectionString);
+                await conn.OpenAsync();
+
+                // Check if user already exists before proceeding
+                using (var checkCmd = new NpgsqlCommand("SELECT COUNT(1) FROM Users WHERE email = @email", conn))
                 {
-                    return BadRequest(new { status = "Error", message = "An account with this email already exists or is currently pending approval." });
+                    checkCmd.Parameters.AddWithValue("email", normalizedEmail);
+                    long userCount = (long)(await checkCmd.ExecuteScalarAsync() ?? 0);
+                    if (userCount > 0)
+                    {
+                        return BadRequest(new { status = "Error", message = "An account with this email already exists or is currently pending approval." });
+                    }
                 }
+
+                using var transaction = await conn.BeginTransactionAsync();
+
+                // Request password hash from Node.js Middleware
+                using var client = _httpClientFactory.CreateClient();
+                var apiKey = _configuration["InternalApiKey"] ?? _configuration["INTERNAL_API_KEY"] ?? throw new InvalidOperationException("Internal API Key not configured.");
+                client.DefaultRequestHeaders.Add("x-api-key", apiKey);
+                var hashPayload = new { password = request.Password };
+                var hashContent = new StringContent(JsonSerializer.Serialize(hashPayload), Encoding.UTF8, "application/json");
+                var middlewareUrl = _configuration["Middleware:Url"] ?? _configuration["MIDDLEWARE_URL"] ?? "http://127.0.0.1:4000";
+                var hashResponse = await client.PostAsync($"{middlewareUrl}/api/crypto/hash-password", hashContent);
+                
+                if (!hashResponse.IsSuccessStatusCode) {
+                    return StatusCode(500, new { status = "Error", message = "Failed to secure password via middleware." });
+                }
+                
+                var hashResultStr = await hashResponse.Content.ReadAsStringAsync();
+                using var hashDoc = JsonDocument.Parse(hashResultStr);
+                string passwordHash = hashDoc.RootElement.GetProperty("hash").GetString() ?? throw new Exception("Failed to parse hash");
+
+                // 1. Insert into base Users table
+                using var cmdUser = new NpgsqlCommand(@"
+                    INSERT INTO Users (email, password_hash, role, status) 
+                    VALUES (@email, @hash, @role, 'pending') RETURNING id", conn, transaction);
+                cmdUser.Parameters.AddWithValue("email", normalizedEmail);
+                cmdUser.Parameters.AddWithValue("hash", passwordHash);
+                cmdUser.Parameters.AddWithValue("role", request.Role?.ToLower() ?? "student");
+                
+                int userId = (int)(await cmdUser.ExecuteScalarAsync() ?? throw new Exception("Failed to retrieve new User ID"));
+
+                string profileQuery = "";
+                if (request.Role?.ToLower() == "student")
+                {
+                    profileQuery = "INSERT INTO StudentProfiles (user_id, full_name, student_no, department) VALUES (@uid, @name, @studentno, @dept)";
+                }
+                else if (request.Role?.ToLower() == "faculty")
+                {
+                    profileQuery = "INSERT INTO FacultyProfiles (user_id, full_name, department) VALUES (@uid, @name, @dept)";
+                }
+                else 
+                {
+                    profileQuery = "INSERT INTO AdminProfiles (user_id, full_name, admin_level, department) VALUES (@uid, @name, @role, @dept)";
+                }
+
+                using var cmdProfile = new NpgsqlCommand(profileQuery, conn, transaction);
+                cmdProfile.Parameters.AddWithValue("uid", userId);
+                cmdProfile.Parameters.AddWithValue("name", request.FullName);
+                cmdProfile.Parameters.AddWithValue("dept", (object?)request.Department ?? DBNull.Value);
+                cmdProfile.Parameters.AddWithValue("role", request.Role ?? "");
+                if (request.Role?.ToLower() == "student") {
+                    cmdProfile.Parameters.AddWithValue("studentno", (object?)request.StudentNo ?? DBNull.Value);
+                }
+
+                await cmdProfile.ExecuteNonQueryAsync();
+                await transaction.CommitAsync();
+
+                // --- CACHE INVALIDATION ---
+                _cache.Remove("pending_requests");
+
+                return Ok(new { status = "Success", message = "Registration request added to waitlist." });
             }
-
-            using var transaction = await conn.BeginTransactionAsync();
-
-            // Request password hash from Node.js Middleware
-            using var client = _httpClientFactory.CreateClient();
-            var apiKey = _configuration["InternalApiKey"] ?? throw new InvalidOperationException("Internal API Key not configured.");
-            client.DefaultRequestHeaders.Add("x-api-key", apiKey);
-            var hashPayload = new { password = request.Password };
-            var hashContent = new StringContent(JsonSerializer.Serialize(hashPayload), Encoding.UTF8, "application/json");
-            var middlewareUrl = _configuration["Middleware:Url"] ?? throw new InvalidOperationException("Middleware URL not configured.");
-            var hashResponse = await client.PostAsync($"{middlewareUrl}/api/crypto/hash-password", hashContent);
-            
-            if (!hashResponse.IsSuccessStatusCode) {
-                return StatusCode(500, new { status = "Error", message = "Failed to secure password via middleware." });
-            }
-            
-            var hashResultStr = await hashResponse.Content.ReadAsStringAsync();
-            using var hashDoc = JsonDocument.Parse(hashResultStr);
-            string passwordHash = hashDoc.RootElement.GetProperty("hash").GetString() ?? throw new Exception("Failed to parse hash");
-
-            // 1. Insert into base Users table
-            using var cmdUser = new NpgsqlCommand(@"
-                INSERT INTO Users (email, password_hash, role, status) 
-                VALUES (@email, @hash, @role, 'pending') RETURNING id", conn, transaction);
-            cmdUser.Parameters.AddWithValue("email", request.Email);
-            cmdUser.Parameters.AddWithValue("hash", passwordHash);
-            cmdUser.Parameters.AddWithValue("role", request.Role?.ToLower() ?? "student");
-            
-            int userId = (int)(await cmdUser.ExecuteScalarAsync() ?? throw new Exception("Failed to retrieve new User ID"));
-
-            string profileQuery = "";
-            if (request.Role?.ToLower() == "student")
+            catch (Exception ex)
             {
-                profileQuery = "INSERT INTO StudentProfiles (user_id, full_name, student_no, department) VALUES (@uid, @name, @studentno, @dept)";
+                return StatusCode(500, new { status = "Error", message = $"Registration failed: {ex.Message}" });
             }
-            else if (request.Role?.ToLower() == "faculty")
-            {
-                profileQuery = "INSERT INTO FacultyProfiles (user_id, full_name, department) VALUES (@uid, @name, @dept)";
-            }
-            else 
-            {
-                profileQuery = "INSERT INTO AdminProfiles (user_id, full_name, admin_level, department) VALUES (@uid, @name, @role, @dept)";
-            }
-
-            using var cmdProfile = new NpgsqlCommand(profileQuery, conn, transaction);
-            cmdProfile.Parameters.AddWithValue("uid", userId);
-            cmdProfile.Parameters.AddWithValue("name", request.FullName);
-            cmdProfile.Parameters.AddWithValue("dept", (object?)request.Department ?? DBNull.Value);
-            cmdProfile.Parameters.AddWithValue("role", request.Role ?? "");
-            if (request.Role?.ToLower() == "student") {
-                cmdProfile.Parameters.AddWithValue("studentno", (object?)request.StudentNo ?? DBNull.Value);
-            }
-
-            await cmdProfile.ExecuteNonQueryAsync();
-            await transaction.CommitAsync();
-
-            // --- CACHE INVALIDATION ---
-            _cache.Remove("pending_requests");
-
-            return Ok(new { status = "Success", message = "Registration request added to waitlist." });
         }
 
         [HttpGet("requests/pending")]
@@ -247,14 +266,14 @@ namespace Client_app.Controllers
 
             // Trigger the Node.js Middleware to Generate the Blockchain Wallet
             using var client = _httpClientFactory.CreateClient("FabricCAClient");
-            var apiKey = _configuration["InternalApiKey"] ?? throw new InvalidOperationException("Internal API Key not configured.");
+            var apiKey = _configuration["InternalApiKey"] ?? _configuration["INTERNAL_API_KEY"] ?? throw new InvalidOperationException("Internal API Key not configured.");
             client.DefaultRequestHeaders.Add("x-api-key", apiKey);
 
             var payload = new { email = userEmail, role = userRole };
             var content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
             
             // Call the internal Fabric Gateway
-            var middlewareUrl = _configuration["Middleware:Url"] ?? throw new InvalidOperationException("Middleware URL not configured.");
+            var middlewareUrl = _configuration["Middleware:Url"] ?? _configuration["MIDDLEWARE_URL"] ?? "http://127.0.0.1:4000";
             var response = await client.PostAsync($"{middlewareUrl}/api/fabric/register-user", content);
             
             if (!response.IsSuccessStatusCode) {
@@ -314,7 +333,7 @@ namespace Client_app.Controllers
         public async Task<IActionResult> CleanupPendingRequests()
         {
             var requestApiKey = Request.Headers["x-api-key"].ToString();
-            var configuredApiKey = _configuration["InternalApiKey"] ?? throw new InvalidOperationException("Internal API Key not configured.");
+            var configuredApiKey = _configuration["InternalApiKey"] ?? _configuration["INTERNAL_API_KEY"] ?? throw new InvalidOperationException("Internal API Key not configured.");
             if (requestApiKey != configuredApiKey)
             {
                 return StatusCode(403, new { status = "Error", message = "Unauthorized. Invalid Internal API Key." });
@@ -730,36 +749,18 @@ namespace Client_app.Controllers
                 using var conn = new NpgsqlConnection(_connectionString);
                 await conn.OpenAsync();
 
-                // 1. Get the faculty's assigned department and section
-                using var cmdFaculty = new NpgsqlCommand(
-                    "SELECT fp.department, fp.section FROM Users u JOIN FacultyProfiles fp ON u.id = fp.user_id WHERE u.email = @email AND u.status = 'APPROVED'", conn);
-                cmdFaculty.Parameters.AddWithValue("email", email);
-                
-                string? facultyDept = null;
-                string? facultySection = null;
-
-                using (var reader = await cmdFaculty.ExecuteReaderAsync())
-                {
-                    if (!await reader.ReadAsync())
-                        return NotFound(new { status = "Error", message = "Faculty not found or not approved." });
-                        
-                    facultyDept = reader.IsDBNull(0) ? null : reader.GetString(0);
-                    facultySection = reader.IsDBNull(1) ? null : reader.GetString(1);
-                }
-
-                if (string.IsNullOrEmpty(facultyDept) || string.IsNullOrEmpty(facultySection))
-                    return BadRequest(new { status = "Error", message = "Faculty is not fully assigned to a department and section yet." });
-
-                // 2. Fetch all approved students matching the faculty's department and section
+                // Fetch all approved students matching ANY of the faculty's assigned sections across multiple departments
                 var students = new List<object>();
                 using var cmdStudents = new NpgsqlCommand(@"
-                    SELECT u.id, sp.full_name, u.email, sp.student_no, sp.assignment_status
-                    FROM Users u JOIN StudentProfiles sp ON u.id = sp.user_id
+                    SELECT DISTINCT u.id, sp.full_name, u.email, sp.student_no, sp.assignment_status, sp.department, sp.section
+                    FROM Users u 
+                    JOIN StudentProfiles sp ON u.id = sp.user_id
+                    JOIN FacultySections fs ON sp.department = fs.department AND sp.section = fs.section
+                    JOIN Users fu ON fs.user_id = fu.id
                     WHERE u.role = 'student' AND u.status = 'APPROVED' 
-                      AND sp.department = @dept AND sp.section = @section", conn);
+                      AND fu.email = @email AND fu.status = 'APPROVED'", conn);
                 
-                cmdStudents.Parameters.AddWithValue("dept", facultyDept);
-                cmdStudents.Parameters.AddWithValue("section", facultySection);
+                cmdStudents.Parameters.AddWithValue("email", email);
 
                 using (var reader = await cmdStudents.ExecuteReaderAsync())
                 {
@@ -770,12 +771,14 @@ namespace Client_app.Controllers
                             fullname = reader.GetString(1),
                             email = reader.GetString(2),
                             studentno = reader.IsDBNull(3) ? "N/A" : reader.GetString(3),
-                            enrollmentStatus = reader.IsDBNull(4) ? "Unassigned" : reader.GetString(4)
+                            enrollmentStatus = reader.IsDBNull(4) ? "Unassigned" : reader.GetString(4),
+                            department = reader.IsDBNull(5) ? "N/A" : reader.GetString(5),
+                            section = reader.IsDBNull(6) ? "N/A" : reader.GetString(6)
                         });
                     }
                 }
 
-                return Ok(new { status = "Success", department = facultyDept, section = facultySection, students });
+                return Ok(new { status = "Success", students });
             }
             catch (Exception ex)
             {
