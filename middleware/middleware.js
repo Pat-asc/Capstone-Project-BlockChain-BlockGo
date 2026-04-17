@@ -222,34 +222,53 @@ const clearCacheOnError = (username, error) => {
 };
 
 async function importCryptogenAdmins(wallet) {
-    console.log("Importing natively trusted Cryptogen Admin certificates...");
+    console.log("Syncing natively trusted Cryptogen Admin certificates...");
     try {
         const orgs = [
             { mspId: 'RegistrarMSP', domain: 'registrar.capstone.com', label: 'system-admin-registrar' },
             { mspId: 'FacultyMSP', domain: 'faculty.capstone.com', label: 'system-admin-faculty' },
             { mspId: 'DepartmentMSP', domain: 'department.capstone.com', label: 'system-admin-department' }
         ];
-        
-        for (const org of orgs) {
-            let certPath = path.resolve(__dirname, `../network/crypto-config/peerOrganizations/${org.domain}/users/Admin@${org.domain}/msp/signcerts/Admin@${org.domain}-cert.pem`);
-            if (!fs.existsSync(certPath)) {
-                certPath = path.resolve(__dirname, `../network/crypto-config/peerOrganizations/${org.domain}/users/Admin@${org.domain}/msp/signcerts/cert.pem`);
-            }
 
-            const keyDir = path.resolve(__dirname, `../network/crypto-config/peerOrganizations/${org.domain}/users/Admin@${org.domain}/msp/keystore`);
-            
-            if (fs.existsSync(certPath) && fs.existsSync(keyDir)) {
-                const cert = fs.readFileSync(certPath, 'utf8');
-                const keyFiles = fs.readdirSync(keyDir).filter(f => f.endsWith('_sk'));
-                if (keyFiles.length > 0) {
-                    const key = fs.readFileSync(path.join(keyDir, keyFiles[0]), 'utf8');
-                    await wallet.put(org.label, { credentials: { certificate: cert, privateKey: key }, mspId: org.mspId, type: 'X.509' });
+        const cryptoBase = '../network/crypto-config-final-v2';
+
+        for (const org of orgs) {
+            try {
+                let certPath = path.resolve(__dirname, `${cryptoBase}/peerOrganizations/${org.domain}/users/Admin@${org.domain}/msp/signcerts/Admin@${org.domain}-cert.pem`);
+                
+                if (!fs.existsSync(certPath)) {
+                    certPath = path.resolve(__dirname, `${cryptoBase}/peerOrganizations/${org.domain}/users/Admin@${org.domain}/msp/signcerts/cert.pem`);
                 }
+
+                const keyDir = path.resolve(__dirname, `${cryptoBase}/peerOrganizations/${org.domain}/users/Admin@${org.domain}/msp/keystore`);
+
+                if (fs.existsSync(certPath) && fs.existsSync(keyDir)) {
+                    const cert = fs.readFileSync(certPath, 'utf8');
+                    
+                    const keyFiles = fs.readdirSync(keyDir).filter(f => f.endsWith('_sk'));
+                    
+                    if (keyFiles.length > 0) {
+                        const keyPath = path.join(keyDir, keyFiles[0]);
+                        const key = fs.readFileSync(keyPath, 'utf8');
+
+                        await wallet.put(org.label, {
+                            credentials: { certificate: cert, privateKey: key },
+                            mspId: org.mspId,
+                            type: 'X.509'
+                        });
+                    } else {
+                        console.warn(`[Identity Sync] No private key (_sk file) found for ${org.domain}`);
+                    }
+                } else {
+                    console.warn(`[Identity Sync] Required files missing for ${org.domain}. Check path: ${cryptoBase}`);
+                }
+            } catch (orgErr) {
+                console.error(`[Identity Sync] Failed to process ${org.domain}: ${orgErr.message}`);
             }
         }
-        console.log("Cryptogen Admin certificates synced successfully.");
+        console.log("Cryptogen Admin sync complete.");
     } catch (err) {
-        console.error("Failed to import cryptogen admins:", err.message);
+        console.error("Critical Failure in importCryptogenAdmins:", err.message);
     }
 }
 
@@ -257,23 +276,37 @@ async function ensureAdminEnrolled(caURL, caName, mspId, adminLabel) {
     try {
         const wallet = await getWallet();
         const identity = await wallet.get(adminLabel);
+        
         if (identity) {
-            return; // Admin is already enrolled
+            return; 
         }
 
-        console.log(`Admin identity '${adminLabel}' not found in wallet. Attempting to enroll...`);
+        console.log(`[Identity Guard] '${adminLabel}' missing from wallet. Attempting enrollment...`);
+        
+        const enrollSecret = process.env.BOOTSTRAP_REGISTRAR_PASS || 'adminpw';
+        
         const ca = new FabricCAServices(caURL, { verify: false }, caName);
-        const enrollment = await ca.enroll({ enrollmentID: 'admin', enrollmentSecret: 'adminpw' });
+        
+        const enrollment = await ca.enroll({ 
+            enrollmentID: 'admin', 
+            enrollmentSecret: enrollSecret 
+        });
+
         const x509Identity = {
-            credentials: { certificate: enrollment.certificate, privateKey: enrollment.key.toBytes() },
+            credentials: { 
+                certificate: enrollment.certificate, 
+                privateKey: enrollment.key.toBytes() 
+            },
             mspId: mspId,
             type: 'X.509',
         };
+
         await wallet.put(adminLabel, x509Identity);
-        console.log(`Successfully enrolled admin and imported it into the wallet as '${adminLabel}'.`);
+        
+        console.log(`Successfully enrolled and encrypted '${adminLabel}'.`);
     } catch (error) {
-        console.error(`Failed to enroll admin '${adminLabel}': ${error.message}`);
-        throw error;
+        console.error(`[ERROR] Failed to enroll admin '${adminLabel}': ${error.message}`);
+        throw error; 
     }
 }
 
@@ -447,68 +480,6 @@ app.post('/api/fabric/register-user', authenticateJWT, requireRegistrarOrInterna
         res.status(200).json({ status: "Success", message: "Blockchain Wallet created successfully!" });
     } catch (error) {
         res.status(500).json({ error: "Failed to create Fabric wallet: " + error.message });
-    }
-});
-
-app.get('/api/bootstrap', async (req, res) => {
-    try {
-        const email = process.env.BOOTSTRAP_REGISTRAR_EMAIL || 'registrar@plv.edu.ph';
-        const pass = process.env.BOOTSTRAP_REGISTRAR_PASS;
-        if (!pass) {
-            return res.status(500).json({ error: "BOOTSTRAP_REGISTRAR_PASS environment variable is missing. Cannot bootstrap." });
-        }
-
-        const userCheck = await db.query('SELECT * FROM Users WHERE email = $1', [email]);
-        const wallet = await getWallet();
-        const identityExists = await wallet.get(email);
-
-        if (userCheck.rows.length > 0) {
-            if (!identityExists) {
-                console.log("Registrar found in DB but missing from wallet. Attempting to heal/re-register...");
-                const result = await fetch(`http://127.0.0.1:${process.env.PORT || 4000}/api/fabric/register-user`, {
-                    method: 'POST',
-                    headers: { 
-                        'Content-Type': 'application/json',
-                        'x-api-key': INTERNAL_API_KEY
-                    },
-                body: JSON.stringify({ email: email, role: 'registrar', password: pass })
-                });
-                const walletResponse = await result.json();
-                
-                if (!result.ok) {
-                    console.error("[Bootstrap] Wallet Healing Failed:", walletResponse);
-                    return res.status(500).json({ error: "Failed to heal wallet. See details.", details: walletResponse });
-                }
-                
-                return res.json({ message: "Registrar was in DB but missing wallet. Wallet healed successfully!", wallet: walletResponse });
-            }
-            return res.json({ message: "Registrar already exists in DB and Wallet." });
-        }
-
-        const hash = await bcrypt.hash(pass, 10);
-        // Fixed SQL Query to match your new schema (removed username column)
-        const userRes = await db.query("INSERT INTO Users (email, password_hash, role, status) VALUES ($1, $2, 'registrar', 'APPROVED') RETURNING id", [email, hash]);
-        await db.query("INSERT INTO AdminProfiles (user_id, full_name, admin_level) VALUES ($1, 'System Registrar', 'registrar')", [userRes.rows[0].id]);
-
-        const result = await fetch(`http://127.0.0.1:${process.env.PORT || 4000}/api/fabric/register-user`, {
-            method: 'POST',
-            headers: { 
-                'Content-Type': 'application/json',
-                'x-api-key': INTERNAL_API_KEY
-            },
-            body: JSON.stringify({ email: email, role: 'registrar', password: pass })
-        });
-
-        const walletResponse = await result.json();
-        
-        if (!result.ok) {
-            console.error("[Bootstrap] Initial Wallet Generation Failed:", walletResponse);
-            return res.status(500).json({ error: "Failed to generate wallet during bootstrap", details: walletResponse });
-        }
-        
-        res.json({ message: "Root registrar created successfully!", email, password: pass, wallet: walletResponse });
-    } catch (error) {
-        res.status(500).json({ error: error.message });
     }
 });
 

@@ -1,14 +1,14 @@
 NodeOUs:
   Enable: true
   ClientOUIdentifier:
-    Certificate: cacerts/ca.registrar.capstone.com-cert.pem
+    Certificate: cacerts/localhost-7054-ca-registrar.pem
     OrganizationalUnitIdentifier: client
   PeerOUIdentifier:
-    Certificate: cacerts/ca.registrar.capstone.com-cert.pem
+    Certificate: cacerts/localhost-7054-ca-registrar.pem
     OrganizationalUnitIdentifier: peer
   AdminOUIdentifier:
-    Certificate: cacerts/ca.registrar.capstone.com-cert.pem
+    Certificate: cacerts/localhost-7054-ca-registrar.pem
     OrganizationalUnitIdentifier: admin
   OrdererOUIdentifier:
-    Certificate: cacerts/ca.registrar.capstone.com-cert.pem
+    Certificate: cacerts/localhost-7054-ca-registrar.pem
     OrganizationalUnitIdentifier: orderer

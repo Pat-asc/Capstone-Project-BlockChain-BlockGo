@@ -67,7 +67,6 @@ client-app/logs/
 # =========================
 # DOCKER & DEPLOYMENT
 # =========================
-.dockerignore
 docker-compose.override.yml
 *.tar.gz
 
@@ -85,12 +84,16 @@ network/*.block
 chaincode/.env
 
 # Ignore Cryptogen materials but KEEP directories
-network/crypto-config/*
-!network/crypto-config/.gitkeep
+network/crypto-config-final-v2/*
+!network/crypto-config-final-v2/.gitkeep
 
 # Ignore Artifacts but KEEP directory
-network/channel-artifacts/*
-!network/channel-artifacts/.gitkeep
+network/channel-artifacts-final/*
+!network/channel-artifacts-final/.gitkeep
+
+# Ignore generated CCaaS packages and scripts
+network/cc-pkg/
+network/builders/
 
 # Ignore Binaries but KEEP directory
 network/bin/*

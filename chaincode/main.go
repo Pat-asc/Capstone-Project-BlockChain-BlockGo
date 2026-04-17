@@ -353,7 +353,6 @@ func main() {
 			Disabled:      false,
 			Key:           readFile(os.Getenv("CHAINCODE_TLS_KEY_FILE")),
 			Cert:          readFile(os.Getenv("CHAINCODE_TLS_CERT_FILE")),
-			ClientCACerts: readFile(os.Getenv("CHAINCODE_CLIENT_CA_CERT_FILE")),
 		}
 	}
 
