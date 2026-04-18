@@ -1,0 +1,15 @@
+
+> middleware@1.0.0 start
+> node middleware.js
+
+[dotenv@17.3.1] injecting env (0) from .env -- tip: ⚡️ secrets for agents: https://dotenvx.com/as2
+[dotenv@17.3.1] injecting env (22) from ../network/.env -- tip: 🤖 agentic secret storage: https://dotenvx.com/as2
+Syncing natively trusted Cryptogen Admin certificates...
+Cryptogen Admin sync complete.
+
+Middleware online on port 4000
+Mode: Production Security (OBAC/ABAC ACTIVE)
+ Dynamic Identity Loading: Enabled
+
+
+Gracefully shutting down...

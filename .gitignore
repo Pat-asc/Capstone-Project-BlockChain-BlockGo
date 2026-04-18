@@ -30,9 +30,6 @@ temp/
 # =========================
 node_modules/
 **/node_modules/
-bin/
-obj/
-dist/
 *.dll
 *.exe
 *.pdb
@@ -42,7 +39,6 @@ ENV/
 __pycache__/
 *.pyc
 .Python
-frontend/build/
 
 # =========================
 # GLOBAL SECRETS & LOGS
@@ -51,9 +47,6 @@ frontend/build/
 .env.*
 *.bak
 appsettings.*.json
-*.log
-logs/
-client-app/logs/
 .fake
 
 # =========================
@@ -68,40 +61,23 @@ client-app/logs/
 # DOCKER & DEPLOYMENT
 # =========================
 docker-compose.override.yml
-*.tar.gz
-
 # =========================
 # BLOCKCHAIN NETWORK SPECIFIC
 # =========================
 fabric_deploy_*/
 network/postgres-data/
 network/ipfs/
-network/fabric-samples/
-middleware/wallet/
-network/*.block
 
 # Dynamic Chaincode Env
 chaincode/.env
 
 # Ignore Cryptogen materials but KEEP directories
-network/crypto-config-final-v2/*
 !network/crypto-config-final-v2/.gitkeep
 
 # Ignore Artifacts but KEEP directory
-network/channel-artifacts-final/*
 !network/channel-artifacts-final/.gitkeep
 
-# Ignore generated CCaaS packages and scripts
-network/cc-pkg/
-network/builders/
-
 # Ignore Binaries but KEEP directory
-network/bin/*
 !network/bin/.gitkeep
 
 # Fabric CA generated keys and databases
-network/fabric-ca/*/msp/
-network/fabric-ca/*/tls/
-network/fabric-ca/**/*.db
-network/fabric-ca/**/*.pem
-network/fabric-ca/**/Issuer*

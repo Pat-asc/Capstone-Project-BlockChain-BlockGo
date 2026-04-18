@@ -1,0 +1,623 @@
+2026-04-10 03:54:56.181 +08:00 [INF] Application starting up...
+2026-04-10 03:54:57.359 +08:00 [INF] HSTS enabled (HTTPS Redirection disabled for Nginx)
+2026-04-10 03:54:57.448 +08:00 [INF] Application configured successfully
+2026-04-10 03:54:57.450 +08:00 [INF] Listening on 
+2026-04-10 03:54:57.532 +08:00 [INF] Now listening on: http://0.0.0.0:5000
+2026-04-10 03:54:57.535 +08:00 [INF] Application started. Press Ctrl+C to shut down.
+2026-04-10 03:54:57.535 +08:00 [INF] Hosting environment: Production
+2026-04-10 03:54:57.536 +08:00 [INF] Content root path: /mnt/c/Users/pascu/Documents/GitHub2/GitHub/Capstone-Project-/For_Testing_Only_Capstone/client-app
+2026-04-10 03:56:40.522 +08:00 [INF] Application is shutting down...
+2026-04-10 03:58:52.729 +08:00 [INF] Application starting up...
+2026-04-10 03:58:53.044 +08:00 [INF] HSTS enabled (HTTPS Redirection disabled for Nginx)
+2026-04-10 03:58:53.162 +08:00 [INF] Application configured successfully
+2026-04-10 03:58:53.164 +08:00 [INF] Listening on 
+2026-04-10 03:58:53.241 +08:00 [INF] Now listening on: http://0.0.0.0:5000
+2026-04-10 03:58:53.244 +08:00 [INF] Application started. Press Ctrl+C to shut down.
+2026-04-10 03:58:53.245 +08:00 [INF] Hosting environment: Production
+2026-04-10 03:58:53.245 +08:00 [INF] Content root path: /mnt/c/Users/pascu/Documents/GitHub2/GitHub/Capstone-Project-/For_Testing_Only_Capstone/client-app
+2026-04-10 04:00:04.243 +08:00 [INF] Application is shutting down...
+2026-04-10 04:02:32.970 +08:00 [INF] Application starting up...
+2026-04-10 04:02:33.275 +08:00 [INF] HSTS enabled (HTTPS Redirection disabled for Nginx)
+2026-04-10 04:02:33.377 +08:00 [INF] Application configured successfully
+2026-04-10 04:02:33.379 +08:00 [INF] Listening on 
+2026-04-10 04:02:33.436 +08:00 [INF] Now listening on: http://0.0.0.0:5000
+2026-04-10 04:02:33.439 +08:00 [INF] Application started. Press Ctrl+C to shut down.
+2026-04-10 04:02:33.439 +08:00 [INF] Hosting environment: Production
+2026-04-10 04:02:33.440 +08:00 [INF] Content root path: /mnt/c/Users/pascu/Documents/GitHub2/GitHub/Capstone-Project-/For_Testing_Only_Capstone/client-app
+2026-04-10 04:03:15.654 +08:00 [INF] Application is shutting down...
+2026-04-10 04:08:30.531 +08:00 [INF] Application starting up...
+2026-04-10 04:08:30.843 +08:00 [INF] HSTS enabled (HTTPS Redirection disabled for Nginx)
+2026-04-10 04:08:30.930 +08:00 [INF] Application configured successfully
+2026-04-10 04:08:30.931 +08:00 [INF] Listening on 
+2026-04-10 04:08:30.981 +08:00 [INF] Now listening on: http://0.0.0.0:5000
+2026-04-10 04:08:30.983 +08:00 [INF] Application started. Press Ctrl+C to shut down.
+2026-04-10 04:08:30.984 +08:00 [INF] Hosting environment: Production
+2026-04-10 04:08:30.984 +08:00 [INF] Content root path: /mnt/c/Users/pascu/Documents/GitHub2/GitHub/Capstone-Project-/For_Testing_Only_Capstone/client-app
+2026-04-10 04:09:38.109 +08:00 [INF] Application is shutting down...
+2026-04-10 06:16:48.428 +08:00 [INF] Application starting up...
+2026-04-10 06:16:48.899 +08:00 [INF] HSTS enabled (HTTPS Redirection disabled for Nginx)
+2026-04-10 06:16:49.150 +08:00 [INF] Application configured successfully
+2026-04-10 06:16:49.152 +08:00 [INF] Listening on 
+2026-04-10 06:16:49.220 +08:00 [INF] Now listening on: http://0.0.0.0:5000
+2026-04-10 06:16:49.223 +08:00 [INF] Application started. Press Ctrl+C to shut down.
+2026-04-10 06:16:49.224 +08:00 [INF] Hosting environment: Production
+2026-04-10 06:16:49.224 +08:00 [INF] Content root path: /mnt/c/Users/pascu/Documents/GitHub2/GitHub/Capstone-Project-/For_Testing_Only_Capstone/client-app
+2026-04-10 06:24:06.629 +08:00 [INF] Request starting HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/user-profile?email=registrar%40plv.edu.ph&role=registrar - null null
+2026-04-10 06:24:06.691 +08:00 [INF] CORS policy execution successful.
+2026-04-10 06:24:06.693 +08:00 [INF] HTTP OPTIONS /api/Auth/user-profile responded 204 in 12.6214 ms
+2026-04-10 06:24:06.744 +08:00 [INF] Request finished HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/user-profile?email=registrar%40plv.edu.ph&role=registrar - 204 null null 116.6725ms
+2026-04-10 06:24:06.750 +08:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/api/Auth/user-profile?email=registrar%40plv.edu.ph&role=registrar - application/json null
+2026-04-10 06:24:06.756 +08:00 [INF] CORS policy execution successful.
+2026-04-10 06:24:06.760 +08:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone)'
+2026-04-10 06:24:06.784 +08:00 [INF] Route matched with {action = "GetUserProfile", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetUserProfile(System.String, System.String) on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-10 06:24:07.166 +08:00 [INF] Executing OkObjectResult, writing value of type '<>f__AnonymousType17`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[Client_app.Models.UserProfileDto, For_Testing_Only_Capstone, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]'.
+2026-04-10 06:24:07.187 +08:00 [INF] Executed action Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone) in 399.78ms
+2026-04-10 06:24:07.188 +08:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone)'
+2026-04-10 06:24:07.190 +08:00 [INF] HTTP GET /api/Auth/user-profile responded 200 in 436.8607 ms
+2026-04-10 06:24:07.191 +08:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/api/Auth/user-profile?email=registrar%40plv.edu.ph&role=registrar - 200 null application/json; charset=utf-8 441.1658ms
+2026-04-10 06:24:07.268 +08:00 [INF] Request starting HTTP/1.1 OPTIONS http://localhost:5000/api/Grades/all?invokerId=registrar%40plv.edu.ph - null null
+2026-04-10 06:24:07.270 +08:00 [INF] CORS policy execution successful.
+2026-04-10 06:24:07.271 +08:00 [INF] HTTP OPTIONS /api/Grades/all responded 204 in 1.7291 ms
+2026-04-10 06:24:07.272 +08:00 [INF] Request finished HTTP/1.1 OPTIONS http://localhost:5000/api/Grades/all?invokerId=registrar%40plv.edu.ph - 204 null null 4.7041ms
+2026-04-10 06:24:07.276 +08:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/api/Grades/all?invokerId=registrar%40plv.edu.ph - application/json null
+2026-04-10 06:24:07.278 +08:00 [INF] CORS policy execution successful.
+2026-04-10 06:24:07.279 +08:00 [INF] Executing endpoint 'BlockGo.Controllers.GradesController.GetAllGrades (For_Testing_Only_Capstone)'
+2026-04-10 06:24:07.282 +08:00 [INF] Route matched with {action = "GetAllGrades", controller = "Grades"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetAllGrades(System.String) on controller BlockGo.Controllers.GradesController (For_Testing_Only_Capstone).
+2026-04-10 06:24:07.288 +08:00 [INF] Executed action BlockGo.Controllers.GradesController.GetAllGrades (For_Testing_Only_Capstone) in 4.9476ms
+2026-04-10 06:24:07.290 +08:00 [INF] Executed endpoint 'BlockGo.Controllers.GradesController.GetAllGrades (For_Testing_Only_Capstone)'
+2026-04-10 06:24:07.320 +08:00 [ERR] An unhandled exception has occurred while executing the request.
+System.InvalidOperationException: Internal API Key not configured.
+   at BlockGo.Services.BlockchainService..ctor(HttpClient httpClient, IConfiguration configuration, ILogger`1 logger)
+   at lambda_method19(Closure, IServiceProvider, Object[])
+   at Microsoft.Extensions.Http.DefaultTypedHttpClientFactory`1.CreateClient(HttpClient httpClient)
+   at Microsoft.Extensions.DependencyInjection.HttpClientBuilderExtensions.AddTransientHelper[TClient,TImplementation](IServiceProvider s, IHttpClientBuilder builder)
+   at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitFactory(FactoryCallSite factoryCallSite, RuntimeResolverContext context)
+   at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitDisposeCache(ServiceCallSite transientCallSite, RuntimeResolverContext context)
+   at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteVisitor`2.VisitCallSite(ServiceCallSite callSite, TArgument argument)
+   at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.Resolve(ServiceCallSite callSite, ServiceProviderEngineScope scope)
+   at Microsoft.Extensions.DependencyInjection.ServiceLookup.DynamicServiceProviderEngine.<>c__DisplayClass2_0.<RealizeService>b__0(ServiceProviderEngineScope scope)
+   at Microsoft.Extensions.DependencyInjection.ServiceProvider.GetService(ServiceIdentifier serviceIdentifier, ServiceProviderEngineScope serviceProviderEngineScope)
+   at Microsoft.Extensions.DependencyInjection.ServiceLookup.ServiceProviderEngineScope.GetService(Type serviceType)
+   at lambda_method18(Closure, IServiceProvider, Object[])
+   at Microsoft.AspNetCore.Mvc.Controllers.ControllerFactoryProvider.<>c__DisplayClass6_0.<CreateControllerFactory>g__CreateController|0(ControllerContext controllerContext)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker.Next(State& next, Scope& scope, Object& state, Boolean& isCompleted)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker.InvokeInnerFilterAsync()
+--- End of stack trace from previous location ---
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ResourceInvoker.<InvokeFilterPipelineAsync>g__Awaited|20_0(ResourceInvoker invoker, Task lastTask, State next, Scope scope, Object state, Boolean isCompleted)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ResourceInvoker.<InvokeAsync>g__Logged|17_1(ResourceInvoker invoker)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ResourceInvoker.<InvokeAsync>g__Logged|17_1(ResourceInvoker invoker)
+   at Microsoft.AspNetCore.Routing.EndpointMiddleware.<Invoke>g__AwaitRequestTask|7_0(Endpoint endpoint, Task requestTask, ILogger logger)
+   at Microsoft.AspNetCore.Authorization.AuthorizationMiddleware.Invoke(HttpContext context)
+   at Microsoft.AspNetCore.Diagnostics.ExceptionHandlerMiddlewareImpl.<Invoke>g__Awaited|10_0(ExceptionHandlerMiddlewareImpl middleware, HttpContext context, Task task)
+2026-04-10 06:24:07.382 +08:00 [ERR] An unhandled exception occurred: Internal API Key not configured.
+System.InvalidOperationException: Internal API Key not configured.
+   at BlockGo.Services.BlockchainService..ctor(HttpClient httpClient, IConfiguration configuration, ILogger`1 logger)
+   at lambda_method19(Closure, IServiceProvider, Object[])
+   at Microsoft.Extensions.Http.DefaultTypedHttpClientFactory`1.CreateClient(HttpClient httpClient)
+   at Microsoft.Extensions.DependencyInjection.HttpClientBuilderExtensions.AddTransientHelper[TClient,TImplementation](IServiceProvider s, IHttpClientBuilder builder)
+   at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitFactory(FactoryCallSite factoryCallSite, RuntimeResolverContext context)
+   at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitDisposeCache(ServiceCallSite transientCallSite, RuntimeResolverContext context)
+   at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteVisitor`2.VisitCallSite(ServiceCallSite callSite, TArgument argument)
+   at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.Resolve(ServiceCallSite callSite, ServiceProviderEngineScope scope)
+   at Microsoft.Extensions.DependencyInjection.ServiceLookup.DynamicServiceProviderEngine.<>c__DisplayClass2_0.<RealizeService>b__0(ServiceProviderEngineScope scope)
+   at Microsoft.Extensions.DependencyInjection.ServiceProvider.GetService(ServiceIdentifier serviceIdentifier, ServiceProviderEngineScope serviceProviderEngineScope)
+   at Microsoft.Extensions.DependencyInjection.ServiceLookup.ServiceProviderEngineScope.GetService(Type serviceType)
+   at lambda_method18(Closure, IServiceProvider, Object[])
+   at Microsoft.AspNetCore.Mvc.Controllers.ControllerFactoryProvider.<>c__DisplayClass6_0.<CreateControllerFactory>g__CreateController|0(ControllerContext controllerContext)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker.Next(State& next, Scope& scope, Object& state, Boolean& isCompleted)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker.InvokeInnerFilterAsync()
+--- End of stack trace from previous location ---
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ResourceInvoker.<InvokeFilterPipelineAsync>g__Awaited|20_0(ResourceInvoker invoker, Task lastTask, State next, Scope scope, Object state, Boolean isCompleted)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ResourceInvoker.<InvokeAsync>g__Logged|17_1(ResourceInvoker invoker)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ResourceInvoker.<InvokeAsync>g__Logged|17_1(ResourceInvoker invoker)
+   at Microsoft.AspNetCore.Routing.EndpointMiddleware.<Invoke>g__AwaitRequestTask|7_0(Endpoint endpoint, Task requestTask, ILogger logger)
+   at Microsoft.AspNetCore.Authorization.AuthorizationMiddleware.Invoke(HttpContext context)
+   at Microsoft.AspNetCore.Diagnostics.ExceptionHandlerMiddlewareImpl.<Invoke>g__Awaited|10_0(ExceptionHandlerMiddlewareImpl middleware, HttpContext context, Task task)
+2026-04-10 06:24:07.389 +08:00 [ERR] HTTP GET /api/Grades/all responded 500 in 110.9640 ms
+2026-04-10 06:24:07.389 +08:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/api/Grades/all?invokerId=registrar%40plv.edu.ph - 500 null application/json; charset=utf-8 113.4768ms
+2026-04-10 06:24:07.392 +08:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/api/Grades/all?invokerId=registrar%40plv.edu.ph - application/json null
+2026-04-10 06:24:07.392 +08:00 [INF] CORS policy execution successful.
+2026-04-10 06:24:07.393 +08:00 [INF] Executing endpoint 'BlockGo.Controllers.GradesController.GetAllGrades (For_Testing_Only_Capstone)'
+2026-04-10 06:24:07.394 +08:00 [INF] Route matched with {action = "GetAllGrades", controller = "Grades"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetAllGrades(System.String) on controller BlockGo.Controllers.GradesController (For_Testing_Only_Capstone).
+2026-04-10 06:24:07.396 +08:00 [INF] Executed action BlockGo.Controllers.GradesController.GetAllGrades (For_Testing_Only_Capstone) in 0.9828ms
+2026-04-10 06:24:07.397 +08:00 [INF] Executed endpoint 'BlockGo.Controllers.GradesController.GetAllGrades (For_Testing_Only_Capstone)'
+2026-04-10 06:24:07.397 +08:00 [ERR] An unhandled exception has occurred while executing the request.
+System.InvalidOperationException: Internal API Key not configured.
+   at BlockGo.Services.BlockchainService..ctor(HttpClient httpClient, IConfiguration configuration, ILogger`1 logger)
+   at lambda_method19(Closure, IServiceProvider, Object[])
+   at Microsoft.Extensions.Http.DefaultTypedHttpClientFactory`1.CreateClient(HttpClient httpClient)
+   at Microsoft.Extensions.DependencyInjection.HttpClientBuilderExtensions.AddTransientHelper[TClient,TImplementation](IServiceProvider s, IHttpClientBuilder builder)
+   at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitFactory(FactoryCallSite factoryCallSite, RuntimeResolverContext context)
+   at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitDisposeCache(ServiceCallSite transientCallSite, RuntimeResolverContext context)
+   at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteVisitor`2.VisitCallSite(ServiceCallSite callSite, TArgument argument)
+   at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.Resolve(ServiceCallSite callSite, ServiceProviderEngineScope scope)
+   at Microsoft.Extensions.DependencyInjection.ServiceLookup.DynamicServiceProviderEngine.<>c__DisplayClass2_0.<RealizeService>b__0(ServiceProviderEngineScope scope)
+   at Microsoft.Extensions.DependencyInjection.ServiceProvider.GetService(ServiceIdentifier serviceIdentifier, ServiceProviderEngineScope serviceProviderEngineScope)
+   at Microsoft.Extensions.DependencyInjection.ServiceLookup.ServiceProviderEngineScope.GetService(Type serviceType)
+   at lambda_method18(Closure, IServiceProvider, Object[])
+   at Microsoft.AspNetCore.Mvc.Controllers.ControllerFactoryProvider.<>c__DisplayClass6_0.<CreateControllerFactory>g__CreateController|0(ControllerContext controllerContext)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker.Next(State& next, Scope& scope, Object& state, Boolean& isCompleted)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker.InvokeInnerFilterAsync()
+--- End of stack trace from previous location ---
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ResourceInvoker.<InvokeFilterPipelineAsync>g__Awaited|20_0(ResourceInvoker invoker, Task lastTask, State next, Scope scope, Object state, Boolean isCompleted)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ResourceInvoker.<InvokeAsync>g__Logged|17_1(ResourceInvoker invoker)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ResourceInvoker.<InvokeAsync>g__Logged|17_1(ResourceInvoker invoker)
+   at Microsoft.AspNetCore.Routing.EndpointMiddleware.<Invoke>g__AwaitRequestTask|7_0(Endpoint endpoint, Task requestTask, ILogger logger)
+   at Microsoft.AspNetCore.Authorization.AuthorizationMiddleware.Invoke(HttpContext context)
+   at Microsoft.AspNetCore.Diagnostics.ExceptionHandlerMiddlewareImpl.<Invoke>g__Awaited|10_0(ExceptionHandlerMiddlewareImpl middleware, HttpContext context, Task task)
+2026-04-10 06:24:07.402 +08:00 [ERR] An unhandled exception occurred: Internal API Key not configured.
+System.InvalidOperationException: Internal API Key not configured.
+   at BlockGo.Services.BlockchainService..ctor(HttpClient httpClient, IConfiguration configuration, ILogger`1 logger)
+   at lambda_method19(Closure, IServiceProvider, Object[])
+   at Microsoft.Extensions.Http.DefaultTypedHttpClientFactory`1.CreateClient(HttpClient httpClient)
+   at Microsoft.Extensions.DependencyInjection.HttpClientBuilderExtensions.AddTransientHelper[TClient,TImplementation](IServiceProvider s, IHttpClientBuilder builder)
+   at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitFactory(FactoryCallSite factoryCallSite, RuntimeResolverContext context)
+   at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitDisposeCache(ServiceCallSite transientCallSite, RuntimeResolverContext context)
+   at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteVisitor`2.VisitCallSite(ServiceCallSite callSite, TArgument argument)
+   at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.Resolve(ServiceCallSite callSite, ServiceProviderEngineScope scope)
+   at Microsoft.Extensions.DependencyInjection.ServiceLookup.DynamicServiceProviderEngine.<>c__DisplayClass2_0.<RealizeService>b__0(ServiceProviderEngineScope scope)
+   at Microsoft.Extensions.DependencyInjection.ServiceProvider.GetService(ServiceIdentifier serviceIdentifier, ServiceProviderEngineScope serviceProviderEngineScope)
+   at Microsoft.Extensions.DependencyInjection.ServiceLookup.ServiceProviderEngineScope.GetService(Type serviceType)
+   at lambda_method18(Closure, IServiceProvider, Object[])
+   at Microsoft.AspNetCore.Mvc.Controllers.ControllerFactoryProvider.<>c__DisplayClass6_0.<CreateControllerFactory>g__CreateController|0(ControllerContext controllerContext)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker.Next(State& next, Scope& scope, Object& state, Boolean& isCompleted)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker.InvokeInnerFilterAsync()
+--- End of stack trace from previous location ---
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ResourceInvoker.<InvokeFilterPipelineAsync>g__Awaited|20_0(ResourceInvoker invoker, Task lastTask, State next, Scope scope, Object state, Boolean isCompleted)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ResourceInvoker.<InvokeAsync>g__Logged|17_1(ResourceInvoker invoker)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ResourceInvoker.<InvokeAsync>g__Logged|17_1(ResourceInvoker invoker)
+   at Microsoft.AspNetCore.Routing.EndpointMiddleware.<Invoke>g__AwaitRequestTask|7_0(Endpoint endpoint, Task requestTask, ILogger logger)
+   at Microsoft.AspNetCore.Authorization.AuthorizationMiddleware.Invoke(HttpContext context)
+   at Microsoft.AspNetCore.Diagnostics.ExceptionHandlerMiddlewareImpl.<Invoke>g__Awaited|10_0(ExceptionHandlerMiddlewareImpl middleware, HttpContext context, Task task)
+2026-04-10 06:24:07.406 +08:00 [ERR] HTTP GET /api/Grades/all responded 500 in 13.4065 ms
+2026-04-10 06:24:07.406 +08:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/api/Grades/all?invokerId=registrar%40plv.edu.ph - 500 null application/json; charset=utf-8 14.7915ms
+2026-04-10 06:24:09.446 +08:00 [INF] Request starting HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/requests/pending - null null
+2026-04-10 06:24:09.447 +08:00 [INF] CORS policy execution successful.
+2026-04-10 06:24:09.447 +08:00 [INF] HTTP OPTIONS /api/Auth/requests/pending responded 204 in 0.6420 ms
+2026-04-10 06:24:09.448 +08:00 [INF] Request finished HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/requests/pending - 204 null null 2.19ms
+2026-04-10 06:24:09.451 +08:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/api/Auth/requests/pending - application/json null
+2026-04-10 06:24:09.453 +08:00 [INF] CORS policy execution successful.
+2026-04-10 06:24:09.453 +08:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.GetPendingRequests (For_Testing_Only_Capstone)'
+2026-04-10 06:24:09.456 +08:00 [INF] Route matched with {action = "GetPendingRequests", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetPendingRequests() on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-10 06:24:09.467 +08:00 [INF] Executing OkObjectResult, writing value of type '<>f__AnonymousType4`3[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.Collections.Generic.List`1[[System.Object, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]], System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.Collections.Generic.List`1[[System.Object, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]], System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-10 06:24:09.473 +08:00 [INF] Executed action Client_app.Controllers.AuthController.GetPendingRequests (For_Testing_Only_Capstone) in 15.7841ms
+2026-04-10 06:24:09.474 +08:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.GetPendingRequests (For_Testing_Only_Capstone)'
+2026-04-10 06:24:09.474 +08:00 [INF] HTTP GET /api/Auth/requests/pending responded 200 in 21.9167 ms
+2026-04-10 06:24:09.475 +08:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/api/Auth/requests/pending - 200 null application/json; charset=utf-8 24.4355ms
+2026-04-10 06:24:10.012 +08:00 [INF] Request starting HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/students/approved - null null
+2026-04-10 06:24:10.013 +08:00 [INF] CORS policy execution successful.
+2026-04-10 06:24:10.013 +08:00 [INF] HTTP OPTIONS /api/Auth/students/approved responded 204 in 0.7034 ms
+2026-04-10 06:24:10.014 +08:00 [INF] Request finished HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/students/approved - 204 null null 2.6519ms
+2026-04-10 06:24:10.017 +08:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/api/Auth/students/approved - application/json null
+2026-04-10 06:24:10.018 +08:00 [INF] CORS policy execution successful.
+2026-04-10 06:24:10.018 +08:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.GetApprovedStudents (For_Testing_Only_Capstone)'
+2026-04-10 06:24:10.022 +08:00 [INF] Route matched with {action = "GetApprovedStudents", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetApprovedStudents() on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-10 06:24:10.026 +08:00 [INF] Executing OkObjectResult, writing value of type '<>f__AnonymousType7`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.Collections.Generic.List`1[[System.Object, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]], System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-10 06:24:10.028 +08:00 [INF] Executed action Client_app.Controllers.AuthController.GetApprovedStudents (For_Testing_Only_Capstone) in 5.2514ms
+2026-04-10 06:24:10.029 +08:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.GetApprovedStudents (For_Testing_Only_Capstone)'
+2026-04-10 06:24:10.029 +08:00 [INF] HTTP GET /api/Auth/students/approved responded 200 in 11.7096 ms
+2026-04-10 06:24:10.030 +08:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/api/Auth/students/approved - 200 null application/json; charset=utf-8 12.8375ms
+2026-04-10 06:24:10.545 +08:00 [INF] Request starting HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/admins/department/approved - null null
+2026-04-10 06:24:10.546 +08:00 [INF] CORS policy execution successful.
+2026-04-10 06:24:10.546 +08:00 [INF] HTTP OPTIONS /api/Auth/admins/department/approved responded 204 in 0.5917 ms
+2026-04-10 06:24:10.547 +08:00 [INF] Request finished HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/admins/department/approved - 204 null null 2.181ms
+2026-04-10 06:24:10.550 +08:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/api/Auth/admins/department/approved - application/json null
+2026-04-10 06:24:10.550 +08:00 [INF] CORS policy execution successful.
+2026-04-10 06:24:10.551 +08:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.GetApprovedDepartmentAdmins (For_Testing_Only_Capstone)'
+2026-04-10 06:24:10.555 +08:00 [INF] Route matched with {action = "GetApprovedDepartmentAdmins", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetApprovedDepartmentAdmins() on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-10 06:24:10.558 +08:00 [INF] Executing OkObjectResult, writing value of type '<>f__AnonymousType9`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.Collections.Generic.List`1[[System.Object, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]], System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-10 06:24:10.560 +08:00 [INF] Executed action Client_app.Controllers.AuthController.GetApprovedDepartmentAdmins (For_Testing_Only_Capstone) in 4.3521ms
+2026-04-10 06:24:10.561 +08:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.GetApprovedDepartmentAdmins (For_Testing_Only_Capstone)'
+2026-04-10 06:24:10.561 +08:00 [INF] HTTP GET /api/Auth/admins/department/approved responded 200 in 10.8468 ms
+2026-04-10 06:24:10.562 +08:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/api/Auth/admins/department/approved - 200 null application/json; charset=utf-8 12.1328ms
+2026-04-10 06:24:11.041 +08:00 [INF] Request starting HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/faculty/approved - null null
+2026-04-10 06:24:11.042 +08:00 [INF] CORS policy execution successful.
+2026-04-10 06:24:11.043 +08:00 [INF] HTTP OPTIONS /api/Auth/faculty/approved responded 204 in 0.7430 ms
+2026-04-10 06:24:11.044 +08:00 [INF] Request finished HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/faculty/approved - 204 null null 2.3119ms
+2026-04-10 06:24:11.046 +08:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/api/Auth/faculty/approved - application/json null
+2026-04-10 06:24:11.047 +08:00 [INF] CORS policy execution successful.
+2026-04-10 06:24:11.048 +08:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.GetApprovedFaculties (For_Testing_Only_Capstone)'
+2026-04-10 06:24:11.051 +08:00 [INF] Route matched with {action = "GetApprovedFaculties", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetApprovedFaculties() on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-10 06:24:11.055 +08:00 [INF] Executing OkObjectResult, writing value of type '<>f__AnonymousType11`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.Collections.Generic.List`1[[System.Object, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]], System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-10 06:24:11.057 +08:00 [INF] Executed action Client_app.Controllers.AuthController.GetApprovedFaculties (For_Testing_Only_Capstone) in 5.4372ms
+2026-04-10 06:24:11.058 +08:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.GetApprovedFaculties (For_Testing_Only_Capstone)'
+2026-04-10 06:24:11.058 +08:00 [INF] HTTP GET /api/Auth/faculty/approved responded 200 in 11.2864 ms
+2026-04-10 06:24:11.059 +08:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/api/Auth/faculty/approved - 200 null application/json; charset=utf-8 12.905ms
+2026-04-10 06:24:14.085 +08:00 [INF] Request starting HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/user-profile?email=registrar%40plv.edu.ph&role=registrar - null null
+2026-04-10 06:24:14.086 +08:00 [INF] CORS policy execution successful.
+2026-04-10 06:24:14.087 +08:00 [INF] HTTP OPTIONS /api/Auth/user-profile responded 204 in 0.8431 ms
+2026-04-10 06:24:14.088 +08:00 [INF] Request finished HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/user-profile?email=registrar%40plv.edu.ph&role=registrar - 204 null null 2.849ms
+2026-04-10 06:24:14.090 +08:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/api/Auth/user-profile?email=registrar%40plv.edu.ph&role=registrar - application/json null
+2026-04-10 06:24:14.091 +08:00 [INF] CORS policy execution successful.
+2026-04-10 06:24:14.092 +08:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone)'
+2026-04-10 06:24:14.092 +08:00 [INF] Route matched with {action = "GetUserProfile", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetUserProfile(System.String, System.String) on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-10 06:24:14.096 +08:00 [INF] Executing OkObjectResult, writing value of type '<>f__AnonymousType17`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[Client_app.Models.UserProfileDto, For_Testing_Only_Capstone, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]'.
+2026-04-10 06:24:14.097 +08:00 [INF] Executed action Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone) in 3.2071ms
+2026-04-10 06:24:14.097 +08:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone)'
+2026-04-10 06:24:14.098 +08:00 [INF] HTTP GET /api/Auth/user-profile responded 200 in 7.2566 ms
+2026-04-10 06:24:14.099 +08:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/api/Auth/user-profile?email=registrar%40plv.edu.ph&role=registrar - 200 null application/json; charset=utf-8 8.5242ms
+2026-04-10 06:24:14.102 +08:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/api/Auth/user-profile?email=registrar%40plv.edu.ph&role=registrar - application/json null
+2026-04-10 06:24:14.103 +08:00 [INF] CORS policy execution successful.
+2026-04-10 06:24:14.103 +08:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone)'
+2026-04-10 06:24:14.104 +08:00 [INF] Route matched with {action = "GetUserProfile", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetUserProfile(System.String, System.String) on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-10 06:24:14.106 +08:00 [INF] Executing OkObjectResult, writing value of type '<>f__AnonymousType17`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[Client_app.Models.UserProfileDto, For_Testing_Only_Capstone, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]'.
+2026-04-10 06:24:14.108 +08:00 [INF] Executed action Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone) in 2.8479ms
+2026-04-10 06:24:14.108 +08:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone)'
+2026-04-10 06:24:14.109 +08:00 [INF] HTTP GET /api/Auth/user-profile responded 200 in 6.2543 ms
+2026-04-10 06:24:14.110 +08:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/api/Auth/user-profile?email=registrar%40plv.edu.ph&role=registrar - 200 null application/json; charset=utf-8 7.8575ms
+2026-04-10 06:24:14.138 +08:00 [INF] Request starting HTTP/1.1 OPTIONS http://localhost:5000/api/Grades/all?invokerId=registrar%40plv.edu.ph - null null
+2026-04-10 06:24:14.140 +08:00 [INF] CORS policy execution successful.
+2026-04-10 06:24:14.143 +08:00 [INF] HTTP OPTIONS /api/Grades/all responded 204 in 3.7594 ms
+2026-04-10 06:24:14.144 +08:00 [INF] Request finished HTTP/1.1 OPTIONS http://localhost:5000/api/Grades/all?invokerId=registrar%40plv.edu.ph - 204 null null 5.7217ms
+2026-04-10 06:24:14.146 +08:00 [INF] Request starting HTTP/1.1 OPTIONS http://localhost:5000/api/Grades/all?invokerId=registrar%40plv.edu.ph - null null
+2026-04-10 06:24:14.146 +08:00 [INF] CORS policy execution successful.
+2026-04-10 06:24:14.147 +08:00 [INF] HTTP OPTIONS /api/Grades/all responded 204 in 0.6451 ms
+2026-04-10 06:24:14.147 +08:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/api/Grades/all?invokerId=registrar%40plv.edu.ph - application/json null
+2026-04-10 06:24:14.147 +08:00 [INF] Request finished HTTP/1.1 OPTIONS http://localhost:5000/api/Grades/all?invokerId=registrar%40plv.edu.ph - 204 null null 1.9497ms
+2026-04-10 06:24:14.148 +08:00 [INF] CORS policy execution successful.
+2026-04-10 06:24:14.149 +08:00 [INF] Executing endpoint 'BlockGo.Controllers.GradesController.GetAllGrades (For_Testing_Only_Capstone)'
+2026-04-10 06:24:14.150 +08:00 [INF] Route matched with {action = "GetAllGrades", controller = "Grades"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetAllGrades(System.String) on controller BlockGo.Controllers.GradesController (For_Testing_Only_Capstone).
+2026-04-10 06:24:14.151 +08:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/api/Grades/all?invokerId=registrar%40plv.edu.ph - application/json null
+2026-04-10 06:24:14.151 +08:00 [INF] CORS policy execution successful.
+2026-04-10 06:24:14.152 +08:00 [INF] Executed action BlockGo.Controllers.GradesController.GetAllGrades (For_Testing_Only_Capstone) in 1.1637ms
+2026-04-10 06:24:14.152 +08:00 [INF] Executing endpoint 'BlockGo.Controllers.GradesController.GetAllGrades (For_Testing_Only_Capstone)'
+2026-04-10 06:24:14.153 +08:00 [INF] Executed endpoint 'BlockGo.Controllers.GradesController.GetAllGrades (For_Testing_Only_Capstone)'
+2026-04-10 06:24:14.153 +08:00 [INF] Route matched with {action = "GetAllGrades", controller = "Grades"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetAllGrades(System.String) on controller BlockGo.Controllers.GradesController (For_Testing_Only_Capstone).
+2026-04-10 06:24:14.153 +08:00 [ERR] An unhandled exception has occurred while executing the request.
+System.InvalidOperationException: Internal API Key not configured.
+   at BlockGo.Services.BlockchainService..ctor(HttpClient httpClient, IConfiguration configuration, ILogger`1 logger)
+   at lambda_method19(Closure, IServiceProvider, Object[])
+   at Microsoft.Extensions.Http.DefaultTypedHttpClientFactory`1.CreateClient(HttpClient httpClient)
+   at Microsoft.Extensions.DependencyInjection.HttpClientBuilderExtensions.AddTransientHelper[TClient,TImplementation](IServiceProvider s, IHttpClientBuilder builder)
+   at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteVisitor`2.VisitCallSiteMain(ServiceCallSite callSite, TArgument argument)
+   at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteVisitor`2.VisitCallSite(ServiceCallSite callSite, TArgument argument)
+   at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.Resolve(ServiceCallSite callSite, ServiceProviderEngineScope scope)
+   at Microsoft.Extensions.DependencyInjection.ServiceLookup.DynamicServiceProviderEngine.<>c__DisplayClass2_0.<RealizeService>b__0(ServiceProviderEngineScope scope)
+   at Microsoft.Extensions.DependencyInjection.ServiceLookup.ServiceProviderEngineScope.GetService(Type serviceType)
+   at lambda_method18(Closure, IServiceProvider, Object[])
+   at Microsoft.AspNetCore.Mvc.Controllers.ControllerFactoryProvider.<>c__DisplayClass6_0.<CreateControllerFactory>g__CreateController|0(ControllerContext controllerContext)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker.Next(State& next, Scope& scope, Object& state, Boolean& isCompleted)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker.InvokeInnerFilterAsync()
+--- End of stack trace from previous location ---
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ResourceInvoker.<InvokeFilterPipelineAsync>g__Awaited|20_0(ResourceInvoker invoker, Task lastTask, State next, Scope scope, Object state, Boolean isCompleted)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ResourceInvoker.<InvokeAsync>g__Logged|17_1(ResourceInvoker invoker)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ResourceInvoker.<InvokeAsync>g__Logged|17_1(ResourceInvoker invoker)
+   at Microsoft.AspNetCore.Routing.EndpointMiddleware.<Invoke>g__AwaitRequestTask|7_0(Endpoint endpoint, Task requestTask, ILogger logger)
+   at Microsoft.AspNetCore.Authorization.AuthorizationMiddleware.Invoke(HttpContext context)
+   at Microsoft.AspNetCore.Diagnostics.ExceptionHandlerMiddlewareImpl.<Invoke>g__Awaited|10_0(ExceptionHandlerMiddlewareImpl middleware, HttpContext context, Task task)
+2026-04-10 06:24:14.154 +08:00 [INF] Executed action BlockGo.Controllers.GradesController.GetAllGrades (For_Testing_Only_Capstone) in 0.308ms
+2026-04-10 06:24:14.158 +08:00 [INF] Executed endpoint 'BlockGo.Controllers.GradesController.GetAllGrades (For_Testing_Only_Capstone)'
+2026-04-10 06:24:14.158 +08:00 [ERR] An unhandled exception occurred: Internal API Key not configured.
+System.InvalidOperationException: Internal API Key not configured.
+   at BlockGo.Services.BlockchainService..ctor(HttpClient httpClient, IConfiguration configuration, ILogger`1 logger)
+   at lambda_method19(Closure, IServiceProvider, Object[])
+   at Microsoft.Extensions.Http.DefaultTypedHttpClientFactory`1.CreateClient(HttpClient httpClient)
+   at Microsoft.Extensions.DependencyInjection.HttpClientBuilderExtensions.AddTransientHelper[TClient,TImplementation](IServiceProvider s, IHttpClientBuilder builder)
+   at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteVisitor`2.VisitCallSiteMain(ServiceCallSite callSite, TArgument argument)
+   at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteVisitor`2.VisitCallSite(ServiceCallSite callSite, TArgument argument)
+   at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.Resolve(ServiceCallSite callSite, ServiceProviderEngineScope scope)
+   at Microsoft.Extensions.DependencyInjection.ServiceLookup.DynamicServiceProviderEngine.<>c__DisplayClass2_0.<RealizeService>b__0(ServiceProviderEngineScope scope)
+   at Microsoft.Extensions.DependencyInjection.ServiceLookup.ServiceProviderEngineScope.GetService(Type serviceType)
+   at lambda_method18(Closure, IServiceProvider, Object[])
+   at Microsoft.AspNetCore.Mvc.Controllers.ControllerFactoryProvider.<>c__DisplayClass6_0.<CreateControllerFactory>g__CreateController|0(ControllerContext controllerContext)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker.Next(State& next, Scope& scope, Object& state, Boolean& isCompleted)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker.InvokeInnerFilterAsync()
+--- End of stack trace from previous location ---
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ResourceInvoker.<InvokeFilterPipelineAsync>g__Awaited|20_0(ResourceInvoker invoker, Task lastTask, State next, Scope scope, Object state, Boolean isCompleted)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ResourceInvoker.<InvokeAsync>g__Logged|17_1(ResourceInvoker invoker)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ResourceInvoker.<InvokeAsync>g__Logged|17_1(ResourceInvoker invoker)
+   at Microsoft.AspNetCore.Routing.EndpointMiddleware.<Invoke>g__AwaitRequestTask|7_0(Endpoint endpoint, Task requestTask, ILogger logger)
+   at Microsoft.AspNetCore.Authorization.AuthorizationMiddleware.Invoke(HttpContext context)
+   at Microsoft.AspNetCore.Diagnostics.ExceptionHandlerMiddlewareImpl.<Invoke>g__Awaited|10_0(ExceptionHandlerMiddlewareImpl middleware, HttpContext context, Task task)
+2026-04-10 06:24:14.159 +08:00 [ERR] An unhandled exception has occurred while executing the request.
+System.InvalidOperationException: Internal API Key not configured.
+   at BlockGo.Services.BlockchainService..ctor(HttpClient httpClient, IConfiguration configuration, ILogger`1 logger)
+   at lambda_method19(Closure, IServiceProvider, Object[])
+   at Microsoft.Extensions.Http.DefaultTypedHttpClientFactory`1.CreateClient(HttpClient httpClient)
+   at Microsoft.Extensions.DependencyInjection.HttpClientBuilderExtensions.AddTransientHelper[TClient,TImplementation](IServiceProvider s, IHttpClientBuilder builder)
+   at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteVisitor`2.VisitCallSiteMain(ServiceCallSite callSite, TArgument argument)
+   at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteVisitor`2.VisitCallSite(ServiceCallSite callSite, TArgument argument)
+   at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.Resolve(ServiceCallSite callSite, ServiceProviderEngineScope scope)
+   at Microsoft.Extensions.DependencyInjection.ServiceLookup.DynamicServiceProviderEngine.<>c__DisplayClass2_0.<RealizeService>b__0(ServiceProviderEngineScope scope)
+   at Microsoft.Extensions.DependencyInjection.ServiceLookup.ServiceProviderEngineScope.GetService(Type serviceType)
+   at lambda_method18(Closure, IServiceProvider, Object[])
+   at Microsoft.AspNetCore.Mvc.Controllers.ControllerFactoryProvider.<>c__DisplayClass6_0.<CreateControllerFactory>g__CreateController|0(ControllerContext controllerContext)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker.Next(State& next, Scope& scope, Object& state, Boolean& isCompleted)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker.InvokeInnerFilterAsync()
+--- End of stack trace from previous location ---
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ResourceInvoker.<InvokeFilterPipelineAsync>g__Awaited|20_0(ResourceInvoker invoker, Task lastTask, State next, Scope scope, Object state, Boolean isCompleted)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ResourceInvoker.<InvokeAsync>g__Logged|17_1(ResourceInvoker invoker)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ResourceInvoker.<InvokeAsync>g__Logged|17_1(ResourceInvoker invoker)
+   at Microsoft.AspNetCore.Routing.EndpointMiddleware.<Invoke>g__AwaitRequestTask|7_0(Endpoint endpoint, Task requestTask, ILogger logger)
+   at Microsoft.AspNetCore.Authorization.AuthorizationMiddleware.Invoke(HttpContext context)
+   at Microsoft.AspNetCore.Diagnostics.ExceptionHandlerMiddlewareImpl.<Invoke>g__Awaited|10_0(ExceptionHandlerMiddlewareImpl middleware, HttpContext context, Task task)
+2026-04-10 06:24:14.162 +08:00 [ERR] HTTP GET /api/Grades/all responded 500 in 14.6118 ms
+2026-04-10 06:24:14.166 +08:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/api/Grades/all?invokerId=registrar%40plv.edu.ph - 500 null application/json; charset=utf-8 18.8499ms
+2026-04-10 06:24:14.165 +08:00 [ERR] An unhandled exception occurred: Internal API Key not configured.
+System.InvalidOperationException: Internal API Key not configured.
+   at BlockGo.Services.BlockchainService..ctor(HttpClient httpClient, IConfiguration configuration, ILogger`1 logger)
+   at lambda_method19(Closure, IServiceProvider, Object[])
+   at Microsoft.Extensions.Http.DefaultTypedHttpClientFactory`1.CreateClient(HttpClient httpClient)
+   at Microsoft.Extensions.DependencyInjection.HttpClientBuilderExtensions.AddTransientHelper[TClient,TImplementation](IServiceProvider s, IHttpClientBuilder builder)
+   at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteVisitor`2.VisitCallSiteMain(ServiceCallSite callSite, TArgument argument)
+   at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteVisitor`2.VisitCallSite(ServiceCallSite callSite, TArgument argument)
+   at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.Resolve(ServiceCallSite callSite, ServiceProviderEngineScope scope)
+   at Microsoft.Extensions.DependencyInjection.ServiceLookup.DynamicServiceProviderEngine.<>c__DisplayClass2_0.<RealizeService>b__0(ServiceProviderEngineScope scope)
+   at Microsoft.Extensions.DependencyInjection.ServiceLookup.ServiceProviderEngineScope.GetService(Type serviceType)
+   at lambda_method18(Closure, IServiceProvider, Object[])
+   at Microsoft.AspNetCore.Mvc.Controllers.ControllerFactoryProvider.<>c__DisplayClass6_0.<CreateControllerFactory>g__CreateController|0(ControllerContext controllerContext)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker.Next(State& next, Scope& scope, Object& state, Boolean& isCompleted)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker.InvokeInnerFilterAsync()
+--- End of stack trace from previous location ---
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ResourceInvoker.<InvokeFilterPipelineAsync>g__Awaited|20_0(ResourceInvoker invoker, Task lastTask, State next, Scope scope, Object state, Boolean isCompleted)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ResourceInvoker.<InvokeAsync>g__Logged|17_1(ResourceInvoker invoker)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ResourceInvoker.<InvokeAsync>g__Logged|17_1(ResourceInvoker invoker)
+   at Microsoft.AspNetCore.Routing.EndpointMiddleware.<Invoke>g__AwaitRequestTask|7_0(Endpoint endpoint, Task requestTask, ILogger logger)
+   at Microsoft.AspNetCore.Authorization.AuthorizationMiddleware.Invoke(HttpContext context)
+   at Microsoft.AspNetCore.Diagnostics.ExceptionHandlerMiddlewareImpl.<Invoke>g__Awaited|10_0(ExceptionHandlerMiddlewareImpl middleware, HttpContext context, Task task)
+2026-04-10 06:24:14.170 +08:00 [ERR] HTTP GET /api/Grades/all responded 500 in 18.4068 ms
+2026-04-10 06:24:14.171 +08:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/api/Grades/all?invokerId=registrar%40plv.edu.ph - 500 null application/json; charset=utf-8 19.9129ms
+2026-04-10 06:24:43.025 +08:00 [INF] Request starting HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/send-verification - null null
+2026-04-10 06:24:43.026 +08:00 [INF] CORS policy execution successful.
+2026-04-10 06:24:43.027 +08:00 [INF] HTTP OPTIONS /api/Auth/send-verification responded 204 in 0.7150 ms
+2026-04-10 06:24:43.027 +08:00 [INF] Request finished HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/send-verification - 204 null null 2.1063ms
+2026-04-10 06:24:43.032 +08:00 [INF] Request starting HTTP/1.1 POST http://localhost:5000/api/Auth/send-verification - application/json 39
+2026-04-10 06:24:43.034 +08:00 [INF] CORS policy execution successful.
+2026-04-10 06:24:43.034 +08:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.SendVerificationCode (For_Testing_Only_Capstone)'
+2026-04-10 06:24:43.038 +08:00 [INF] Route matched with {action = "SendVerificationCode", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] SendVerificationCode(Client_app.Models.VerificationRequest) on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-10 06:24:50.481 +08:00 [INF] Executing OkObjectResult, writing value of type '<>f__AnonymousType0`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-10 06:24:50.483 +08:00 [INF] Executed action Client_app.Controllers.AuthController.SendVerificationCode (For_Testing_Only_Capstone) in 7443.7662ms
+2026-04-10 06:24:50.484 +08:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.SendVerificationCode (For_Testing_Only_Capstone)'
+2026-04-10 06:24:50.484 +08:00 [INF] HTTP POST /api/Auth/send-verification responded 200 in 7450.6431 ms
+2026-04-10 06:24:50.485 +08:00 [INF] Request finished HTTP/1.1 POST http://localhost:5000/api/Auth/send-verification - 200 null application/json; charset=utf-8 7452.6157ms
+2026-04-10 06:25:32.685 +08:00 [INF] Request starting HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/request - null null
+2026-04-10 06:25:32.686 +08:00 [INF] CORS policy execution successful.
+2026-04-10 06:25:32.686 +08:00 [INF] HTTP OPTIONS /api/Auth/request responded 204 in 0.5894 ms
+2026-04-10 06:25:32.688 +08:00 [INF] Request finished HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/request - 204 null null 2.691ms
+2026-04-10 06:25:32.747 +08:00 [INF] Request starting HTTP/1.1 POST http://localhost:5000/api/Auth/request - application/json 163
+2026-04-10 06:25:32.748 +08:00 [INF] CORS policy execution successful.
+2026-04-10 06:25:32.749 +08:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.RequestAccess (For_Testing_Only_Capstone)'
+2026-04-10 06:25:32.753 +08:00 [INF] Route matched with {action = "RequestAccess", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] RequestAccess(Client_app.Models.SignupRequest) on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-10 06:25:32.766 +08:00 [INF] Executed action Client_app.Controllers.AuthController.RequestAccess (For_Testing_Only_Capstone) in 12.566ms
+2026-04-10 06:25:32.767 +08:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.RequestAccess (For_Testing_Only_Capstone)'
+2026-04-10 06:25:32.768 +08:00 [ERR] An unhandled exception has occurred while executing the request.
+System.InvalidOperationException: Internal API Key not configured.
+   at Client_app.Controllers.AuthController.RequestAccess(SignupRequest request)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ActionMethodExecutor.TaskOfIActionResultExecutor.Execute(ActionContext actionContext, IActionResultTypeMapper mapper, ObjectMethodExecutor executor, Object controller, Object[] arguments)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker.<InvokeActionMethodAsync>g__Awaited|12_0(ControllerActionInvoker invoker, ValueTask`1 actionResultValueTask)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker.<InvokeNextActionFilterAsync>g__Awaited|10_0(ControllerActionInvoker invoker, Task lastTask, State next, Scope scope, Object state, Boolean isCompleted)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker.Rethrow(ActionExecutedContextSealed context)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker.Next(State& next, Scope& scope, Object& state, Boolean& isCompleted)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker.<InvokeInnerFilterAsync>g__Awaited|13_0(ControllerActionInvoker invoker, Task lastTask, State next, Scope scope, Object state, Boolean isCompleted)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ResourceInvoker.<InvokeFilterPipelineAsync>g__Awaited|20_0(ResourceInvoker invoker, Task lastTask, State next, Scope scope, Object state, Boolean isCompleted)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ResourceInvoker.<InvokeAsync>g__Logged|17_1(ResourceInvoker invoker)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ResourceInvoker.<InvokeAsync>g__Logged|17_1(ResourceInvoker invoker)
+   at Microsoft.AspNetCore.Routing.EndpointMiddleware.<Invoke>g__AwaitRequestTask|7_0(Endpoint endpoint, Task requestTask, ILogger logger)
+   at Microsoft.AspNetCore.Authorization.AuthorizationMiddleware.Invoke(HttpContext context)
+   at Microsoft.AspNetCore.Diagnostics.ExceptionHandlerMiddlewareImpl.<Invoke>g__Awaited|10_0(ExceptionHandlerMiddlewareImpl middleware, HttpContext context, Task task)
+2026-04-10 06:25:32.772 +08:00 [ERR] An unhandled exception occurred: Internal API Key not configured.
+System.InvalidOperationException: Internal API Key not configured.
+   at Client_app.Controllers.AuthController.RequestAccess(SignupRequest request)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ActionMethodExecutor.TaskOfIActionResultExecutor.Execute(ActionContext actionContext, IActionResultTypeMapper mapper, ObjectMethodExecutor executor, Object controller, Object[] arguments)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker.<InvokeActionMethodAsync>g__Awaited|12_0(ControllerActionInvoker invoker, ValueTask`1 actionResultValueTask)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker.<InvokeNextActionFilterAsync>g__Awaited|10_0(ControllerActionInvoker invoker, Task lastTask, State next, Scope scope, Object state, Boolean isCompleted)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker.Rethrow(ActionExecutedContextSealed context)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker.Next(State& next, Scope& scope, Object& state, Boolean& isCompleted)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker.<InvokeInnerFilterAsync>g__Awaited|13_0(ControllerActionInvoker invoker, Task lastTask, State next, Scope scope, Object state, Boolean isCompleted)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ResourceInvoker.<InvokeFilterPipelineAsync>g__Awaited|20_0(ResourceInvoker invoker, Task lastTask, State next, Scope scope, Object state, Boolean isCompleted)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ResourceInvoker.<InvokeAsync>g__Logged|17_1(ResourceInvoker invoker)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ResourceInvoker.<InvokeAsync>g__Logged|17_1(ResourceInvoker invoker)
+   at Microsoft.AspNetCore.Routing.EndpointMiddleware.<Invoke>g__AwaitRequestTask|7_0(Endpoint endpoint, Task requestTask, ILogger logger)
+   at Microsoft.AspNetCore.Authorization.AuthorizationMiddleware.Invoke(HttpContext context)
+   at Microsoft.AspNetCore.Diagnostics.ExceptionHandlerMiddlewareImpl.<Invoke>g__Awaited|10_0(ExceptionHandlerMiddlewareImpl middleware, HttpContext context, Task task)
+2026-04-10 06:25:32.775 +08:00 [ERR] HTTP POST /api/Auth/request responded 500 in 27.4495 ms
+2026-04-10 06:25:32.776 +08:00 [INF] Request finished HTTP/1.1 POST http://localhost:5000/api/Auth/request - 500 null application/json; charset=utf-8 29.0961ms
+2026-04-10 06:26:12.025 +08:00 [INF] Request starting HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/request - null null
+2026-04-10 06:26:12.025 +08:00 [INF] CORS policy execution successful.
+2026-04-10 06:26:12.026 +08:00 [INF] HTTP OPTIONS /api/Auth/request responded 204 in 0.8204 ms
+2026-04-10 06:26:12.027 +08:00 [INF] Request finished HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/request - 204 null null 2.3803ms
+2026-04-10 06:26:12.034 +08:00 [INF] Request starting HTTP/1.1 POST http://localhost:5000/api/Auth/request - application/json 163
+2026-04-10 06:26:12.035 +08:00 [INF] CORS policy execution successful.
+2026-04-10 06:26:12.036 +08:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.RequestAccess (For_Testing_Only_Capstone)'
+2026-04-10 06:26:12.037 +08:00 [INF] Route matched with {action = "RequestAccess", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] RequestAccess(Client_app.Models.SignupRequest) on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-10 06:26:12.039 +08:00 [INF] Executing BadRequestObjectResult, writing value of type '<>f__AnonymousType0`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-10 06:26:12.040 +08:00 [INF] Executed action Client_app.Controllers.AuthController.RequestAccess (For_Testing_Only_Capstone) in 2.163ms
+2026-04-10 06:26:12.040 +08:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.RequestAccess (For_Testing_Only_Capstone)'
+2026-04-10 06:26:12.041 +08:00 [INF] HTTP POST /api/Auth/request responded 400 in 5.6251 ms
+2026-04-10 06:26:12.042 +08:00 [INF] Request finished HTTP/1.1 POST http://localhost:5000/api/Auth/request - 400 null application/json; charset=utf-8 7.4075ms
+2026-04-10 06:26:49.549 +08:00 [INF] Request starting HTTP/1.1 POST http://localhost:5000/api/Auth/request - application/json 163
+2026-04-10 06:26:49.551 +08:00 [INF] CORS policy execution successful.
+2026-04-10 06:26:49.552 +08:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.RequestAccess (For_Testing_Only_Capstone)'
+2026-04-10 06:26:49.553 +08:00 [INF] Route matched with {action = "RequestAccess", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] RequestAccess(Client_app.Models.SignupRequest) on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-10 06:26:49.565 +08:00 [INF] Executing BadRequestObjectResult, writing value of type '<>f__AnonymousType0`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-10 06:26:49.566 +08:00 [INF] Executed action Client_app.Controllers.AuthController.RequestAccess (For_Testing_Only_Capstone) in 12.6766ms
+2026-04-10 06:26:49.567 +08:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.RequestAccess (For_Testing_Only_Capstone)'
+2026-04-10 06:26:49.568 +08:00 [INF] HTTP POST /api/Auth/request responded 400 in 16.5465 ms
+2026-04-10 06:26:49.569 +08:00 [INF] Request finished HTTP/1.1 POST http://localhost:5000/api/Auth/request - 400 null application/json; charset=utf-8 20.0564ms
+2026-04-10 06:26:49.624 +08:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/favicon.ico - null null
+2026-04-10 06:26:49.626 +08:00 [INF] HTTP GET /favicon.ico responded 404 in 0.4687 ms
+2026-04-10 06:26:49.627 +08:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/favicon.ico - 404 0 null 2.2134ms
+2026-04-10 06:26:49.628 +08:00 [INF] Request reached the end of the middleware pipeline without being handled by application code. Request path: GET http://localhost:5000/favicon.ico, Response status code: 404
+2026-04-10 06:27:05.742 +08:00 [INF] Request starting HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/admins/department/approved - null null
+2026-04-10 06:27:05.742 +08:00 [INF] CORS policy execution successful.
+2026-04-10 06:27:05.743 +08:00 [INF] HTTP OPTIONS /api/Auth/admins/department/approved responded 204 in 0.6028 ms
+2026-04-10 06:27:05.744 +08:00 [INF] Request finished HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/admins/department/approved - 204 null null 2.1856ms
+2026-04-10 06:27:05.747 +08:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/api/Auth/admins/department/approved - application/json null
+2026-04-10 06:27:05.748 +08:00 [INF] CORS policy execution successful.
+2026-04-10 06:27:05.748 +08:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.GetApprovedDepartmentAdmins (For_Testing_Only_Capstone)'
+2026-04-10 06:27:05.749 +08:00 [INF] Route matched with {action = "GetApprovedDepartmentAdmins", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetApprovedDepartmentAdmins() on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-10 06:27:05.750 +08:00 [INF] Executing OkObjectResult, writing value of type '<>f__AnonymousType9`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.Collections.Generic.List`1[[System.Object, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]], System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-10 06:27:05.751 +08:00 [INF] Executed action Client_app.Controllers.AuthController.GetApprovedDepartmentAdmins (For_Testing_Only_Capstone) in 1.0675ms
+2026-04-10 06:27:05.751 +08:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.GetApprovedDepartmentAdmins (For_Testing_Only_Capstone)'
+2026-04-10 06:27:05.752 +08:00 [INF] HTTP GET /api/Auth/admins/department/approved responded 200 in 4.0254 ms
+2026-04-10 06:27:05.752 +08:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/api/Auth/admins/department/approved - 200 null application/json; charset=utf-8 5.4573ms
+2026-04-10 06:27:06.225 +08:00 [INF] Request starting HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/students/approved - null null
+2026-04-10 06:27:06.226 +08:00 [INF] CORS policy execution successful.
+2026-04-10 06:27:06.226 +08:00 [INF] HTTP OPTIONS /api/Auth/students/approved responded 204 in 0.6537 ms
+2026-04-10 06:27:06.227 +08:00 [INF] Request finished HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/students/approved - 204 null null 1.9927ms
+2026-04-10 06:27:06.229 +08:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/api/Auth/students/approved - application/json null
+2026-04-10 06:27:06.230 +08:00 [INF] CORS policy execution successful.
+2026-04-10 06:27:06.231 +08:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.GetApprovedStudents (For_Testing_Only_Capstone)'
+2026-04-10 06:27:06.232 +08:00 [INF] Route matched with {action = "GetApprovedStudents", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetApprovedStudents() on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-10 06:27:06.233 +08:00 [INF] Executing OkObjectResult, writing value of type '<>f__AnonymousType7`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.Collections.Generic.List`1[[System.Object, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]], System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-10 06:27:06.234 +08:00 [INF] Executed action Client_app.Controllers.AuthController.GetApprovedStudents (For_Testing_Only_Capstone) in 1.1387ms
+2026-04-10 06:27:06.234 +08:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.GetApprovedStudents (For_Testing_Only_Capstone)'
+2026-04-10 06:27:06.235 +08:00 [INF] HTTP GET /api/Auth/students/approved responded 200 in 4.6422 ms
+2026-04-10 06:27:06.236 +08:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/api/Auth/students/approved - 200 null application/json; charset=utf-8 6.2801ms
+2026-04-10 06:27:06.547 +08:00 [INF] Request starting HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/requests/pending - null null
+2026-04-10 06:27:06.548 +08:00 [INF] CORS policy execution successful.
+2026-04-10 06:27:06.549 +08:00 [INF] HTTP OPTIONS /api/Auth/requests/pending responded 204 in 0.5627 ms
+2026-04-10 06:27:06.549 +08:00 [INF] Request finished HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/requests/pending - 204 null null 2.0577ms
+2026-04-10 06:27:06.553 +08:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/api/Auth/requests/pending - application/json null
+2026-04-10 06:27:06.554 +08:00 [INF] CORS policy execution successful.
+2026-04-10 06:27:06.554 +08:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.GetPendingRequests (For_Testing_Only_Capstone)'
+2026-04-10 06:27:06.555 +08:00 [INF] Route matched with {action = "GetPendingRequests", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetPendingRequests() on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-10 06:27:06.556 +08:00 [INF] Executing OkObjectResult, writing value of type '<>f__AnonymousType4`3[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.Collections.Generic.List`1[[System.Object, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]], System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.Collections.Generic.List`1[[System.Object, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]], System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-10 06:27:06.557 +08:00 [INF] Executed action Client_app.Controllers.AuthController.GetPendingRequests (For_Testing_Only_Capstone) in 1.5735ms
+2026-04-10 06:27:06.558 +08:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.GetPendingRequests (For_Testing_Only_Capstone)'
+2026-04-10 06:27:06.558 +08:00 [INF] HTTP GET /api/Auth/requests/pending responded 200 in 4.8006 ms
+2026-04-10 06:27:06.559 +08:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/api/Auth/requests/pending - 200 null application/json; charset=utf-8 6.3561ms
+2026-04-10 06:27:08.494 +08:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/api/Auth/requests/pending - application/json null
+2026-04-10 06:27:08.495 +08:00 [INF] CORS policy execution successful.
+2026-04-10 06:27:08.497 +08:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.GetPendingRequests (For_Testing_Only_Capstone)'
+2026-04-10 06:27:08.497 +08:00 [INF] Route matched with {action = "GetPendingRequests", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetPendingRequests() on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-10 06:27:08.498 +08:00 [INF] Executing OkObjectResult, writing value of type '<>f__AnonymousType4`3[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.Collections.Generic.List`1[[System.Object, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]], System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.Collections.Generic.List`1[[System.Object, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]], System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-10 06:27:08.500 +08:00 [INF] Executed action Client_app.Controllers.AuthController.GetPendingRequests (For_Testing_Only_Capstone) in 1.2314ms
+2026-04-10 06:27:08.500 +08:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.GetPendingRequests (For_Testing_Only_Capstone)'
+2026-04-10 06:27:08.501 +08:00 [INF] HTTP GET /api/Auth/requests/pending responded 200 in 5.4349 ms
+2026-04-10 06:27:08.501 +08:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/api/Auth/requests/pending - 200 null application/json; charset=utf-8 7.1989ms
+2026-04-10 06:27:08.777 +08:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/api/Auth/students/approved - application/json null
+2026-04-10 06:27:08.778 +08:00 [INF] CORS policy execution successful.
+2026-04-10 06:27:08.779 +08:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.GetApprovedStudents (For_Testing_Only_Capstone)'
+2026-04-10 06:27:08.779 +08:00 [INF] Route matched with {action = "GetApprovedStudents", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetApprovedStudents() on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-10 06:27:08.780 +08:00 [INF] Executing OkObjectResult, writing value of type '<>f__AnonymousType7`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.Collections.Generic.List`1[[System.Object, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]], System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-10 06:27:08.781 +08:00 [INF] Executed action Client_app.Controllers.AuthController.GetApprovedStudents (For_Testing_Only_Capstone) in 0.9004ms
+2026-04-10 06:27:08.781 +08:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.GetApprovedStudents (For_Testing_Only_Capstone)'
+2026-04-10 06:27:08.782 +08:00 [INF] HTTP GET /api/Auth/students/approved responded 200 in 3.8645 ms
+2026-04-10 06:27:08.783 +08:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/api/Auth/students/approved - 200 null application/json; charset=utf-8 5.1316ms
+2026-04-10 06:27:09.355 +08:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/api/Auth/admins/department/approved - application/json null
+2026-04-10 06:27:09.356 +08:00 [INF] CORS policy execution successful.
+2026-04-10 06:27:09.357 +08:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.GetApprovedDepartmentAdmins (For_Testing_Only_Capstone)'
+2026-04-10 06:27:09.357 +08:00 [INF] Route matched with {action = "GetApprovedDepartmentAdmins", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetApprovedDepartmentAdmins() on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-10 06:27:09.359 +08:00 [INF] Executing OkObjectResult, writing value of type '<>f__AnonymousType9`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.Collections.Generic.List`1[[System.Object, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]], System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-10 06:27:09.359 +08:00 [INF] Executed action Client_app.Controllers.AuthController.GetApprovedDepartmentAdmins (For_Testing_Only_Capstone) in 1.1726ms
+2026-04-10 06:27:09.360 +08:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.GetApprovedDepartmentAdmins (For_Testing_Only_Capstone)'
+2026-04-10 06:27:09.361 +08:00 [INF] HTTP GET /api/Auth/admins/department/approved responded 200 in 4.7876 ms
+2026-04-10 06:27:09.362 +08:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/api/Auth/admins/department/approved - 200 null application/json; charset=utf-8 7.1651ms
+2026-04-10 06:27:13.941 +08:00 [INF] Request starting HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/faculty/approved - null null
+2026-04-10 06:27:13.952 +08:00 [INF] CORS policy execution successful.
+2026-04-10 06:27:13.954 +08:00 [INF] HTTP OPTIONS /api/Auth/faculty/approved responded 204 in 2.7827 ms
+2026-04-10 06:27:13.959 +08:00 [INF] Request finished HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/faculty/approved - 204 null null 17.0909ms
+2026-04-10 06:27:13.962 +08:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/api/Auth/faculty/approved - application/json null
+2026-04-10 06:27:13.965 +08:00 [INF] CORS policy execution successful.
+2026-04-10 06:27:13.966 +08:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.GetApprovedFaculties (For_Testing_Only_Capstone)'
+2026-04-10 06:27:13.967 +08:00 [INF] Route matched with {action = "GetApprovedFaculties", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetApprovedFaculties() on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-10 06:27:13.969 +08:00 [INF] Executing OkObjectResult, writing value of type '<>f__AnonymousType11`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.Collections.Generic.List`1[[System.Object, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]], System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-10 06:27:13.971 +08:00 [INF] Executed action Client_app.Controllers.AuthController.GetApprovedFaculties (For_Testing_Only_Capstone) in 2.7975ms
+2026-04-10 06:27:13.974 +08:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.GetApprovedFaculties (For_Testing_Only_Capstone)'
+2026-04-10 06:27:13.975 +08:00 [INF] HTTP GET /api/Auth/faculty/approved responded 200 in 10.4489 ms
+2026-04-10 06:27:13.977 +08:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/api/Auth/faculty/approved - 200 null application/json; charset=utf-8 15.1845ms
+2026-04-10 06:27:46.076 +08:00 [INF] Request starting HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/request - null null
+2026-04-10 06:27:46.077 +08:00 [INF] CORS policy execution successful.
+2026-04-10 06:27:46.077 +08:00 [INF] HTTP OPTIONS /api/Auth/request responded 204 in 0.7635 ms
+2026-04-10 06:27:46.078 +08:00 [INF] Request finished HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/request - 204 null null 2.1476ms
+2026-04-10 06:27:46.084 +08:00 [INF] Request starting HTTP/1.1 POST http://localhost:5000/api/Auth/request - application/json 163
+2026-04-10 06:27:46.085 +08:00 [INF] CORS policy execution successful.
+2026-04-10 06:27:46.085 +08:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.RequestAccess (For_Testing_Only_Capstone)'
+2026-04-10 06:27:46.086 +08:00 [INF] Route matched with {action = "RequestAccess", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] RequestAccess(Client_app.Models.SignupRequest) on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-10 06:27:46.087 +08:00 [INF] Executing BadRequestObjectResult, writing value of type '<>f__AnonymousType0`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-10 06:27:46.088 +08:00 [INF] Executed action Client_app.Controllers.AuthController.RequestAccess (For_Testing_Only_Capstone) in 1.5482ms
+2026-04-10 06:27:46.089 +08:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.RequestAccess (For_Testing_Only_Capstone)'
+2026-04-10 06:27:46.089 +08:00 [INF] HTTP POST /api/Auth/request responded 400 in 4.7667 ms
+2026-04-10 06:27:46.090 +08:00 [INF] Request finished HTTP/1.1 POST http://localhost:5000/api/Auth/request - 400 null application/json; charset=utf-8 6.0023ms
+2026-04-10 06:28:14.995 +08:00 [INF] Request starting HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/request - null null
+2026-04-10 06:28:14.995 +08:00 [INF] CORS policy execution successful.
+2026-04-10 06:28:14.996 +08:00 [INF] HTTP OPTIONS /api/Auth/request responded 204 in 0.5388 ms
+2026-04-10 06:28:14.996 +08:00 [INF] Request finished HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/request - 204 null null 1.6884ms
+2026-04-10 06:28:14.999 +08:00 [INF] Request starting HTTP/1.1 POST http://localhost:5000/api/Auth/request - application/json 163
+2026-04-10 06:28:14.999 +08:00 [INF] CORS policy execution successful.
+2026-04-10 06:28:15.000 +08:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.RequestAccess (For_Testing_Only_Capstone)'
+2026-04-10 06:28:15.001 +08:00 [INF] Route matched with {action = "RequestAccess", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] RequestAccess(Client_app.Models.SignupRequest) on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-10 06:28:15.002 +08:00 [INF] Executing BadRequestObjectResult, writing value of type '<>f__AnonymousType0`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-10 06:28:15.003 +08:00 [INF] Executed action Client_app.Controllers.AuthController.RequestAccess (For_Testing_Only_Capstone) in 1.2511ms
+2026-04-10 06:28:15.003 +08:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.RequestAccess (For_Testing_Only_Capstone)'
+2026-04-10 06:28:15.004 +08:00 [INF] HTTP POST /api/Auth/request responded 400 in 4.2426 ms
+2026-04-10 06:28:15.004 +08:00 [INF] Request finished HTTP/1.1 POST http://localhost:5000/api/Auth/request - 400 null application/json; charset=utf-8 5.4941ms
+2026-04-10 06:28:16.660 +08:00 [INF] Request starting HTTP/1.1 POST http://localhost:5000/api/Auth/request - application/json 163
+2026-04-10 06:28:16.661 +08:00 [INF] CORS policy execution successful.
+2026-04-10 06:28:16.661 +08:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.RequestAccess (For_Testing_Only_Capstone)'
+2026-04-10 06:28:16.662 +08:00 [INF] Route matched with {action = "RequestAccess", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] RequestAccess(Client_app.Models.SignupRequest) on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-10 06:28:16.663 +08:00 [INF] Executing BadRequestObjectResult, writing value of type '<>f__AnonymousType0`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-10 06:28:16.664 +08:00 [INF] Executed action Client_app.Controllers.AuthController.RequestAccess (For_Testing_Only_Capstone) in 1.1908ms
+2026-04-10 06:28:16.664 +08:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.RequestAccess (For_Testing_Only_Capstone)'
+2026-04-10 06:28:16.665 +08:00 [INF] HTTP POST /api/Auth/request responded 400 in 4.0859 ms
+2026-04-10 06:28:16.665 +08:00 [INF] Request finished HTTP/1.1 POST http://localhost:5000/api/Auth/request - 400 null application/json; charset=utf-8 5.5894ms
+2026-04-10 06:28:34.207 +08:00 [INF] Request starting HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/send-verification - null null
+2026-04-10 06:28:34.208 +08:00 [INF] CORS policy execution successful.
+2026-04-10 06:28:34.209 +08:00 [INF] HTTP OPTIONS /api/Auth/send-verification responded 204 in 0.4699 ms
+2026-04-10 06:28:34.209 +08:00 [INF] Request finished HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/send-verification - 204 null null 1.8358ms
+2026-04-10 06:28:34.211 +08:00 [INF] Request starting HTTP/1.1 POST http://localhost:5000/api/Auth/send-verification - application/json 39
+2026-04-10 06:28:34.212 +08:00 [INF] CORS policy execution successful.
+2026-04-10 06:28:34.213 +08:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.SendVerificationCode (For_Testing_Only_Capstone)'
+2026-04-10 06:28:34.214 +08:00 [INF] Route matched with {action = "SendVerificationCode", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] SendVerificationCode(Client_app.Models.VerificationRequest) on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-10 06:28:39.735 +08:00 [INF] Executing OkObjectResult, writing value of type '<>f__AnonymousType0`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-10 06:28:39.736 +08:00 [INF] Executed action Client_app.Controllers.AuthController.SendVerificationCode (For_Testing_Only_Capstone) in 5522.1112ms
+2026-04-10 06:28:39.737 +08:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.SendVerificationCode (For_Testing_Only_Capstone)'
+2026-04-10 06:28:39.738 +08:00 [INF] HTTP POST /api/Auth/send-verification responded 200 in 5525.3882 ms
+2026-04-10 06:28:39.738 +08:00 [INF] Request finished HTTP/1.1 POST http://localhost:5000/api/Auth/send-verification - 200 null application/json; charset=utf-8 5526.7715ms
+2026-04-10 06:28:50.100 +08:00 [INF] Request starting HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/request - null null
+2026-04-10 06:28:50.101 +08:00 [INF] CORS policy execution successful.
+2026-04-10 06:28:50.101 +08:00 [INF] HTTP OPTIONS /api/Auth/request responded 204 in 0.7439 ms
+2026-04-10 06:28:50.102 +08:00 [INF] Request finished HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/request - 204 null null 2.3796ms
+2026-04-10 06:28:50.105 +08:00 [INF] Request starting HTTP/1.1 POST http://localhost:5000/api/Auth/request - application/json 163
+2026-04-10 06:28:50.106 +08:00 [INF] CORS policy execution successful.
+2026-04-10 06:28:50.107 +08:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.RequestAccess (For_Testing_Only_Capstone)'
+2026-04-10 06:28:50.107 +08:00 [INF] Route matched with {action = "RequestAccess", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] RequestAccess(Client_app.Models.SignupRequest) on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-10 06:28:50.111 +08:00 [INF] Executed action Client_app.Controllers.AuthController.RequestAccess (For_Testing_Only_Capstone) in 3.0847ms
+2026-04-10 06:28:50.112 +08:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.RequestAccess (For_Testing_Only_Capstone)'
+2026-04-10 06:28:50.112 +08:00 [ERR] An unhandled exception has occurred while executing the request.
+System.InvalidOperationException: Internal API Key not configured.
+   at Client_app.Controllers.AuthController.RequestAccess(SignupRequest request)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ActionMethodExecutor.TaskOfIActionResultExecutor.Execute(ActionContext actionContext, IActionResultTypeMapper mapper, ObjectMethodExecutor executor, Object controller, Object[] arguments)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker.<InvokeActionMethodAsync>g__Awaited|12_0(ControllerActionInvoker invoker, ValueTask`1 actionResultValueTask)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker.<InvokeNextActionFilterAsync>g__Awaited|10_0(ControllerActionInvoker invoker, Task lastTask, State next, Scope scope, Object state, Boolean isCompleted)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker.Rethrow(ActionExecutedContextSealed context)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker.Next(State& next, Scope& scope, Object& state, Boolean& isCompleted)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker.<InvokeInnerFilterAsync>g__Awaited|13_0(ControllerActionInvoker invoker, Task lastTask, State next, Scope scope, Object state, Boolean isCompleted)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ResourceInvoker.<InvokeFilterPipelineAsync>g__Awaited|20_0(ResourceInvoker invoker, Task lastTask, State next, Scope scope, Object state, Boolean isCompleted)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ResourceInvoker.<InvokeAsync>g__Logged|17_1(ResourceInvoker invoker)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ResourceInvoker.<InvokeAsync>g__Logged|17_1(ResourceInvoker invoker)
+   at Microsoft.AspNetCore.Routing.EndpointMiddleware.<Invoke>g__AwaitRequestTask|7_0(Endpoint endpoint, Task requestTask, ILogger logger)
+   at Microsoft.AspNetCore.Authorization.AuthorizationMiddleware.Invoke(HttpContext context)
+   at Microsoft.AspNetCore.Diagnostics.ExceptionHandlerMiddlewareImpl.<Invoke>g__Awaited|10_0(ExceptionHandlerMiddlewareImpl middleware, HttpContext context, Task task)
+2026-04-10 06:28:50.116 +08:00 [ERR] An unhandled exception occurred: Internal API Key not configured.
+System.InvalidOperationException: Internal API Key not configured.
+   at Client_app.Controllers.AuthController.RequestAccess(SignupRequest request)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ActionMethodExecutor.TaskOfIActionResultExecutor.Execute(ActionContext actionContext, IActionResultTypeMapper mapper, ObjectMethodExecutor executor, Object controller, Object[] arguments)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker.<InvokeActionMethodAsync>g__Awaited|12_0(ControllerActionInvoker invoker, ValueTask`1 actionResultValueTask)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker.<InvokeNextActionFilterAsync>g__Awaited|10_0(ControllerActionInvoker invoker, Task lastTask, State next, Scope scope, Object state, Boolean isCompleted)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker.Rethrow(ActionExecutedContextSealed context)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker.Next(State& next, Scope& scope, Object& state, Boolean& isCompleted)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker.<InvokeInnerFilterAsync>g__Awaited|13_0(ControllerActionInvoker invoker, Task lastTask, State next, Scope scope, Object state, Boolean isCompleted)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ResourceInvoker.<InvokeFilterPipelineAsync>g__Awaited|20_0(ResourceInvoker invoker, Task lastTask, State next, Scope scope, Object state, Boolean isCompleted)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ResourceInvoker.<InvokeAsync>g__Logged|17_1(ResourceInvoker invoker)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ResourceInvoker.<InvokeAsync>g__Logged|17_1(ResourceInvoker invoker)
+   at Microsoft.AspNetCore.Routing.EndpointMiddleware.<Invoke>g__AwaitRequestTask|7_0(Endpoint endpoint, Task requestTask, ILogger logger)
+   at Microsoft.AspNetCore.Authorization.AuthorizationMiddleware.Invoke(HttpContext context)
+   at Microsoft.AspNetCore.Diagnostics.ExceptionHandlerMiddlewareImpl.<Invoke>g__Awaited|10_0(ExceptionHandlerMiddlewareImpl middleware, HttpContext context, Task task)
+2026-04-10 06:28:50.119 +08:00 [ERR] HTTP POST /api/Auth/request responded 500 in 12.9433 ms
+2026-04-10 06:28:50.119 +08:00 [INF] Request finished HTTP/1.1 POST http://localhost:5000/api/Auth/request - 500 null application/json; charset=utf-8 14.3583ms
+2026-04-10 06:29:27.511 +08:00 [INF] Request starting HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/request - null null
+2026-04-10 06:29:27.512 +08:00 [INF] CORS policy execution successful.
+2026-04-10 06:29:27.512 +08:00 [INF] HTTP OPTIONS /api/Auth/request responded 204 in 0.6660 ms
+2026-04-10 06:29:27.513 +08:00 [INF] Request finished HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/request - 204 null null 2.5531ms
+2026-04-10 06:29:27.519 +08:00 [INF] Request starting HTTP/1.1 POST http://localhost:5000/api/Auth/request - application/json 163
+2026-04-10 06:29:27.520 +08:00 [INF] CORS policy execution successful.
+2026-04-10 06:29:27.520 +08:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.RequestAccess (For_Testing_Only_Capstone)'
+2026-04-10 06:29:27.521 +08:00 [INF] Route matched with {action = "RequestAccess", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] RequestAccess(Client_app.Models.SignupRequest) on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-10 06:29:27.522 +08:00 [INF] Executing BadRequestObjectResult, writing value of type '<>f__AnonymousType0`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-10 06:29:27.523 +08:00 [INF] Executed action Client_app.Controllers.AuthController.RequestAccess (For_Testing_Only_Capstone) in 1.2563ms
+2026-04-10 06:29:27.523 +08:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.RequestAccess (For_Testing_Only_Capstone)'
+2026-04-10 06:29:27.524 +08:00 [INF] HTTP POST /api/Auth/request responded 400 in 4.3594 ms
+2026-04-10 06:29:27.525 +08:00 [INF] Request finished HTTP/1.1 POST http://localhost:5000/api/Auth/request - 400 null application/json; charset=utf-8 6.1202ms
+2026-04-10 06:30:55.007 +08:00 [INF] Application is shutting down...

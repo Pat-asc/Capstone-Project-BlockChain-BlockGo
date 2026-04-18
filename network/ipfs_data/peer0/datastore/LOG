@@ -1291,3 +1291,15 @@
 11:30:54.379337 db@open done T·824.215111ms
 11:55:03.762032 db@close closing
 11:55:03.764337 db@close done T·2.296618ms
+=============== Apr 17, 2026 (UTC) ===============
+13:28:46.708748 log@legend F·NumFile S·FileSize N·Entry C·BadEntry B·BadBlock Ke·KeyError D·DroppedEntry L·Level Q·SeqNum T·TimeElapsed
+13:28:47.233996 version@stat F·[1 1] S·32KiB[15KiB 16KiB] Sc·[0.25 0.00]
+13:28:47.234633 db@open opening
+13:28:47.236262 journal@recovery F·1
+13:28:47.236616 journal@recovery recovering @293
+13:28:48.100948 memdb@flush created L0@295 N·11 S·13KiB "/F5..STA,v1003":"/pr..4UY,v1006"
+13:28:48.103668 version@stat F·[2 1] S·45KiB[28KiB 16KiB] Sc·[0.50 0.00]
+13:28:50.474338 db@janitor F·5 G·0
+13:28:50.474608 db@open done T·3.239772112s
+13:59:11.546706 db@close closing
+13:59:11.552233 db@close done T·5.524888ms
