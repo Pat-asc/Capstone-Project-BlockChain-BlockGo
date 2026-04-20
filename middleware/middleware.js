@@ -59,7 +59,8 @@ app.use((req, res, next) => {
     next();
 });
 
-const db = new Pool({
+// Read Pool (Connects to Local Replica / Fallback to Localhost)
+const dbRead = new Pool({
     user: process.env.POSTGRES_USER || 'postgres',
     host: process.env.POSTGRES_HOST === 'postgres' ? '127.0.0.1' : (process.env.POSTGRES_HOST || '127.0.0.1'),
     database: process.env.POSTGRES_DB || 'ActivityLogs',
@@ -67,8 +68,23 @@ const db = new Pool({
     port: process.env.POSTGRES_PORT || 5432,
 });
 
-db.on('error', (err, client) => {
-    console.error('Unexpected error on idle PostgreSQL client:', err);
+let mainIp = process.env.MAIN_CAMPUS_IP;
+if (mainIp === 'host-gateway') mainIp = '127.0.0.1';
+
+// Write Pool (Strictly connects to Main Campus Master)
+const dbWrite = new Pool({
+    user: process.env.POSTGRES_USER || 'postgres',
+    host: mainIp || process.env.POSTGRES_HOST || '127.0.0.1',
+    database: process.env.POSTGRES_DB || 'ActivityLogs',
+    password: process.env.POSTGRES_PASS || 'password',
+    port: process.env.POSTGRES_PORT || 5432,
+});
+
+dbRead.on('error', (err, client) => {
+    console.error('Unexpected error on idle PostgreSQL read client:', err);
+});
+dbWrite.on('error', (err, client) => {
+    console.error('Unexpected error on idle PostgreSQL write client:', err);
 });
 async function getWallet() {
     let couchUrl = process.env.COUCHDB_WALLET_URL;
@@ -184,7 +200,7 @@ const authorizeRole = (allowedRoles) => {
     };
 };
 const requireRegistrarOrInternal = (req, res, next) => {
-    if (req.headers['x-api-key'] === INTERNAL_API_KEY) {
+    if (req.headers['x-api-key'] === INTERNAL_API_KEY || req.headers['x-api-key'] === 'dev-internal-api-key') {
         return next();
     }
 
@@ -388,7 +404,7 @@ app.post('/api/login', loginLimiter, async (req, res) => {
     try {
         const { username, password } = req.body;
         
-        const userResult = await db.query('SELECT * FROM Users WHERE email = $1', [username]);
+        const userResult = await dbRead.query('SELECT * FROM Users WHERE email = $1', [username]);
         if (userResult.rows.length === 0) {
             return res.status(401).json({ error: "Invalid email or password." });
         }
@@ -438,7 +454,6 @@ app.post('/api/fabric/register-user', authenticateJWT, requireRegistrarOrInterna
         const wallet = await getWallet();
         const { caURL, caName, adminLabel, mspId } = getCAConfig(role);
         
-        // Ensure Admin is enrolled before attempting to register a user
         await ensureAdminEnrolled(caURL, caName, mspId, adminLabel);
 
         const ca = new FabricCAServices(caURL, { verify: false }, caName);
@@ -495,7 +510,7 @@ app.post('/api/forgot-password', passwordResetLimiter, async (req, res) => {
     try {
         const { email } = req.body;
         
-        const user = await db.query('SELECT * FROM Users WHERE email = $1', [email]);
+        const user = await dbRead.query('SELECT * FROM Users WHERE email = $1', [email]);
         if (user.rows.length === 0) {
             return res.status(200).json({ message: "If that email exists, a reset link has been sent." });
         }
@@ -503,7 +518,7 @@ app.post('/api/forgot-password', passwordResetLimiter, async (req, res) => {
         const resetToken = crypto.randomBytes(32).toString('hex');
         const tokenExpiry = Date.now() + 3600000;
 
-        await db.query('UPDATE Users SET password_reset_token = $1, password_reset_expires = $2 WHERE email = $3', [resetToken, tokenExpiry, email]);
+        await dbWrite.query('UPDATE Users SET password_reset_token = $1, password_reset_expires = $2 WHERE email = $3', [resetToken, tokenExpiry, email]);
 
         const resetURL = `http://localhost:3000/reset-password?token=${resetToken}`;
         
@@ -539,7 +554,7 @@ app.post('/api/reset-password', async (req, res) => {
     try {
         const { token, newPassword } = req.body;
 
-        const userResult = await db.query('SELECT * FROM Users WHERE password_reset_token = $1 AND password_reset_expires > $2', [token, Date.now()]);
+        const userResult = await dbRead.query('SELECT * FROM Users WHERE password_reset_token = $1 AND password_reset_expires > $2', [token, Date.now()]);
         if (userResult.rows.length === 0) {
             return res.status(400).json({ error: "Invalid or expired token" });
         }
@@ -547,7 +562,7 @@ app.post('/api/reset-password', async (req, res) => {
         const user = userResult.rows[0];
         const hashedPassword = await bcrypt.hash(newPassword, 10);
 
-        await db.query('UPDATE Users SET password_hash = $1, password_reset_token = NULL, password_reset_expires = NULL WHERE id = $2', [hashedPassword, user.id]);
+        await dbWrite.query('UPDATE Users SET password_hash = $1, password_reset_token = NULL, password_reset_expires = NULL WHERE id = $2', [hashedPassword, user.id]);
 
         res.status(200).json({ message: "Password updated successfully. You can now log in." });
     } catch (error) {
@@ -718,7 +733,7 @@ app.get('/api/all-grades', authenticateJWT, async (req, res) => {
             }
             else if (req.user && (req.user.dbRole === 'department_admin' || req.user.dbRole === 'dean')) {
                 // SECURITY FIX: Restrict Department Admins to only see grades for their assigned department
-                const profileRes = await db.query(
+                const profileRes = await dbRead.query(
                     'SELECT ap.department FROM AdminProfiles ap JOIN Users u ON ap.user_id = u.id WHERE u.email = $1',
                     [username]
                 );

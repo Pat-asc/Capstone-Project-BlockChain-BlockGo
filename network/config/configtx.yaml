@@ -9,6 +9,8 @@ Organizations:
       Admins: { Type: Signature, Rule: "OR('OrdererMSP.admin')" }
     OrdererEndpoints:
       - orderer.capstone.com:7050
+      - orderer2.capstone.com:8050
+      - orderer3.capstone.com:9050
 
   - &RegistrarOrg
     Name: RegistrarMSP
@@ -84,8 +86,18 @@ Orderer: &OrdererDefaults
               Port: 7050
               ClientTLSCert: /etc/hyperledger/fabric/crypto-config-final-v2/ordererOrganizations/capstone.com/orderers/orderer.capstone.com/tls/server.crt
               ServerTLSCert: /etc/hyperledger/fabric/crypto-config-final-v2/ordererOrganizations/capstone.com/orderers/orderer.capstone.com/tls/server.crt
+            - Host: orderer2.capstone.com
+              Port: 8050
+              ClientTLSCert: /etc/hyperledger/fabric/crypto-config-final-v2/ordererOrganizations/capstone.com/orderers/orderer2.capstone.com/tls/server.crt
+              ServerTLSCert: /etc/hyperledger/fabric/crypto-config-final-v2/ordererOrganizations/capstone.com/orderers/orderer2.capstone.com/tls/server.crt
+            - Host: orderer3.capstone.com
+              Port: 9050
+              ClientTLSCert: /etc/hyperledger/fabric/crypto-config-final-v2/ordererOrganizations/capstone.com/orderers/orderer3.capstone.com/tls/server.crt
+              ServerTLSCert: /etc/hyperledger/fabric/crypto-config-final-v2/ordererOrganizations/capstone.com/orderers/orderer3.capstone.com/tls/server.crt
     Addresses:
         - orderer.capstone.com:7050
+        - orderer2.capstone.com:8050
+        - orderer3.capstone.com:9050
     BatchTimeout: 2s
     BatchSize:
         MaxMessageCount: 10

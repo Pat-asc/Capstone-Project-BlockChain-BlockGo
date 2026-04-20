@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Npgsql;
+using For_Testing_Only_Capstone.Models;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -14,12 +16,18 @@ namespace Client_app.Controllers
     [Route("api/[controller]")]
     public class GradeTemplateController : ControllerBase
     {
-        private readonly string _connectionString;
+        private readonly RegistrarWriteDbContext _writeDb;
+        private readonly RegistrarReadDbContext _readDb;
+        private readonly string _writeConnectionString;
+        private readonly string _readConnectionString;
 
-        public GradeTemplateController(IConfiguration configuration)
+        public GradeTemplateController(RegistrarWriteDbContext writeDb, RegistrarReadDbContext readDb, IConfiguration configuration)
         {
-            _connectionString = configuration.GetConnectionString("PostgresConnection") 
-                ?? throw new InvalidOperationException("PostgreSQL connection string 'PostgresConnection' not found.");
+            _writeDb = writeDb;
+            _readDb = readDb;
+
+            _writeConnectionString = writeDb.Database.GetConnectionString() ?? configuration.GetConnectionString("MasterConnection") ?? throw new InvalidOperationException("MasterConnection not found.");
+            _readConnectionString = readDb.Database.GetConnectionString() ?? configuration.GetConnectionString("ReplicaConnection") ?? throw new InvalidOperationException("ReplicaConnection not found.");
         }
 
         [HttpPost("create")]
@@ -30,7 +38,7 @@ namespace Client_app.Controllers
 
             try
             {
-                using var conn = new NpgsqlConnection(_connectionString);
+                using var conn = new NpgsqlConnection(_writeConnectionString);
                 await conn.OpenAsync();
 
                 string query = @"
@@ -58,7 +66,7 @@ namespace Client_app.Controllers
         {
             try
             {
-                using var conn = new NpgsqlConnection(_connectionString);
+                using var conn = new NpgsqlConnection(_readConnectionString);
                 await conn.OpenAsync();
 
                 var templates = new List<object>();
@@ -93,7 +101,7 @@ namespace Client_app.Controllers
 
             try
             {
-                using var conn = new NpgsqlConnection(_connectionString);
+                using var conn = new NpgsqlConnection(_writeConnectionString);
                 await conn.OpenAsync();
 
                 using var cmd = new NpgsqlCommand("UPDATE GradeTemplates SET status = @status WHERE id = @id", conn);
@@ -116,7 +124,7 @@ namespace Client_app.Controllers
         {
             try
             {
-                using var conn = new NpgsqlConnection(_connectionString);
+                using var conn = new NpgsqlConnection(_readConnectionString);
                 await conn.OpenAsync();
 
                 // 1. Dynamically resolve the true department of this section to support cross-department teaching

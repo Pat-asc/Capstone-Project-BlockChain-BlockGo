@@ -4,7 +4,7 @@ using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
 using Client_app.Services;
 using Npgsql;
-using Client_app.Models; // Added for external DTOs
+using Client_app.Models;
 using System;
 using System.Collections.Generic;
 using System.Net.Http;
@@ -113,7 +113,7 @@ namespace Client_app.Controllers
 
                 // Request password hash from Node.js Middleware
                 using var client = _httpClientFactory.CreateClient();
-                var apiKey = _configuration["InternalApiKey"] ?? _configuration["INTERNAL_API_KEY"] ?? throw new InvalidOperationException("Internal API Key not configured.");
+                var apiKey = Environment.GetEnvironmentVariable("INTERNAL_API_KEY") ?? _configuration["InternalApiKey"] ?? throw new InvalidOperationException("Internal API Key not configured.");
                 client.DefaultRequestHeaders.Add("x-api-key", apiKey);
                 var hashPayload = new { password = request.Password };
                 var hashContent = new StringContent(JsonSerializer.Serialize(hashPayload), Encoding.UTF8, "application/json");
@@ -266,7 +266,7 @@ namespace Client_app.Controllers
 
             // Trigger the Node.js Middleware to Generate the Blockchain Wallet
             using var client = _httpClientFactory.CreateClient("FabricCAClient");
-            var apiKey = _configuration["InternalApiKey"] ?? _configuration["INTERNAL_API_KEY"] ?? throw new InvalidOperationException("Internal API Key not configured.");
+            var apiKey = Environment.GetEnvironmentVariable("INTERNAL_API_KEY") ?? _configuration["InternalApiKey"] ?? throw new InvalidOperationException("Internal API Key not configured.");
             client.DefaultRequestHeaders.Add("x-api-key", apiKey);
 
             var payload = new { email = userEmail, role = userRole };
@@ -279,7 +279,7 @@ namespace Client_app.Controllers
             if (!response.IsSuccessStatusCode) {
                 await transaction.RollbackAsync();
                 string errorBody = await response.Content.ReadAsStringAsync();
-                return StatusCode(500, new { status = "Error", message = $"Approved in DB, but Blockchain Wallet failed: {errorBody}" });
+                return StatusCode(500, new { status = "Error", message = $"Blockchain Wallet failed to create. Database changes rolled back. Middleware Error: {errorBody}" });
             }
 
             await transaction.CommitAsync();
@@ -333,7 +333,7 @@ namespace Client_app.Controllers
         public async Task<IActionResult> CleanupPendingRequests()
         {
             var requestApiKey = Request.Headers["x-api-key"].ToString();
-            var configuredApiKey = _configuration["InternalApiKey"] ?? _configuration["INTERNAL_API_KEY"] ?? throw new InvalidOperationException("Internal API Key not configured.");
+            var configuredApiKey = Environment.GetEnvironmentVariable("INTERNAL_API_KEY") ?? _configuration["InternalApiKey"] ?? throw new InvalidOperationException("Internal API Key not configured.");
             if (requestApiKey != configuredApiKey)
             {
                 return StatusCode(403, new { status = "Error", message = "Unauthorized. Invalid Internal API Key." });
@@ -925,7 +925,7 @@ namespace Client_app.Controllers
                         };
                     }
                 }
-                else if (role?.ToLower() == "registrar" || role?.ToLower() == "department_admin" || role?.ToLower() == "dean") // Assuming 'dean' maps to department_admin
+                else if (role?.ToLower() == "registrar" || role?.ToLower() == "department_admin" || role?.ToLower() == "department admin") 
                 {
                     query = baseQuery + "ap.full_name, ap.department FROM Users u JOIN AdminProfiles ap ON u.id = ap.user_id WHERE u.email = @email";
                     cmd = new NpgsqlCommand(query, conn);

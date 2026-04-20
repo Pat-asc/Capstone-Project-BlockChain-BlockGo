@@ -102,9 +102,20 @@ async function enrollCAAdmin(caClient, wallet, orgMspId, enrollmentId, enrollmen
 
 async function bootstrapRootUser(wallet) {
     console.log('\n--- Bootstrapping Root Registrar User ---');
-    const db = new Pool({
+    const dbRead = new Pool({
         user: process.env.POSTGRES_USER || 'postgres',
         host: process.env.POSTGRES_HOST === 'postgres' ? '127.0.0.1' : (process.env.POSTGRES_HOST || '127.0.0.1'),
+        database: process.env.POSTGRES_DB || 'ActivityLogs',
+        password: process.env.POSTGRES_PASS || 'password',
+        port: process.env.POSTGRES_PORT || 5432,
+    });
+
+    let mainIp = process.env.MAIN_CAMPUS_IP;
+    if (mainIp === 'host-gateway') mainIp = '127.0.0.1';
+
+    const dbWrite = new Pool({
+        user: process.env.POSTGRES_USER || 'postgres',
+        host: mainIp || process.env.POSTGRES_HOST || '127.0.0.1',
         database: process.env.POSTGRES_DB || 'ActivityLogs',
         password: process.env.POSTGRES_PASS || 'password',
         port: process.env.POSTGRES_PORT || 5432,
@@ -114,7 +125,7 @@ async function bootstrapRootUser(wallet) {
         const email = process.env.BOOTSTRAP_REGISTRAR_EMAIL || 'registrar@plv.edu.ph';
         const pass = process.env.BOOTSTRAP_REGISTRAR_PASS || 'adminpw';
 
-        const userCheck = await db.query('SELECT * FROM Users WHERE email = $1', [email]);
+        const userCheck = await dbRead.query('SELECT * FROM Users WHERE email = $1', [email]);
         let identityExists = await wallet.get(email);
 
         // If Postgres is empty but CouchDB isn't, CouchDB has stale data. Flush it.
@@ -132,8 +143,8 @@ async function bootstrapRootUser(wallet) {
         if (userCheck.rows.length === 0) {
             console.log('Root registrar not found in database. Creating...');
             const hash = await bcrypt.hash(pass, 10);
-            const userRes = await db.query("INSERT INTO Users (email, password_hash, role, status) VALUES ($1, $2, 'registrar', 'APPROVED') RETURNING id", [email, hash]);
-            await db.query("INSERT INTO AdminProfiles (user_id, full_name, admin_level) VALUES ($1, 'System Registrar', 'registrar')", [userRes.rows[0].id]);
+            const userRes = await dbWrite.query("INSERT INTO Users (email, password_hash, role, status) VALUES ($1, $2, 'registrar', 'APPROVED') RETURNING id", [email, hash]);
+            await dbWrite.query("INSERT INTO AdminProfiles (user_id, full_name, admin_level) VALUES ($1, 'System Registrar', 'registrar')", [userRes.rows[0].id]);
             console.log('Root registrar created in database.');
         }
 
@@ -173,7 +184,8 @@ async function bootstrapRootUser(wallet) {
             console.log('Root registrar wallet identity created successfully.');
         }
     } finally {
-        await db.end();
+        await dbRead.end();
+        await dbWrite.end();
     }
 }
 

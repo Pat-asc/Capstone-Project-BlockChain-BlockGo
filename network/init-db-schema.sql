@@ -1,6 +1,4 @@
 -- BlockGO Database Schema Initialization
--- PostgreSQL 14+
--- NOTE: All table names are lowercase (PostgreSQL default, case-sensitive)
 
 -- Create Users table (core authentication)
 CREATE TABLE IF NOT EXISTS users (

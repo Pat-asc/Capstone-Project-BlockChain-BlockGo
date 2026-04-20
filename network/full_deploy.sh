@@ -29,7 +29,7 @@ cleanup_processes() {
     for pid in "${PIDS[@]}"; do
         if ps -p $pid > /dev/null 2>&1; then kill $pid 2>/dev/null || true; fi
     done
-    docker compose down -v 2>/dev/null || true
+    docker compose -f docker-compose-main.yaml -f docker-compose-annex.yaml -f docker-compose-pubad.yaml down -v 2>/dev/null || true
     log_info "All processes stopped and volumes wiped."
 }
 
@@ -45,6 +45,13 @@ wait_for_service() {
     done
     log_info "$name is ready!"
 }
+
+# Generate a dynamic secure API Key (hash-like string) for this deployment
+log_info "Generating new dynamic Internal API Key..."
+NEW_API_KEY=$(openssl rand -hex 32)
+grep -v "^INTERNAL_API_KEY=" .env > .env.tmp 2>/dev/null || true
+echo "INTERNAL_API_KEY=$NEW_API_KEY" >> .env.tmp
+mv .env.tmp .env
 
 load_env_vars() {
     if [ -f .env ]; then
@@ -66,7 +73,7 @@ load_env_vars # Load .env variables like BOOTSTRAP_REGISTRAR_PASS
 # ============================================================
 log_info "Phase 1: Initializing CA infrastructure..."
 log_warn "Wiping previous CA databases and crypto material..."
-docker compose down -v 2>/dev/null || true
+docker compose -f docker-compose-main.yaml -f docker-compose-annex.yaml -f docker-compose-pubad.yaml down -v 2>/dev/null || true
 rm -rf ./fabric-ca/registrar/* ./fabric-ca/faculty/* ./fabric-ca/department/* 2>/dev/null || true
 rm -rf "$CRYPTO_DIR" "$ARTIFACTS_DIR" 2>/dev/null || true
 mkdir -p "$ARTIFACTS_DIR"
@@ -76,7 +83,7 @@ export FABRIC_CFG_PATH=$(pwd)
 
 TMP_DOCKER_CFG=$(mktemp -d)
 echo "{}" > "$TMP_DOCKER_CFG/config.json"
-DOCKER_CONFIG=$TMP_DOCKER_CFG docker compose up -d ca.registrar.capstone.com ca.faculty.capstone.com ca.department.capstone.com cli
+DOCKER_CONFIG=$TMP_DOCKER_CFG docker compose -f docker-compose-main.yaml -f docker-compose-annex.yaml -f docker-compose-pubad.yaml up -d ca.registrar.capstone.com ca.faculty.capstone.com ca.department.capstone.com cli
 rm -rf "$TMP_DOCKER_CFG"
 
 wait_for_service 127.0.0.1 7054 "Registrar CA" 60
@@ -154,7 +161,7 @@ enroll_orderer_identities() {
     local TLS_CERT="$(pwd)/fabric-ca/registrar/tls-cert.pem"
 
     log_info "Bootstrapping Orderer (capstone.com)..."
-    mkdir -p "${ORDERER_DIR}/msp" "${ORDERER_DIR}/orderers/orderer.${DOMAIN}/msp" "${ORDERER_DIR}/orderers/orderer.${DOMAIN}/tls"
+    mkdir -p "${ORDERER_DIR}/msp" "${ORDERER_DIR}/orderers/orderer.${DOMAIN}/msp" "${ORDERER_DIR}/orderers/orderer.${DOMAIN}/tls" "${ORDERER_DIR}/orderers/orderer2.${DOMAIN}/msp" "${ORDERER_DIR}/orderers/orderer2.${DOMAIN}/tls" "${ORDERER_DIR}/orderers/orderer3.${DOMAIN}/msp" "${ORDERER_DIR}/orderers/orderer3.${DOMAIN}/tls"
 
     while [ ! -f "${TLS_CERT}" ]; do log_warn "Waiting for Orderer's CA TLS cert..."; sleep 2; done
 
@@ -178,6 +185,26 @@ enroll_orderer_identities() {
     cp "${CRYPTO_DIR}/peerOrganizations/registrar.capstone.com/users/Admin@registrar.capstone.com/msp/signcerts/cert.pem" \
        "${ORDERER_DIR}/orderers/orderer.${DOMAIN}/msp/admincerts/cert.pem"
     
+    # === ORDERER 2 (Annex) ===
+    fabric-ca-client register --caname ca-registrar --id.name orderer2 --id.secret ordererpw --id.type orderer --tls.certfiles "${TLS_CERT}" --home "${ORDERER_DIR}"
+    fabric-ca-client enroll -u https://orderer2:ordererpw@localhost:${PORT} --caname ca-registrar -M "${ORDERER_DIR}/orderers/orderer2.${DOMAIN}/msp" --tls.certfiles "${TLS_CERT}" --home "${ORDERER_DIR}"
+    fabric-ca-client enroll -u https://orderer2:ordererpw@localhost:${PORT} --caname ca-registrar -M "${ORDERER_DIR}/orderers/orderer2.${DOMAIN}/tls" --enrollment.profile tls --csr.hosts "orderer2.capstone.com,localhost" --tls.certfiles "${TLS_CERT}" --home "${ORDERER_DIR}"
+    cp "${ORDERER_DIR}/orderers/orderer2.${DOMAIN}/tls/signcerts/"* "${ORDERER_DIR}/orderers/orderer2.${DOMAIN}/tls/server.crt"
+    cp "${ORDERER_DIR}/orderers/orderer2.${DOMAIN}/tls/keystore/"* "${ORDERER_DIR}/orderers/orderer2.${DOMAIN}/tls/server.key"
+    cp "${ORDERER_DIR}/msp/cacerts/localhost-7054-ca-registrar.pem" "${ORDERER_DIR}/orderers/orderer2.${DOMAIN}/tls/ca.crt"
+    mkdir -p "${ORDERER_DIR}/orderers/orderer2.${DOMAIN}/msp/admincerts"
+    cp "${CRYPTO_DIR}/peerOrganizations/registrar.capstone.com/users/Admin@registrar.capstone.com/msp/signcerts/cert.pem" "${ORDERER_DIR}/orderers/orderer2.${DOMAIN}/msp/admincerts/cert.pem"
+
+    # === ORDERER 3 (Pubad) ===
+    fabric-ca-client register --caname ca-registrar --id.name orderer3 --id.secret ordererpw --id.type orderer --tls.certfiles "${TLS_CERT}" --home "${ORDERER_DIR}"
+    fabric-ca-client enroll -u https://orderer3:ordererpw@localhost:${PORT} --caname ca-registrar -M "${ORDERER_DIR}/orderers/orderer3.${DOMAIN}/msp" --tls.certfiles "${TLS_CERT}" --home "${ORDERER_DIR}"
+    fabric-ca-client enroll -u https://orderer3:ordererpw@localhost:${PORT} --caname ca-registrar -M "${ORDERER_DIR}/orderers/orderer3.${DOMAIN}/tls" --enrollment.profile tls --csr.hosts "orderer3.capstone.com,localhost" --tls.certfiles "${TLS_CERT}" --home "${ORDERER_DIR}"
+    cp "${ORDERER_DIR}/orderers/orderer3.${DOMAIN}/tls/signcerts/"* "${ORDERER_DIR}/orderers/orderer3.${DOMAIN}/tls/server.crt"
+    cp "${ORDERER_DIR}/orderers/orderer3.${DOMAIN}/tls/keystore/"* "${ORDERER_DIR}/orderers/orderer3.${DOMAIN}/tls/server.key"
+    cp "${ORDERER_DIR}/msp/cacerts/localhost-7054-ca-registrar.pem" "${ORDERER_DIR}/orderers/orderer3.${DOMAIN}/tls/ca.crt"
+    mkdir -p "${ORDERER_DIR}/orderers/orderer3.${DOMAIN}/msp/admincerts"
+    cp "${CRYPTO_DIR}/peerOrganizations/registrar.capstone.com/users/Admin@registrar.capstone.com/msp/signcerts/cert.pem" "${ORDERER_DIR}/orderers/orderer3.${DOMAIN}/msp/admincerts/cert.pem"
+
     # Generate Orderer MSP config
     local CA_FILENAME="localhost-${PORT}-ca-registrar.pem"
 
@@ -202,6 +229,9 @@ NodeOUs:
     Certificate: cacerts/${CA_FILENAME}
     OrganizationalUnitIdentifier: orderer
 EOF
+    cp "${ORDERER_DIR}/msp/config.yaml" "${ORDERER_DIR}/orderers/orderer.${DOMAIN}/msp/config.yaml"
+    cp "${ORDERER_DIR}/msp/config.yaml" "${ORDERER_DIR}/orderers/orderer2.${DOMAIN}/msp/config.yaml"
+    cp "${ORDERER_DIR}/msp/config.yaml" "${ORDERER_DIR}/orderers/orderer3.${DOMAIN}/msp/config.yaml"
 }
 
 # Run all enrollments
@@ -214,7 +244,7 @@ log_info "Creating dedicated TLS identity for Chaincode service..."
 # Register a new identity for the chaincode service itself
 fabric-ca-client register --caname ca-registrar --id.name chaincode --id.secret cc_pw --id.type client --tls.certfiles "$(pwd)/fabric-ca/registrar/tls-cert.pem" --home "$(pwd)/${CRYPTO_DIR}/peerOrganizations/registrar.capstone.com"
 # Enroll to get its TLS certificate
-fabric-ca-client enroll -u https://chaincode:cc_pw@localhost:7054 --caname ca-registrar -M "$(pwd)/${CRYPTO_DIR}/chaincode-tls" --enrollment.profile tls --csr.hosts "registrar-chaincode,localhost" --tls.certfiles "$(pwd)/fabric-ca/registrar/tls-cert.pem" --home "$(pwd)/${CRYPTO_DIR}/peerOrganizations/registrar.capstone.com"
+fabric-ca-client enroll -u https://chaincode:cc_pw@localhost:7054 --caname ca-registrar -M "$(pwd)/${CRYPTO_DIR}/chaincode-tls" --enrollment.profile tls --csr.hosts "registrar-chaincode,faculty-chaincode,department-chaincode,localhost" --tls.certfiles "$(pwd)/fabric-ca/registrar/tls-cert.pem" --home "$(pwd)/${CRYPTO_DIR}/peerOrganizations/registrar.capstone.com"
 
 # Normalize the filenames for the chaincode container's environment variables
 mkdir -p "$(pwd)/${CRYPTO_DIR}/chaincode-tls/keystore"
@@ -274,6 +304,10 @@ chmod -R +x ./builders/ccaas/bin
 log_info "Phase 3: Building frontend application..."
 (cd ../frontend && rm -rf build && npm install && DISABLE_ESLINT_PLUGIN=true npm run build)
 
+if ! grep -q "orderer3.capstone.com" config/configtx.yaml; then
+    log_error "Your configtx.yaml is missing the 3-node Raft cluster! Please update it to include orderer, orderer2, and orderer3."
+fi
+
 log_info "Generating Channel Artifacts..."
 docker exec cli configtxgen -profile UniversityGenesis -channelID system-channel -outputBlock "/opt/fabric-config/network/${ARTIFACTS_DIR}/orderer.genesis.block"
 
@@ -294,10 +328,12 @@ echo "{}" > "$TMP_DOCKER_CFG/config.json"
 DOCKER_CONFIG=$TMP_DOCKER_CFG docker pull golang:1.23-alpine || true
 DOCKER_CONFIG=$TMP_DOCKER_CFG docker pull alpine:latest || true
 
-DOCKER_CONFIG=$TMP_DOCKER_CFG docker compose up -d
+DOCKER_CONFIG=$TMP_DOCKER_CFG docker compose -f docker-compose-main.yaml -f docker-compose-annex.yaml -f docker-compose-pubad.yaml up -d
 rm -rf "$TMP_DOCKER_CFG"
 
-wait_for_service 127.0.0.1 7050 "Orderer" 60
+wait_for_service 127.0.0.1 7050 "Orderer" 120
+wait_for_service 127.0.0.1 8050 "Orderer2" 120
+wait_for_service 127.0.0.1 9050 "Orderer3" 120
 wait_for_service 127.0.0.1 7051 "Peer0 Registrar" 60
 
 log_info "Waiting 15 seconds for Raft leader election..."
@@ -318,16 +354,28 @@ docker exec -e CORE_PEER_MSPCONFIGPATH=$CLI_MSP cli peer channel create \
 
 for domain in registrar.capstone.com faculty.capstone.com department.capstone.com; do
     ORG_NAME=$(echo ${domain%%.*} | awk '{print toupper(substr($0,1,1)) tolower(substr($0,2))}')
-    for i in {1..5}; do
-        if docker exec -e CORE_PEER_ADDRESS=peer0.$domain:7051 -e CORE_PEER_LOCALMSPID="${ORG_NAME}MSP" \
-                    -e CORE_PEER_MSPCONFIGPATH=/etc/hyperledger/fabric/crypto-config-final-v2/peerOrganizations/$domain/users/Admin@$domain/msp \
-                    -e CORE_PEER_TLS_ROOTCERT_FILE=/etc/hyperledger/fabric/crypto-config-final-v2/peerOrganizations/$domain/peers/peer0.$domain/tls/ca.crt \
-                    -e CORE_PEER_TLS_ENABLED=true cli peer channel join -b ./channel-artifacts-final/$CHANNEL_NAME.block; then
-            break
-        else
-            log_warn "$domain join retry $i/5..."
-            sleep 10
+    
+    for peer in peer0 peer1; do
+        PEER_PORT=7051
+        if [ "$domain" == "faculty.capstone.com" ]; then PEER_PORT=9051; fi
+        if [ "$domain" == "department.capstone.com" ]; then PEER_PORT=11051; fi
+        if [ "$peer" == "peer1" ]; then
+            if [ "$domain" == "registrar.capstone.com" ]; then PEER_PORT=7051; fi
+            if [ "$domain" == "faculty.capstone.com" ]; then PEER_PORT=10051; fi
+            if [ "$domain" == "department.capstone.com" ]; then PEER_PORT=12051; fi
         fi
+        
+        for i in {1..5}; do
+            if docker exec -e CORE_PEER_ADDRESS=${peer}.$domain:$PEER_PORT -e CORE_PEER_LOCALMSPID="${ORG_NAME}MSP" \
+                        -e CORE_PEER_MSPCONFIGPATH=/etc/hyperledger/fabric/crypto-config-final-v2/peerOrganizations/$domain/users/Admin@$domain/msp \
+                        -e CORE_PEER_TLS_ROOTCERT_FILE=/etc/hyperledger/fabric/crypto-config-final-v2/peerOrganizations/$domain/peers/${peer}.$domain/tls/ca.crt \
+                        -e CORE_PEER_TLS_ENABLED=true cli peer channel join -b ./channel-artifacts-final/$CHANNEL_NAME.block; then
+                break
+            else
+                log_warn "${peer}.$domain join retry $i/5..."
+                sleep 10
+            fi
+        done
     done
 done
 
@@ -340,9 +388,18 @@ mkdir -p cc-pkg
 
 ROOT_CERT_CONTENT=$(cat "${CRYPTO_DIR}/chaincode-tls/ca-bundle/ca-bundle.pem" | sed 's/$/\\n/' | tr -d '\n' | tr -d '\r')
 
-cat <<EOF | tr -d '\r' > cc-pkg/connection.json
+# Clean .env of old chaincode IDs
+grep -v "^CHAINCODE_ID" .env > .env.tmp 2>/dev/null || true
+mv .env.tmp .env
+
+for domain in registrar.capstone.com faculty.capstone.com department.capstone.com; do
+    ORG_NAME=$(echo ${domain%%.*} | awk '{print toupper(substr($0,1,1)) tolower(substr($0,2))}')
+    PREFIX=${domain%%.*}
+    
+    # Create localized CCaaS connection file pointing to org's specific chaincode container
+    cat <<EOF | tr -d '\r' > cc-pkg/connection.json
 {
-  "address": "registrar-chaincode:9999",
+  "address": "${PREFIX}-chaincode:9999",
   "dial_timeout": "10s",
   "tls_required": true,
   "client_auth_required": false,
@@ -350,78 +407,85 @@ cat <<EOF | tr -d '\r' > cc-pkg/connection.json
 }
 EOF
 
-cat <<EOF | tr -d '\r' > cc-pkg/metadata.json
+    cat <<EOF | tr -d '\r' > cc-pkg/metadata.json
 {
     "type": "ccaas",
     "label": "registrar_1.0"
 }
 EOF
 
-tar cfz cc-pkg/code.tar.gz -C cc-pkg connection.json
-tar cfz channel-artifacts-final/registrar.tar.gz -C cc-pkg code.tar.gz metadata.json
+    tar cfz cc-pkg/code.tar.gz -C cc-pkg connection.json
+    tar cfz channel-artifacts-final/${PREFIX}.tar.gz -C cc-pkg code.tar.gz metadata.json
 
-for domain in registrar.capstone.com faculty.capstone.com department.capstone.com; do
-    ORG_NAME=$(echo ${domain%%.*} | awk '{print toupper(substr($0,1,1)) tolower(substr($0,2))}')
     for peer in peer0 peer1; do
         log_info "Installing chaincode on ${peer}.${domain}..."
-        docker exec -e CORE_PEER_ADDRESS=${peer}.${domain}:7051 \
+        
+        PEER_PORT=7051
+        if [ "$domain" == "faculty.capstone.com" ]; then PEER_PORT=9051; fi
+        if [ "$domain" == "department.capstone.com" ]; then PEER_PORT=11051; fi
+        if [ "$peer" == "peer1" ]; then
+            if [ "$domain" == "registrar.capstone.com" ]; then PEER_PORT=7051; fi
+            if [ "$domain" == "faculty.capstone.com" ]; then PEER_PORT=10051; fi
+            if [ "$domain" == "department.capstone.com" ]; then PEER_PORT=12051; fi
+        fi
+
+        docker exec -e CORE_PEER_ADDRESS=${peer}.${domain}:${PEER_PORT} \
             -e CORE_PEER_LOCALMSPID="${ORG_NAME}MSP" \
             -e CORE_PEER_MSPCONFIGPATH=/etc/hyperledger/fabric/crypto-config-final-v2/peerOrganizations/${domain}/users/Admin@${domain}/msp \
             -e CORE_PEER_TLS_ROOTCERT_FILE=/etc/hyperledger/fabric/crypto-config-final-v2/peerOrganizations/${domain}/peers/${peer}.${domain}/tls/ca.crt \
             -e CORE_PEER_TLS_ENABLED=true \
-            cli peer lifecycle chaincode install /opt/fabric-config/network/channel-artifacts-final/registrar.tar.gz
+            cli peer lifecycle chaincode install /opt/fabric-config/network/channel-artifacts-final/${PREFIX}.tar.gz
     done
-done
 
-PACKAGE_ID=$(docker exec -e CORE_PEER_ADDRESS=peer0.registrar.capstone.com:7051 -e CORE_PEER_LOCALMSPID=RegistrarMSP -e CORE_PEER_MSPCONFIGPATH=/etc/hyperledger/fabric/crypto-config-final-v2/peerOrganizations/registrar.capstone.com/users/Admin@registrar.capstone.com/msp -e CORE_PEER_TLS_ROOTCERT_FILE=/etc/hyperledger/fabric/crypto-config-final-v2/peerOrganizations/registrar.capstone.com/peers/peer0.registrar.capstone.com/tls/ca.crt -e CORE_PEER_TLS_ENABLED=true cli peer lifecycle chaincode queryinstalled | grep "registrar_1.0" | tail -n 1 | awk '{print $3}' | sed 's/,//')
+    PEER_PORT=7051
+    if [ "$domain" == "faculty.capstone.com" ]; then PEER_PORT=9051; fi
+    if [ "$domain" == "department.capstone.com" ]; then PEER_PORT=11051; fi
 
-log_info "Chaincode Package ID: $PACKAGE_ID"
+    PKG_ID=$(docker exec -e CORE_PEER_ADDRESS=peer0.${domain}:${PEER_PORT} \
+        -e CORE_PEER_LOCALMSPID="${ORG_NAME}MSP" \
+        -e CORE_PEER_MSPCONFIGPATH=/etc/hyperledger/fabric/crypto-config-final-v2/peerOrganizations/${domain}/users/Admin@${domain}/msp \
+        -e CORE_PEER_TLS_ROOTCERT_FILE=/etc/hyperledger/fabric/crypto-config-final-v2/peerOrganizations/${domain}/peers/peer0.${domain}/tls/ca.crt \
+        -e CORE_PEER_TLS_ENABLED=true \
+        cli peer lifecycle chaincode queryinstalled | grep "registrar_1.0" | tail -n 1 | awk '{print $3}' | sed 's/,//')
 
-grep -v "^CHAINCODE_ID=" .env > .env.tmp 2>/dev/null || true
-mv .env.tmp .env
-echo "CHAINCODE_ID=${PACKAGE_ID}" >> .env
-export CHAINCODE_ID="${PACKAGE_ID}"
+    log_info "${ORG_NAME} Chaincode Package ID: $PKG_ID"
+    
+    ENV_VAR_NAME="CHAINCODE_ID_$(echo ${ORG_NAME} | tr '[:lower:]' '[:upper:]')"
+    echo "${ENV_VAR_NAME}=${PKG_ID}" >> .env
+    export ${ENV_VAR_NAME}="${PKG_ID}"
 
-log_info "Restarting chaincode container with new Package ID..."
-# Override DOCKER_CONFIG to a temporary directory during the build
-# to prevent the WSL "docker-credential-desktop.exe: exec format error"
-TMP_DOCKER_CFG=$(mktemp -d)
-echo "{}" > "$TMP_DOCKER_CFG/config.json"
-
-# Pre-pull base images using the standard daemon to avoid BuildKit IPv6 resolution bugs
-DOCKER_CONFIG=$TMP_DOCKER_CFG docker pull golang:1.23-alpine || true
-DOCKER_CONFIG=$TMP_DOCKER_CFG docker pull alpine:latest || true
-
-DOCKER_CONFIG=$TMP_DOCKER_CFG docker compose up -d --build --force-recreate registrar-chaincode
-rm -rf "$TMP_DOCKER_CFG"
-
-log_info "Waiting for chaincode container to become healthy..."
-for i in {1..20}; do
-    HEALTH_STATUS=$(docker inspect --format '{{.State.Health.Status}}' registrar-chaincode 2>/dev/null)
-    if [ "$HEALTH_STATUS" == "healthy" ]; then
-        log_info "✓ Chaincode container is healthy!"
-        break
-    fi
-    log_warn "Chaincode container status: ${HEALTH_STATUS:-starting}... waiting ($i/20)"
-    sleep 5
-done
-
-if [ "$(docker inspect --format '{{.State.Health.Status}}' registrar-chaincode 2>/dev/null)" != "healthy" ]; then
-    log_error "Chaincode container failed to become healthy. Check logs: docker logs registrar-chaincode"
-fi
-
-for domain in registrar.capstone.com faculty.capstone.com department.capstone.com; do
-    ORG_NAME=$(echo ${domain%%.*} | awk '{print toupper(substr($0,1,1)) tolower(substr($0,2))}')
     log_info "Approving chaincode for ${ORG_NAME}MSP..."
-    docker exec -e CORE_PEER_ADDRESS=peer0.${domain}:7051 \
+    docker exec -e CORE_PEER_ADDRESS=peer0.${domain}:${PEER_PORT} \
         -e CORE_PEER_LOCALMSPID="${ORG_NAME}MSP" \
         -e CORE_PEER_MSPCONFIGPATH=/etc/hyperledger/fabric/crypto-config-final-v2/peerOrganizations/${domain}/users/Admin@${domain}/msp \
         -e CORE_PEER_TLS_ROOTCERT_FILE=/etc/hyperledger/fabric/crypto-config-final-v2/peerOrganizations/${domain}/peers/peer0.${domain}/tls/ca.crt \
         -e CORE_PEER_TLS_ENABLED=true \
         cli peer lifecycle chaincode approveformyorg -o orderer.capstone.com:7050 --ordererTLSHostnameOverride orderer.capstone.com --tls \
         --cafile /etc/hyperledger/fabric/crypto-config-final-v2/ordererOrganizations/capstone.com/orderers/orderer.capstone.com/tls/ca.crt \
-        --channelID $CHANNEL_NAME --name registrar --version 1.0 --package-id $PACKAGE_ID --sequence 1
+        --channelID $CHANNEL_NAME --name registrar --version 1.0 --package-id $PKG_ID --sequence 1
 done
+
+log_info "Restarting all chaincode containers with new localized Package IDs..."
+TMP_DOCKER_CFG=$(mktemp -d)
+echo "{}" > "$TMP_DOCKER_CFG/config.json"
+
+DOCKER_CONFIG=$TMP_DOCKER_CFG docker pull golang:1.23-alpine || true
+DOCKER_CONFIG=$TMP_DOCKER_CFG docker pull alpine:latest || true
+
+DOCKER_CONFIG=$TMP_DOCKER_CFG docker compose -f docker-compose-main.yaml -f docker-compose-annex.yaml -f docker-compose-pubad.yaml up -d --build --force-recreate registrar-chaincode faculty-chaincode department-chaincode
+rm -rf "$TMP_DOCKER_CFG"
+
+log_info "Waiting for chaincode containers to become healthy..."
+for i in {1..20}; do
+    HEALTH_STATUS_REG=$(docker inspect --format '{{.State.Health.Status}}' registrar-chaincode 2>/dev/null)
+    HEALTH_STATUS_FAC=$(docker inspect --format '{{.State.Health.Status}}' faculty-chaincode 2>/dev/null)
+    HEALTH_STATUS_DEP=$(docker inspect --format '{{.State.Health.Status}}' department-chaincode 2>/dev/null)
+    if [ "$HEALTH_STATUS_REG" == "healthy" ] && [ "$HEALTH_STATUS_FAC" == "healthy" ] && [ "$HEALTH_STATUS_DEP" == "healthy" ]; then
+        break
+    fi
+    log_warn "Chaincodes (Reg: ${HEALTH_STATUS_REG:-starting}, Fac: ${HEALTH_STATUS_FAC:-starting}, Dep: ${HEALTH_STATUS_DEP:-starting}) ($i/20)"
+    sleep 5
+done 
 
 log_info "Committing chaincode..."
 docker exec -e CORE_PEER_ADDRESS=peer0.registrar.capstone.com:7051 \
@@ -433,8 +497,8 @@ docker exec -e CORE_PEER_ADDRESS=peer0.registrar.capstone.com:7051 \
     --cafile /etc/hyperledger/fabric/crypto-config-final-v2/ordererOrganizations/capstone.com/orderers/orderer.capstone.com/tls/ca.crt \
     --channelID $CHANNEL_NAME --name registrar --version 1.0 --sequence 1 \
     --peerAddresses peer0.registrar.capstone.com:7051 --tlsRootCertFiles /etc/hyperledger/fabric/crypto-config-final-v2/peerOrganizations/registrar.capstone.com/peers/peer0.registrar.capstone.com/tls/ca.crt \
-    --peerAddresses peer0.faculty.capstone.com:7051 --tlsRootCertFiles /etc/hyperledger/fabric/crypto-config-final-v2/peerOrganizations/faculty.capstone.com/peers/peer0.faculty.capstone.com/tls/ca.crt \
-    --peerAddresses peer0.department.capstone.com:7051 --tlsRootCertFiles /etc/hyperledger/fabric/crypto-config-final-v2/peerOrganizations/department.capstone.com/peers/peer0.department.capstone.com/tls/ca.crt
+    --peerAddresses peer0.faculty.capstone.com:9051 --tlsRootCertFiles /etc/hyperledger/fabric/crypto-config-final-v2/peerOrganizations/faculty.capstone.com/peers/peer0.faculty.capstone.com/tls/ca.crt \
+    --peerAddresses peer0.department.capstone.com:11051 --tlsRootCertFiles /etc/hyperledger/fabric/crypto-config-final-v2/peerOrganizations/department.capstone.com/peers/peer0.department.capstone.com/tls/ca.crt
 
 log_info "Initializing chaincode ledger..."
 sleep 3
@@ -447,8 +511,8 @@ docker exec -e CORE_PEER_ADDRESS=peer0.registrar.capstone.com:7051 \
     --cafile /etc/hyperledger/fabric/crypto-config-final-v2/ordererOrganizations/capstone.com/orderers/orderer.capstone.com/tls/ca.crt \
     -C $CHANNEL_NAME -n registrar -c '{"function":"InitLedger","Args":[]}' \
     --peerAddresses peer0.registrar.capstone.com:7051 --tlsRootCertFiles /etc/hyperledger/fabric/crypto-config-final-v2/peerOrganizations/registrar.capstone.com/peers/peer0.registrar.capstone.com/tls/ca.crt \
-    --peerAddresses peer0.faculty.capstone.com:7051 --tlsRootCertFiles /etc/hyperledger/fabric/crypto-config-final-v2/peerOrganizations/faculty.capstone.com/peers/peer0.faculty.capstone.com/tls/ca.crt \
-    --peerAddresses peer0.department.capstone.com:7051 --tlsRootCertFiles /etc/hyperledger/fabric/crypto-config-final-v2/peerOrganizations/department.capstone.com/peers/peer0.department.capstone.com/tls/ca.crt
+    --peerAddresses peer0.faculty.capstone.com:9051 --tlsRootCertFiles /etc/hyperledger/fabric/crypto-config-final-v2/peerOrganizations/faculty.capstone.com/peers/peer0.faculty.capstone.com/tls/ca.crt \
+    --peerAddresses peer0.department.capstone.com:11051 --tlsRootCertFiles /etc/hyperledger/fabric/crypto-config-final-v2/peerOrganizations/department.capstone.com/peers/peer0.department.capstone.com/tls/ca.crt
 # ============================================================
 # PHASE 6: APPS
 # ============================================================

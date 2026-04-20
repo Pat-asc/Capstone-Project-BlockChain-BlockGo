@@ -2,8 +2,8 @@
 > middleware@1.0.0 start
 > node middleware.js
 
-[dotenv@17.3.1] injecting env (0) from .env -- tip: ⚡️ secrets for agents: https://dotenvx.com/as2
-[dotenv@17.3.1] injecting env (22) from ../network/.env -- tip: 🤖 agentic secret storage: https://dotenvx.com/as2
+[dotenv@17.3.1] injecting env (0) from .env -- tip: ⚙️  specify custom .env file path with { path: '/custom/path/.env' }
+[dotenv@17.3.1] injecting env (27) from ../network/.env -- tip: 🛡️ auth for agents: https://vestauth.com
 Syncing natively trusted Cryptogen Admin certificates...
 Cryptogen Admin sync complete.
 

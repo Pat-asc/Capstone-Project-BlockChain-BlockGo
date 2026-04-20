@@ -23,22 +23,78 @@ try
 {
     Log.Information("Application starting up...");
     
-    var envPath = Path.Combine(Directory.GetCurrentDirectory(), "..", "network", ".env");
-    if (File.Exists(envPath))
+    string[] envPaths = { 
+        Path.Combine(Directory.GetCurrentDirectory(), ".env"),
+        Path.Combine(Directory.GetCurrentDirectory(), "..", "network", ".env"),
+        Path.Combine(Directory.GetCurrentDirectory(), "..", "middleware", ".env")
+    };
+
+    foreach (var envPath in envPaths)
     {
-        foreach (var line in File.ReadAllLines(envPath))
+        if (File.Exists(envPath))
         {
-            var parts = line.Split('=', 2, StringSplitOptions.RemoveEmptyEntries);
-            if (parts.Length == 2 && !line.StartsWith("#"))
+            foreach (var line in File.ReadAllLines(envPath))
             {
-                Environment.SetEnvironmentVariable(parts[0].Trim(), parts[1].Trim().Trim('"', '\''));
+                var trimmedLine = line.Trim();
+                if (string.IsNullOrWhiteSpace(trimmedLine) || trimmedLine.StartsWith("#")) continue;
+                if (trimmedLine.StartsWith("export ")) trimmedLine = trimmedLine.Substring(7).Trim();
+                
+                var parts = trimmedLine.Split('=', 2, StringSplitOptions.RemoveEmptyEntries);
+                if (parts.Length == 2)
+                {
+                    var key = parts[0].Trim();
+                    var value = parts[1].Trim().Trim('"', '\'');
+                    
+                    // Fix enum parsing crash if 'prefer-standby' exists, then scrub target session entirely
+                    if (value.Contains("prefer-standby", StringComparison.OrdinalIgnoreCase)) 
+                        value = System.Text.RegularExpressions.Regex.Replace(value, @"(?i)prefer-standby", "PreferStandby");
+                    value = System.Text.RegularExpressions.Regex.Replace(value, @"(?i)target[\s_]*session[\s_]*attributes\s*=\s*[^;]+;?", "");
+                    
+                    Environment.SetEnvironmentVariable(key, value);
+                }
             }
         }
     }
 
+    // Deep scrub of OS/Docker injected environment variables before ASP.NET configures
+    foreach (System.Collections.DictionaryEntry env in Environment.GetEnvironmentVariables())
+    {
+        var key = env.Key?.ToString();
+        var value = env.Value?.ToString();
+        if (!string.IsNullOrEmpty(key) && !string.IsNullOrEmpty(value))
+        {
+            bool mutated = false;
+            if (value.IndexOf("prefer-standby", StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                value = System.Text.RegularExpressions.Regex.Replace(value, @"(?i)prefer-standby", "PreferStandby");
+                mutated = true;
+            }
+            if (value.IndexOf("target", StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                var newVal = System.Text.RegularExpressions.Regex.Replace(value, @"(?i)target[\s_]*session[\s_]*attributes\s*=\s*[^;]+;?", "");
+                if (newVal != value) { value = newVal; mutated = true; }
+            }
+            if (mutated) Environment.SetEnvironmentVariable(key, value);
+        }
+    }
+
+    Environment.SetEnvironmentVariable("PGTARGETSESSIONATTRS", null);
+    Environment.SetEnvironmentVariable("PGTARGETSESSIONATTR", null);
+
     var builder = WebApplication.CreateBuilder(args);
 builder.WebHost.UseUrls("http://0.0.0.0:5000");    
     builder.Host.UseSerilog();
+
+
+    var masterConn = builder.Configuration.GetConnectionString("MasterConnection");
+    var replicaConn = builder.Configuration.GetConnectionString("ReplicaConnection");
+    var postgresConn = builder.Configuration.GetConnectionString("PostgresConnection");
+    var stripRegex = new System.Text.RegularExpressions.Regex(@"(?i)target[\s_]*session[\s_]*attributes\s*=\s*[^;]+;?");
+    var configOverrides = new Dictionary<string, string?>();
+    if (!string.IsNullOrEmpty(masterConn)) configOverrides["ConnectionStrings:MasterConnection"] = stripRegex.Replace(masterConn, "");
+    if (!string.IsNullOrEmpty(replicaConn)) configOverrides["ConnectionStrings:ReplicaConnection"] = stripRegex.Replace(replicaConn, "");
+    if (!string.IsNullOrEmpty(postgresConn)) configOverrides["ConnectionStrings:PostgresConnection"] = stripRegex.Replace(postgresConn, "");
+    builder.Configuration.AddInMemoryCollection(configOverrides);
 
     builder.Services.AddCors(options =>
     {
@@ -111,15 +167,30 @@ builder.WebHost.UseUrls("http://0.0.0.0:5000");
         return handler;
     });
 
-    builder.Services.AddDbContext<RegistrarDbContext>(options =>
+    builder.Services.AddDbContext<RegistrarWriteDbContext>(options =>
     {
-        var connectionString = builder.Configuration.GetConnectionString("PostgresConnection");
+        var connectionString = builder.Configuration.GetConnectionString("MasterConnection");
+        
         if (string.IsNullOrEmpty(connectionString))
         {
-            throw new InvalidOperationException("PostgreSQL connection string 'PostgresConnection' not found in configuration.");
+            throw new InvalidOperationException("PostgreSQL connection string 'MasterConnection' not found in configuration.");
         }
         options.UseNpgsql(connectionString, npgsqlOptions => npgsqlOptions.CommandTimeout((int)TimeSpan.FromMinutes(5).TotalSeconds));
     });
+
+    builder.Services.AddDbContext<RegistrarReadDbContext>(options =>
+    {
+        var connectionString = builder.Configuration.GetConnectionString("ReplicaConnection");
+        
+        if (string.IsNullOrEmpty(connectionString))
+        {
+            throw new InvalidOperationException("PostgreSQL connection string 'ReplicaConnection' not found in configuration.");
+        }
+        options.UseNpgsql(connectionString, npgsqlOptions => npgsqlOptions.CommandTimeout((int)TimeSpan.FromMinutes(5).TotalSeconds));
+    });
+
+    // Map abstract RegistrarDbContext to the Write context for controllers injecting it directly
+    builder.Services.AddScoped<RegistrarDbContext>(provider => provider.GetRequiredService<RegistrarWriteDbContext>());
 
     var app = builder.Build();
 

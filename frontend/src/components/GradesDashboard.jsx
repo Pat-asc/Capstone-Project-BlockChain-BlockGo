@@ -64,6 +64,22 @@ const GradesDashboard = ({ loggedInEmail = '', loggedInName = '' }) => {
         grade: ''
     });
 
+    const userRole = useMemo(() => {
+        const token = localStorage.getItem('token');
+        if (token) {
+            try {
+                const payload = JSON.parse(atob(token.split('.')[1]));
+                return payload.dbRole || payload.role || '';
+            } catch(e) {}
+        }
+        return '';
+    }, []);
+
+    const isRegistrar = userRole === 'registrar' || loggedInEmail.includes('registrar');
+    const isDean = userRole === 'department_admin' || userRole === 'dean' || loggedInEmail.includes('dean');
+    const isFaculty = userRole === 'faculty' || loggedInEmail.includes('prof') || loggedInEmail.includes('Faculty');
+    const isStudent = userRole === 'student' || loggedInEmail.includes('student');
+
     const loadGrades = useCallback(async (isBackground = false) => {
         if (!isBackground) setLoading(true);
         if (!isBackground) setErrorMsg(null);
@@ -196,7 +212,7 @@ const GradesDashboard = ({ loggedInEmail = '', loggedInName = '' }) => {
     // AUTO-REFRESH (POLLING) for Pending Requests
     useEffect(() => { // Handles loading and polling for the requests tab
         let interval;
-        if (loggedInEmail?.includes('registrar') && mainTab === 'Requests') {
+        if (isRegistrar && mainTab === 'Requests') {
             loadRequests(); // Load immediately on tab open
             interval = setInterval(() => {
                 loadRequests(); // Fetch quietly in the background every 3 seconds
@@ -239,7 +255,7 @@ const GradesDashboard = ({ loggedInEmail = '', loggedInName = '' }) => {
 
     const handleApprove = async (recordId) => {
         try {
-            await approveGrade(recordId, 'dean@cs.plv.edu.ph');
+            await approveGrade(recordId, loggedInEmail);
             alert(`Record ${recordId} Successfully Approved by Department!`);
             loadGrades(); // Refresh the data
         } catch (error) {
@@ -249,8 +265,7 @@ const GradesDashboard = ({ loggedInEmail = '', loggedInName = '' }) => {
 
     const handleFinalize = async (recordId) => {
         try {
-            // Force the Registrar's email for the finalize test
-            await finalizeGrade(recordId, 'registrar@plv.edu.ph');
+            await finalizeGrade(recordId, loggedInEmail);
             alert(`Record ${recordId} Successfully Finalized!`);
             loadGrades(); // Refresh the data
         } catch (error) {
@@ -352,7 +367,7 @@ const GradesDashboard = ({ loggedInEmail = '', loggedInName = '' }) => {
         }
 
         // If the user is the Registrar, apply the manual UI dropdown filters
-        if (loggedInEmail.includes('registrar')) {
+        if (isRegistrar) {
             if (filterDept !== 'All' && !grade.course?.includes(filterDept) && !grade.subject_code?.includes(filterDept)) {
                 return false;
             }
@@ -388,7 +403,7 @@ const GradesDashboard = ({ loggedInEmail = '', loggedInName = '' }) => {
             <h2 style={{ color: '#003366', borderBottom: '2px solid #e0e0e0', paddingBottom: '10px' }}>Pamantasan Ng Lungsod Ng Valenzuela.</h2>
             
             {/* --- TAB NAVIGATION (Registrar Only) --- */}
-            {loggedInEmail.includes('registrar') && (
+            {isRegistrar && (
                 <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
                     <button onClick={() => setMainTab('grades')} style={{ padding: '10px 20px', fontWeight: 'bold', backgroundColor: mainTab === 'grades' ? '#003366' : '#f0f2f5', color: mainTab === 'grades' ? 'white' : '#333', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>Grades Ledger</button>
                     <button onClick={() => setMainTab('Requests')} style={{ padding: '10px 20px', fontWeight: 'bold', backgroundColor: mainTab === 'Requests' ? '#003366' : '#f0f2f5', color: mainTab === 'Requests' ? 'white' : '#333', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>Pending Requests</button>
@@ -399,7 +414,7 @@ const GradesDashboard = ({ loggedInEmail = '', loggedInName = '' }) => {
             )}
             
             {/* --- TAB NAVIGATION (Department Admin / Dean Only) --- */}
-            {loggedInEmail.includes('dean') && (
+            {isDean && (
                 <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
                     <button onClick={() => setMainTab('grades')} style={{ padding: '10px 20px', fontWeight: 'bold', backgroundColor: mainTab === 'grades' ? '#003366' : '#f0f2f5', color: mainTab === 'grades' ? 'white' : '#333', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>Grades Ledger</button>
                     <button onClick={() => setMainTab('deptStudents')} style={{ padding: '10px 20px', fontWeight: 'bold', backgroundColor: mainTab === 'deptStudents' ? '#003366' : '#f0f2f5', color: mainTab === 'deptStudents' ? 'white' : '#333', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>Pending Enrollments</button>
@@ -416,7 +431,7 @@ const GradesDashboard = ({ loggedInEmail = '', loggedInName = '' }) => {
                     </span>
                 </div>
                 <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                    {loggedInEmail.includes('registrar') && (
+                    {isRegistrar && (
                         <>
                             <select value={filterDept} onChange={e => setFilterDept(e.target.value)} style={{ padding: '8px', borderRadius: '4px', border: '1px solid #ccc', outline: 'none' }}>
                                 <option value="All">All Departments</option>
@@ -437,7 +452,7 @@ const GradesDashboard = ({ loggedInEmail = '', loggedInName = '' }) => {
                         {loading ? 'Syncing blocks...' : 'Refresh Ledger'}
                     </button>
                     {/* Only Faculty can see the Issue Grade button */}
-                    {(loggedInEmail.includes('prof') || loggedInEmail.includes('Faculty')) && (
+                    {isFaculty && (
                         <button onClick={() => setShowForm(!showForm)} style={{ padding: '10px 20px', backgroundColor: showForm ? '#dc3545' : '#34a853', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>
                             {showForm ? 'Cancel' : '+ Issue New Grade'}
                         </button>
@@ -493,7 +508,7 @@ const GradesDashboard = ({ loggedInEmail = '', loggedInName = '' }) => {
                                         <td style={{ padding: '15px', color: '#666', fontFamily: 'monospace' }}>
                                             <HoverableID 
                                                 fullId={grade.student_hash || grade.studentId} 
-                                                isAuthorized={(loggedInEmail.includes('student') && (grade.student_hash === loggedInEmail || grade.studentId === loggedInEmail)) || loggedInEmail.includes('registrar')} 
+                                                isAuthorized={(isStudent && (grade.student_hash === loggedInEmail || grade.studentId === loggedInEmail)) || isRegistrar} 
                                             />
                                         </td>
                                         <td style={{ padding: '15px', fontWeight: 'bold', color: '#333' }}>{grade.subject_code}</td>
@@ -501,17 +516,17 @@ const GradesDashboard = ({ loggedInEmail = '', loggedInName = '' }) => {
                                         <td style={{ padding: '15px', color: '#666', fontFamily: 'monospace' }}>
                                             <HoverableID 
                                                 fullId={grade.facultyId || grade.faculty_id || grade.FacultyId || grade.Faculty_id} 
-                                                isAuthorized={loggedInEmail.includes('registrar')} 
+                                                isAuthorized={isRegistrar} 
                                             />
                                         </td>
                                         <td style={{ padding: '15px' }}>
                                             <span style={getStatusStyle(grade.status)}>{grade.status}</span>
                                         </td>
                                         <td style={{ padding: '15px' }}>
-                                            {grade.status === 'Issued' && loggedInEmail.includes('dean') && (
+                                            {grade.status === 'Issued' && isDean && (
                                                 <button onClick={() => handleApprove(grade.id)} style={{ backgroundColor: '#fbbc04', color: '#333', border: 'none', padding: '8px 16px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>Verify & Approve (Dean)</button>
                                             )}
-                                            {grade.status === 'DepartmentApproved' && loggedInEmail.includes('registrar') && (
+                                            {grade.status === 'DepartmentApproved' && isRegistrar && (
                                                 <button onClick={() => handleFinalize(grade.id)} style={{ backgroundColor: '#34a853', color: 'white', border: 'none', padding: '8px 16px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>Finalize to Ledger (Registrar)</button>
                                             )}
                                             {grade.status === 'Finalized' && <span style={{ color: '#1e8e3e', fontWeight: 'bold' }}>Encrypted & Locked</span>}
