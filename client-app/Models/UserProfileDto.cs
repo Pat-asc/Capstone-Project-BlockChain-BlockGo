@@ -10,6 +10,7 @@ namespace Client_app.Models
         public string? Department { get; set; }
         public string? StudentNo { get; set; }
         public string? Section { get; set; }
+        public string? DateOfBirth { get; set; } // mm/dd/yyyy format
         public string? YearLevel { get; set; }
         // Add other profile-specific fields as needed
     }

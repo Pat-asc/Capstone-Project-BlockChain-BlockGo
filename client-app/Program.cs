@@ -5,6 +5,7 @@ using System.Threading.RateLimiting;
 using Client_app.Services;
 using Client_app.Middleware;
 using Client_app.Models;
+using Client_app.Services;
 using For_Testing_Only_Capstone.Models;
 
 AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
@@ -190,7 +191,10 @@ builder.WebHost.UseUrls("http://0.0.0.0:5000");
     });
 
     // Map abstract RegistrarDbContext to the Write context for controllers injecting it directly
-    builder.Services.AddScoped<RegistrarDbContext>(provider => provider.GetRequiredService<RegistrarWriteDbContext>());
+builder.Services.AddScoped<RegistrarDbContext>(provider => provider.GetRequiredService<RegistrarWriteDbContext>());
+
+// Register chat cache service
+builder.Services.AddSingleton<IChatCache, ChatCache>(); // Thread-safe in-memory caching with 1-year TTL
 
     var app = builder.Build();
 

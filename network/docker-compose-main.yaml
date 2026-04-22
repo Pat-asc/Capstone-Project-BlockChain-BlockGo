@@ -71,6 +71,15 @@ services:
     ports: ["5986:5984"]
     networks: [registrar-net]
 
+  couchdb_wallet:
+    image: couchdb:3.2.2
+    container_name: couchdb_wallet
+    environment:
+      - COUCHDB_USER=${COUCHDB_USER}
+      - COUCHDB_PASSWORD=${COUCHDB_PASS}
+    ports: ["5990:5984"]
+    networks: [registrar-net]
+
   peer0.registrar.capstone.com:
     container_name: peer0.registrar.capstone.com
     user: "root"
@@ -192,6 +201,21 @@ services:
       - "annex.capstone.com:${ANNEX_CAMPUS_IP}"
       - "pubad.capstone.com:${PUBAD_CAMPUS_IP}"
     networks: [registrar-net]
+
+  backend-app:
+    image: mcr.microsoft.com/dotnet/aspnet:8.0
+    container_name: blockgo-backend
+    ports:
+      - "5000:80"
+      - "5001:5001" # SignalR WebSocket
+    volumes:
+      - ../client-app:/app
+    environment:
+      - ASPNETCORE_URLS=http://+:80;http://+:5001
+      - ConnectionStrings__PostgresConnection=Host=postgres;Port=5432;Database=blockgo;Username=blockgo;Password=blockgo123
+    networks: [registrar-net]
+    depends_on:
+      - postgres
 
   registrar-chaincode:
     container_name: registrar-chaincode

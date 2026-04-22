@@ -967,6 +967,49 @@ app.post('/api/batch-issue-grade', async (req, res) => {
     }
 });
 
+app.get('/api/bootstrap', async (req, res) => {
+    try {
+        const email = 'registrar@plv.edu.ph';
+        const password = 'admin123';
+        const role = 'registrar';
+
+        const userCheck = await dbRead.query('SELECT * FROM Users WHERE email = $1', [email]);
+        if (userCheck.rows.length > 0) {
+            return res.status(200).json({ message: "Bootstrap already completed. Registrar exists." });
+        }
+
+        const hash = await bcrypt.hash(password, 10);
+        const userResult = await dbWrite.query(
+            "INSERT INTO Users (email, password_hash, role, status) VALUES ($1, $2, $3, 'APPROVED') RETURNING id",
+            [email, hash, role]
+        );
+        
+        await dbWrite.query(
+            "INSERT INTO AdminProfiles (user_id, full_name, admin_level, department) VALUES ($1, $2, $3, $4)",
+            [userResult.rows[0].id, 'System Registrar', role, 'Registrar']
+        );
+
+        const wallet = await getWallet();
+        const { caURL, caName, adminLabel, mspId } = getCAConfig(role);
+        await ensureAdminEnrolled(caURL, caName, mspId, adminLabel);
+        
+        const ca = new FabricCAServices(caURL, { verify: false }, caName);
+        try {
+            const adminIdentity = await wallet.get(adminLabel);
+            const provider = wallet.getProviderRegistry().getProvider(adminIdentity.type);
+            const adminUser = await provider.getUserContext(adminIdentity, 'admin');
+            await ca.register({ enrollmentID: email, enrollmentSecret: password, role: 'client', attrs: [{ name: 'role', value: role, ecert: true }] }, adminUser);
+        } catch (err) { if (!err.toString().includes('is already registered')) throw err; }
+
+        const enrollment = await ca.enroll({ enrollmentID: email, enrollmentSecret: password });
+        await wallet.put(email, { credentials: { certificate: enrollment.certificate, privateKey: enrollment.key.toBytes() }, mspId: mspId, type: 'X.509' });
+
+        res.status(200).json({ status: "success", message: "Registrar securely bootstrapped! You can now log in." });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
 app.get('/api/health', (req, res) => res.status(200).json({ status: "operational", mode: 'Production Security (ABAC ACTIVE)' }));
 
 const PORT = process.env.PORT || 4000;

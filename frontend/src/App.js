@@ -7,8 +7,14 @@ import StudentPortal from './components/StudentPortal';
 import FacultyPortal from './components/FacultyPortal';
 import GradesDashboard from './components/GradesDashboard';
 
+import { BrowserRouter as Router, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
+import StudentLanding from './components/StudentLanding';
+import FacultyLanding from './components/FacultyLanding';
+
 function App() {
   const [user, setUser] = useState(null);
+  const navigate = useNavigate();
+  const location = useLocation();
 
   useEffect(() => {
     const token = localStorage.getItem('token');

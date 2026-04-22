@@ -154,7 +154,35 @@ CREATE UNIQUE INDEX idx_unique_faculty_section ON FacultySections(user_id, depar
 CREATE INDEX idx_gradetemplates_department ON GradeTemplates(department);
 
 
--- Create Indexes for performance
+-- Add date_of_birth to StudentProfiles (existing table)
+ALTER TABLE studentprofiles ADD COLUMN IF NOT EXISTS date_of_birth DATE;
+
+-- Chat Messages table
+CREATE TABLE IF NOT EXISTS chat_messages (
+    id SERIAL PRIMARY KEY,
+    sender_email VARCHAR(100) NOT NULL,
+    receiver_email VARCHAR(100) NOT NULL,
+    message TEXT NOT NULL,
+    timestamp TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    is_read BOOLEAN DEFAULT false,
+    FOREIGN KEY (sender_email) REFERENCES users(email),
+    FOREIGN KEY (receiver_email) REFERENCES users(email)
+);
+
+-- Online Status table  
+CREATE TABLE IF NOT EXISTS online_status (
+    email VARCHAR(100) PRIMARY KEY,
+    is_online BOOLEAN DEFAULT false,
+    last_seen TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (email) REFERENCES users(email)
+);
+
+-- Indexes for chat performance
+CREATE INDEX IF NOT EXISTS idx_chat_messages_sender ON chat_messages(sender_email);
+CREATE INDEX IF NOT EXISTS idx_chat_messages_receiver ON chat_messages(receiver_email);
+CREATE INDEX IF NOT EXISTS idx_chat_messages_timestamp ON chat_messages(timestamp);
+
+-- Indexes for performance
 CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
 CREATE INDEX IF NOT EXISTS idx_users_role ON users(role);
 CREATE INDEX IF NOT EXISTS idx_users_status ON users(status);

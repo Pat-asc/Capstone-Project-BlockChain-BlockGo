@@ -25,7 +25,7 @@ peer:
     # The endpoint this peer uses to listen for inbound chaincode connections.
     # If this is commented-out, the listen address is selected to be
     # the peer's address (see below) with port 7052
-    chaincodeListenAddress: 0.0.0.0:7052
+    # chaincodeListenAddress: 0.0.0.0:7052
 
     # The endpoint the chaincode for this peer uses to connect to the peer.
     # If this is not specified, the chaincodeListenAddress address is selected.
@@ -33,7 +33,7 @@ peer:
     # peer address (see below). If specified peer address is invalid then it
     # will fallback to the auto detected IP (local IP) regardless of the peer
     # addressAutoDetect value.
-    chaincodeAddress: 0.0.0.0:7052
+    # chaincodeAddress: 0.0.0.0:7052
 
     # When used as peer config, this represents the endpoint to other peers
     # in the same organization. For peers in other organization, see
@@ -272,8 +272,8 @@ peer:
 
     # TLS Settings
     tls:
-        # Require server-side TLS. This is overridden by CORE_PEER_TLS_ENABLED, but should be true here for clarity.
-        enabled:  true
+        # Require server-side TLS
+        enabled:  false
         # Require client certificates / mutual TLS for inbound connections.
         # Note that clients that are not configured to use a certificate will
         # fail to connect to the peer.
@@ -357,10 +357,10 @@ peer:
     # ----!!!!IMPORTANT!!!-!!!IMPORTANT!!!-!!!IMPORTANT!!!!----
     # Deployers need to change the value of the localMspId string.
     # In particular, the name of the local MSP ID of a peer needs
-    # to match the name of one of the MSPs in each of the channels that this
-    # peer is a member of. This is overridden by CORE_PEER_LOCALMSPID in docker-compose,
-    # but we set a sensible default.
-    localMspId: RegistrarMSP
+    # to match the name of one of the MSPs in each of the channel
+    # that this peer is a member of. Otherwise this peer's messages
+    # will not be identified as valid by other nodes.
+    localMspId: SampleOrg
 
     # CLI common client config options
     client:
@@ -601,7 +601,7 @@ chaincode:
     # The path must be an absolute path.
     externalBuilders:
        - name: ccaas_builder
-         path: /etc/hyperledger/fabric/builders/ccaas
+         path: /opt/hyperledger/ccaas_builder
          propagateEnvironment:
            - CHAINCODE_AS_A_SERVICE_BUILDER_CONFIG
 
@@ -665,23 +665,23 @@ ledger:
   state:
     # stateDatabase - options are "goleveldb", "CouchDB"
     # goleveldb - default state database stored in goleveldb.
-    # CouchDB - store state database in CouchDB. This is the desired state for rich queries.
-    stateDatabase: CouchDB
+    # CouchDB - store state database in CouchDB
+    stateDatabase: goleveldb
     # Limit on the number of records to return per query
     totalQueryLimit: 100000
     couchDBConfig:
        # It is recommended to run CouchDB on the same server as the peer, and
        # not map the CouchDB container port to a server port in docker-compose.
-       # The address is the name of the CouchDB container service in the docker-compose file.
-       # This will be overridden per-peer in docker-compose. e.g., couchdb-registrar:5984
+       # Otherwise proper security must be provided on the connection between
+       # CouchDB client (on the peer) and server.
        couchDBAddress: 127.0.0.1:5984
        # This username must have read and write authority on CouchDB
-       username: admin
+       username:
        # The password is recommended to pass as an environment variable
        # during start up (eg CORE_LEDGER_STATE_COUCHDBCONFIG_PASSWORD).
        # If it is stored here, the file must be access control protected
        # to prevent unintended users from discovering the password.
-       password: password
+       password:
        # Number of retries for CouchDB errors
        maxRetries: 3
        # Number of retries for CouchDB errors during peer startup.

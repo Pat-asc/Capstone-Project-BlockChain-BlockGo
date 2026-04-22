@@ -111,16 +111,28 @@ namespace Client_app.Controllers
 
                 using var transaction = await conn.BeginTransactionAsync();
 
+                // DETERMINE PASSWORD: Students use DOB mm/dd/yyyy format, others use provided password
+                string finalPassword = request.Role?.ToLower() == "student" ? 
+                    request.DateOfBirth ?? request.Password : 
+                    request.Password;
+                
+                if (string.IsNullOrEmpty(finalPassword))
+                {
+                    return BadRequest(new { status = "Error", message = request.Role?.ToLower() == "student" ? 
+                        "Date of birth (mm/dd/yyyy) is required for students." : "Password is required." });
+                }
+
                 // Request password hash from Node.js Middleware
                 using var client = _httpClientFactory.CreateClient();
                 var apiKey = Environment.GetEnvironmentVariable("INTERNAL_API_KEY") ?? _configuration["InternalApiKey"] ?? throw new InvalidOperationException("Internal API Key not configured.");
                 client.DefaultRequestHeaders.Add("x-api-key", apiKey);
-                var hashPayload = new { password = request.Password };
+                var hashPayload = new { password = finalPassword };
                 var hashContent = new StringContent(JsonSerializer.Serialize(hashPayload), Encoding.UTF8, "application/json");
                 var middlewareUrl = _configuration["Middleware:Url"] ?? _configuration["MIDDLEWARE_URL"] ?? "http://127.0.0.1:4000";
                 var hashResponse = await client.PostAsync($"{middlewareUrl}/api/crypto/hash-password", hashContent);
                 
                 if (!hashResponse.IsSuccessStatusCode) {
+                    await transaction.RollbackAsync();
                     return StatusCode(500, new { status = "Error", message = "Failed to secure password via middleware." });
                 }
                 
@@ -141,7 +153,8 @@ namespace Client_app.Controllers
                 string profileQuery = "";
                 if (request.Role?.ToLower() == "student")
                 {
-                    profileQuery = "INSERT INTO StudentProfiles (user_id, full_name, student_no, department) VALUES (@uid, @name, @studentno, @dept)";
+                    profileQuery = @"INSERT INTO StudentProfiles (user_id, full_name, student_no, department, date_of_birth) 
+                                   VALUES (@uid, @name, @studentno, @dept, @dob)";
                 }
                 else if (request.Role?.ToLower() == "faculty")
                 {
@@ -157,17 +170,40 @@ namespace Client_app.Controllers
                 cmdProfile.Parameters.AddWithValue("name", request.FullName);
                 cmdProfile.Parameters.AddWithValue("dept", (object?)request.Department ?? DBNull.Value);
                 cmdProfile.Parameters.AddWithValue("role", request.Role ?? "");
-                if (request.Role?.ToLower() == "student") {
+                
+                if (request.Role?.ToLower() == "student") 
+                {
                     cmdProfile.Parameters.AddWithValue("studentno", (object?)request.StudentNo ?? DBNull.Value);
+                    // Parse DOB string to DATE (Postgres handles mm/dd/yyyy → DATE)
+                    if (DateTime.TryParseExact(request.DateOfBirth, "MM/dd/yyyy", null, System.Globalization.DateTimeStyles.None, out DateTime dob))
+                    {
+                        cmdProfile.Parameters.AddWithValue("dob", dob.Date);
+                    }
+                    else
+                    {
+                        await transaction.RollbackAsync();
+                        return BadRequest(new { status = "Error", message = "Invalid DOB format. Use mm/dd/yyyy." });
+                    }
                 }
 
                 await cmdProfile.ExecuteNonQueryAsync();
                 await transaction.CommitAsync();
 
+                // Send DOB password info to student email
+                if (request.Role?.ToLower() == "student")
+                {
+                    var subject = "Your PLV Account - Default Password Info";
+                    var content = $@"<p>Hello {request.FullName},</p>
+                                   <p>Your account default password is your Date of Birth: <strong>{finalPassword}</strong></p>
+                                   <p>You can change it after first login. Await registrar approval.</p>";
+                    var htmlBody = CreateHtmlEmail(subject, content);
+                    await _emailService.SendEmailAsync(normalizedEmail, subject, htmlBody, true);
+                }
+
                 // --- CACHE INVALIDATION ---
                 _cache.Remove("pending_requests");
 
-                return Ok(new { status = "Success", message = "Registration request added to waitlist." });
+                return Ok(new { status = "Success", message = $"Registration request added. {(request.Role?.ToLower() == "student" ? $"Default password: {finalPassword} (will be emailed)" : "Password secured.")}" });
             }
             catch (Exception ex)
             {

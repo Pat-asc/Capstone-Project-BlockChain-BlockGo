@@ -2,8 +2,8 @@
 > middleware@1.0.0 start
 > node middleware.js
 
-[dotenv@17.3.1] injecting env (0) from .env -- tip: ⚙️  specify custom .env file path with { path: '/custom/path/.env' }
-[dotenv@17.3.1] injecting env (27) from ../network/.env -- tip: 🛡️ auth for agents: https://vestauth.com
+[dotenv@17.3.1] injecting env (0) from .env -- tip: 🛠️  run anywhere with `dotenvx run -- yourcommand`
+[dotenv@17.3.1] injecting env (27) from ../network/.env -- tip: ⚡️ secrets for agents: https://dotenvx.com/as2
 Syncing natively trusted Cryptogen Admin certificates...
 Cryptogen Admin sync complete.
 
@@ -11,5 +11,3 @@ Middleware online on port 4000
 Mode: Production Security (OBAC/ABAC ACTIVE)
  Dynamic Identity Loading: Enabled
 
-
-Gracefully shutting down...

@@ -30,6 +30,7 @@ cleanup_processes() {
         if ps -p $pid > /dev/null 2>&1; then kill $pid 2>/dev/null || true; fi
     done
     docker compose -f docker-compose-main.yaml -f docker-compose-annex.yaml -f docker-compose-pubad.yaml down -v 2>/dev/null || true
+    docker rm -f couchdb_wallet 2>/dev/null || true
     log_info "All processes stopped and volumes wiped."
 }
 
@@ -46,13 +47,6 @@ wait_for_service() {
     log_info "$name is ready!"
 }
 
-# Generate a dynamic secure API Key (hash-like string) for this deployment
-log_info "Generating new dynamic Internal API Key..."
-NEW_API_KEY=$(openssl rand -hex 32)
-grep -v "^INTERNAL_API_KEY=" .env > .env.tmp 2>/dev/null || true
-echo "INTERNAL_API_KEY=$NEW_API_KEY" >> .env.tmp
-mv .env.tmp .env
-
 load_env_vars() {
     if [ -f .env ]; then
         while IFS='=' read -r key value || [ -n "$key" ]; do
@@ -67,6 +61,17 @@ load_env_vars() {
     fi
 }
 load_env_vars # Load .env variables like BOOTSTRAP_REGISTRAR_PASS
+
+spawn_couchdb_wallet() {
+    log_info "Spawning standalone CouchDB Wallet container on port 5990..."
+    docker rm -f couchdb_wallet 2>/dev/null || true
+    docker run -d --name couchdb_wallet \
+        --network registrar-net \
+        -e COUCHDB_USER="${COUCHDB_USER:-capstone}" \
+        -e COUCHDB_PASSWORD="${COUCHDB_PASS:-pass123}" \
+        -p 5990:5984 \
+        couchdb:3.2.2
+}
 
 # ============================================================
 # PHASE 1: INITIAL CLEANING & CA STARTUP
@@ -331,10 +336,14 @@ DOCKER_CONFIG=$TMP_DOCKER_CFG docker pull alpine:latest || true
 DOCKER_CONFIG=$TMP_DOCKER_CFG docker compose -f docker-compose-main.yaml -f docker-compose-annex.yaml -f docker-compose-pubad.yaml up -d
 rm -rf "$TMP_DOCKER_CFG"
 
+# Spawn the standalone couchdb wallet
+spawn_couchdb_wallet
+
 wait_for_service 127.0.0.1 7050 "Orderer" 120
 wait_for_service 127.0.0.1 8050 "Orderer2" 120
 wait_for_service 127.0.0.1 9050 "Orderer3" 120
 wait_for_service 127.0.0.1 7051 "Peer0 Registrar" 60
+wait_for_service 127.0.0.1 5990 "CouchDB Wallet" 60
 
 log_info "Waiting 15 seconds for Raft leader election..."
 sleep 15
@@ -516,6 +525,114 @@ docker exec -e CORE_PEER_ADDRESS=peer0.registrar.capstone.com:7051 \
 # ============================================================
 # PHASE 6: APPS
 # ============================================================
+log_info "Phase 6: Running Database Schema Updates & Mock Data Injection..."
+
+# Wait for postgres
+sleep 20
+
+POSTGRES_HOST=postgres
+POSTGRES_PORT=5432
+POSTGRES_DB=${POSTGRES_DB:-blockgo}
+POSTGRES_USER=${POSTGRES_USER:-blockgo}
+POSTGRES_PASS=${POSTGRES_PASS:-blockgo123}
+
+wait_for_service $POSTGRES_HOST $POSTGRES_PORT "Postgres" 120
+
+# Run schema migrations (init-db-schema.sql already auto-run, but ensure new columns)
+docker exec postgres psql -U $POSTGRES_USER -d $POSTGRES_DB -f /docker-entrypoint-initdb.d/init.sql
+
+# Inject 10 MOCK students with DOB passwords
+cat << 'EOF' | docker exec -i postgres psql -U $POSTGRES_USER -d $POSTGRES_DB
+-- Create MOCK Registrar (for chat testing)
+INSERT INTO users (email, password_hash, role, status, created_at) VALUES 
+('registrar@plv.edu.ph', '\\$2b\\$12\\$mockhashforregistrar', 'registrar', 'APPROVED', NOW())
+ON CONFLICT (email) DO NOTHING RETURNING id;
+-- Note: Hash is dummy, use real hash service in prod
+
+-- Create 10 MOCK students with DOB passwords
+WITH mock_users AS (
+  INSERT INTO users (email, password_hash, role, status, created_at) VALUES 
+    ('mock.student1@plv.edu.ph', '\\$2b\\$12\\$mock05/15/2005hash', 'student', 'APPROVED', NOW()),
+    ('mock.student2@plv.edu.ph', '\\$2b\\$12\\$mock06/20/2004hash', 'student', 'APPROVED', NOW()),
+    ('mock.student3@plv.edu.ph', '\\$2b\\$12\\$mock03/10/2005hash', 'student', 'APPROVED', NOW()),
+    ('mock.student4@plv.edu.ph', '\\$2b\\$12\\$mock11/25/2003hash', 'student', 'APPROVED', NOW()),
+    ('mock.student5@plv.edu.ph', '\\$2b\\$12\\$mock08/05/2004hash', 'student', 'APPROVED', NOW()),
+    ('mock.student6@plv.edu.ph', '\\$2b\\$12\\$mock01/12/2005hash', 'student', 'APPROVED', NOW()),
+    ('mock.student7@plv.edu.ph', '\\$2b\\$12\\$mock07/30/2003hash', 'student', 'APPROVED', NOW()),
+    ('mock.student8@plv.edu.ph', '\\$2b\\$12\\$mock04/18/2004hash', 'student', 'APPROVED', NOW()),
+    ('mock.student9@plv.edu.ph', '\\$2b\\$12\\$mock12/22/2005hash', 'student', 'APPROVED', NOW()),
+    ('mock.student10@plv.edu.ph', '\\$2b\\$12\\$mock09/08/2003hash', 'student', 'APPROVED', NOW())
+  ON CONFLICT (email) DO NOTHING
+  RETURNING id, email
+),
+mock_profiles AS (
+  INSERT INTO StudentProfiles (user_id, full_name, student_no, department, date_of_birth, section, assignment_status)
+  SELECT u.id, 
+         CASE 
+           WHEN u.email LIKE '%1@%' THEN 'Juan Dela Cruz' 
+           WHEN u.email LIKE '%2@%' THEN 'Maria Santos' 
+           WHEN u.email LIKE '%3@%' THEN 'Pedro Reyes' 
+           WHEN u.email LIKE '%4@%' THEN 'Ana Lopez' 
+           WHEN u.email LIKE '%5@%' THEN 'Jose Garcia' 
+           WHEN u.email LIKE '%6@%' THEN 'Luz Mendoza' 
+           WHEN u.email LIKE '%7@%' THEN 'Carlo Torres' 
+           WHEN u.email LIKE '%8@%' THEN 'Sofia Ramos' 
+           WHEN u.email LIKE '%9@%' THEN 'Miguel Lim' 
+           ELSE 'Nina Tan'
+         END,
+         'MOCK-' || substring(u.email from position('@' in u.email)-7 for 7),
+         CASE 
+           WHEN u.email LIKE '%1@%' OR u.email LIKE '%6@%' THEN 'CS'
+           WHEN u.email LIKE '%2@%' OR u.email LIKE '%7@%' THEN 'CE' 
+           WHEN u.email LIKE '%3@%' OR u.email LIKE '%8@%' THEN 'IT'
+           ELSE 'CS'
+         END,
+         CASE 
+           WHEN u.email LIKE '%1@%' THEN '2005-05-15'::date
+           WHEN u.email LIKE '%2@%' THEN '2004-06-20'::date
+           WHEN u.email LIKE '%3@%' THEN '2005-03-10'::date
+           WHEN u.email LIKE '%4@%' THEN '2003-11-25'::date
+           WHEN u.email LIKE '%5@%' THEN '2004-08-05'::date
+           WHEN u.email LIKE '%6@%' THEN '2005-01-12'::date
+           WHEN u.email LIKE '%7@%' THEN '2003-07-30'::date
+           WHEN u.email LIKE '%8@%' THEN '2004-04-18'::date
+           WHEN u.email LIKE '%9@%' THEN '2005-12-22'::date
+           ELSE '2003-09-08'::date
+         END,
+         CASE 
+           WHEN u.email LIKE '%1@%' OR u.email LIKE '%2@%' THEN 'A'
+           WHEN u.email LIKE '%3@%' OR u.email LIKE '%4@%' THEN 'B'
+           ELSE 'C'
+         END,
+         'Enrolled'
+  FROM mock_users u
+  ON CONFLICT (user_id) DO NOTHING
+)
+SELECT 'Mock data injected: ' || count(*) || ' students' FROM mock_profiles;
+EOF
+
+# Generate CSV export
+docker exec postgres psql -U $POSTGRES_USER -d $POSTGRES_DB -c "
+COPY (
+  SELECT sp.full_name, sp.student_no, u.email, sp.date_of_birth::text, sp.department, sp.section 
+  FROM StudentProfiles sp JOIN Users u ON sp.user_id = u.id 
+  WHERE u.email LIKE 'mock.%'
+) TO '/tmp/mock_students.csv' WITH CSV HEADER;
+"
+docker cp postgres:/tmp/mock_students.csv ./mock_students.csv
+log_info "Mock students CSV generated: ./mock_students.csv"
+
+# Mock cleanup function (called on trap EXIT)
+cleanup_mock_data() {
+  log_info "Cleaning up MOCK data..."
+  docker exec postgres psql -U $POSTGRES_USER -d $POSTGRES_DB -c "
+    DELETE FROM StudentProfiles WHERE student_no LIKE 'MOCK-%';
+    DELETE FROM Users WHERE email LIKE 'mock.student%' OR email = 'registrar@plv.edu.ph';
+  "
+}
+
+trap cleanup_mock_data EXIT
+
 log_info "Phase 6: Starting Application Services & Bootstrapping..."
 
 pushd ../middleware > /dev/null
@@ -524,8 +641,11 @@ nohup npm start > middleware.log 2>&1 &
 PIDS+=($!)
 popd > /dev/null
 
-log_info "Starting other application services..."
+log_info "Starting other application services (with SignalR)..."
 pushd ../client-app > /dev/null; nohup dotnet run > backend.log 2>&1 & PIDS+=($!); popd > /dev/null
 
 log_info "BLOCKGO IS LIVE! http://localhost:8080"
+log_info "Student: http://localhost:8080/student | Faculty: http://localhost:8080/faculty"
+log_info "Chat SignalR: http://localhost:5000/chatHub | Mock CSV: ./mock_students.csv"
+
 while true; do sleep 86400; done

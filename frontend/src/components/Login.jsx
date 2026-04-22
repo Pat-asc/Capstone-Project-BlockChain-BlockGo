@@ -14,6 +14,7 @@ const Login = ({ onLogin }) => {
   const [role, setRole] = useState("student");
   const [department, setDepartment] = useState("CS");
   const [studentNo, setStudentNo] = useState("");
+  const [dateOfBirth, setDateOfBirth] = useState("");
   const [signupStep, setSignupStep] = useState(1);
   const [verificationCode, setVerificationCode] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -97,12 +98,20 @@ const Login = ({ onLogin }) => {
     setError('');
     setMessage('');
     try {
-      const response = await fetch('/api/login', {
+      const response = await fetch('http://localhost:4000/api/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username: email, password: password })
       });
-      const data = await response.json();
+
+      const text = await response.text();
+      let data;
+      try {
+        data = JSON.parse(text);
+      } catch (err) {
+        throw new Error(`Server returned an HTML error page. The Node.js Middleware is down or Nginx cannot reach it. Raw response: ${text.substring(0, 30)}...`);
+      }
+
       if (response.ok && data.token) onLogin(data.token);
       else setError(data.error || "Login failed. Invalid email or password.");
     } catch (error) {
@@ -121,12 +130,20 @@ const Login = ({ onLogin }) => {
     setError('');
     setMessage('');
     try {
-      const response = await fetch('/api/forgot-password', {
+      const response = await fetch('http://localhost:4000/api/forgot-password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email })
       });
-      const data = await response.json();
+
+      const text = await response.text();
+      let data;
+      try {
+        data = JSON.parse(text);
+      } catch (err) {
+        throw new Error(`Server returned an HTML error page. The Node.js Middleware is down. Raw response: ${text.substring(0, 30)}...`);
+      }
+
       if (!response.ok) throw new Error(data.message || 'An error occurred.');
       setMessage(data.message);
     } catch (error) {
@@ -152,12 +169,20 @@ const Login = ({ onLogin }) => {
     setError('');
     setMessage('');
     try {
-      const response = await fetch('/api/reset-password', {
+      const response = await fetch('http://localhost:4000/api/reset-password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ token: resetToken, newPassword: password })
       });
-      const data = await response.json();
+
+      const text = await response.text();
+      let data;
+      try {
+        data = JSON.parse(text);
+      } catch (err) {
+        throw new Error(`Server returned an HTML error page. The Node.js Middleware is down. Raw response: ${text.substring(0, 30)}...`);
+      }
+
       if (!response.ok) throw new Error(data.error || data.message || 'An error occurred.');
       setMessage(data.message || 'Password updated successfully.');
       setTimeout(() => {
@@ -238,13 +263,29 @@ const Login = ({ onLogin }) => {
                     <label>Student No.</label>
                     <input 
                       type="text" 
-                      pattern="\d{2}-\d{4}" 
+                      pattern="\\d{2}-\\d{4}" 
                       title="Format: YY-NNNN (e.g., 25-5055)" 
                       placeholder="e.g. 25-5055" 
                       value={studentNo} 
                       onChange={(e) => setStudentNo(e.target.value)} 
                       required 
                     />
+                  </div>
+                )}
+                {role === "student" && (
+                  <div className="input-group">
+                    <label>Date of Birth (mm/dd/yyyy) *</label>
+                    <input 
+                      type="text" 
+                      pattern="\\d{2}/\\d{2}/\\d{4}" 
+                      title="Format: mm/dd/yyyy (e.g., 05/15/2005)" 
+                      placeholder="e.g. 05/15/2005" 
+                      id="dobField"
+                      value={dateOfBirth} 
+                      onChange={(e) => setDateOfBirth(e.target.value)} 
+                      required 
+                    />
+                    <small style={{color: '#666', fontSize: '12px'}}>This will be your default password</small>
                   </div>
                 )}
                 <div className="input-group">
