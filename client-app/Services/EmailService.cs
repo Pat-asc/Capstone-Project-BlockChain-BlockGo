@@ -19,9 +19,14 @@ namespace Client_app.Services
             try
             {
                 var smtpHost = _configuration["Smtp:Host"];
-                var smtpPort = int.Parse(_configuration["Smtp:Port"] ?? "587");
-                var smtpUser = _configuration["Smtp:Username"];
-                var smtpPass = _configuration["Smtp:Password"];
+                
+                if (!int.TryParse(_configuration["Smtp:Port"], out int smtpPort))
+                {
+                    smtpPort = 587;
+                }
+
+                var smtpUser = _configuration["Smtp:Username"] ?? _configuration["Smtp:User"];
+                var smtpPass = _configuration["Smtp:Password"] ?? _configuration["Smtp:Pass"];
 
                 if (string.IsNullOrEmpty(smtpHost) || string.IsNullOrEmpty(smtpUser) || string.IsNullOrEmpty(smtpPass) || smtpPass.Contains("your-"))
                 {
@@ -31,11 +36,14 @@ namespace Client_app.Services
 
                 using var client = new SmtpClient(smtpHost, smtpPort)
                 {
+                    UseDefaultCredentials = false,
                     Credentials = new System.Net.NetworkCredential(smtpUser, smtpPass),
                     EnableSsl = true
                 };
 
-                var mailMessage = new MailMessage(smtpUser, toEmail, subject, body) { IsBodyHtml = isHtml };
+                var mailMessage = new MailMessage { Subject = subject, Body = body, IsBodyHtml = isHtml };
+                mailMessage.From = new MailAddress(smtpUser, "PLV BlockGo");
+                mailMessage.To.Add(toEmail);
                 await client.SendMailAsync(mailMessage);
                 Console.WriteLine($"[EMAIL SENT] Successfully sent email to {toEmail} with subject '{subject}'");
             }

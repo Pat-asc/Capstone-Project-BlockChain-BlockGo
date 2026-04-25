@@ -14,8 +14,13 @@ const Chat = ({ userEmail, userRole, onClose }) => {
   };
 
   useEffect(() => {
+    // Use relative path in production so Nginx proxies the WebSocket connection
+    const chatUrl = process.env.NODE_ENV !== 'development' 
+      ? '/chatHub' 
+      : 'http://localhost:5000/chatHub';
+
     const conn = new signalR.HubConnectionBuilder()
-      .withUrl('http://localhost:5000/chatHub') // Backend SignalR endpoint
+      .withUrl(chatUrl)
       .build();
 
     conn.start().then(() => {
@@ -158,6 +163,13 @@ const Chat = ({ userEmail, userRole, onClose }) => {
           <option value="">Select User</option>
           {onlineUsers.map(u => <option key={u.email} value={u.email}>{u.fullName}</option>)}
         </select>
+        <input 
+          type="text" 
+          value={newMessage} 
+          onChange={(e) => setNewMessage(e.target.value)} 
+          placeholder="Type a message..." 
+          style={{ flex: 2, padding: '10px', borderRadius: '20px', border: '1px solid #ddd' }}
+        />
         <button onClick={sendMessage} disabled={!newMessage.trim() || !selectedUser}
           style={{ padding: '10px 20px', borderRadius: '20px', background: '#003366', color: 'white', border: 'none', cursor: 'pointer' }}>
           Send
@@ -168,4 +180,3 @@ const Chat = ({ userEmail, userRole, onClose }) => {
 };
 
 export default Chat;
-

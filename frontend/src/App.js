@@ -6,15 +6,17 @@ import { fetchUserProfile } from './services/api'; // Import the new API functio
 import StudentPortal from './components/StudentPortal';
 import FacultyPortal from './components/FacultyPortal';
 import GradesDashboard from './components/GradesDashboard';
+import Chat from './components/Chat';
 
 import { BrowserRouter as Router, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import StudentLanding from './components/StudentLanding';
 import FacultyLanding from './components/FacultyLanding';
 
-function App() {
-  const [user, setUser] = useState(null);
+function AppContent() {
+    const [user, setUser] = useState(null);
   const navigate = useNavigate();
   const location = useLocation();
+  const [isChatOpen, setIsChatOpen] = useState(false);
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -92,6 +94,16 @@ function App() {
         <Login onLogin={handleLoginSuccess} />
       ) : (
         <>
+          {/* Floating Chat Button */}
+          {!isChatOpen && (
+            <button 
+              onClick={() => setIsChatOpen(true)} 
+              style={{ position: 'fixed', bottom: '20px', right: '20px', zIndex: 1000, padding: '15px 25px', backgroundColor: '#003366', color: 'white', border: 'none', borderRadius: '30px', cursor: 'pointer', boxShadow: '0 4px 12px rgba(0,0,0,0.15)', fontWeight: 'bold', fontSize: '16px' }}>
+              💬 Open Chat
+            </button>
+          )}
+          {isChatOpen && <Chat userEmail={user.email} userRole={user.role} onClose={() => setIsChatOpen(false)} />}
+
           {user.role === "student" ? (
             <StudentPortal studentData={user} onLogout={handleLogout} />
           ) : user.role === "faculty" ? (
@@ -108,6 +120,14 @@ function App() {
         </>
       )}
     </div>
+  );
+}
+
+function App() {
+  return (
+    <Router>
+      <AppContent />
+    </Router>
   );
 }
 

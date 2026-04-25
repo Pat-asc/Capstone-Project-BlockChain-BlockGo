@@ -303,9 +303,9 @@ async function ensureAdminEnrolled(caURL, caName, mspId, adminLabel) {
         
         const ca = new FabricCAServices(caURL, { verify: false }, caName);
         
-        const enrollment = await ca.enroll({ 
-            enrollmentID: 'admin', 
-            enrollmentSecret: enrollSecret 
+        const enrollment = await ca.enroll({
+            enrollmentID: 'admin',
+            enrollmentSecret: enrollSecret
         });
 
         const x509Identity = {
@@ -337,41 +337,41 @@ async function getContractForUser(username) {
         return { contract: cached.contract, gateway: cached.gateway };
     }
 
-    const ccpPath = path.resolve(__dirname, process.env.CONNECTION_PROFILE_PATH || 'connection.json');
+    const ccpPath = path.resolve(__dirname, '..', 'network', 'connection-profile.json');
     const ccp = JSON.parse(fs.readFileSync(ccpPath, 'utf8'));
-    if (!ccp.organizations) ccp.organizations = {};
     
-    let clientOrg = null;
     const wallet = await getWallet();
     const identity = await wallet.get(username);
     if (!identity) {
         throw new Error(`Access Denied: Wallet identity for '${username}' not found. The Registrar must register this user first.`);
     }
 
-    console.log(`[Ledger Gateway] Routing transaction for ${username} securely via their own wallet identity.`);
-
+    let clientOrgName = null;
     for (const [orgName, orgDetails] of Object.entries(ccp.organizations)) {
         if (orgDetails.mspid === identity.mspId) {
-            clientOrg = orgName;
+            clientOrgName = orgName;
             break;
         }
     }
     
-    if (!clientOrg) {
-        clientOrg = identity.mspId;
-        const peerUrl = identity.mspId === 'FacultyMSP' ? 'peer0.faculty.capstone.com' : 
-                        identity.mspId === 'DepartmentMSP' ? 'peer0.department.capstone.com' : 
-                        'peer0.registrar.capstone.com';
-        ccp.organizations[clientOrg] = { mspid: identity.mspId, peers: [peerUrl] };
+    if (!clientOrgName) {
+        throw new Error(`Organization with MSP ID "${identity.mspId}" not found in connection profile.`);
     }
-    
+
+    console.log(`[Ledger Gateway] Routing transaction for ${username} via organization "${clientOrgName}"`);
+
     if (!ccp.client) ccp.client = {};
-    ccp.client.organization = clientOrg;
+    ccp.client.organization = clientOrgName;
+
+        let gatewayIdentity = username;
+        if (clientOrgName === 'Registrar') gatewayIdentity = 'system-admin-registrar';
+        else if (clientOrgName === 'Faculty') gatewayIdentity = 'system-admin-faculty';
+        else if (clientOrgName === 'Department') gatewayIdentity = 'system-admin-department';
 
     const gateway = new Gateway();
     await gateway.connect(ccp, {
         wallet,
-        identity: username, 
+            identity: gatewayIdentity, 
         discovery: { enabled: false, asLocalhost: true }
     });
 
@@ -470,7 +470,7 @@ app.post('/api/fabric/register-user', authenticateJWT, requireRegistrarOrInterna
             await ca.register({
                 enrollmentID: email,
                 enrollmentSecret: secret,
-                role: 'client',
+                role: (role === 'registrar' || role === 'department_admin' || role === 'dean') ? 'admin' : 'client',
                 attrs: [{ name: 'role', value: role, ecert: true }, { name: 'grade.manage', value: role === 'faculty' ? 'true' : 'false', ecert: true }]
             }, adminUser);
         } catch (regErr) {
@@ -525,12 +525,12 @@ app.post('/api/forgot-password', passwordResetLimiter, async (req, res) => {
         console.log(`[DEV MODE] Reset Link generated: ${resetURL}\n`);
 
         const transporter = nodemailer.createTransport({
-            host: process.env.EMAIL_HOST || 'smtp.gmail.com',
-            port: process.env.EMAIL_PORT || 587,
+            host: process.env.SMTP_HOST || process.env.EMAIL_HOST || 'smtp.gmail.com',
+            port: process.env.SMTP_PORT || process.env.EMAIL_PORT || 587,
             secure: false,
             auth: {
-                user: process.env.EMAIL_USER,
-                pass: process.env.EMAIL_PASS
+                user: process.env.SMTP_USER || process.env.EMAIL_USER,
+                pass: process.env.SMTP_PASS || process.env.EMAIL_PASS
             }
         });
 
@@ -583,7 +583,10 @@ app.post('/api/enroll', authenticateJWT, requireRegistrarOrInternal, async (req,
         }
 
         console.log(`[Enroll] Downloading certificates for ${username} from ${caName}...`);
-        const enrollment = await ca.enroll({ enrollmentID: username, enrollmentSecret: password });
+        const enrollment = await ca.enroll({
+            enrollmentID: username,
+            enrollmentSecret: password
+        });
         
         const x509Identity = {
             credentials: {
@@ -633,7 +636,7 @@ app.post('/api/register', authenticateJWT, requireRegistrarOrInternal, async (re
             secret = await ca.register({
                 enrollmentID: username,
                 enrollmentSecret: password,
-                role: 'client',
+                role: (role === 'registrar' || role === 'department_admin' || role === 'dean') ? 'admin' : 'client',
                 attrs: [
                     { name: 'role', value: role, ecert: true },
                     { name: 'grade.manage', value: role === 'faculty' ? 'true' : 'false', ecert: true }
@@ -998,10 +1001,13 @@ app.get('/api/bootstrap', async (req, res) => {
             const adminIdentity = await wallet.get(adminLabel);
             const provider = wallet.getProviderRegistry().getProvider(adminIdentity.type);
             const adminUser = await provider.getUserContext(adminIdentity, 'admin');
-            await ca.register({ enrollmentID: email, enrollmentSecret: password, role: 'client', attrs: [{ name: 'role', value: role, ecert: true }] }, adminUser);
+            await ca.register({ enrollmentID: email, enrollmentSecret: password, role: 'admin', attrs: [{ name: 'role', value: role, ecert: true }] }, adminUser);
         } catch (err) { if (!err.toString().includes('is already registered')) throw err; }
 
-        const enrollment = await ca.enroll({ enrollmentID: email, enrollmentSecret: password });
+        const enrollment = await ca.enroll({ 
+            enrollmentID: email, 
+            enrollmentSecret: password
+        });
         await wallet.put(email, { credentials: { certificate: enrollment.certificate, privateKey: enrollment.key.toBytes() }, mspId: mspId, type: 'X.509' });
 
         res.status(200).json({ status: "success", message: "Registrar securely bootstrapped! You can now log in." });

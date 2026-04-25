@@ -206,6 +206,13 @@ export const downloadGradingSheet = async (department, section) => {
         }
     });
 
+    if (response.status === 401 || response.status === 403) {
+        console.warn("Session expired or unauthorized. Logging out...");
+        localStorage.removeItem('token'); 
+        window.location.reload();         
+        throw new Error("Session expired");
+    }
+
     if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
         throw new Error(errorData.message || 'Failed to download template.');

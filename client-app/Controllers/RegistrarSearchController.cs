@@ -1,4 +1,8 @@
+using System;
+using System.Collections.Generic;
+using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Configuration;
 using Npgsql;
 using Client_app.Models;
 
@@ -75,7 +79,7 @@ namespace Client_app.Controllers
                             studentNo = reader.IsDBNull(3) ? null : reader.GetString(3),
                             department = reader.IsDBNull(4) ? null : reader.GetString(4),
                             section = reader.IsDBNull(5) ? null : reader.GetString(5),
-                            dateOfBirth = reader.IsDBNull(6) ? null : reader.GetDate(6).ToString("MM/dd/yyyy")
+                            dateOfBirth = reader.IsDBNull(6) ? null : reader.GetDateTime(6).ToString("MM/dd/yyyy")
                         });
                     }
                     else
@@ -98,4 +102,3 @@ namespace Client_app.Controllers
         }
     }
 }
-

@@ -34,17 +34,18 @@ jobs:
           echo "Waiting for services to spin up (this may take a few minutes)..."
           timeout 600 bash -c 'while ! nc -z localhost 5000; do sleep 5; done'
           timeout 120 bash -c 'while ! nc -z localhost 4000; do sleep 5; done'
+          timeout 120 bash -c 'while ! nc -z localhost 8080; do sleep 5; done'
           sleep 15
 
       - name: Automated Functional Tests (Phase 1)
         run: |
           echo "Running functional API tests..."
           # 1. Health Check
-          curl -s -f http://localhost:4000/api/health || exit 1
+          curl -s -f http://localhost:8080/api/health || exit 1
           
           # 2. Test Registrar Authentication
           echo "Testing Login Flow..."
-          LOGIN_RESP=$(curl -s -X POST http://localhost:4000/api/login \
+          LOGIN_RESP=$(curl -s -X POST http://localhost:8080/api/login \
             -H "Content-Type: application/json" \
             -d '{"username":"registrar@plv.edu.ph", "password":"admin123"}')
           
@@ -56,7 +57,7 @@ jobs:
           
           # 3. Test Protected Fabric Route
           echo "Testing Blockchain Read (all-grades)..."
-          curl -s -f http://localhost:4000/api/all-grades -H "Authorization: Bearer $TOKEN" || exit 1
+          curl -s -f http://localhost:8080/api/all-grades -H "Authorization: Bearer $TOKEN" || exit 1
           echo "Phase 1 Functional Tests Passed."
 
       # --- PHASE 2: CLEAN SLATE (The "Reset" Step) ---
@@ -79,6 +80,7 @@ jobs:
           echo "Waiting for services to spin up..."
           timeout 600 bash -c 'while ! nc -z localhost 5000; do sleep 5; done'
           timeout 120 bash -c 'while ! nc -z localhost 4000; do sleep 5; done'
+          timeout 120 bash -c 'while ! nc -z localhost 8080; do sleep 5; done'
           sleep 15
 
       - name: Stress Test & System Verification (Phase 2)
@@ -89,7 +91,7 @@ jobs:
           echo "Running Stress/Load Test with Autocannon..."
           # Autocannon fires rapid concurrent requests to test server durability under load.
           # This will open 100 concurrent connections for 15 seconds straight.
-          npx autocannon -c 100 -d 15 http://localhost:4000/api/health
+          npx autocannon -c 100 -d 15 http://localhost:8080/api/health
           
           echo "Phase 2 Verified and Stress Tested Successfully."
 

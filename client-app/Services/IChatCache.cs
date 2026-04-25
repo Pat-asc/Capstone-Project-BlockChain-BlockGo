@@ -12,4 +12,3 @@ namespace Client_app.Services
         Task<List<ChatUserStatus>> GetOnlineStatusesAsync();
     }
 }
-

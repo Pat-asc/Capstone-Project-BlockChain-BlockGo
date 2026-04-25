@@ -172,7 +172,7 @@ services:
     environment:
       - POSTGRESQL_REPLICATION_MODE=master
       - POSTGRESQL_REPLICATION_USER=repl_user
-      - POSTGRESQL_REPLICATION_PASSWORD=repl_password
+      - POSTGRESQL_REPLICATION_PASSWORD=${POSTGRES_REPL_PASS:-repl_password}
       - POSTGRESQL_USERNAME=${POSTGRES_USER}
       - POSTGRESQL_PASSWORD=${POSTGRES_PASS}
       - POSTGRESQL_DATABASE=${POSTGRES_DB}
@@ -201,21 +201,34 @@ services:
       - "annex.capstone.com:${ANNEX_CAMPUS_IP}"
       - "pubad.capstone.com:${PUBAD_CAMPUS_IP}"
     networks: [registrar-net]
+    depends_on:
+      - dotnet-container
 
-  backend-app:
-    image: mcr.microsoft.com/dotnet/aspnet:8.0
+  dotnet-container:
+    image: mcr.microsoft.com/dotnet/sdk:8.0
     container_name: blockgo-backend
+    working_dir: /app
+    command: sh -c "dotnet restore && dotnet run --no-launch-profile"
     ports:
       - "5000:80"
-      - "5001:5001" # SignalR WebSocket
+      - "5051:5001"
     volumes:
       - ../client-app:/app
     environment:
       - ASPNETCORE_URLS=http://+:80;http://+:5001
-      - ConnectionStrings__PostgresConnection=Host=postgres;Port=5432;Database=blockgo;Username=blockgo;Password=blockgo123
+      - ConnectionStrings__PostgresConnection=Host=postgres;Port=5432;Database=${POSTGRES_DB:-blockgo};Username=${POSTGRES_USER:-blockgo};Password=${POSTGRES_PASS:-blockgo123}
+      - NUGET_CERT_REVOCATION_MODE=offline
+      - Smtp__Host=${EMAIL_HOST:-smtp.gmail.com}
+      - Smtp__Port=${EMAIL_PORT:-587}
+      - Smtp__Username=${EMAIL_USER}
+      - Smtp__Password=${EMAIL_PASS}
+      - INTERNAL_API_KEY=${INTERNAL_API_KEY:-dev-internal-api-key}
+      - InternalApiKey=${INTERNAL_API_KEY:-dev-internal-api-key}
+      - Middleware__Url=http://host.docker.internal:4000
     networks: [registrar-net]
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
 
   registrar-chaincode:
     container_name: registrar-chaincode

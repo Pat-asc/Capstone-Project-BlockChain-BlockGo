@@ -29,6 +29,9 @@ cleanup_processes() {
     for pid in "${PIDS[@]}"; do
         if ps -p $pid > /dev/null 2>&1; then kill $pid 2>/dev/null || true; fi
     done
+    pkill -f dotnet || true
+    pkill -f "npm start" || true
+    pkill -f "node" || true
     docker compose -f docker-compose-main.yaml -f docker-compose-annex.yaml -f docker-compose-pubad.yaml down -v 2>/dev/null || true
     docker rm -f couchdb_wallet 2>/dev/null || true
     log_info "All processes stopped and volumes wiped."
@@ -78,9 +81,16 @@ spawn_couchdb_wallet() {
 # ============================================================
 log_info "Phase 1: Initializing CA infrastructure..."
 log_warn "Wiping previous CA databases and crypto material..."
+
+# Purge orphaned local services holding ports for absolute idempotency
+pkill -f dotnet || true
+pkill -f "npm start" || true
+pkill -f "node" || true
+
 docker compose -f docker-compose-main.yaml -f docker-compose-annex.yaml -f docker-compose-pubad.yaml down -v 2>/dev/null || true
 rm -rf ./fabric-ca/registrar/* ./fabric-ca/faculty/* ./fabric-ca/department/* 2>/dev/null || true
 rm -rf "$CRYPTO_DIR" "$ARTIFACTS_DIR" 2>/dev/null || true
+rm -rf ../middleware/wallet 2>/dev/null || true
 mkdir -p "$ARTIFACTS_DIR"
 
 export PATH=$PATH:$(pwd)/bin
@@ -307,7 +317,7 @@ chmod -R +x ./builders/ccaas/bin
 # PHASE 3: FRONTEND BUILD & ARTIFACTS
 # ============================================================
 log_info "Phase 3: Building frontend application..."
-(cd ../frontend && rm -rf build && npm install && DISABLE_ESLINT_PLUGIN=true npm run build)
+(cd ../frontend && rm -rf build && npm install && npm install react-router-dom @microsoft/signalr && DISABLE_ESLINT_PLUGIN=true npm run build)
 
 if ! grep -q "orderer3.capstone.com" config/configtx.yaml; then
     log_error "Your configtx.yaml is missing the 3-node Raft cluster! Please update it to include orderer, orderer2, and orderer3."
@@ -530,7 +540,7 @@ log_info "Phase 6: Running Database Schema Updates & Mock Data Injection..."
 # Wait for postgres
 sleep 20
 
-POSTGRES_HOST=postgres
+POSTGRES_HOST=127.0.0.1
 POSTGRES_PORT=5432
 POSTGRES_DB=${POSTGRES_DB:-blockgo}
 POSTGRES_USER=${POSTGRES_USER:-blockgo}
@@ -539,29 +549,34 @@ POSTGRES_PASS=${POSTGRES_PASS:-blockgo123}
 wait_for_service $POSTGRES_HOST $POSTGRES_PORT "Postgres" 120
 
 # Run schema migrations (init-db-schema.sql already auto-run, but ensure new columns)
-docker exec postgres psql -U $POSTGRES_USER -d $POSTGRES_DB -f /docker-entrypoint-initdb.d/init.sql
+docker exec -e PGPASSWORD="$POSTGRES_PASS" postgres psql -U $POSTGRES_USER -d $POSTGRES_DB -f /docker-entrypoint-initdb.d/init.sql
 
 # Inject 10 MOCK students with DOB passwords
-cat << 'EOF' | docker exec -i postgres psql -U $POSTGRES_USER -d $POSTGRES_DB
+cat << 'EOF' | docker exec -i -e PGPASSWORD="$POSTGRES_PASS" postgres psql -U $POSTGRES_USER -d $POSTGRES_DB
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
 -- Create MOCK Registrar (for chat testing)
-INSERT INTO users (email, password_hash, role, status, created_at) VALUES 
-('registrar@plv.edu.ph', '\\$2b\\$12\\$mockhashforregistrar', 'registrar', 'APPROVED', NOW())
-ON CONFLICT (email) DO NOTHING RETURNING id;
--- Note: Hash is dummy, use real hash service in prod
+WITH reg_user AS (
+  INSERT INTO users (email, password_hash, role, status, created_at) VALUES 
+  ('registrar@plv.edu.ph', crypt('admin123', gen_salt('bf', 12)), 'registrar', 'APPROVED', NOW())
+  ON CONFLICT (email) DO NOTHING RETURNING id
+)
+INSERT INTO AdminProfiles (user_id, full_name, admin_level, department)
+SELECT id, 'System Registrar', 'registrar', 'Registrar' FROM reg_user;
 
 -- Create 10 MOCK students with DOB passwords
 WITH mock_users AS (
   INSERT INTO users (email, password_hash, role, status, created_at) VALUES 
-    ('mock.student1@plv.edu.ph', '\\$2b\\$12\\$mock05/15/2005hash', 'student', 'APPROVED', NOW()),
-    ('mock.student2@plv.edu.ph', '\\$2b\\$12\\$mock06/20/2004hash', 'student', 'APPROVED', NOW()),
-    ('mock.student3@plv.edu.ph', '\\$2b\\$12\\$mock03/10/2005hash', 'student', 'APPROVED', NOW()),
-    ('mock.student4@plv.edu.ph', '\\$2b\\$12\\$mock11/25/2003hash', 'student', 'APPROVED', NOW()),
-    ('mock.student5@plv.edu.ph', '\\$2b\\$12\\$mock08/05/2004hash', 'student', 'APPROVED', NOW()),
-    ('mock.student6@plv.edu.ph', '\\$2b\\$12\\$mock01/12/2005hash', 'student', 'APPROVED', NOW()),
-    ('mock.student7@plv.edu.ph', '\\$2b\\$12\\$mock07/30/2003hash', 'student', 'APPROVED', NOW()),
-    ('mock.student8@plv.edu.ph', '\\$2b\\$12\\$mock04/18/2004hash', 'student', 'APPROVED', NOW()),
-    ('mock.student9@plv.edu.ph', '\\$2b\\$12\\$mock12/22/2005hash', 'student', 'APPROVED', NOW()),
-    ('mock.student10@plv.edu.ph', '\\$2b\\$12\\$mock09/08/2003hash', 'student', 'APPROVED', NOW())
+    ('mock.student1@plv.edu.ph', crypt('05/15/2005', gen_salt('bf', 12)), 'student', 'APPROVED', NOW()),
+    ('mock.student2@plv.edu.ph', crypt('06/20/2004', gen_salt('bf', 12)), 'student', 'APPROVED', NOW()),
+    ('mock.student3@plv.edu.ph', crypt('03/10/2005', gen_salt('bf', 12)), 'student', 'APPROVED', NOW()),
+    ('mock.student4@plv.edu.ph', crypt('11/25/2003', gen_salt('bf', 12)), 'student', 'APPROVED', NOW()),
+    ('mock.student5@plv.edu.ph', crypt('08/05/2004', gen_salt('bf', 12)), 'student', 'APPROVED', NOW()),
+    ('mock.student6@plv.edu.ph', crypt('01/12/2005', gen_salt('bf', 12)), 'student', 'APPROVED', NOW()),
+    ('mock.student7@plv.edu.ph', crypt('07/30/2003', gen_salt('bf', 12)), 'student', 'APPROVED', NOW()),
+    ('mock.student8@plv.edu.ph', crypt('04/18/2004', gen_salt('bf', 12)), 'student', 'APPROVED', NOW()),
+    ('mock.student9@plv.edu.ph', crypt('12/22/2005', gen_salt('bf', 12)), 'student', 'APPROVED', NOW()),
+    ('mock.student10@plv.edu.ph', crypt('09/08/2003', gen_salt('bf', 12)), 'student', 'APPROVED', NOW())
   ON CONFLICT (email) DO NOTHING
   RETURNING id, email
 ),
@@ -607,31 +622,32 @@ mock_profiles AS (
          'Enrolled'
   FROM mock_users u
   ON CONFLICT (user_id) DO NOTHING
+  RETURNING user_id
 )
 SELECT 'Mock data injected: ' || count(*) || ' students' FROM mock_profiles;
 EOF
 
 # Generate CSV export
-docker exec postgres psql -U $POSTGRES_USER -d $POSTGRES_DB -c "
+docker exec -e PGPASSWORD="$POSTGRES_PASS" postgres psql -U $POSTGRES_USER -d $POSTGRES_DB -c "
 COPY (
   SELECT sp.full_name, sp.student_no, u.email, sp.date_of_birth::text, sp.department, sp.section 
   FROM StudentProfiles sp JOIN Users u ON sp.user_id = u.id 
   WHERE u.email LIKE 'mock.%'
-) TO '/tmp/mock_students.csv' WITH CSV HEADER;
-"
-docker cp postgres:/tmp/mock_students.csv ./mock_students.csv
+) TO STDOUT WITH CSV HEADER;
+" > ./mock_students.csv
 log_info "Mock students CSV generated: ./mock_students.csv"
 
 # Mock cleanup function (called on trap EXIT)
 cleanup_mock_data() {
   log_info "Cleaning up MOCK data..."
-  docker exec postgres psql -U $POSTGRES_USER -d $POSTGRES_DB -c "
+  docker exec -e PGPASSWORD="$POSTGRES_PASS" postgres psql -U $POSTGRES_USER -d $POSTGRES_DB -c "
+    DELETE FROM AdminProfiles WHERE full_name = 'System Registrar';
     DELETE FROM StudentProfiles WHERE student_no LIKE 'MOCK-%';
     DELETE FROM Users WHERE email LIKE 'mock.student%' OR email = 'registrar@plv.edu.ph';
   "
 }
 
-trap cleanup_mock_data EXIT
+trap "cleanup_mock_data 2>/dev/null || true; cleanup_processes" EXIT
 
 log_info "Phase 6: Starting Application Services & Bootstrapping..."
 
@@ -641,11 +657,9 @@ nohup npm start > middleware.log 2>&1 &
 PIDS+=($!)
 popd > /dev/null
 
-log_info "Starting other application services (with SignalR)..."
-pushd ../client-app > /dev/null; nohup dotnet run > backend.log 2>&1 & PIDS+=($!); popd > /dev/null
 
 log_info "BLOCKGO IS LIVE! http://localhost:8080"
 log_info "Student: http://localhost:8080/student | Faculty: http://localhost:8080/faculty"
-log_info "Chat SignalR: http://localhost:5000/chatHub | Mock CSV: ./mock_students.csv"
+log_info "Chat is embedded in the frontend! | Upload ./mock_students.csv in the frontend to test committing grades to CouchDB."
 
 while true; do sleep 86400; done

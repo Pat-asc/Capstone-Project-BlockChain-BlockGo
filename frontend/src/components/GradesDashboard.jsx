@@ -76,7 +76,7 @@ const GradesDashboard = ({ loggedInEmail = '', loggedInName = '' }) => {
     }, []);
 
     const isRegistrar = userRole === 'registrar' || loggedInEmail.includes('registrar');
-    const isDean = userRole === 'department_admin' || userRole === 'dean' || loggedInEmail.includes('dean');
+    const isDean = userRole === 'department_admin' || userRole === 'department admin' || loggedInEmail.includes('department admin');
     const isFaculty = userRole === 'faculty' || loggedInEmail.includes('prof') || loggedInEmail.includes('Faculty');
     const isStudent = userRole === 'student' || loggedInEmail.includes('student');
 
@@ -383,7 +383,6 @@ const GradesDashboard = ({ loggedInEmail = '', loggedInName = '' }) => {
             return true;
         }
 
-        // For Students, Faculty, and Deans, the Node.js Backend already filtered the payload securely!
         return true;
     });
 
@@ -413,7 +412,7 @@ const GradesDashboard = ({ loggedInEmail = '', loggedInName = '' }) => {
                 </div>
             )}
             
-            {/* --- TAB NAVIGATION (Department Admin / Dean Only) --- */}
+            {/* --- TAB NAVIGATION (Department Admin / Department admin Only) --- */}
             {isDean && (
                 <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
                     <button onClick={() => setMainTab('grades')} style={{ padding: '10px 20px', fontWeight: 'bold', backgroundColor: mainTab === 'grades' ? '#003366' : '#f0f2f5', color: mainTab === 'grades' ? 'white' : '#333', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>Grades Ledger</button>

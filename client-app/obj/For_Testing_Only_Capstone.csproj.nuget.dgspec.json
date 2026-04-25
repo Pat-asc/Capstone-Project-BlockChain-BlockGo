@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "/mnt/c/Users/DELL/Downloads/Capstone-Project-BlockChain-BlockGo/client-app/For_Testing_Only_Capstone.csproj": {}
+    "/app/For_Testing_Only_Capstone.csproj": {}
   },
   "projects": {
-    "/mnt/c/Users/DELL/Downloads/Capstone-Project-BlockChain-BlockGo/client-app/For_Testing_Only_Capstone.csproj": {
+    "/app/For_Testing_Only_Capstone.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "/mnt/c/Users/DELL/Downloads/Capstone-Project-BlockChain-BlockGo/client-app/For_Testing_Only_Capstone.csproj",
+        "projectUniqueName": "/app/For_Testing_Only_Capstone.csproj",
         "projectName": "For_Testing_Only_Capstone",
-        "projectPath": "/mnt/c/Users/DELL/Downloads/Capstone-Project-BlockChain-BlockGo/client-app/For_Testing_Only_Capstone.csproj",
+        "projectPath": "/app/For_Testing_Only_Capstone.csproj",
         "packagesPath": "/root/.nuget/packages/",
-        "outputPath": "/mnt/c/Users/DELL/Downloads/Capstone-Project-BlockChain-BlockGo/client-app/obj/",
+        "outputPath": "/app/obj/",
         "projectStyle": "PackageReference",
         "configFilePaths": [
           "/root/.nuget/NuGet/NuGet.Config"
@@ -32,6 +32,11 @@
           "warnAsError": [
             "NU1605"
           ]
+        },
+        "restoreAuditProperties": {
+          "enableAudit": "true",
+          "auditLevel": "low",
+          "auditMode": "direct"
         }
       },
       "frameworks": {
@@ -114,7 +119,7 @@
               "privateAssets": "all"
             }
           },
-          "runtimeIdentifierGraphPath": "/usr/lib/dotnet/sdk/8.0.126/PortableRuntimeIdentifierGraph.json"
+          "runtimeIdentifierGraphPath": "/usr/share/dotnet/sdk/8.0.420/PortableRuntimeIdentifierGraph.json"
         }
       }
     }

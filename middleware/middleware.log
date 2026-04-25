@@ -1,9 +1,10 @@
+nohup: ignoring input
 
 > middleware@1.0.0 start
 > node middleware.js
 
-[dotenv@17.3.1] injecting env (0) from .env -- tip: 🛠️  run anywhere with `dotenvx run -- yourcommand`
-[dotenv@17.3.1] injecting env (27) from ../network/.env -- tip: ⚡️ secrets for agents: https://dotenvx.com/as2
+[dotenv@17.3.1] injecting env (0) from .env -- tip: ⚙️  load multiple .env files with { path: ['.env.local', '.env'] }
+[dotenv@17.3.1] injecting env (29) from ../network/.env -- tip: ⚙️  load multiple .env files with { path: ['.env.local', '.env'] }
 Syncing natively trusted Cryptogen Admin certificates...
 Cryptogen Admin sync complete.
 

@@ -5,7 +5,7 @@ using System.Threading.RateLimiting;
 using Client_app.Services;
 using Client_app.Middleware;
 using Client_app.Models;
-using Client_app.Services;
+using Client_app.Controllers;
 using For_Testing_Only_Capstone.Models;
 
 AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
@@ -46,18 +46,16 @@ try
                     var key = parts[0].Trim();
                     var value = parts[1].Trim().Trim('"', '\'');
                     
-                    // Fix enum parsing crash if 'prefer-standby' exists, then scrub target session entirely
                     if (value.Contains("prefer-standby", StringComparison.OrdinalIgnoreCase)) 
                         value = System.Text.RegularExpressions.Regex.Replace(value, @"(?i)prefer-standby", "PreferStandby");
                     value = System.Text.RegularExpressions.Regex.Replace(value, @"(?i)target[\s_]*session[\s_]*attributes\s*=\s*[^;]+;?", "");
                     
-                    Environment.SetEnvironmentVariable(key, value);
+                        Environment.SetEnvironmentVariable(key, value);
                 }
             }
         }
     }
 
-    // Deep scrub of OS/Docker injected environment variables before ASP.NET configures
     foreach (System.Collections.DictionaryEntry env in Environment.GetEnvironmentVariables())
     {
         var key = env.Key?.ToString();
@@ -83,7 +81,6 @@ try
     Environment.SetEnvironmentVariable("PGTARGETSESSIONATTR", null);
 
     var builder = WebApplication.CreateBuilder(args);
-builder.WebHost.UseUrls("http://0.0.0.0:5000");    
     builder.Host.UseSerilog();
 
 
@@ -111,6 +108,7 @@ builder.WebHost.UseUrls("http://0.0.0.0:5000");
     builder.Services.AddMemoryCache();
     builder.Services.AddEndpointsApiExplorer();
     builder.Services.AddSwaggerGen();
+    builder.Services.AddSignalR();
 
     builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
     builder.Services.AddProblemDetails();
@@ -193,8 +191,7 @@ builder.WebHost.UseUrls("http://0.0.0.0:5000");
     // Map abstract RegistrarDbContext to the Write context for controllers injecting it directly
 builder.Services.AddScoped<RegistrarDbContext>(provider => provider.GetRequiredService<RegistrarWriteDbContext>());
 
-// Register chat cache service
-builder.Services.AddSingleton<IChatCache, ChatCache>(); // Thread-safe in-memory caching with 1-year TTL
+builder.Services.AddSingleton<IChatCache, ChatCache>(); 
 
     var app = builder.Build();
 
@@ -205,7 +202,7 @@ builder.Services.AddSingleton<IChatCache, ChatCache>(); // Thread-safe in-memory
 
     app.UseExceptionHandler(_ => { });
     app.UseRateLimiter();
-
+    
     if (!app.Environment.IsDevelopment())
     {
         app.UseHsts();
@@ -216,6 +213,7 @@ builder.Services.AddSingleton<IChatCache, ChatCache>(); // Thread-safe in-memory
     app.MapControllers();
     Log.Information("Application configured successfully");
     Log.Information("Listening on {Urls}", string.Join(", ", app.Urls));
+    app.MapHub<ChatHub>("/chatHub");
 
     app.Run();
 }
