@@ -188,7 +188,6 @@ try
         options.UseNpgsql(connectionString, npgsqlOptions => npgsqlOptions.CommandTimeout((int)TimeSpan.FromMinutes(5).TotalSeconds));
     });
 
-    // Map abstract RegistrarDbContext to the Write context for controllers injecting it directly
 builder.Services.AddScoped<RegistrarDbContext>(provider => provider.GetRequiredService<RegistrarWriteDbContext>());
 
 builder.Services.AddSingleton<IChatCache, ChatCache>(); 

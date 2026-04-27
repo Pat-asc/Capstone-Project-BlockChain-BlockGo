@@ -46,6 +46,36 @@ const fetchWithAuth = async (endpoint, options = {}) => {
     return await response.json();
 };
 
+// --- Public API Calls (Login, Forgot Password, etc.) ---
+const fetchPublic = async (endpoint, options = {}) => {
+    const baseUrl = getBaseUrl(endpoint);
+    const response = await fetch(`${baseUrl}${endpoint}`, {
+        ...options,
+        headers: {
+            'Content-Type': 'application/json',
+            ...options.headers,
+        },
+    });
+
+    if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || errorData.message || 'API Request Failed');
+    }
+    return await response.json();
+};
+
+export const login = (credentials) => {
+    return fetchPublic('/login', { method: 'POST', body: JSON.stringify(credentials) });
+};
+
+export const forgotPassword = (email) => {
+    return fetchPublic('/forgot-password', { method: 'POST', body: JSON.stringify({ email }) });
+};
+
+export const resetPassword = (token, newPassword) => {
+    return fetchPublic('/reset-password', { method: 'POST', body: JSON.stringify({ token, newPassword }) });
+};
+
 // Fetch all grades from the blockchain
 export const fetchAllGrades = async (invokerId) => {
     // Node.js infers the user identity automatically via the JWT token
@@ -157,26 +187,29 @@ export const fetchDepartmentPendingStudents = async (email) => {
     return await fetchWithAuth(`/Auth/department/${encodeURIComponent(email)}/students/pending`);
 };
 
-// Approve the student's assignment to the department
 export const approveStudentEnrollment = async (id) => {
     return await fetchWithAuth(`/Auth/students/${encodeURIComponent(id)}/approve-enrollment`, {
         method: 'PUT'
     });
 };
 
-// --- New Endpoints missing for Portals ---
-
-// Fetch sections assigned to a faculty member
 export const fetchFacultySections = async (email) => {
     return await fetchWithAuth(`/Auth/faculty/${encodeURIComponent(email)}/assigned-sections`);
 };
 
-// Batch upload Excel grades
-export const batchUploadGrades = async (formData) => {
-    // Note: Node.js endpoint drops '/api' naturally behind the proxy but our wrapper handles it
-    return await fetchWithAuth(`/batch-upload`, {
+export const fetchFacultyStudents = async (email) => {
+    return await fetchWithAuth(`/Auth/faculty/${encodeURIComponent(email)}/students`);
+};
+
+export const batchUploadGrades = async (file, semester = '', schoolYear = '') => {
+    const formData = new FormData();
+    formData.append('file', file);
+    if (semester) formData.append('semester', semester);
+    if (schoolYear) formData.append('schoolYear', schoolYear);
+
+    return await fetchWithAuth(`/Grades/bulk-upload`, {
         method: 'POST',
-        body: formData // No Content-Type header needed; the browser sets it for multipart/form-data
+        body: formData 
     });
 };
 

@@ -1,3 +1,7 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 /* 1. VARIABLES & GLOBAL RESETS */
 :root {
   --plv-blue: #003366;

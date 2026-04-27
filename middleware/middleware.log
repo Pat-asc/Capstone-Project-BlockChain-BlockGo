@@ -1,10 +1,9 @@
-nohup: ignoring input
 
 > middleware@1.0.0 start
 > node middleware.js
 
-[dotenv@17.3.1] injecting env (0) from .env -- tip: ⚙️  load multiple .env files with { path: ['.env.local', '.env'] }
-[dotenv@17.3.1] injecting env (29) from ../network/.env -- tip: ⚙️  load multiple .env files with { path: ['.env.local', '.env'] }
+[dotenv@17.3.1] injecting env (0) from .env -- tip: ⚙️  specify custom .env file path with { path: '/custom/path/.env' }
+[dotenv@17.3.1] injecting env (27) from ../network/.env -- tip: 🛠️  run anywhere with `dotenvx run -- yourcommand`
 Syncing natively trusted Cryptogen Admin certificates...
 Cryptogen Admin sync complete.
 
@@ -12,3 +11,5 @@ Middleware online on port 4000
 Mode: Production Security (OBAC/ABAC ACTIVE)
  Dynamic Identity Loading: Enabled
 
+
+Gracefully shutting down...

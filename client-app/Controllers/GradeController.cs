@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Configuration;
+using Npgsql;
 using BlockGo.Models;
 using BlockGo.Services;
 using Client_app.Models; 
@@ -13,6 +15,7 @@ using System.Linq;
 using BlockGo.Mappers;
 using System.Globalization;
 using System.IO;
+using ClosedXML.Excel;
 
 namespace BlockGo.Controllers
 {
@@ -21,16 +24,16 @@ namespace BlockGo.Controllers
     public class GradesController : ControllerBase
     {
         private readonly IBlockchainService _blockchainService;
-        private readonly RegistrarDbContext _context;
+        private readonly string _connectionString;
         private readonly ILogger<GradesController> _logger;
 
         public GradesController(
             IBlockchainService blockchainService, 
-            RegistrarDbContext context,
+            IConfiguration configuration,
             ILogger<GradesController> logger)
         {
             _blockchainService = blockchainService;
-            _context = context;
+            _connectionString = configuration.GetConnectionString("PostgresConnection") ?? configuration.GetConnectionString("MasterConnection") ?? throw new InvalidOperationException("PostgreSQL connection string not found.");
             _logger = logger;
         }
 
@@ -43,27 +46,40 @@ namespace BlockGo.Controllers
 
             try
             {
-                var faculty = await _context.Userrequests
-                    .FirstOrDefaultAsync(u => u.Email == request.FacultyId && u.Requeststatus == "APPROVED");
-                if (faculty == null)
+                using var conn = new NpgsqlConnection(_connectionString);
+                await conn.OpenAsync();
+
+                using var cmdFac = new NpgsqlCommand("SELECT fp.department FROM Users u JOIN FacultyProfiles fp ON u.id = fp.user_id WHERE u.email = @email AND u.role = 'faculty' AND u.status = 'APPROVED'", conn);
+                cmdFac.Parameters.AddWithValue("email", request.FacultyId);
+                var facDept = await cmdFac.ExecuteScalarAsync() as string;
+                if (facDept == null)
                     return Unauthorized(new { status = "Error", message = "Faculty not approved or does not exist." });
 
-                var student = await _context.Userrequests
-                    .FirstOrDefaultAsync(u => u.Email == request.StudentHash && u.Role != null && u.Role.ToLower() == "student");
-                if (student == null)
+                using var cmdStu = new NpgsqlCommand("SELECT sp.department FROM Users u JOIN StudentProfiles sp ON u.id = sp.user_id WHERE u.email = @email AND u.role = 'student'", conn);
+                cmdStu.Parameters.AddWithValue("email", request.StudentHash);
+                var stuDept = await cmdStu.ExecuteScalarAsync() as string;
+                if (stuDept == null)
                     return NotFound(new { status = "Error", message = "Student not found in registration logs." });
 
-                if (student != null && !string.IsNullOrEmpty(student.Department) && student.Department != faculty.Department)
-                    return Forbid($"Access Denied: Cannot grade students outside the {faculty.Department} department.");
+                if (!string.IsNullOrEmpty(stuDept) && stuDept != facDept)
+                    return StatusCode(403, new { status = "Error", message = $"Access Denied: Cannot grade students outside the {facDept} department." });
 
-                using var transaction = await _context.Database.BeginTransactionAsync();
+                using var transaction = await conn.BeginTransactionAsync();
                 try
                 {
                     var blockchainRecord = request.ToBlockchainRecord("PLV");
                     var result = await _blockchainService.SubmitGradeAsync(blockchainRecord, request.FacultyId);
-                    var initialLog = request.ToInitialLog();
-                    _context.Gradecorrectionlogs.Add(initialLog);
-                    await _context.SaveChangesAsync();
+
+                    using var cmdLog = new NpgsqlCommand(@"
+                        INSERT INTO gradecorrectionlogs (recordid, oldgrade, newgrade, reasontext, approvedby, timestamp) 
+                        VALUES (@rid, @old, @new, @reason, @appr, CURRENT_TIMESTAMP)", conn, transaction);
+                    cmdLog.Parameters.AddWithValue("rid", blockchainRecord.Id);
+                    cmdLog.Parameters.AddWithValue("old", DBNull.Value);
+                    cmdLog.Parameters.AddWithValue("new", request.Grade ?? "");
+                    cmdLog.Parameters.AddWithValue("reason", "Initial Grade Entry");
+                    cmdLog.Parameters.AddWithValue("appr", request.FacultyId);
+                    await cmdLog.ExecuteNonQueryAsync();
+
                     await transaction.CommitAsync();
 
                     return Ok(new { status = "Success", message = "Grade secured on Ledger and Logged in Postgres!" });
@@ -83,14 +99,14 @@ namespace BlockGo.Controllers
 
         [HttpPost("bulk-upload")]
         [Consumes("multipart/form-data")]
-        public async Task<IActionResult> BulkUploadGradesCSV(IFormFile csvFile)
+        public async Task<IActionResult> BulkUploadGrades([FromForm] IFormFile file, [FromForm] string? semester, [FromForm] string? schoolYear)
         {
-            _logger.LogInformation("CSV bulk upload initiated");
+            _logger.LogInformation("Bulk upload initiated");
 
-            if (csvFile == null || csvFile.Length == 0)
-                return BadRequest(new { status = "Error", message = "CSV file is required." });
+            if (file == null || file.Length == 0)
+                return BadRequest(new { status = "Error", message = "A .csv or .xlsx file is required." });
 
-            var facultyId = Request.Headers["x-user-identity"].ToString();
+            var facultyId = Request.Headers["x-user-identity"].ToString(); // Note: AuthController can also decode this from JWT
             if (string.IsNullOrEmpty(facultyId))
                 return BadRequest(new { status = "Error", message = "Faculty identity required." });
 
@@ -101,115 +117,165 @@ namespace BlockGo.Controllers
                 var successCount = 0;
                 var failureCount = 0;
                 var errors = new List<BulkUploadError>();
+                var parsedRecords = new List<GradeRequest>();
 
-                var tempFile = Path.Combine(Path.GetTempPath(), Guid.NewGuid() + ".csv");
+                var ext = Path.GetExtension(file.FileName).ToLower();
+                if (ext != ".csv" && ext != ".xlsx")
+                    return BadRequest(new { status = "Error", message = "Only .csv and .xlsx files are supported." });
+
+                var tempFile = Path.Combine(Path.GetTempPath(), Guid.NewGuid() + ext);
                 
                 try
                 {
                     using (var fileStream = new FileStream(tempFile, FileMode.Create))
-                        await csvFile.CopyToAsync(fileStream);
+                        await file.CopyToAsync(fileStream);
 
-                    using (var reader = new StreamReader(tempFile, System.Text.Encoding.UTF8))
+                    if (ext == ".xlsx")
                     {
-                        string line;
-                        int lineNum = 0;
-                        Dictionary<string, int> headerMap = null;
-
-                        while ((line = await reader.ReadLineAsync()) != null)
+                        using var workbook = new XLWorkbook(tempFile);
+                        var ws = workbook.Worksheet(1);
+                        var headerRow = ws.FirstRowUsed();
+                        var headerMap = new Dictionary<string, int>();
+                        
+                        foreach (var cell in headerRow.CellsUsed())
                         {
-                            lineNum++;
-                            line = line.Trim();
-                            if (string.IsNullOrEmpty(line)) continue;
+                            headerMap[cell.Value.ToString().Trim().ToLower().Replace(" ", "_")] = cell.Address.ColumnNumber;
+                        }
 
-                            var fields = line.Split(',');
+                        var rows = ws.RowsUsed().Skip(1); // Skip header row
+                        foreach (var row in rows)
+                        {
+                            var getVal = (string col) => headerMap.ContainsKey(col) ? row.Cell(headerMap[col]).Value.ToString().Trim() : null;
+                            var sId = getVal("student_id") ?? getVal("student_no");
+                            if (string.IsNullOrEmpty(sId)) continue;
 
-                            // Parse header
-                            if (lineNum == 1)
+                            parsedRecords.Add(new GradeRequest
                             {
-                                headerMap = new Dictionary<string, int>();
-                                for (int i = 0; i < fields.Length; i++)
-                                    headerMap[fields[i].Trim()] = i;
+                                StudentId = sId,
+                                Grade = getVal("grade") ?? getVal("final_grade") ?? "",
+                                Course = getVal("course") ?? "Unknown",
+                                Semester = !string.IsNullOrEmpty(semester) ? semester : (getVal("semester") ?? "Unknown"),
+                                SchoolYear = !string.IsNullOrEmpty(schoolYear) ? schoolYear : (getVal("school_year") ?? "Unknown")
+                            });
+                        }
+                    }
+                    else if (ext == ".csv")
+                    {
+                        using (var reader = new StreamReader(tempFile, System.Text.Encoding.UTF8))
+                        {
+                            string? line;
+                            int lineNum = 0;
+                            Dictionary<string, int>? headerMap = null;
+
+                            while ((line = await reader.ReadLineAsync()) != null)
+                            {
+                                lineNum++;
+                                line = line.Trim();
+                                if (string.IsNullOrEmpty(line)) continue;
+
+                                var fields = line.Split(',');
+                                if (lineNum == 1)
+                                {
+                                    headerMap = new Dictionary<string, int>();
+                                    for (int i = 0; i < fields.Length; i++)
+                                        headerMap[fields[i].Trim().ToLower().Replace(" ", "_")] = i;
+                                    continue;
+                                }
+
+                                var sId = GetCsvField(fields, headerMap, "student_id") ?? GetCsvField(fields, headerMap, "student_no");
+                                if (string.IsNullOrEmpty(sId)) continue;
+
+                                parsedRecords.Add(new GradeRequest
+                                {
+                                    StudentId = sId,
+                                    Grade = GetCsvField(fields, headerMap, "grade") ?? GetCsvField(fields, headerMap, "final_grade") ?? "",
+                                    Course = GetCsvField(fields, headerMap, "course") ?? "Unknown",
+                                    Semester = !string.IsNullOrEmpty(semester) ? semester : (GetCsvField(fields, headerMap, "semester") ?? "Unknown"),
+                                    SchoolYear = !string.IsNullOrEmpty(schoolYear) ? schoolYear : (GetCsvField(fields, headerMap, "school_year") ?? "Unknown")
+                                });
+                            }
+                        }
+                    }
+
+                    // Process all extracted records uniformly
+                    foreach (var record in parsedRecords)
+                    {
+                        try
+                        {
+                            if (string.IsNullOrEmpty(record.StudentId) || string.IsNullOrEmpty(record.Grade))
+                            {
+                                failureCount++;
+                                errors.Add(new BulkUploadError { StudentId = record.StudentId ?? "UNKNOWN", Reason = "Missing student identifier or grade" });
                                 continue;
                             }
 
-                            // Parse data row
-                            try
+                            using var conn = new NpgsqlConnection(_connectionString);
+                            await conn.OpenAsync();
+
+                            using var cmdStu = new NpgsqlCommand("SELECT sp.department, u.email FROM Users u JOIN StudentProfiles sp ON u.id = sp.user_id WHERE (sp.student_no = @sid OR u.email = @sid) AND u.role = 'student'", conn);
+                            cmdStu.Parameters.AddWithValue("sid", record.StudentId);
+                            string? stuDept = null, stuEmail = null;
+                            using (var reader = await cmdStu.ExecuteReaderAsync())
                             {
-                                var studentId = GetCsvField(fields, headerMap, "student_id");
-                                var grade = GetCsvField(fields, headerMap, "grade");
-                                var course = GetCsvField(fields, headerMap, "course") ?? "Unknown";
-                                var semester = GetCsvField(fields, headerMap, "semester") ?? "Unknown";
-
-                                if (string.IsNullOrEmpty(studentId) || string.IsNullOrEmpty(grade))
+                                if (await reader.ReadAsync())
                                 {
-                                    failureCount++;
-                                    errors.Add(new BulkUploadError { StudentId = studentId ?? "UNKNOWN", Reason = "Missing student_id or grade" });
-                                    continue;
-                                }
-
-                                var student = await _context.Userrequests
-                                    .FirstOrDefaultAsync(u => u.Email == studentId && u.Role != null && u.Role.ToLower() == "student");
-
-                                if (student == null)
-                                {
-                                    failureCount++;
-                                    errors.Add(new BulkUploadError { StudentId = studentId, Reason = "Student not found" });
-                                    continue;
-                                }
-
-                                var faculty = await _context.Userrequests
-                                    .FirstOrDefaultAsync(u => 
-                                        u.Email == facultyId && 
-                                        u.Requeststatus == "APPROVED");
-
-                                if (faculty == null)
-                                {
-                                    failureCount++;
-                                    errors.Add(new BulkUploadError { StudentId = studentId, Reason = "Faculty not approved" });
-                                    continue;
-                                }
-
-                                if (!string.IsNullOrEmpty(student.Department) && student.Department != faculty.Department)
-                                {
-                                    failureCount++;
-                                    errors.Add(new BulkUploadError { StudentId = studentId, Reason = "Department mismatch" });
-                                    continue;
-                                }
-
-                                var gradeRequest = new GradeRequest
-                                {
-                                    StudentId = studentId,
-                                    StudentHash = student.Email,
-                                    Grade = grade,
-                                    Course = course,
-                                    FacultyId = facultyId,
-                                    Semester = semester
-                                };
-
-                                var blockchainRecord = gradeRequest.ToBlockchainRecord("PLV");
-                                
-                                using var transaction = await _context.Database.BeginTransactionAsync();
-                                try
-                                {
-                                    await _blockchainService.SubmitGradeAsync(blockchainRecord, facultyId);
-                                    var initialLog = gradeRequest.ToInitialLog();
-                                    _context.Gradecorrectionlogs.Add(initialLog);
-                                    await _context.SaveChangesAsync();
-                                    await transaction.CommitAsync();
-                                    successCount++;
-                                }
-                                catch (Exception txEx)
-                                {
-                                    await transaction.RollbackAsync();
-                                    failureCount++;
-                                    errors.Add(new BulkUploadError { StudentId = studentId, Reason = txEx.Message });
+                                    stuDept = reader.IsDBNull(0) ? null : reader.GetString(0);
+                                    stuEmail = reader.GetString(1);
                                 }
                             }
-                            catch (Exception ex)
+
+                            if (stuEmail == null)
                             {
                                 failureCount++;
-                                errors.Add(new BulkUploadError { StudentId = "ERROR", Reason = ex.Message });
+                                errors.Add(new BulkUploadError { StudentId = record.StudentId, Reason = "Student not found" });
+                                continue;
                             }
+
+                            using var cmdFac = new NpgsqlCommand("SELECT fp.department FROM Users u JOIN FacultyProfiles fp ON u.id = fp.user_id WHERE u.email = @email AND u.status = 'APPROVED'", conn);
+                            cmdFac.Parameters.AddWithValue("email", facultyId);
+                            var facDept = await cmdFac.ExecuteScalarAsync() as string;
+
+                            if (facDept == null)
+                            {
+                                failureCount++;
+                                errors.Add(new BulkUploadError { StudentId = record.StudentId, Reason = "Faculty not approved" });
+                                continue;
+                            }
+
+                            record.StudentHash = stuEmail;
+                            record.FacultyId = facultyId;
+
+                            var blockchainRecord = record.ToBlockchainRecord("PLV");
+                                
+                            using var transaction = await conn.BeginTransactionAsync();
+                            try
+                            {
+                                await _blockchainService.SubmitGradeAsync(blockchainRecord, facultyId);
+                                
+                                using var cmdLog = new NpgsqlCommand(@"
+                                    INSERT INTO gradecorrectionlogs (recordid, oldgrade, newgrade, reasontext, approvedby, timestamp) 
+                                    VALUES (@rid, @old, @new, @reason, @appr, CURRENT_TIMESTAMP)", conn, transaction);
+                                cmdLog.Parameters.AddWithValue("rid", blockchainRecord.Id);
+                                cmdLog.Parameters.AddWithValue("old", DBNull.Value);
+                                cmdLog.Parameters.AddWithValue("new", record.Grade ?? "");
+                                cmdLog.Parameters.AddWithValue("reason", "Bulk Excel/CSV Upload");
+                                cmdLog.Parameters.AddWithValue("appr", facultyId);
+                                await cmdLog.ExecuteNonQueryAsync();
+                                
+                                await transaction.CommitAsync();
+                                successCount++;
+                            }
+                            catch (Exception txEx)
+                            {
+                                await transaction.RollbackAsync();
+                                failureCount++;
+                                errors.Add(new BulkUploadError { StudentId = record.StudentId, Reason = txEx.Message });
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            failureCount++;
+                            errors.Add(new BulkUploadError { StudentId = record.StudentId ?? "ERROR", Reason = ex.Message });
                         }
                     }
                 }
@@ -236,7 +302,7 @@ namespace BlockGo.Controllers
             }
         }
 
-        private string? GetCsvField(string[] fields, Dictionary<string, int> headerMap, string fieldName)
+        private string? GetCsvField(string[] fields, Dictionary<string, int>? headerMap, string fieldName)
         {
             if (headerMap != null && headerMap.ContainsKey(fieldName))
             {
@@ -253,7 +319,6 @@ namespace BlockGo.Controllers
             if (string.IsNullOrEmpty(correction.RecordID)) 
                 return BadRequest(new { status = "Error", message = "RecordID is required." });
 
-            using var transaction = await _context.Database.BeginTransactionAsync();
             try
             {
                 string existingGradeJson = await _blockchainService.GetGradeAsync(correction.RecordID, correction.ApprovedBy);
@@ -267,24 +332,22 @@ namespace BlockGo.Controllers
                 
                 await _blockchainService.UpdateGradeAsync(gradeToUpdate, correction.ApprovedBy);
 
-                var auditLog = new Gradecorrectionlog {
-                    Recordid = correction.RecordID,
-                    Oldgrade = correction.OldGrade,
-                    Newgrade = correction.NewGrade,
-                    Reasontext = correction.ReasonText,
-                    Approvedby = correction.ApprovedBy,
-                    Timestamp = DateTime.UtcNow
-                };
-
-                _context.Gradecorrectionlogs.Add(auditLog);
-                await _context.SaveChangesAsync();
-                await transaction.CommitAsync();
+                using var conn = new NpgsqlConnection(_connectionString);
+                await conn.OpenAsync();
+                using var cmdLog = new NpgsqlCommand(@"
+                    INSERT INTO gradecorrectionlogs (recordid, oldgrade, newgrade, reasontext, approvedby, timestamp) 
+                    VALUES (@rid, @old, @new, @reason, @appr, CURRENT_TIMESTAMP)", conn);
+                cmdLog.Parameters.AddWithValue("rid", correction.RecordID);
+                cmdLog.Parameters.AddWithValue("old", (object?)correction.OldGrade ?? DBNull.Value);
+                cmdLog.Parameters.AddWithValue("new", (object?)correction.NewGrade ?? DBNull.Value);
+                cmdLog.Parameters.AddWithValue("reason", correction.ReasonText ?? "");
+                cmdLog.Parameters.AddWithValue("appr", correction.ApprovedBy ?? "");
+                await cmdLog.ExecuteNonQueryAsync();
 
                 return Ok(new { status = "Success", message = "Correction synchronized." });
             }
             catch (Exception ex)
             {
-                await transaction.RollbackAsync();
                 return StatusCode(500, new { status = "Error", message = ex.Message });
             }
         }

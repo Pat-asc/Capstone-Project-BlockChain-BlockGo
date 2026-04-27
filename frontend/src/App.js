@@ -1,16 +1,17 @@
 import React, { useState, useEffect } from "react";
 import "./assets/style.css"; 
 import "./assets/App.css";   
-import Login from "./components/Login";
-import { fetchUserProfile } from './services/api'; // Import the new API function
-import StudentPortal from './components/StudentPortal';
-import FacultyPortal from './components/FacultyPortal';
-import GradesDashboard from './components/GradesDashboard';
-import Chat from './components/Chat';
+import Login from "./components/shared/Login";
+import { fetchUserProfile } from './services/api';
+import StudentPortal from './components/student/StudentPortal';
+import FacultyPortal from './components/faculty/FacultyPortal';
+import DeanGradesView from './components/chairperson/DeanGradesView';
+import RegistrarGradesView from './components/registrar/RegistrarGradesView';
+import Chat from './components/shared/Chat';
 
 import { BrowserRouter as Router, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
-import StudentLanding from './components/StudentLanding';
-import FacultyLanding from './components/FacultyLanding';
+import StudentLanding from './components/student/StudentLanding';
+import FacultyLanding from './components/faculty/FacultyLanding';
 
 function AppContent() {
     const [user, setUser] = useState(null);
@@ -22,7 +23,8 @@ function AppContent() {
     const token = localStorage.getItem('token');
     if (token) {
       try {
-        const payload = JSON.parse(atob(token.split('.')[1]));
+        const base64 = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+        const payload = JSON.parse(atob(base64));
         // Check if token is expired
         if (payload.exp * 1000 > Date.now()) {
           handleLoginSuccess(token);
@@ -39,9 +41,15 @@ function AppContent() {
     localStorage.setItem('token', token);
     try {
       // Decode the JWT to securely get the username and role signed by the backend
-      const payload = JSON.parse(atob(token.split('.')[1]));
-      const email = payload.username;
-      const dbRole = payload.dbRole; // Get the database role from the JWT
+      const base64 = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+      const payload = JSON.parse(atob(base64));
+      
+      // Log the payload to the console so you can see exactly what keys your backend uses
+      console.log("Decoded Token Payload:", payload);
+      
+      // Add safe fallbacks for standard JWT structures
+      const email = payload.username || payload.email || payload['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress'];
+      const dbRole = payload.dbRole || payload.role || payload['http://schemas.microsoft.com/ws/2008/06/identity/claims/role'];
 
       // Fetch full user profile from the backend
       const profileResponse = await fetchUserProfile(email, dbRole);
@@ -80,6 +88,9 @@ function AppContent() {
       if (error instanceof SyntaxError) {
         console.error("Invalid token format. It could not be parsed.");
       }
+      // Automatically clear the broken token and reset the user state
+      localStorage.removeItem('token');
+      setUser(null);
     }
   };
 
@@ -108,13 +119,19 @@ function AppContent() {
             <StudentPortal studentData={user} onLogout={handleLogout} />
           ) : user.role === "faculty" ? (
             <FacultyPortal facultyData={user} onLogout={handleLogout} />
+          ) : user.role === "department_admin" || user.role === "department admin" ? (
+            <div style={{ position: 'relative', width: '100%', minHeight: '100vh', backgroundColor: '#f0f2f5' }}>
+              <DeanGradesView loggedInEmail={user.email ?? ''} loggedInName={user.name ?? ''} userRole={user.role} />
+            </div>
+          ) : user.role === "registrar" ? (
+            <div style={{ position: 'relative', width: '100%', minHeight: '100vh', backgroundColor: '#f0f2f5' }}>
+              <RegistrarGradesView loggedInEmail={user.email ?? ''} loggedInName={user.name ?? ''} />
+            </div>
           ) : (
             <div style={{ position: 'relative', width: '100%', minHeight: '100vh', backgroundColor: '#f0f2f5' }}>
               <div style={{ position: 'absolute', top: '15px', right: '20px', zIndex: 10 }}>
                 <button className="logout-btn" onClick={handleLogout} style={{ backgroundColor: '#003366', color: 'white', borderColor: '#003366', padding: '8px 16px', borderRadius: '4px', cursor: 'pointer' }}>Logout</button>
               </div>
-              {/* Registrar and Dean see the full Blockchain Dashboard */}
-              <GradesDashboard loggedInEmail={user.email ?? ''} loggedInName={user.name ?? ''} />
             </div>
           )}
         </>

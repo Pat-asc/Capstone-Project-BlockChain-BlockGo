@@ -281,10 +281,6 @@ mkdir -p "$(pwd)/${CRYPTO_DIR}/chaincode-tls/ca-bundle"
 
 log_info "Identities enrolled. Normalizing private keys..."
 find "$CRYPTO_DIR" -type f -name "*_sk" -execdir cp -n {} priv_sk \; 2>/dev/null || true
-
-# ============================================================
-# PHASE 2.5: CREATE EXTERNAL BUILDER SCRIPTS
-# ============================================================
 # ============================================================
 # PHASE 2.5: CREATE EXTERNAL BUILDER SCRIPTS
 # ============================================================
@@ -317,7 +313,14 @@ chmod -R +x ./builders/ccaas/bin
 # PHASE 3: FRONTEND BUILD & ARTIFACTS
 # ============================================================
 log_info "Phase 3: Building frontend application..."
-(cd ../frontend && rm -rf build && npm install && npm install react-router-dom @microsoft/signalr && DISABLE_ESLINT_PLUGIN=true npm run build)
+(cd ../frontend && \
+ rm -rf build && npm install && npm install react-router-dom @microsoft/signalr && \
+ npm install -D tailwindcss@3 postcss autoprefixer && \
+ npx tailwindcss init -p && \
+ echo "module.exports = { content: ['./src/**/*.{js,jsx,ts,tsx}'], theme: { extend: {} }, plugins: [] };" > tailwind.config.js && \
+ if [ -f src/index.css ] && ! grep -q "@tailwind" src/index.css; then echo -e "@tailwind base;\n@tailwind components;\n@tailwind utilities;\n$(cat src/index.css)" > src/index.css; \
+ elif [ ! -f src/index.css ]; then echo -e "@tailwind base;\n@tailwind components;\n@tailwind utilities;\n" > src/index.css; fi && \
+ DISABLE_ESLINT_PLUGIN=true npm run build)
 
 if ! grep -q "orderer3.capstone.com" config/configtx.yaml; then
     log_error "Your configtx.yaml is missing the 3-node Raft cluster! Please update it to include orderer, orderer2, and orderer3."
@@ -619,7 +622,7 @@ mock_profiles AS (
            WHEN u.email LIKE '%3@%' OR u.email LIKE '%4@%' THEN 'B'
            ELSE 'C'
          END,
-         'Enrolled'
+         'Pending Department Approval'
   FROM mock_users u
   ON CONFLICT (user_id) DO NOTHING
   RETURNING user_id

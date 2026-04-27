@@ -16,18 +16,13 @@ namespace Client_app.Controllers
     [Route("api/[controller]")]
     public class GradeTemplateController : ControllerBase
     {
-        private readonly RegistrarWriteDbContext _writeDb;
-        private readonly RegistrarReadDbContext _readDb;
         private readonly string _writeConnectionString;
         private readonly string _readConnectionString;
 
-        public GradeTemplateController(RegistrarWriteDbContext writeDb, RegistrarReadDbContext readDb, IConfiguration configuration)
+        public GradeTemplateController(IConfiguration configuration)
         {
-            _writeDb = writeDb;
-            _readDb = readDb;
-
-            _writeConnectionString = writeDb.Database.GetConnectionString() ?? configuration.GetConnectionString("MasterConnection") ?? throw new InvalidOperationException("MasterConnection not found.");
-            _readConnectionString = readDb.Database.GetConnectionString() ?? configuration.GetConnectionString("ReplicaConnection") ?? throw new InvalidOperationException("ReplicaConnection not found.");
+            _writeConnectionString = configuration.GetConnectionString("MasterConnection") ?? configuration.GetConnectionString("PostgresConnection") ?? throw new InvalidOperationException("Database connection string not found.");
+            _readConnectionString = configuration.GetConnectionString("ReplicaConnection") ?? configuration.GetConnectionString("PostgresConnection") ?? throw new InvalidOperationException("Database connection string not found.");
         }
 
         [HttpPost("create")]

@@ -83,7 +83,12 @@ namespace Client_app.Controllers
         [HttpPost("request")]
         public async Task<IActionResult> RequestAccess([FromBody] SignupRequest request)
         {
-            var normalizedEmail = request.Email?.Trim().ToLower();
+            if (string.IsNullOrEmpty(request.Email))
+            {
+                return BadRequest(new { status = "Error", message = "Email is required." });
+            }
+
+            var normalizedEmail = request.Email.Trim().ToLower();
             var inputCode = request.VerificationCode?.Trim();
 
             // 1. Verify Code
@@ -692,18 +697,11 @@ namespace Client_app.Controllers
         [HttpGet("department/{email}/students/pending")]
         public async Task<IActionResult> GetDepartmentPendingStudents(string email)
         {
-            string cacheKey = $"department_pending_{email}";
             try
             {
-                if (_cache.TryGetValue(cacheKey, out object? cachedData) && cachedData != null)
-                {
-                    return Ok(cachedData);
-                }
-
                 using var conn = new NpgsqlConnection(_connectionString);
                 await conn.OpenAsync();
 
-                // First, find the department of the logged-in Admin
                 using var cmdAdmin = new NpgsqlCommand("SELECT department FROM AdminProfiles ap JOIN Users u ON ap.user_id = u.id WHERE u.email = @email", conn);
                 cmdAdmin.Parameters.AddWithValue("email", email);
                 var adminDept = (string?)await cmdAdmin.ExecuteScalarAsync();
@@ -712,7 +710,6 @@ namespace Client_app.Controllers
                     return BadRequest(new { status = "Error", message = "Admin is not assigned to a department." });
 
                 var students = new List<object>();
-                // Fetch students assigned to this specific department awaiting approval
                 using var cmd = new NpgsqlCommand(@"
                     SELECT u.id, sp.full_name, u.email, sp.student_no, sp.section
                     FROM Users u JOIN StudentProfiles sp ON u.id = sp.user_id
@@ -730,10 +727,7 @@ namespace Client_app.Controllers
                         section = reader.IsDBNull(4) ? null : reader.GetString(4)
                     });
                 }
-                var response = new { status = "Success", students };
-                var cacheEntryOptions = new MemoryCacheEntryOptions().SetSlidingExpiration(TimeSpan.FromMinutes(5));
-                _cache.Set(cacheKey, response, cacheEntryOptions);
-                return Ok(response);
+                return Ok(new { status = "Success", students });
             } 
             catch (Exception ex)
             {
@@ -788,12 +782,18 @@ namespace Client_app.Controllers
                 // Fetch all approved students matching ANY of the faculty's assigned sections across multiple departments
                 var students = new List<object>();
                 using var cmdStudents = new NpgsqlCommand(@"
-                    SELECT DISTINCT u.id, sp.full_name, u.email, sp.student_no, sp.assignment_status, sp.department, sp.section
+                    SELECT DISTINCT u.id, sp.full_name, u.email, sp.student_no, sp.assignment_status, sp.department, sp.section, fs.section, fs.year_level
                     FROM Users u 
                     JOIN StudentProfiles sp ON u.id = sp.user_id
-                    JOIN FacultySections fs ON sp.department = fs.department AND sp.section = fs.section
+                    JOIN FacultySections fs ON sp.department = fs.department 
+                      AND (LOWER(sp.section) = LOWER(fs.section) 
+                        OR LOWER(sp.section) = LOWER(CONCAT(fs.year_level, fs.section)) 
+                        OR LOWER(sp.section) = LOWER(CONCAT(fs.department, '-', fs.year_level, fs.section)) 
+                        OR LOWER(sp.section) = LOWER(CONCAT(fs.department, fs.year_level, fs.section))
+                        OR LOWER(sp.section) = LOWER(CONCAT(fs.department, '-', fs.section)))
                     JOIN Users fu ON fs.user_id = fu.id
-                    WHERE u.role = 'student' AND u.status = 'APPROVED' 
+                    WHERE u.role = 'student' AND u.status = 'APPROVED'
+                      AND sp.assignment_status = 'Enrolled'
                       AND fu.email = @email AND fu.status = 'APPROVED'", conn);
                 
                 cmdStudents.Parameters.AddWithValue("email", email);
@@ -809,7 +809,9 @@ namespace Client_app.Controllers
                             studentno = reader.IsDBNull(3) ? "N/A" : reader.GetString(3),
                             enrollmentStatus = reader.IsDBNull(4) ? "Unassigned" : reader.GetString(4),
                             department = reader.IsDBNull(5) ? "N/A" : reader.GetString(5),
-                            section = reader.IsDBNull(6) ? "N/A" : reader.GetString(6)
+                            section = reader.IsDBNull(6) ? "N/A" : reader.GetString(6),
+                            facultySection = reader.IsDBNull(7) ? "N/A" : reader.GetString(7),
+                            facultyYear = reader.IsDBNull(8) ? "N/A" : reader.GetString(8)
                         });
                     }
                 }

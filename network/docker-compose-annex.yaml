@@ -187,6 +187,9 @@ services:
       timeout: 20s
       retries: 10
       start_period: 30s
+    depends_on:
+      postgres:
+        condition: service_healthy
     extra_hosts:
       - "postgres:${MAIN_CAMPUS_IP}"
 

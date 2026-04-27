@@ -16,18 +16,14 @@ namespace Client_app.Controllers
 
         public async Task JoinChat(string userEmail, string role)
         {
-            // Add user to group based on role (registrar sees all, students see registrar)
-            await Groups.AddToGroupAsync(Context.ConnectionId, "registrar");
-            if (role == "student") 
-            {
-                await Groups.AddToGroupAsync(Context.ConnectionId, $"student_{userEmail}");
-            }
+            // Assign the user to their own dedicated group for reliable direct messaging
+            await Groups.AddToGroupAsync(Context.ConnectionId, $"user_{userEmail}");
             
             // Update online status
             await UpdateOnlineStatus(userEmail, true, role);
             
             // Notify others
-            await Clients.OthersInGroup("registrar").SendAsync("UserJoined", new { Email = userEmail, Role = role });
+            await Clients.All.SendAsync("UserJoined", new { Email = userEmail, Role = role, FullName = userEmail.Split('@')[0] });
         }
 
         public override async Task OnDisconnectedAsync(Exception? exception)
@@ -42,11 +38,8 @@ namespace Client_app.Controllers
             await base.OnDisconnectedAsync(exception);
         }
 
-        public async Task SendMessage(string receiverEmail, string message)
+        public async Task SendMessage(string senderEmail, string receiverEmail, string message)
         {
-            var senderEmail = Context.UserIdentifier;
-            if (string.IsNullOrEmpty(senderEmail)) return;
-
             var chatMessage = new ChatMessage
             {
                 SenderEmail = senderEmail,
@@ -59,8 +52,8 @@ namespace Client_app.Controllers
             // Save to cache (fire-and-forget)
             _ = _chatCache.SaveMessageAsync(chatMessage);
 
-            // Send real-time
-            await Clients.User(receiverEmail).SendAsync("ReceiveMessage", new 
+            // Send real-time using the receiver's dedicated group
+            await Clients.Group($"user_{receiverEmail}").SendAsync("ReceiveMessage", new 
             { 
                 Sender = senderEmail, 
                 Message = message, 
@@ -70,7 +63,7 @@ namespace Client_app.Controllers
 
         public async Task GetChatHistory(string otherUserEmail)
         {
-            var senderEmail = Context.UserIdentifier;
+            var senderEmail = Context.UserIdentifier ?? string.Empty;
             var history = await _chatCache.GetHistoryAsync(senderEmail, otherUserEmail);
             await Clients.Caller.SendAsync("ChatHistory", history);
         }
@@ -82,4 +75,3 @@ namespace Client_app.Controllers
         }
     }
 }
-
