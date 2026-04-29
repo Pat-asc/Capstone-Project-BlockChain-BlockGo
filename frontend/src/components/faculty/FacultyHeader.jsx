@@ -23,7 +23,7 @@ const FacultyHeader = ({ facultyData, totalSections, onLogout }) => {
         </button>
       </div>
 
-      {/* 🟦 MAIN HEADER CARD */}
+      {/* MAIN HEADER CARD */}
       <div className="mt-5 px-4 md:px-6">
         <div className="rounded-xl bg-[#003366] p-4 md:p-6 text-white flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           {/* LEFT INFO */}

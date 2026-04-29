@@ -14,7 +14,6 @@ const Chat = ({ userEmail, userRole, onClose }) => {
   };
 
   useEffect(() => {
-    // Use relative path in production so Nginx proxies the WebSocket connection
     const chatUrl = process.env.NODE_ENV !== 'development' 
       ? '/chatHub' 
       : 'http://localhost:5000/chatHub';
@@ -36,6 +35,12 @@ const Chat = ({ userEmail, userRole, onClose }) => {
         if (prev.some(u => u.email === user.email)) return prev;
         return [...prev, user];
       });
+    });
+
+    conn.on('RequestRollCall', (targetEmail) => {
+      if (userEmail) {
+        conn.invoke('AnnouncePresence', targetEmail, userEmail, userRole);
+      }
     });
 
     conn.on('UserLeft', (user) => {
@@ -89,8 +94,15 @@ const Chat = ({ userEmail, userRole, onClose }) => {
           const widthClass = isLong ? 'w-[85%]' : textLength > 50 ? 'w-[70%]' : 'w-[55%]';
           const isMine = msg.sender === userEmail;
           
+          // Get the sender's full name from the online users list, or fallback to their email prefix
+          const senderUser = onlineUsers.find(u => u.email === msg.sender);
+          const senderName = senderUser ? senderUser.fullName : (msg.sender ? msg.sender.split('@')[0] : 'Unknown');
+
           return (
-            <div key={i} className={`mb-3 flex w-full ${isMine ? 'justify-end' : 'justify-start'}`}>
+            <div key={i} className={`mb-3 flex w-full flex-col ${isMine ? 'items-end' : 'items-start'}`}>
+              <span className={`mb-1 text-[11px] font-semibold text-slate-500 ${isMine ? 'mr-3' : 'ml-3'}`}>
+                {isMine ? 'You' : senderName}
+              </span>
               <div className={`relative max-h-[250px] min-h-[40px] max-w-[85%] overflow-y-auto whitespace-pre-wrap break-words px-4 py-3 leading-relaxed shadow-sm ${widthClass} ${isMine ? 'rounded-2xl rounded-br-none bg-gradient-to-br from-[#003366] to-[#005599] text-white' : 'rounded-2xl rounded-bl-none bg-slate-100 text-slate-800'}`}>
                 {/* Message tail like Messenger */}
                 {isMine && (
@@ -113,21 +125,23 @@ const Chat = ({ userEmail, userRole, onClose }) => {
         <div ref={messagesEndRef} />
       </div>
 
-      <div className="flex gap-3 p-4 pt-0">
-        <select value={selectedUser} onChange={(e) => setSelectedUser(e.target.value)} className="flex-1 rounded-full border border-slate-300 bg-slate-50 px-4 py-2 text-sm outline-none focus:border-[#003366] focus:ring-1 focus:ring-[#003366]/20">
+      <div className="flex flex-col gap-2 p-4 pt-0">
+        <select value={selectedUser} onChange={(e) => setSelectedUser(e.target.value)} className="w-full rounded-full border border-slate-300 bg-slate-50 px-4 py-2 text-sm outline-none focus:border-[#003366] focus:ring-1 focus:ring-[#003366]/20">
           <option value="">Select User</option>
-          {onlineUsers.map(u => <option key={u.email} value={u.email}>{u.fullName}</option>)}
+          {onlineUsers.filter(u => u.email !== userEmail).map(u => <option key={u.email} value={u.email}>{u.fullName}</option>)}
         </select>
-        <input 
-          type="text" 
-          value={newMessage} 
-          onChange={(e) => setNewMessage(e.target.value)} 
-          placeholder="Type a message..." 
-          className="flex-[2] rounded-full border border-slate-300 bg-slate-50 px-4 py-2 text-sm outline-none focus:border-[#003366] focus:ring-1 focus:ring-[#003366]/20"
-        />
-        <button onClick={sendMessage} disabled={!newMessage.trim() || !selectedUser} className="shrink-0 rounded-full bg-[#003366] px-5 py-2 text-sm font-bold text-white transition hover:bg-[#00264d] disabled:cursor-not-allowed disabled:opacity-50">
-          Send
-        </button>
+        <div className="flex gap-2">
+          <input 
+            type="text" 
+            value={newMessage} 
+            onChange={(e) => setNewMessage(e.target.value)} 
+            placeholder="Type a message..." 
+            className="flex-1 rounded-full border border-slate-300 bg-slate-50 px-4 py-2 text-sm outline-none focus:border-[#003366] focus:ring-1 focus:ring-[#003366]/20"
+          />
+          <button onClick={sendMessage} disabled={!newMessage.trim() || !selectedUser} className="shrink-0 rounded-full bg-[#003366] px-5 py-2 text-sm font-bold text-white transition hover:bg-[#00264d] disabled:cursor-not-allowed disabled:opacity-50">
+            Send
+          </button>
+        </div>
       </div>
     </div>
   );

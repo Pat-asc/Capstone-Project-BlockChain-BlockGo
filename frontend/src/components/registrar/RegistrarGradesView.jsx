@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { fetchAllGrades, finalizeGrade, fetchPendingRequests, approveRegistrationRequest, denyRegistrationRequest, fetchApprovedStudents, assignStudent, fetchApprovedAdmins, assignDepartmentAdmin, fetchApprovedFaculties, assignFaculty } from '../../services/api';
+import { fetchAllGrades, finalizeGrade, fetchPendingRequests, approveRegistrationRequest, denyRegistrationRequest, fetchApprovedStudents, assignStudent, fetchApprovedAdmins, assignDepartmentAdmin, fetchApprovedFaculties, assignFaculty, dropStudent } from '../../services/api';
 import RegistrarHeader from './RegistrarHeader';
 import RegistrarSidebar from './RegistrarSidebar';
 import RegistrarDashboard from './RegistrarDashboard';
@@ -43,6 +43,18 @@ const RegistrarGradesView = ({ loggedInEmail = '', loggedInName = '' }) => {
 
     const [filterDept, setFilterDept] = useState('All');
     const [filterYear, setFilterYear] = useState('All');
+
+    const handleDropStudent = async (id, name) => {
+        if (window.confirm(`Are you sure you want to drop ${name}? This will revoke their system access completely.`)) {
+            try {
+                await dropStudent(id);
+                alert(`${name} has been dropped and access revoked.`);
+                loadApprovedStudents();
+            } catch (error) {
+                alert(error.message);
+            }
+        }
+    };
 
     const loadGrades = useCallback(async (isBackground = false) => {
         if (!isBackground) setLoading(true);
@@ -102,9 +114,10 @@ const RegistrarGradesView = ({ loggedInEmail = '', loggedInName = '' }) => {
 
     const submitStudentAssignment = async (id) => {
         const assignment = studentAssignments[id];
-        if (!assignment || !assignment.department || !assignment.section) return alert("Please provide both a department and a section.");
+        if (!assignment || !assignment.department || !assignment.yearLevel || !assignment.sectionNum) return alert("Please provide department, year, and section.");
         try {
-            await assignStudent(id, { Department: assignment.department, Section: assignment.section });
+            const combinedSection = `${assignment.yearLevel}-${assignment.sectionNum}`;
+            await assignStudent(id, { Department: assignment.department, Section: combinedSection });
             alert("Student assigned successfully!");
             loadApprovedStudents();
         } catch (error) { alert(`Failed to assign: ${error.message}`); }
@@ -122,9 +135,9 @@ const RegistrarGradesView = ({ loggedInEmail = '', loggedInName = '' }) => {
 
     const submitFacultyAssignment = async (id) => {
         const assignment = facultyAssignments[id];
-        if (!assignment || !assignment.department || !assignment.section || !assignment.yearLevel) return alert("Please provide department, section, and year level.");
+        if (!assignment || !assignment.department || !assignment.section || !assignment.yearLevel || !assignment.subject) return alert("Please provide department, section, year level, and subject.");
         try {
-            await assignFaculty(id, { Department: assignment.department, Section: assignment.section, YearLevel: assignment.yearLevel });
+            await assignFaculty(id, { Department: assignment.department, Section: assignment.section, YearLevel: assignment.yearLevel, Subject: assignment.subject });
             alert("Faculty assigned successfully!");
             loadApprovedFaculties();
         } catch (error) { alert(`Failed to assign: ${error.message}`); }
@@ -180,7 +193,7 @@ const RegistrarGradesView = ({ loggedInEmail = '', loggedInName = '' }) => {
             <div className="flex flex-col md:flex-row flex-1 overflow-hidden p-4 md:p-6 gap-6">
                 <RegistrarSidebar activeTab={mainTab} setActiveTab={setMainTab} />
                 <main className="flex-1 overflow-y-auto pr-2">
-                    {mainTab === 'dashboard' && <RegistrarDashboard />}
+                    {mainTab === 'dashboard' && <RegistrarDashboard grades={grades} />}
                     {mainTab === 'encoding' && <EncodingPeriod />}
                     {mainTab === 'studentlist' && <StudentListImport />}
                     
@@ -218,6 +231,7 @@ const RegistrarGradesView = ({ loggedInEmail = '', loggedInName = '' }) => {
                                                 <th className="p-4">Grade</th>
                                                 <th className="p-4">Faculty ID</th>
                                                 <th className="p-4">Status</th>
+                                                <th className="p-4">File Attachment</th>
                                                 <th className="p-4">Action</th>
                                             </tr>
                                         </thead>
@@ -231,6 +245,13 @@ const RegistrarGradesView = ({ loggedInEmail = '', loggedInName = '' }) => {
                                                     <td className="p-4 font-mono text-slate-700"><HoverableID fullId={grade.facultyId || grade.faculty_id} isAuthorized={true} /></td>
                                                     <td className="p-4">
                                                         <span className="inline-block rounded-full px-3 py-1 text-xs font-bold bg-slate-100">{grade.status}</span>
+                                                    </td>
+                                                    <td className="p-4">
+                                                        {(grade.ipfs_cid || grade.IpfsCID || grade.ipfsCid) ? (
+                                                            <a href={`http://127.0.0.1:5001/ipfs/bafybeiddnr2jz65byk67sjt6jsu6g7tueddr7odhzzpzli3rgudlbnc6iq/#/ipfs/${grade.ipfs_cid || grade.IpfsCID || grade.ipfsCid}`} target="_blank" rel="noreferrer" className="flex inline-flex items-center gap-1 rounded-lg bg-blue-50 px-3 py-1.5 text-xs font-bold text-blue-700 transition hover:bg-blue-100">
+                                                                 View
+                                                            </a>
+                                                        ) : <span className="text-xs font-semibold text-slate-400">N/A</span>}
                                                     </td>
                                                     <td className="p-4">
                                                         {grade.status === 'DepartmentApproved' && (
@@ -311,17 +332,47 @@ const RegistrarGradesView = ({ loggedInEmail = '', loggedInName = '' }) => {
                                                     <td className="p-4">
                                                         <select defaultValue="" onChange={(e) => setStudentAssignments(prev => ({...prev, [student.id]: {...prev[student.id], department: e.target.value}}))} className="rounded-lg border border-slate-300 bg-white p-2 outline-none">
                                                             <option value="" disabled>Select Dept</option>
-                                                            <option value="IT">IT</option>
-                                                            <option value="CS">CS</option>
-                                                            <option value="CpE">CpE</option>
-                                                            <option value="ECE">ECE</option>
+                                                            <option value="Bachelor of Science in Accountancy">Bachelor of Science in Accountancy</option>
+                                                            <option value="Bachelor of Science in Business Administration major in Financial Management">Bachelor of Science in Business Administration major in Financial Management</option>
+                                                            <option value="Bachelor of Science in Business Administration major in Marketing Management">Bachelor of Science in Business Administration major in Marketing Management</option>
+                                                            <option value="Bachelor of Science in Business Administration major in Human Resource Management">Bachelor of Science in Business Administration major in Human Resource Management</option>
+                                                            <option value="Bachelor of Science in Entrepreneurship">Bachelor of Science in Entrepreneurship</option>
+                                                            <option value="Bachelor of Science in Civil Engineering">Bachelor of Science in Civil Engineering</option>
+                                                            <option value="Bachelor of Science in Electrical Engineering">Bachelor of Science in Electrical Engineering</option>
+                                                            <option value="Bachelor of Science in Information Technology">Bachelor of Science in Information Technology</option>
+                                                            <option value="Bachelor of Early Childhood Education">Bachelor of Early Childhood Education</option>
+                                                            <option value="Bachelor of Secondary Education major in English">Bachelor of Secondary Education major in English</option>
+                                                            <option value="Bachelor of Secondary Education major in Filipino">Bachelor of Secondary Education major in Filipino</option>
+                                                            <option value="Bachelor of Secondary Education major in Mathematics">Bachelor of Secondary Education major in Mathematics</option>
+                                                            <option value="Bachelor of Secondary Education major in Science">Bachelor of Secondary Education major in Science</option>
+                                                            <option value="Bachelor of Secondary Education major in Social Studies">Bachelor of Secondary Education major in Social Studies</option>
+                                                            <option value="Bachelor of Physical Education">Bachelor of Physical Education</option>
+                                                            <option value="Bachelor of Arts in Communication">Bachelor of Arts in Communication</option>
+                                                            <option value="Bachelor of Arts in Psychology">Bachelor of Arts in Psychology</option>
+                                                            <option value="Bachelor of Science in Social Work">Bachelor of Science in Social Work</option>
+                                                            <option value="Bachelor of Science in Public Administration">Bachelor of Science in Public Administration</option>
+                                                            <option value="Master of Arts in Education">Master of Arts in Education</option>
+                                                            <option value="Master in Public Administration">Master in Public Administration</option>
                                                         </select>
                                                     </td>
                                                     <td className="p-4">
-                                                        <input type="text" placeholder="e.g. 1A" onChange={(e) => setStudentAssignments(prev => ({...prev, [student.id]: {...prev[student.id], section: e.target.value}}))} className="w-24 rounded-lg border border-slate-300 p-2 outline-none" />
+                                                        <div className="flex gap-2">
+                                                            <select defaultValue="" onChange={(e) => setStudentAssignments(prev => ({...prev, [student.id]: {...prev[student.id], yearLevel: e.target.value}}))} className="rounded-lg border border-slate-300 bg-white p-2 outline-none">
+                                                                <option value="" disabled>Year</option>
+                                                                <option value="1">1st</option>
+                                                                <option value="2">2nd</option>
+                                                                <option value="3">3rd</option>
+                                                                <option value="4">4th</option>
+                                                            </select>
+                                                            <select defaultValue="" onChange={(e) => setStudentAssignments(prev => ({...prev, [student.id]: {...prev[student.id], sectionNum: e.target.value}}))} className="rounded-lg border border-slate-300 bg-white p-2 outline-none">
+                                                                <option value="" disabled>Sec</option>
+                                                                {[...Array(15)].map((_, i) => <option key={i+1} value={i+1}>{i+1}</option>)}
+                                                            </select>
+                                                        </div>
                                                     </td>
                                                     <td className="p-4">
-                                                        <button onClick={() => submitStudentAssignment(student.id)} className="rounded-lg bg-[#003366] px-4 py-2 font-bold text-white hover:bg-[#00264d]">Assign</button>
+                                                        <button onClick={() => submitStudentAssignment(student.id)} className="rounded-lg bg-[#003366] px-4 py-2 font-bold text-white hover:bg-[#00264d] mr-2">Assign</button>
+                                                        <button onClick={() => handleDropStudent(student.id, student.fullname)} className="rounded-lg bg-red-500 px-4 py-2 font-bold text-white hover:bg-red-600">Drop</button>
                                                     </td>
                                                 </tr>
                                             ))
@@ -362,10 +413,28 @@ const RegistrarGradesView = ({ loggedInEmail = '', loggedInName = '' }) => {
                                                     <td className="p-4">
                                                         <select defaultValue="" onChange={(e) => setAdminAssignments(prev => ({...prev, [admin.id]: {department: e.target.value}}))} className="rounded-lg border border-slate-300 bg-white p-2 outline-none">
                                                             <option value="" disabled>Select Dept</option>
-                                                            <option value="IT">IT</option>
-                                                            <option value="CS">CS</option>
-                                                            <option value="CpE">CpE</option>
-                                                            <option value="ECE">ECE</option>
+                                                            <option value="Bachelor of Science in Accountancy">Bachelor of Science in Accountancy</option>
+                                                            <option value="Bachelor of Science in Business Administration major in Financial Management">Bachelor of Science in Business Administration major in Financial Management</option>
+                                                            <option value="Bachelor of Science in Business Administration major in Marketing Management">Bachelor of Science in Business Administration major in Marketing Management</option>
+                                                            <option value="Bachelor of Science in Business Administration major in Human Resource Management">Bachelor of Science in Business Administration major in Human Resource Management</option>
+                                                            <option value="Bachelor of Science in Entrepreneurship">Bachelor of Science in Entrepreneurship</option>
+                                                            <option value="Bachelor of Science in Civil Engineering">Bachelor of Science in Civil Engineering</option>
+                                                            <option value="Bachelor of Science in Electrical Engineering">Bachelor of Science in Electrical Engineering</option>
+                                                            <option value="Bachelor of Science in Computer Engineering">Bachelor of Science in Computer Engineering</option>
+                                                            <option value="Bachelor of Science in Information Technology">Bachelor of Science in Information Technology</option>
+                                                            <option value="Bachelor of Early Childhood Education">Bachelor of Early Childhood Education</option>
+                                                            <option value="Bachelor of Secondary Education major in English">Bachelor of Secondary Education major in English</option>
+                                                            <option value="Bachelor of Secondary Education major in Filipino">Bachelor of Secondary Education major in Filipino</option>
+                                                            <option value="Bachelor of Secondary Education major in Mathematics">Bachelor of Secondary Education major in Mathematics</option>
+                                                            <option value="Bachelor of Secondary Education major in Science">Bachelor of Secondary Education major in Science</option>
+                                                            <option value="Bachelor of Secondary Education major in Social Studies">Bachelor of Secondary Education major in Social Studies</option>
+                                                            <option value="Bachelor of Physical Education">Bachelor of Physical Education</option>
+                                                            <option value="Bachelor of Arts in Communication">Bachelor of Arts in Communication</option>
+                                                            <option value="Bachelor of Arts in Psychology">Bachelor of Arts in Psychology</option>
+                                                            <option value="Bachelor of Science in Social Work">Bachelor of Science in Social Work</option>
+                                                            <option value="Bachelor of Science in Public Administration">Bachelor of Science in Public Administration</option>
+                                                            <option value="Master of Arts in Education">Master of Arts in Education</option>
+                                                            <option value="Master in Public Administration">Master in Public Administration</option>
                                                         </select>
                                                     </td>
                                                     <td className="p-4">
@@ -389,13 +458,14 @@ const RegistrarGradesView = ({ loggedInEmail = '', loggedInName = '' }) => {
                                             <th className="p-4">Assign Dept</th>
                                             <th className="p-4">Assign Section</th>
                                             <th className="p-4">Assign Year</th>
+                                            <th className="p-4">Subject</th>
                                             <th className="p-4">Action</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         {approvedFaculties.length === 0 ? (
                                             <tr>
-                                                <td colSpan="7" className="p-8 text-center text-slate-500">No approved faculty members waiting for assignment.</td>
+                                                <td colSpan="8" className="p-8 text-center text-slate-500">No approved faculty members waiting for assignment.</td>
                                             </tr>
                                         ) : (
                                             approvedFaculties.map((faculty, index) => (
@@ -416,14 +486,33 @@ const RegistrarGradesView = ({ loggedInEmail = '', loggedInName = '' }) => {
                                                     <td className="p-4">
                                                         <select defaultValue="" onChange={(e) => setFacultyAssignments(prev => ({...prev, [faculty.id]: {...prev[faculty.id], department: e.target.value}}))} className="rounded-lg border border-slate-300 bg-white p-2 outline-none">
                                                             <option value="" disabled>Select</option>
-                                                            <option value="IT">IT</option>
-                                                            <option value="CS">CS</option>
-                                                            <option value="CpE">CpE</option>
-                                                            <option value="ECE">ECE</option>
+                                                            <option value="Bachelor of Science in Accountancy">Bachelor of Science in Accountancy</option>
+                                                            <option value="Bachelor of Science in Business Administration major in Financial Management">Bachelor of Science in Business Administration major in Financial Management</option>
+                                                            <option value="Bachelor of Science in Business Administration major in Marketing Management">Bachelor of Science in Business Administration major in Marketing Management</option>
+                                                            <option value="Bachelor of Science in Business Administration major in Human Resource Management">Bachelor of Science in Business Administration major in Human Resource Management</option>
+                                                            <option value="Bachelor of Science in Civil Engineering">Bachelor of Science in Civil Engineering</option>
+                                                            <option value="Bachelor of Science in Electrical Engineering">Bachelor of Science in Electrical Engineering</option>
+                                                            <option value="Bachelor of Science in Computer Engineering">Bachelor of Science in Computer Engineering</option>
+                                                            <option value="Bachelor of Science in Information Technology">Bachelor of Science in Information Technology</option>
+                                                            <option value="Bachelor of Early Childhood Education">Bachelor of Early Childhood Education</option>
+                                                            <option value="Bachelor of Secondary Education major in English">Bachelor of Secondary Education major in English</option>
+                                                            <option value="Bachelor of Secondary Education major in Filipino">Bachelor of Secondary Education major in Filipino</option>
+                                                            <option value="Bachelor of Secondary Education major in Mathematics">Bachelor of Secondary Education major in Mathematics</option>
+                                                            <option value="Bachelor of Secondary Education major in Science">Bachelor of Secondary Education major in Science</option>
+                                                            <option value="Bachelor of Secondary Education major in Social Studies">Bachelor of Secondary Education major in Social Studies</option>
+                                                            <option value="Bachelor of Arts in Communication">Bachelor of Arts in Communication</option>
+                                                            <option value="Bachelor of Arts in Psychology">Bachelor of Arts in Psychology</option>
+                                                            <option value="Bachelor of Science in Social Work">Bachelor of Science in Social Work</option>
+                                                            <option value="Bachelor of Science in Public Administration">Bachelor of Science in Public Administration</option>
+                                                            <option value="Master of Arts in Education">Master of Arts in Education</option>
+                                                            <option value="Master in Public Administration">Master in Public Administration</option>
                                                         </select>
                                                     </td>
                                                     <td className="p-4">
-                                                        <input type="text" placeholder="e.g. A" onChange={(e) => setFacultyAssignments(prev => ({...prev, [faculty.id]: {...prev[faculty.id], section: e.target.value}}))} className="w-16 rounded-lg border border-slate-300 p-2 outline-none" />
+                                                        <select defaultValue="" onChange={(e) => setFacultyAssignments(prev => ({...prev, [faculty.id]: {...prev[faculty.id], section: e.target.value}}))} className="rounded-lg border border-slate-300 bg-white p-2 outline-none">
+                                                            <option value="" disabled>Sec</option>
+                                                            {[...Array(15)].map((_, i) => <option key={i+1} value={i+1}>{i+1}</option>)}
+                                                        </select>
                                                     </td>
                                                     <td className="p-4">
                                                         <select defaultValue="" onChange={(e) => setFacultyAssignments(prev => ({...prev, [faculty.id]: {...prev[faculty.id], yearLevel: e.target.value}}))} className="rounded-lg border border-slate-300 bg-white p-2 outline-none">
@@ -433,6 +522,9 @@ const RegistrarGradesView = ({ loggedInEmail = '', loggedInName = '' }) => {
                                                             <option value="3">3rd</option>
                                                             <option value="4">4th</option>
                                                         </select>
+                                                    </td>
+                                                    <td className="p-4">
+                                                        <input type="text" placeholder="Subject Code" onChange={(e) => setFacultyAssignments(prev => ({...prev, [faculty.id]: {...prev[faculty.id], subject: e.target.value}}))} className="rounded-lg border border-slate-300 bg-white p-2 outline-none w-24" />
                                                     </td>
                                                     <td className="p-4">
                                                         <button onClick={() => submitFacultyAssignment(faculty.id)} className="rounded-lg bg-[#003366] px-4 py-2 font-bold text-white hover:bg-[#00264d]">Assign</button>

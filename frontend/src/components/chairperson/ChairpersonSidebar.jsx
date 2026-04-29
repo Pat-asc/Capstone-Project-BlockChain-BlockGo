@@ -5,6 +5,7 @@ function ChairpersonSidebar({ activeTab, setActiveTab }) {
     { id: "dashboard", label: "Dashboard" },
     { id: "sectioning", label: "Student Sectioning" },
     { id: "assignment", label: "Academic Assignment" },
+    { id: "myClasses", label: "My Classes / Upload" },
     { id: "forReview", label: "For Review" },
     { id: "returned", label: "Returned" },
     { id: "approved", label: "Approved" },

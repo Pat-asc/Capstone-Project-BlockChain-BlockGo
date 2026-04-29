@@ -600,10 +600,10 @@ mock_profiles AS (
          END,
          'MOCK-' || substring(u.email from position('@' in u.email)-7 for 7),
          CASE 
-           WHEN u.email LIKE '%1@%' OR u.email LIKE '%6@%' THEN 'CS'
-           WHEN u.email LIKE '%2@%' OR u.email LIKE '%7@%' THEN 'CE' 
-           WHEN u.email LIKE '%3@%' OR u.email LIKE '%8@%' THEN 'IT'
-           ELSE 'CS'
+           WHEN u.email LIKE '%1@%' OR u.email LIKE '%6@%' THEN 'Bachelor of Science in Computer Science'
+           WHEN u.email LIKE '%2@%' OR u.email LIKE '%7@%' THEN 'Bachelor of Science in Civil Engineering' 
+           WHEN u.email LIKE '%3@%' OR u.email LIKE '%8@%' THEN 'Bachelor of Science in Information Technology'
+           ELSE 'Bachelor of Science in Computer Science'
          END,
          CASE 
            WHEN u.email LIKE '%1@%' THEN '2005-05-15'::date
@@ -618,9 +618,9 @@ mock_profiles AS (
            ELSE '2003-09-08'::date
          END,
          CASE 
-           WHEN u.email LIKE '%1@%' OR u.email LIKE '%2@%' THEN 'A'
-           WHEN u.email LIKE '%3@%' OR u.email LIKE '%4@%' THEN 'B'
-           ELSE 'C'
+           WHEN u.email LIKE '%1@%' OR u.email LIKE '%2@%' THEN '3-1'
+           WHEN u.email LIKE '%3@%' OR u.email LIKE '%4@%' THEN '3-1'
+           ELSE '3-1'
          END,
          'Pending Department Approval'
   FROM mock_users u
@@ -633,7 +633,7 @@ EOF
 # Generate CSV export
 docker exec -e PGPASSWORD="$POSTGRES_PASS" postgres psql -U $POSTGRES_USER -d $POSTGRES_DB -c "
 COPY (
-  SELECT sp.full_name, sp.student_no, u.email, sp.date_of_birth::text, sp.department, sp.section 
+  SELECT sp.student_no, sp.full_name, u.email, sp.date_of_birth::text AS date_of_birth, sp.department, sp.section, '95' AS grade, sp.department AS course, '2nd Semester' AS semester, '2024' AS school_year
   FROM StudentProfiles sp JOIN Users u ON sp.user_id = u.id 
   WHERE u.email LIKE 'mock.%'
 ) TO STDOUT WITH CSV HEADER;

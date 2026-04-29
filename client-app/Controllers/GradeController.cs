@@ -16,6 +16,7 @@ using BlockGo.Mappers;
 using System.Globalization;
 using System.IO;
 using ClosedXML.Excel;
+using System.Net.Http;
 
 namespace BlockGo.Controllers
 {
@@ -26,15 +27,20 @@ namespace BlockGo.Controllers
         private readonly IBlockchainService _blockchainService;
         private readonly string _connectionString;
         private readonly ILogger<GradesController> _logger;
+        private readonly IHttpClientFactory _httpClientFactory;
+        private readonly IConfiguration _configuration;
 
         public GradesController(
             IBlockchainService blockchainService, 
             IConfiguration configuration,
-            ILogger<GradesController> logger)
+            ILogger<GradesController> logger,
+            IHttpClientFactory httpClientFactory)
         {
             _blockchainService = blockchainService;
             _connectionString = configuration.GetConnectionString("PostgresConnection") ?? configuration.GetConnectionString("MasterConnection") ?? throw new InvalidOperationException("PostgreSQL connection string not found.");
             _logger = logger;
+            _httpClientFactory = httpClientFactory;
+            _configuration = configuration;
         }
 
         [HttpPost("record")]
@@ -49,7 +55,12 @@ namespace BlockGo.Controllers
                 using var conn = new NpgsqlConnection(_connectionString);
                 await conn.OpenAsync();
 
-                using var cmdFac = new NpgsqlCommand("SELECT fp.department FROM Users u JOIN FacultyProfiles fp ON u.id = fp.user_id WHERE u.email = @email AND u.role = 'faculty' AND u.status = 'APPROVED'", conn);
+                using var cmdFac = new NpgsqlCommand(@"
+                    SELECT department FROM (
+                        SELECT fp.department FROM Users u JOIN FacultyProfiles fp ON u.id = fp.user_id WHERE u.email = @email AND u.status = 'APPROVED'
+                        UNION 
+                        SELECT ap.department FROM Users u JOIN AdminProfiles ap ON u.id = ap.user_id WHERE u.email = @email AND u.status = 'APPROVED'
+                    ) AS combined LIMIT 1", conn);
                 cmdFac.Parameters.AddWithValue("email", request.FacultyId);
                 var facDept = await cmdFac.ExecuteScalarAsync() as string;
                 if (facDept == null)
@@ -124,11 +135,33 @@ namespace BlockGo.Controllers
                     return BadRequest(new { status = "Error", message = "Only .csv and .xlsx files are supported." });
 
                 var tempFile = Path.Combine(Path.GetTempPath(), Guid.NewGuid() + ext);
+                string ipfsCid = "";
                 
                 try
                 {
                     using (var fileStream = new FileStream(tempFile, FileMode.Create))
                         await file.CopyToAsync(fileStream);
+
+                    // Distribute Original File to IPFS Network
+                    try
+                    {
+                        using var client = _httpClientFactory.CreateClient();
+                        using var content = new MultipartFormDataContent();
+                        using var fsIpfs = new FileStream(tempFile, FileMode.Open, FileAccess.Read);
+                        content.Add(new StreamContent(fsIpfs), "file", file.FileName);
+                        
+                        var ipfsHost = Environment.GetEnvironmentVariable("IPFS_HOST") ?? "ipfs0";
+                        var ipfsUrl = _configuration["IpfsApiUrl"] ?? $"http://{ipfsHost}:5001/api/v0/add";
+                        var ipfsRes = await client.PostAsync(ipfsUrl, content);
+                        if (ipfsRes.IsSuccessStatusCode)
+                        {
+                            var ipfsJson = await ipfsRes.Content.ReadAsStringAsync();
+                            using var doc = JsonDocument.Parse(ipfsJson);
+                            ipfsCid = doc.RootElement.GetProperty("Hash").GetString() ?? "";
+                            _logger.LogInformation("File distributed to IPFS. CID: {CID}", ipfsCid);
+                        }
+                    }
+                    catch (Exception ex) { _logger.LogWarning("IPFS upload skipped (daemon may be offline): {Message}", ex.Message); }
 
                     if (ext == ".xlsx")
                     {
@@ -142,7 +175,7 @@ namespace BlockGo.Controllers
                             headerMap[cell.Value.ToString().Trim().ToLower().Replace(" ", "_")] = cell.Address.ColumnNumber;
                         }
 
-                        var rows = ws.RowsUsed().Skip(1); // Skip header row
+                        var rows = ws.RowsUsed().Skip(1);
                         foreach (var row in rows)
                         {
                             var getVal = (string col) => headerMap.ContainsKey(col) ? row.Cell(headerMap[col]).Value.ToString().Trim() : null;
@@ -231,7 +264,12 @@ namespace BlockGo.Controllers
                                 continue;
                             }
 
-                            using var cmdFac = new NpgsqlCommand("SELECT fp.department FROM Users u JOIN FacultyProfiles fp ON u.id = fp.user_id WHERE u.email = @email AND u.status = 'APPROVED'", conn);
+                            using var cmdFac = new NpgsqlCommand(@"
+                                SELECT department FROM (
+                                    SELECT fp.department FROM Users u JOIN FacultyProfiles fp ON u.id = fp.user_id WHERE u.email = @email AND u.status = 'APPROVED'
+                                    UNION 
+                                    SELECT ap.department FROM Users u JOIN AdminProfiles ap ON u.id = ap.user_id WHERE u.email = @email AND u.status = 'APPROVED'
+                                ) AS combined LIMIT 1", conn);
                             cmdFac.Parameters.AddWithValue("email", facultyId);
                             var facDept = await cmdFac.ExecuteScalarAsync() as string;
 
@@ -244,6 +282,10 @@ namespace BlockGo.Controllers
 
                             record.StudentHash = stuEmail;
                             record.FacultyId = facultyId;
+                            
+                            // Attach the distributed IPFS CID to the blockchain record
+                            // (Ensure you have added 'public string IpfsCID { get; set; }' to your GradeRequest model!)
+                            record.IpfsCID = ipfsCid;
 
                             var blockchainRecord = record.ToBlockchainRecord("PLV");
                                 
@@ -430,6 +472,35 @@ namespace BlockGo.Controllers
             { 
                 return StatusCode(500, new { status = "Error", message = ex.Message }); 
             }
+        }
+
+        [HttpPost("upload-ipfs")]
+        [Consumes("multipart/form-data")]
+        public async Task<IActionResult> UploadToIpfs([FromForm] IFormFile file)
+        {
+            if (file == null || file.Length == 0) return BadRequest(new { status = "Error", message = "File is required." });
+
+            try
+            {
+                using var client = _httpClientFactory.CreateClient();
+                using var content = new MultipartFormDataContent();
+                using var stream = file.OpenReadStream();
+                content.Add(new StreamContent(stream), "file", file.FileName);
+                
+                var ipfsHost = Environment.GetEnvironmentVariable("IPFS_HOST") ?? "ipfs0";
+                var ipfsUrl = _configuration["IpfsApiUrl"] ?? $"http://{ipfsHost}:5001/api/v0/add";
+                var ipfsRes = await client.PostAsync(ipfsUrl, content);
+                
+                if (ipfsRes.IsSuccessStatusCode)
+                {
+                    var ipfsJson = await ipfsRes.Content.ReadAsStringAsync();
+                    using var doc = JsonDocument.Parse(ipfsJson);
+                    var cid = doc.RootElement.GetProperty("Hash").GetString();
+                    return Ok(new { status = "Success", cid = cid, url = $"http://127.0.0.1:8080/ipfs/{cid}", message = "File securely distributed to IPFS." });
+                }
+                return StatusCode((int)ipfsRes.StatusCode, new { status = "Error", message = "IPFS daemon rejected the file." });
+            }
+            catch (Exception ex) { return StatusCode(500, new { status = "Error", message = $"IPFS service unreachable: {ex.Message}" }); }
         }
     }
 }

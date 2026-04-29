@@ -1,35 +1,57 @@
 import React, { useMemo } from "react";
 
-function RegistrarDashboard() {
-  // Fallback to empty array to prevent crashes until we wire it to the C# backend
-  const reviewRecords = useMemo(() => {
-    try {
-        const saved = localStorage.getItem("CHAIRPERSON_REVIEW_KEY");
-        return saved ? Object.values(JSON.parse(saved)) : [];
-    } catch (e) {
-        return [];
-    }
-  }, []);
+function RegistrarDashboard({ grades = [] }) {
+  const metrics = useMemo(() => {
+    const sectionMap = {};
+
+    grades.forEach(g => {
+        const facId = g.facultyId || g.faculty_id || g.FacultyId || 'Unknown';
+        const course = g.course || g.Course || g.subject_code || g.subjectCode || 'Unknown Section';
+        const status = g.status || g.Status || '';
+
+        const sectionKey = `${facId}-${course}`;
+        if (!sectionMap[sectionKey]) {
+            sectionMap[sectionKey] = status;
+        } else {
+            const current = sectionMap[sectionKey].toLowerCase();
+            const next = status.toLowerCase();
+            if (next === 'finalized' || (next.includes('approved') && current.includes('issued'))) {
+                sectionMap[sectionKey] = status;
+            }
+        }
+    });
+
+    let submitted = 0, approved = 0, forwarded = 0, returned = 0;
+    Object.values(sectionMap).forEach(st => {
+        const s = st.toLowerCase();
+        if (s.includes('issued') || s.includes('submitted')) submitted++;
+        if (s.includes('approved')) approved++;
+        if (s.includes('finalized') || s.includes('forwarded')) forwarded++;
+        if (s.includes('returned') || s.includes('rejected')) returned++;
+    });
+
+    return { submitted, approved, forwarded, returned };
+  }, [grades]);
 
   const overviewCards = [
     {
       title: "Forwarded by Chairperson",
-      value: reviewRecords.filter((item) => item.status === "forwarded").length,
+      value: metrics.forwarded,
       subtitle: "Sections already endorsed to the registrar",
     },
     {
       title: "Approved by Chairperson",
-      value: reviewRecords.filter((item) => item.status === "approved").length,
+      value: metrics.approved,
       subtitle: "Sections approved but not yet forwarded",
     },
     {
       title: "Returned to Faculty",
-      value: reviewRecords.filter((item) => item.status === "returned").length,
+      value: metrics.returned,
       subtitle: "Sections sent back for correction",
     },
     {
       title: "Submitted to Chairperson",
-      value: reviewRecords.filter((item) => item.status === "submitted").length,
+      value: metrics.submitted,
       subtitle: "Sections still under chairperson review",
     },
   ];
@@ -60,15 +82,15 @@ function RegistrarDashboard() {
         <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-3">
           <div className="rounded-xl bg-slate-50 p-4">
             <p className="text-sm text-slate-500">Forwarded Sections</p>
-            <p className="mt-1 font-semibold text-slate-800">{reviewRecords.filter((item) => item.status === "forwarded").length}</p>
+          <p className="mt-1 font-semibold text-slate-800">{metrics.forwarded}</p>
           </div>
           <div className="rounded-xl bg-slate-50 p-4">
             <p className="text-sm text-slate-500">Awaiting Registrar</p>
-            <p className="mt-1 font-semibold text-slate-800">{reviewRecords.filter((item) => item.status === "approved").length}</p>
+          <p className="mt-1 font-semibold text-slate-800">{metrics.approved}</p>
           </div>
           <div className="rounded-xl bg-slate-50 p-4">
             <p className="text-sm text-slate-500">Needs Faculty Revision</p>
-            <p className="mt-1 font-semibold text-slate-800">{reviewRecords.filter((item) => item.status === "returned").length}</p>
+          <p className="mt-1 font-semibold text-slate-800">{metrics.returned}</p>
           </div>
         </div>
       </div>

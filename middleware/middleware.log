@@ -3,7 +3,7 @@
 > node middleware.js
 
 [dotenv@17.3.1] injecting env (0) from .env -- tip: ⚙️  specify custom .env file path with { path: '/custom/path/.env' }
-[dotenv@17.3.1] injecting env (27) from ../network/.env -- tip: 🛠️  run anywhere with `dotenvx run -- yourcommand`
+[dotenv@17.3.1] injecting env (27) from ../network/.env -- tip: 🔐 prevent committing .env to code: https://dotenvx.com/precommit
 Syncing natively trusted Cryptogen Admin certificates...
 Cryptogen Admin sync complete.
 

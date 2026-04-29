@@ -5,13 +5,14 @@ import Login from "./components/shared/Login";
 import { fetchUserProfile } from './services/api';
 import StudentPortal from './components/student/StudentPortal';
 import FacultyPortal from './components/faculty/FacultyPortal';
-import DeanGradesView from './components/chairperson/DeanGradesView';
+import DeptAdminGradesView from './components/chairperson/DeptAdminGradesView';
 import RegistrarGradesView from './components/registrar/RegistrarGradesView';
 import Chat from './components/shared/Chat';
 
 import { BrowserRouter as Router, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import StudentLanding from './components/student/StudentLanding';
 import FacultyLanding from './components/faculty/FacultyLanding';
+import { NotificationProvider } from './services/NotificationContext';
 
 function AppContent() {
     const [user, setUser] = useState(null);
@@ -62,7 +63,7 @@ function AppContent() {
         if (fetchedUser.role === 'faculty') {
           displayName = `Prof. ${fetchedUser.fullName}`;
         } else if (fetchedUser.role === 'department_admin') {
-          displayName = `Dean ${fetchedUser.fullName}`;
+          displayName = `Dept Admin ${fetchedUser.fullName}`;
         } else if (fetchedUser.role === 'registrar') {
           displayName = `Registrar ${fetchedUser.fullName}`;
         }
@@ -88,7 +89,6 @@ function AppContent() {
       if (error instanceof SyntaxError) {
         console.error("Invalid token format. It could not be parsed.");
       }
-      // Automatically clear the broken token and reset the user state
       localStorage.removeItem('token');
       setUser(null);
     }
@@ -121,7 +121,7 @@ function AppContent() {
             <FacultyPortal facultyData={user} onLogout={handleLogout} />
           ) : user.role === "department_admin" || user.role === "department admin" ? (
             <div style={{ position: 'relative', width: '100%', minHeight: '100vh', backgroundColor: '#f0f2f5' }}>
-              <DeanGradesView loggedInEmail={user.email ?? ''} loggedInName={user.name ?? ''} userRole={user.role} />
+              <DeptAdminGradesView loggedInEmail={user.email ?? ''} loggedInName={user.name ?? ''} userRole={user.role} department={user.department ?? ''} />
             </div>
           ) : user.role === "registrar" ? (
             <div style={{ position: 'relative', width: '100%', minHeight: '100vh', backgroundColor: '#f0f2f5' }}>
@@ -142,9 +142,11 @@ function AppContent() {
 
 function App() {
   return (
-    <Router>
-      <AppContent />
-    </Router>
+    <NotificationProvider>
+      <Router>
+        <AppContent />
+      </Router>
+    </NotificationProvider>
   );
 }
 

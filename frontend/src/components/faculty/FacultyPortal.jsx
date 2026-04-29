@@ -51,7 +51,7 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
       const newSections = {};
 
       actualSections.forEach(sec => {
-        const sectionKey = `${sec.department} ${sec.section}`; 
+        const sectionKey = `${sec.department} ${sec.section}${sec.subject ? ` (${sec.subject})` : ''}`; 
         
         const enrolledStudents = actualStudents.filter(s => 
           s.department === sec.department && 
@@ -68,8 +68,8 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
 
         newSections[sectionKey] = {
           year: sec.yearLevel ? `${sec.yearLevel} Year` : "N/A",
-          subjectCode: `${sec.department}-${sec.section}`, 
-          subjectTitle: `Assigned Subject (${sec.department})`, 
+          subjectCode: sec.subject || `${sec.department}-${sec.section}`, 
+          subjectTitle: sec.subject || `Assigned Subject (${sec.department})`, 
           sectionCourse: sec.department,
           students: enrolledStudents
         };

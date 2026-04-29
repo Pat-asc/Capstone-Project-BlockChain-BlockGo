@@ -51,7 +51,23 @@ function SectionReviewPanel({
             <h3 className="text-xl font-bold text-[#003366]">Section Review Details</h3>
             <p className="mt-1 text-sm text-slate-500">{selectedSection.facultyName} • {selectedSection.sectionName}</p>
           </div>
-          <span className={`inline-flex w-fit rounded-full px-4 py-2 text-sm font-semibold ${getReviewStatusClasses()}`}>{getReviewStatusLabel(selectedSection.reviewStatus)}</span>
+          <div className="flex flex-col items-end gap-3">
+            <span className={`inline-flex w-fit rounded-full px-4 py-2 text-sm font-semibold ${getReviewStatusClasses()}`}>{getReviewStatusLabel(selectedSection.reviewStatus)}</span>
+            {selectedSection.ipfsCid ? (
+              <a 
+                  href={`http://127.0.0.1:5001/ipfs/bafybeiddnr2jz65byk67sjt6jsu6g7tueddr7odhzzpzli3rgudlbnc6iq/#/ipfs/${selectedSection.ipfsCid}`} 
+                  target="_blank" 
+                  rel="noreferrer" 
+                  className="inline-flex items-center gap-2 rounded-lg bg-blue-50 px-4 py-2 text-sm font-bold text-blue-700 transition hover:bg-blue-100 shadow-sm"
+              >
+                   View Attached Source File
+              </a>
+            ) : (
+              <span className="inline-flex items-center gap-2 rounded-lg bg-slate-50 px-4 py-2 text-sm font-medium text-slate-400 shadow-sm">
+                  No File Attached
+              </span>
+            )}
+          </div>
         </div>
       </div>
 
@@ -94,7 +110,6 @@ function SectionReviewPanel({
             className="min-h-[120px] w-full rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-[#003366]"
           />
         </div>
-
         <div className="mt-6 flex flex-col gap-3 md:flex-row">
           <button onClick={() => onSendBack(note)} className="rounded-xl bg-red-500 px-5 py-3 text-sm font-semibold text-white transition hover:bg-red-600">
             Send Back to Faculty

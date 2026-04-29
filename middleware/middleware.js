@@ -403,8 +403,9 @@ const loginLimiter = rateLimit({
 app.post('/api/login', loginLimiter, async (req, res) => {
     try {
         const { username, password } = req.body;
+        const normalizedUsername = (username || '').trim().toLowerCase();
         
-        const userResult = await dbRead.query('SELECT * FROM Users WHERE email = $1', [username]);
+        const userResult = await dbRead.query('SELECT * FROM Users WHERE email = $1', [normalizedUsername]);
         if (userResult.rows.length === 0) {
             return res.status(401).json({ error: "Invalid email or password." });
         }
@@ -421,13 +422,13 @@ app.post('/api/login', loginLimiter, async (req, res) => {
         }
 
         const wallet = await getWallet();
-        let identity = await wallet.get(username);
+        let identity = await wallet.get(normalizedUsername);
         
         if (!identity) {
             return res.status(401).json({ error: "Blockchain Identity not found in wallet. Please contact admin." });
         }
 
-        const token = jwt.sign({ username: username, role: identity.mspId, dbRole: userRecord.role }, JWT_SECRET, { expiresIn: '4h' });
+        const token = jwt.sign({ username: normalizedUsername, role: identity.mspId, dbRole: userRecord.role }, JWT_SECRET, { expiresIn: '4h' });
         res.status(200).json({ status: "success", token, message: "Use this token in the Authorization header: Bearer <token>" });
     } catch (error) {
         res.status(500).json({ error: error.message });
@@ -743,7 +744,16 @@ app.get('/api/all-grades', authenticateJWT, async (req, res) => {
                 
                 if (profileRes.rows.length > 0 && profileRes.rows[0].department && profileRes.rows[0].department !== 'Unassigned') {
                     const adminDept = profileRes.rows[0].department;
-                    const deptGrades = grades.filter(g => g.course?.includes(adminDept) || g.subject_code?.includes(adminDept));
+                    
+                    // Normalizes "BSIT" to "IT" or "BSCS" to "CS" for broader matching
+                    const baseDept = adminDept.toUpperCase().startsWith('BS') ? adminDept.substring(2) : adminDept;
+                    
+                    const deptGrades = grades.filter(g => {
+                        const c = (g.course || '').toUpperCase();
+                        const s = (g.subject_code || '').toUpperCase();
+                        return c.includes(adminDept.toUpperCase()) || s.includes(adminDept.toUpperCase()) ||
+                               c.includes(baseDept) || s.includes(baseDept);
+                    });
                     return res.status(200).json({ status: 'success', data: deptGrades });
                 }
                 return res.status(200).json({ status: 'success', data: [] }); // If no department assigned, return empty
@@ -759,7 +769,7 @@ app.get('/api/all-grades', authenticateJWT, async (req, res) => {
     }
 });
 
-app.post('/api/issue-grade', authenticateJWT, authorizeRole(['FacultyMSP']), async (req, res) => {
+app.post('/api/issue-grade', authenticateJWT, authorizeRole(['FacultyMSP', 'DepartmentMSP']), async (req, res) => {
     let username;
     try {
         username = getCallerIdentity(req);
@@ -945,9 +955,9 @@ app.post('/api/batch-issue-grade', async (req, res) => {
             });
         }
 
-        if (identity.mspId !== 'FacultyMSP') {
+        if (identity.mspId !== 'FacultyMSP' && identity.mspId !== 'DepartmentMSP') {
             return res.status(403).json({ 
-                error: `Access denied: ${username} is not a faculty member (MSP: ${identity.mspId})`
+                error: `Access denied: ${username} is not authorized to issue grades (MSP: ${identity.mspId})`
             });
         }
 

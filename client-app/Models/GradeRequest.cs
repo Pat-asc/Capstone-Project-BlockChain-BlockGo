@@ -36,5 +36,8 @@ namespace BlockGo.Models
 
         [JsonPropertyName("date")]
         public string Date { get; set; } = string.Empty;
+
+        [JsonPropertyName("ipfs_cid")]
+        public string? IpfsCID { get; set; }
     }
 }

@@ -11,8 +11,6 @@ const DepartmentAdminTemplateReview = ({ adminData, onLogout }) => {
 
   const fetchTemplates = useCallback(async () => {
     setLoading(true);
-
-    // --- MOCK DATA FOR TESTING UI ---
     const mockTemplates = [
       {
         id: 101,
@@ -55,8 +53,6 @@ const DepartmentAdminTemplateReview = ({ adminData, onLogout }) => {
         }
       }
     ];
-    // --------------------------------
-
     try {
       // Fallback to empty string if department is undefined to avoid 404s
       const dept = adminData?.department || '';

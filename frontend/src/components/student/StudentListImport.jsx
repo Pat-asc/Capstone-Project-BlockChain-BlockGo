@@ -1,10 +1,32 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-
-// Safe fallback helpers
-const programs = ["CS", "IT", "CpE", "ECE"];
+import { uploadToIpfs } from "../../services/api";
+const programs = [
+  "Bachelor of Science in Accountancy",
+  "Bachelor of Science in Business Administration major in Financial Management",
+  "Bachelor of Science in Business Administration major in Marketing Management",
+  "Bachelor of Science in Business Administration major in Human Resource Management",
+  "Bachelor of Science in Entrepreneurship",
+  "Bachelor of Science in Civil Engineering",
+  "Bachelor of Science in Electrical Engineering",
+  "Bachelor of Science in Computer Engineering",
+  "Bachelor of Science in Information Technology",
+  "Bachelor of Early Childhood Education",
+  "Bachelor of Secondary Education major in English",
+  "Bachelor of Secondary Education major in Filipino",
+  "Bachelor of Secondary Education major in Mathematics",
+  "Bachelor of Secondary Education major in Science",
+  "Bachelor of Secondary Education major in Social Studies",
+  "Bachelor of Physical Education",
+  "Bachelor of Arts in Communication",
+  "Bachelor of Arts in Psychology",
+  "Bachelor of Science in Social Work",
+  "Bachelor of Science in Public Administration",
+  "Master of Arts in Education",
+  "Master in Public Administration"
+];
 const buildChairpersonName = (program) => `${program} Chairperson`;
-const parseStudentIdSpreadsheet = (text) => []; // Fallback parser
-const buildStudentCsvContent = () => ""; // Fallback
+const parseStudentIdSpreadsheet = (text) => [];
+const buildStudentCsvContent = () => "";
 
 function StudentListImport() {
   const [selectedProgram, setSelectedProgram] = useState("");
@@ -13,6 +35,7 @@ function StudentListImport() {
   const [isYearPickerOpen, setIsYearPickerOpen] = useState(false);
   const [yearPickerAnchor, setYearPickerAnchor] = useState(() => new Date().getFullYear() - 5);
   const yearPickerRef = useRef(null);
+  const [isUploading, setIsUploading] = useState(false);
 
   const [submissionBatches, setSubmissionBatches] = useState(() => {
     try { return JSON.parse(localStorage.getItem("STUDENT_BATCHES_KEY")) || []; } catch(e) { return []; }
@@ -55,7 +78,7 @@ function StudentListImport() {
       alert("Please complete the department and batch year first.");
       return;
     }
-    const csvContent = "Student ID,Sex,Last Name,First Name,Middle Initial\n26-0001,Male,Dela Cruz,Juan,A\n26-0002,Female,Santos,Maria,L\n";
+    const csvContent = "student_no,full_name,email,date_of_birth,department,section,grade,course,semester,school_year\nMOCK-tudent1,Juan Dela Cruz,mock.student1@plv.edu.ph,2005-05-15,Bachelor of Science in Computer Science,3-1,95,Bachelor of Science in Computer Science,2nd Semester,2024\n";
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
@@ -72,13 +95,22 @@ function StudentListImport() {
     if (!selectedFile) { alert("Please choose the Excel CSV file first."); return; }
     if (!selectedFile.name.toLowerCase().endsWith(".csv")) { alert("Please upload the Excel CSV template in .csv format."); return; }
 
+    setIsUploading(true);
     const reader = new FileReader();
-    reader.onload = (event) => {
+    reader.onload = async (event) => {
+      try {
       const text = event.target?.result;
       if (!text) { alert("Unable to read file."); return; }
 
-      // Fallback behavior since we stripped the local dependencies
-      const parsedStudents = []; 
+      const ipfsRes = await uploadToIpfs(selectedFile);
+      const cid = ipfsRes.cid;
+
+      // Parse the CSV to extract the actual students
+      const lines = text.split(/\r?\n/).filter(line => line.trim().length > 0);
+      const parsedStudents = lines.slice(1).map(line => {
+        const cols = line.split(',');
+        return { studentId: cols[0], lastName: cols[1], firstName: "", mi: "", sex: "N/A" };
+      });
       const submissionKey = [selectedProgram, selectedBatchYear].join("|");
       const submittedAt = new Date().toISOString();
 
@@ -91,8 +123,9 @@ function StudentListImport() {
         fileName: selectedFile.name,
         submittedAt,
         status: "Forwarded",
-        receivedCsvContent: "",
+        receivedCsvContent: text,
         students: parsedStudents,
+        ipfsCid: cid
       };
 
       const updatedBatches = [...submissionBatches.filter((batch) => batch.key !== submissionKey), nextBatch];
@@ -105,6 +138,7 @@ function StudentListImport() {
           totalStudents: parsedStudents.length,
           submittedAt,
           status: "Forwarded",
+          ipfsCid: cid
       }, ...submissionLogs];
 
       setSubmissionBatches(updatedBatches);
@@ -114,6 +148,11 @@ function StudentListImport() {
 
       setSelectedFile(null);
       alert("Student list forwarded to the chairperson successfully.");
+      } catch (err) {
+        alert("Upload failed: " + err.message);
+      } finally {
+        setIsUploading(false);
+      }
     };
     reader.readAsText(selectedFile);
   };
@@ -162,10 +201,12 @@ function StudentListImport() {
             <div>
               <label className="mb-2 block text-sm font-medium text-slate-700">Upload Excel CSV File</label>
               <input type="file" accept=".csv" onChange={(e) => setSelectedFile(e.target.files?.[0] || null)} className="block w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm" />
-              <p className="mt-2 text-sm text-slate-500">{selectedFile ? `Selected file: ${selectedFile.name}` : "Template format: Student ID, Sex, Last Name, First Name, Middle Initial"}</p>
+              <p className="mt-2 text-sm text-slate-500">{selectedFile ? `Selected file: ${selectedFile.name}` : "Template format: student_no, full_name, email, date_of_birth, department..."}</p>
             </div>
             <button onClick={handleDownloadTemplate} className="rounded-2xl border border-[#003366] px-5 py-3 text-sm font-semibold text-[#003366] transition hover:bg-[#003366] hover:text-white">Download Template</button>
-            <button onClick={handleImport} className="rounded-2xl bg-[#003366] px-6 py-3 text-sm font-semibold text-white transition hover:bg-[#00264d]">Forward to Chairperson</button>
+            <button onClick={handleImport} disabled={isUploading} className="rounded-2xl bg-[#003366] px-6 py-3 text-sm font-semibold text-white transition hover:bg-[#00264d] disabled:opacity-50">
+              {isUploading ? "Uploading to IPFS..." : "Forward to Chairperson"}
+            </button>
           </div>
         </div>
       </div>
@@ -194,7 +235,11 @@ function StudentListImport() {
                     <tr key={log.id} className="border-b bg-white">
                       <td className="px-4 py-3">{log.program}</td>
                       <td className="px-4 py-3">{log.batchYear}</td>
-                      <td className="px-4 py-3">{log.fileName}</td>
+                      <td className="px-4 py-3">
+                        {log.ipfsCid ? (
+                          <a href={`http://127.0.0.1:5001/ipfs/bafybeiddnr2jz65byk67sjt6jsu6g7tueddr7odhzzpzli3rgudlbnc6iq/#/ipfs/${log.ipfsCid}`} target="_blank" rel="noreferrer" className="text-blue-600 font-bold hover:underline"> View Content in IPFS</a>
+                        ) : log.fileName}
+                      </td>
                       <td className="px-4 py-3">{log.totalStudents}</td>
                       <td className="px-4 py-3">{log.submittedTo}</td>
                       <td className="px-4 py-3">{new Date(log.submittedAt).toLocaleString("en-US")}</td>

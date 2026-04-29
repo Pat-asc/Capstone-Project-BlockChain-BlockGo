@@ -6,6 +6,31 @@ import plvlogo from '../../assets/plvlogo.png';
 import { login, submitRegistrationRequest, sendVerificationCode, forgotPassword, resetPassword } from '../../services/api';
 
 
+const programs = [
+  "Bachelor of Science in Accountancy",
+  "Bachelor of Science in Business Administration major in Financial Management",
+  "Bachelor of Science in Business Administration major in Marketing Management",
+  "Bachelor of Science in Business Administration major in Human Resource Management",
+  "Bachelor of Science in Entrepreneurship",
+  "Bachelor of Science in Civil Engineering",
+  "Bachelor of Science in Electrical Engineering",
+  "Bachelor of Science in Computer Engineering",
+  "Bachelor of Science in Information Technology",
+  "Bachelor of Early Childhood Education",
+  "Bachelor of Secondary Education major in English",
+  "Bachelor of Secondary Education major in Filipino",
+  "Bachelor of Secondary Education major in Mathematics",
+  "Bachelor of Secondary Education major in Science",
+  "Bachelor of Secondary Education major in Social Studies",
+  "Bachelor of Physical Education",
+  "Bachelor of Arts in Communication",
+  "Bachelor of Arts in Psychology",
+  "Bachelor of Science in Social Work",
+  "Bachelor of Science in Public Administration",
+  "Master of Arts in Education",
+  "Master in Public Administration"
+];
+
 const Login = ({ onLogin }) => {
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   const [email, setEmail] = useState("");
@@ -13,7 +38,7 @@ const Login = ({ onLogin }) => {
   const [currentView, setCurrentView] = useState('signIn');
   const [fullName, setFullName] = useState("");
   const [role, setRole] = useState("student");
-  const [department, setDepartment] = useState("CS");
+  const [department, setDepartment] = useState("Bachelor of Science in Information Technology");
   const [studentNo, setStudentNo] = useState("");
   const [dateOfBirth, setDateOfBirth] = useState("");
   const [signupStep, setSignupStep] = useState(1);
@@ -52,10 +77,12 @@ const Login = ({ onLogin }) => {
     }
 
     // Validate password before proceeding to the next step
-    const passwordError = validatePassword(password);
-    if (passwordError) {
-      setError(passwordError);
-      return;
+    if (role !== 'student') {
+      const passwordError = validatePassword(password);
+      if (passwordError) {
+        setError(passwordError);
+        return;
+      }
     }
 
     if (!email) {
@@ -82,7 +109,7 @@ const Login = ({ onLogin }) => {
     setIsLoading(true);
     setError('');
     try {
-        await submitRegistrationRequest({ fullName, email, password, role, department, studentNo: role === 'student' ? studentNo : undefined, verificationCode });
+        await submitRegistrationRequest({ fullName, email, password, role, department, studentNo: role === 'student' ? studentNo : undefined, verificationCode, dateOfBirth: role === 'student' ? dateOfBirth : undefined });
         setMessage("Registration request submitted successfully! Please wait for registrar approval.");
         setCurrentView('signIn'); // Go back to login screen
         setSignupStep(1);   // Reset signup flow
@@ -152,7 +179,7 @@ const Login = ({ onLogin }) => {
         setCurrentView('signIn');
         setPassword('');
         setConfirmPassword('');
-        window.history.replaceState({}, document.title, "/"); // Clean up the URL
+        window.history.replaceState({}, document.title, "/");
       }, 3000);
     } catch (error) {
       setError(error.message);
@@ -226,7 +253,7 @@ const Login = ({ onLogin }) => {
                     <label>Student No.</label>
                     <input 
                       type="text" 
-                      pattern="\\d{2}-\\d{4}" 
+                    pattern="[0-9]{2,4}-[0-9]+" 
                       title="Format: YY-NNNN (e.g., 25-5055)" 
                       placeholder="e.g. 25-5055" 
                       value={studentNo} 
@@ -240,7 +267,7 @@ const Login = ({ onLogin }) => {
                     <label>Date of Birth (mm/dd/yyyy) *</label>
                     <input 
                       type="text" 
-                      pattern="\\d{2}/\\d{2}/\\d{4}" 
+            pattern="[0-9]{1,2}/[0-9]{1,2}/[0-9]{4}" 
                       title="Format: mm/dd/yyyy (e.g., 05/15/2005)" 
                       placeholder="e.g. 05/15/2005" 
                       id="dobField"
@@ -254,23 +281,23 @@ const Login = ({ onLogin }) => {
                 <div className="input-group">
                   <label>Department / College</label>
                   <select value={department} onChange={(e) => setDepartment(e.target.value)} style={{ width: '100%', padding: '12px', border: '1px solid #ddd', borderRadius: '8px', boxSizing: 'border-box' }}>
-                    <option value="CS">Computer Science</option>
-                    <option value="IT">Information Technology</option>
-                    <option value="CE">Civil Engineering</option>
+                    {programs.map((prog) => (
+                      <option key={prog} value={prog}>{prog}</option>
+                    ))}
                   </select>
                 </div>
                 <div className="input-group">
                   <label>Email</label>
                   <input 
                     type="email" 
-                    placeholder="e.g. registrar@plv.edu.ph"
+                    placeholder="e.g. example@gmail.com or example@plv.edu.ph"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required 
                     disabled={signupStep === 2}
                   />
                 </div>
-                {signupStep === 1 && (
+        {signupStep === 1 && role !== 'student' && (
                   <div className="input-group">
                     <label>Password</label>
                     <input 
@@ -302,10 +329,10 @@ const Login = ({ onLogin }) => {
           {currentView === 'signIn' && (
             <form className="login-form" onSubmit={handleLoginSubmit}>
               <div className="input-group">
-                <label>Email</label>
+                <label>Email or Student No.</label>
                 <input 
-                  type="email" 
-                  placeholder="e.g. registrar@plv.edu.ph"
+                  type="text" 
+                  placeholder="e.g. example@plv.edu.ph or 23-5055"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required 

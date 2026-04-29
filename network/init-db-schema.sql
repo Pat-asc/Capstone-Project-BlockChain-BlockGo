@@ -144,11 +144,12 @@ CREATE TABLE IF NOT EXISTS facultysections (
     department VARCHAR(100) NOT NULL,
     section VARCHAR(50) NOT NULL,
     year_level VARCHAR(50),
+    subject VARCHAR(100),
     assigned_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
--- Optional: Prevent assigning the exact same section twice to the same professor
-CREATE UNIQUE INDEX idx_unique_faculty_section ON FacultySections(user_id, department, section);
+-- Prevent assigning the exact same subject for the same section twice to the same professor
+CREATE UNIQUE INDEX idx_unique_faculty_section ON FacultySections(user_id, department, section, subject);
 
 -- Optional: Create an index on the department for faster lookups
 CREATE INDEX idx_gradetemplates_department ON GradeTemplates(department);

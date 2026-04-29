@@ -22,8 +22,16 @@ namespace Client_app.Controllers
             // Update online status
             await UpdateOnlineStatus(userEmail, true, role);
             
-            // Notify others
-            await Clients.All.SendAsync("UserJoined", new { Email = userEmail, Role = role, FullName = userEmail.Split('@')[0] });
+            // Notify others that I joined
+            await Clients.Others.SendAsync("UserJoined", new { Email = userEmail, Role = role, FullName = userEmail.Split('@')[0] });
+            
+            // Request existing online users to announce themselves to me
+            await Clients.Others.SendAsync("RequestRollCall", userEmail);
+        }
+
+        public async Task AnnouncePresence(string targetEmail, string myEmail, string myRole)
+        {
+            await Clients.Group($"user_{targetEmail}").SendAsync("UserJoined", new { Email = myEmail, Role = myRole, FullName = myEmail.Split('@')[0] });
         }
 
         public override async Task OnDisconnectedAsync(Exception? exception)
