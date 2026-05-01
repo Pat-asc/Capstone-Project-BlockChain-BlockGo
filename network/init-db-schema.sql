@@ -157,6 +157,9 @@ CREATE INDEX idx_gradetemplates_department ON GradeTemplates(department);
 
 -- Add date_of_birth to StudentProfiles (existing table)
 ALTER TABLE studentprofiles ADD COLUMN IF NOT EXISTS date_of_birth DATE;
+ALTER TABLE studentprofiles ADD COLUMN IF NOT EXISTS phone VARCHAR(50);
+ALTER TABLE studentprofiles ADD COLUMN IF NOT EXISTS sex VARCHAR(20);
+ALTER TABLE studentprofiles ADD COLUMN IF NOT EXISTS middle_name VARCHAR(100);
 
 -- Chat Messages table
 CREATE TABLE IF NOT EXISTS chat_messages (

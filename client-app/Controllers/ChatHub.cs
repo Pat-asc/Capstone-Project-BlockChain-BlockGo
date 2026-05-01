@@ -2,9 +2,13 @@ using Microsoft.AspNetCore.SignalR;
 using Client_app.Models;
 using Client_app.Services;
 using System.Text.Json;
+using Microsoft.AspNetCore.Authorization;
+using System.Security.Claims;
+using System;
 
 namespace Client_app.Controllers
 {
+    [Authorize]
     public class ChatHub : Hub
     {
         private readonly IChatCache _chatCache;
@@ -48,6 +52,10 @@ namespace Client_app.Controllers
 
         public async Task SendMessage(string senderEmail, string receiverEmail, string message)
         {
+            // Extract identity info for Chat Heads
+            var userRole = Context.User?.FindFirst(ClaimTypes.Role)?.Value ?? "student";
+            var displayName = senderEmail.Split('@')[0].Replace(".", " ");
+
             var chatMessage = new ChatMessage
             {
                 SenderEmail = senderEmail,
@@ -64,7 +72,10 @@ namespace Client_app.Controllers
             await Clients.Group($"user_{receiverEmail}").SendAsync("ReceiveMessage", new 
             { 
                 Sender = senderEmail, 
-                Message = message, 
+                SenderName = displayName,
+                Role = userRole,
+                Message = message, // Kept for backwards compatibility
+                Text = message, 
                 Timestamp = DateTime.UtcNow 
             });
         }

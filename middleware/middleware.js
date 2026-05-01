@@ -19,9 +19,28 @@ if (!fs.existsSync(uploadDir)) {
 }
 
 const getCAConfig = (role) => {
-    if (role === 'faculty') return { caURL: 'https://localhost:8054', caName: 'ca-faculty', adminLabel: 'admin-faculty', mspId: 'FacultyMSP' };
-    if (role === 'department_admin' || role === 'admin' || role === 'dean') return { caURL: 'https://localhost:9054', caName: 'ca-department', adminLabel: 'admin-department', mspId: 'DepartmentMSP' };
-    return { caURL: 'https://localhost:7054', caName: 'ca-registrar', adminLabel: 'admin-registrar', mspId: 'RegistrarMSP' };
+    // Default to localhost for CA connections (allows running on host easily)
+    // Only use container DNS if NODE_ENV is production AND we are NOT explicitly running on host
+    const useDockerDns = process.env.NODE_ENV === 'production' && process.env.RUNNING_ON_HOST !== 'true';
+
+    if (role === 'faculty') return { 
+        caURL: useDockerDns ? 'https://ca.faculty.capstone.com:7054' : 'https://localhost:8054', 
+        caName: 'ca-faculty', 
+        adminLabel: 'admin-faculty', 
+        mspId: 'FacultyMSP' 
+    };
+    if (role === 'department_admin' || role === 'admin' || role === 'deptAdmin') return { 
+        caURL: useDockerDns ? 'https://ca.department.capstone.com:7054' : 'https://localhost:9054', 
+        caName: 'ca-department', 
+        adminLabel: 'admin-department', 
+        mspId: 'DepartmentMSP' 
+    };
+    return { 
+        caURL: useDockerDns ? 'https://ca.registrar.capstone.com:7054' : 'https://localhost:7054', 
+        caName: 'ca-registrar', 
+        adminLabel: 'admin-registrar', 
+        mspId: 'RegistrarMSP' 
+    };
 };
 
 const uploadExcel = multer({
@@ -458,24 +477,41 @@ app.post('/api/fabric/register-user', authenticateJWT, requireRegistrarOrInterna
         await ensureAdminEnrolled(caURL, caName, mspId, adminLabel);
 
         const ca = new FabricCAServices(caURL, { verify: false }, caName);
-        const adminIdentity = await wallet.get(adminLabel);
+        let adminIdentity = await wallet.get(adminLabel);
         if (!adminIdentity) {
             return res.status(500).json({ error: `Blockchain Admin '${adminLabel}' not found in wallet. Cannot register users.` });
         }
 
-        const provider = wallet.getProviderRegistry().getProvider(adminIdentity.type);
-        const adminUser = await provider.getUserContext(adminIdentity, 'admin');
+        let provider = wallet.getProviderRegistry().getProvider(adminIdentity.type);
+        let adminUser = await provider.getUserContext(adminIdentity, 'admin');
 
         const secret = req.body.password || crypto.randomBytes(12).toString('hex');
         try {
             await ca.register({
                 enrollmentID: email,
                 enrollmentSecret: secret,
-                role: (role === 'registrar' || role === 'department_admin' || role === 'dean') ? 'admin' : 'client',
+                role: (role === 'registrar' || role === 'department_admin' || role === 'deptAdmin') ? 'admin' : 'client',
                 attrs: [{ name: 'role', value: role, ecert: true }, { name: 'grade.manage', value: role === 'faculty' ? 'true' : 'false', ecert: true }]
             }, adminUser);
         } catch (regErr) {
-            if (regErr.toString().includes('code: 74') || regErr.toString().includes('is already registered')) {
+            const errStr = regErr.toString();
+            if (errStr.includes('Authentication failure') || errStr.includes('code: 20')) {
+                console.warn(`[Fabric CA] Stale admin identity detected for '${adminLabel}'. Forcing re-enrollment...`);
+                await wallet.remove(adminLabel);
+                await ensureAdminEnrolled(caURL, caName, mspId, adminLabel);
+                
+                adminIdentity = await wallet.get(adminLabel);
+                provider = wallet.getProviderRegistry().getProvider(adminIdentity.type);
+                adminUser = await provider.getUserContext(adminIdentity, 'admin');
+
+                console.log(`[Fabric CA] Retrying registration for ${email} with fresh admin identity.`);
+                await ca.register({
+                    enrollmentID: email,
+                    enrollmentSecret: secret,
+                    role: (role === 'registrar' || role === 'department_admin' || role === 'deptAdmin') ? 'admin' : 'client',
+                    attrs: [{ name: 'role', value: role, ecert: true }, { name: 'grade.manage', value: role === 'faculty' ? 'true' : 'false', ecert: true }]
+                }, adminUser);
+            } else if (errStr.includes('code: 74') || errStr.includes('is already registered')) {
                 console.log(`[Fabric CA] ${email} is already registered. Skipping registration and attempting to enroll...`);
                 try {
                     const identityService = ca.newIdentityService();
@@ -617,7 +653,8 @@ app.post('/api/register', authenticateJWT, requireRegistrarOrInternal, async (re
         
         await ensureAdminEnrolled(caURL, caName, mspId, adminLabel);
         
-        const adminIdentity = await wallet.get(adminLabel);
+        const ca = new FabricCAServices(caURL, { verify: false }, caName);
+        let adminIdentity = await wallet.get(adminLabel);
 
         if (!adminIdentity) {
             console.error("Identity Guard Failed: Admin wallet missing from /wallet/ directory.");
@@ -627,24 +664,42 @@ app.post('/api/register', authenticateJWT, requireRegistrarOrInternal, async (re
             });
         }
 
-        const ca = new FabricCAServices(caURL, { verify: false }, caName);
-
-        const provider = wallet.getProviderRegistry().getProvider(adminIdentity.type);
-        const adminUser = await provider.getUserContext(adminIdentity, 'admin');
+        let provider = wallet.getProviderRegistry().getProvider(adminIdentity.type);
+        let adminUser = await provider.getUserContext(adminIdentity, 'admin');
 
         let secret = password;
         try {
             secret = await ca.register({
                 enrollmentID: username,
                 enrollmentSecret: password,
-                role: (role === 'registrar' || role === 'department_admin' || role === 'dean') ? 'admin' : 'client',
+                role: (role === 'registrar' || role === 'department_admin' || role === 'dept') ? 'admin' : 'client',
                 attrs: [
                     { name: 'role', value: role, ecert: true },
                     { name: 'grade.manage', value: role === 'faculty' ? 'true' : 'false', ecert: true }
                 ]
             }, adminUser);
         } catch (regErr) {
-            if (regErr.toString().includes('code: 74') || regErr.toString().includes('is already registered')) {
+            const errStr = regErr.toString();
+            if (errStr.includes('Authentication failure') || errStr.includes('code: 20')) {
+                console.warn(`[Fabric CA] Stale admin identity detected for '${adminLabel}'. Forcing re-enrollment...`);
+                await wallet.remove(adminLabel);
+                await ensureAdminEnrolled(caURL, caName, mspId, adminLabel);
+
+                adminIdentity = await wallet.get(adminLabel);
+                provider = wallet.getProviderRegistry().getProvider(adminIdentity.type);
+                adminUser = await provider.getUserContext(adminIdentity, 'admin');
+
+                console.log(`[Fabric CA] Retrying registration for ${username} with fresh admin identity.`);
+                secret = await ca.register({
+                    enrollmentID: username,
+                    enrollmentSecret: password,
+                    role: (role === 'registrar' || role === 'department_admin' || role === 'dept') ? 'admin' : 'client',
+                    attrs: [
+                        { name: 'role', value: role, ecert: true },
+                        { name: 'grade.manage', value: role === 'faculty' ? 'true' : 'false', ecert: true }
+                    ]
+                }, adminUser);
+            } else if (errStr.includes('code: 74') || errStr.includes('is already registered')) {
                 console.log(`[Fabric CA] ${username} is already registered. Updating secret...`);
                 try {
                     const identityService = ca.newIdentityService();
@@ -674,7 +729,7 @@ app.post('/api/revoke', authenticateJWT, requireRegistrarOrInternal, async (req,
         
         await ensureAdminEnrolled(caURL, caName, mspId, adminLabel);
         
-        const adminIdentity = await wallet.get(adminLabel);
+        let adminIdentity = await wallet.get(adminLabel);
 
         if (!adminIdentity) {
             console.error("Identity Guard Failed: Admin wallet missing from /wallet/ directory.");
@@ -694,10 +749,28 @@ app.post('/api/revoke', authenticateJWT, requireRegistrarOrInternal, async (req,
 
         const ca = new FabricCAServices(caURL, { verify: false }, caName);
 
-        const provider = wallet.getProviderRegistry().getProvider(adminIdentity.type);
-        const adminUser = await provider.getUserContext(adminIdentity, 'admin');
+        let provider = wallet.getProviderRegistry().getProvider(adminIdentity.type);
+        let adminUser = await provider.getUserContext(adminIdentity, 'admin');
 
-        await ca.revoke({ enrollmentID: username, reason: "Revoked by admin" }, adminUser);
+        try {
+            await ca.revoke({ enrollmentID: username, reason: "Revoked by admin" }, adminUser);
+        } catch (revErr) {
+            const errStr = revErr.toString();
+            if (errStr.includes('Authentication failure') || errStr.includes('code: 20')) {
+                console.warn(`[Fabric CA] Stale admin identity detected for '${adminLabel}'. Forcing re-enrollment...`);
+                await wallet.remove(adminLabel);
+                await ensureAdminEnrolled(caURL, caName, mspId, adminLabel);
+
+                adminIdentity = await wallet.get(adminLabel);
+                provider = wallet.getProviderRegistry().getProvider(adminIdentity.type);
+                adminUser = await provider.getUserContext(adminIdentity, 'admin');
+
+                console.log(`[Fabric CA] Retrying revocation for ${username} with fresh admin identity.`);
+                await ca.revoke({ enrollmentID: username, reason: "Revoked by admin" }, adminUser);
+            } else {
+                throw revErr;
+            }
+        }
         if (await wallet.get(username)) await wallet.remove(username);
 
         if (userGatewayCache.has(username)) {
@@ -735,7 +808,7 @@ app.get('/api/all-grades', authenticateJWT, async (req, res) => {
                 const facultyGrades = grades.filter(g => g.faculty_id === username);
                 return res.status(200).json({ status: 'success', data: facultyGrades });
             }
-            else if (req.user && (req.user.dbRole === 'department_admin' || req.user.dbRole === 'dean')) {
+            else if (req.user && (req.user.dbRole === 'department_admin' || req.user.dbRole === 'deptAdmin')) {
                 // SECURITY FIX: Restrict Department Admins to only see grades for their assigned department
                 const profileRes = await dbRead.query(
                     'SELECT ap.department FROM AdminProfiles ap JOIN Users u ON ap.user_id = u.id WHERE u.email = $1',
@@ -1008,11 +1081,32 @@ app.get('/api/bootstrap', async (req, res) => {
         
         const ca = new FabricCAServices(caURL, { verify: false }, caName);
         try {
-            const adminIdentity = await wallet.get(adminLabel);
-            const provider = wallet.getProviderRegistry().getProvider(adminIdentity.type);
-            const adminUser = await provider.getUserContext(adminIdentity, 'admin');
-            await ca.register({ enrollmentID: email, enrollmentSecret: password, role: 'admin', attrs: [{ name: 'role', value: role, ecert: true }] }, adminUser);
-        } catch (err) { if (!err.toString().includes('is already registered')) throw err; }
+            let adminIdentity = await wallet.get(adminLabel);
+            let provider = wallet.getProviderRegistry().getProvider(adminIdentity.type);
+            let adminUser = await provider.getUserContext(adminIdentity, 'admin');
+            
+            try {
+                await ca.register({ enrollmentID: email, enrollmentSecret: password, role: 'admin', attrs: [{ name: 'role', value: role, ecert: true }] }, adminUser);
+            } catch (regErr) {
+                const errStr = regErr.toString();
+                if (errStr.includes('Authentication failure') || errStr.includes('code: 20')) {
+                    console.warn(`[Bootstrap] Stale admin identity detected. Forcing re-enrollment...`);
+                    await wallet.remove(adminLabel);
+                    await ensureAdminEnrolled(caURL, caName, mspId, adminLabel);
+                    
+                    adminIdentity = await wallet.get(adminLabel);
+                    provider = wallet.getProviderRegistry().getProvider(adminIdentity.type);
+                    adminUser = await provider.getUserContext(adminIdentity, 'admin');
+                    
+                    await ca.register({ enrollmentID: email, enrollmentSecret: password, role: 'admin', attrs: [{ name: 'role', value: role, ecert: true }] }, adminUser);
+                } else if (!errStr.includes('is already registered')) {
+                    throw regErr;
+                }
+            }
+        } catch (err) { 
+            console.error(`[Bootstrap] CA interaction failed: ${err.message}`);
+            // Fallback: if registration fails for other reasons, we might still want to try enrollment if they are already registered
+        }
 
         const enrollment = await ca.enroll({ 
             enrollmentID: email, 

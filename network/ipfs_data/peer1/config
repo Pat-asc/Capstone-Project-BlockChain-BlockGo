@@ -36,17 +36,19 @@
       "/ip6/::/udp/4001/quic-v1/webtransport"
     ]
   },
-  "AutoConf": {},
+  "AutoConf": {
+    "Enabled": false
+  },
   "AutoNAT": {},
-  "AutoTLS": {},
+  "AutoTLS": {
+    "Enabled": false
+  },
   "Bitswap": {},
   "Bootstrap": [
-    "auto"
+    "/dns4/ipfs0/tcp/4001/p2p/12D3KooW9y66PLW5ysYbSfYyDT3D5V8GCtKgKEBKu67kF2y3e8vf"
   ],
   "DNS": {
-    "Resolvers": {
-      ".": "auto"
-    }
+    "Resolvers": {}
   },
   "Datastore": {
     "BlockKeyCacheSize": null,
@@ -123,9 +125,7 @@
   },
   "Internal": {},
   "Ipns": {
-    "DelegatedPublishers": [
-      "auto"
-    ],
+    "DelegatedPublishers": [],
     "RecordLifetime": "",
     "RepublishPeriod": "",
     "ResolveCacheSize": 128
@@ -156,9 +156,8 @@
   },
   "Reprovider": {},
   "Routing": {
-    "DelegatedRouters": [
-      "auto"
-    ]
+    "DelegatedRouters": [],
+    "Type": "dht"
   },
   "Swarm": {
     "AddrFilters": [

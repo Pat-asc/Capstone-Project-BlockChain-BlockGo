@@ -78,6 +78,7 @@ function AppContent() {
           department: fetchedUser.department,
           section: fetchedUser.section,
           yearLevel: fetchedUser.yearLevel,
+          enrolledSubjects: fetchedUser.enrolledSubjects,
           status: fetchedUser.status // Add status if needed
         });
       } else {

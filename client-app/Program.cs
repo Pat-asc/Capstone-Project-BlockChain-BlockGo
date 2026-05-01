@@ -7,6 +7,9 @@ using Client_app.Middleware;
 using Client_app.Models;
 using Client_app.Controllers;
 using For_Testing_Only_Capstone.Models;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
+using System.Text;
 
 AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
 
@@ -98,9 +101,10 @@ try
     {
         options.AddPolicy("AllowFrontend", policy =>
         {
-            policy.AllowAnyOrigin()
+            policy.WithOrigins("http://localhost:8080", "http://localhost:3000") 
                   .AllowAnyMethod()
-                  .AllowAnyHeader();
+                  .AllowAnyHeader()
+                  .AllowCredentials();
         });
     });
 
@@ -112,6 +116,39 @@ try
 
     builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
     builder.Services.AddProblemDetails();
+
+    var jwtSecret = Environment.GetEnvironmentVariable("JWT_SECRET") ?? "your-secret-key";
+    var jwtKey = Encoding.ASCII.GetBytes(jwtSecret);
+
+    builder.Services.AddAuthorization();
+    builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        options.RequireHttpsMetadata = false;
+        options.SaveToken = true;
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuerSigningKey = true,
+            IssuerSigningKey = new SymmetricSecurityKey(jwtKey),
+            ValidateIssuer = false,
+            ValidateAudience = false,
+            NameClaimType = "username",
+            RoleClaimType = "dbRole"
+        };
+        options.Events = new JwtBearerEvents
+        {
+            OnMessageReceived = context =>
+            {
+                var accessToken = context.Request.Query["access_token"];
+                var path = context.HttpContext.Request.Path;
+                if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/chatHub"))
+                {
+                    context.Token = accessToken;
+                }
+                return Task.CompletedTask;
+            }
+        };
+    });
 
     var rateLimitOptions = builder.Configuration.GetSection("RateLimiting");
     var permitLimit = int.Parse(rateLimitOptions["PermitLimit"] ?? "10");
@@ -188,18 +225,18 @@ try
         options.UseNpgsql(connectionString, npgsqlOptions => npgsqlOptions.CommandTimeout((int)TimeSpan.FromMinutes(5).TotalSeconds));
     });
 
-builder.Services.AddScoped<RegistrarDbContext>(provider => provider.GetRequiredService<RegistrarWriteDbContext>());
+    builder.Services.AddScoped<RegistrarDbContext>(provider => provider.GetRequiredService<RegistrarWriteDbContext>());
 
-builder.Services.AddSingleton<IChatCache, ChatCache>(); 
+    builder.Services.AddSingleton<IChatCache, ChatCache>(); 
 
     var app = builder.Build();
 
+    app.UseExceptionHandler();
     app.UseSerilogRequestLogging();
     app.UseSwagger();
     app.UseSwaggerUI();
     app.UseCors("AllowFrontend");
 
-    app.UseExceptionHandler(_ => { });
     app.UseRateLimiter();
     
     if (!app.Environment.IsDevelopment())
@@ -208,6 +245,7 @@ builder.Services.AddSingleton<IChatCache, ChatCache>();
         Log.Information("HSTS enabled (HTTPS Redirection disabled for Nginx)");
     }
 
+    app.UseAuthentication();
     app.UseAuthorization();
     app.MapControllers();
     Log.Information("Application configured successfully");

@@ -129,7 +129,7 @@ registry:
   # Contains identity information which is used when LDAP is disabled
   identities:
      - name: admin
-       pass: admin123
+       pass: adminpw
        type: client
        affiliation: ""
        attrs:
@@ -319,7 +319,7 @@ csr:
         O: Hyperledger
         OU: Fabric
    hosts:
-     - fe5dcbe023c9
+     - 9b48328b2dad
      - localhost
    ca:
       expiry: 131400h

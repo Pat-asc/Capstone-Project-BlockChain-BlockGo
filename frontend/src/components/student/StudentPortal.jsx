@@ -52,13 +52,24 @@ const StudentPortal = ({ studentData, onLogout }) => {
   const failedSubjectsCount = grades.filter(s => parseFloat(s.grade) > 3.0 || parseFloat(s.grade) === 5.0).length;
 
   // Map the raw blockchain array to the structure expected by the new StudentGradesTable
-  const mappedSubjects = grades.map(g => ({
+  let mappedSubjects = grades.map(g => ({
       code: g.subject_code || 'N/A',
       name: g.course || 'N/A',
       units: 3, // Assuming 3 units per subject block for now
       midterm: g.grade, // Since the blockchain currently only stores the final average, we map it directly
       finals: g.grade,
   }));
+
+  // If no grades on blockchain but the student is enrolled in subjects, show them as 'PENDING'
+  if (mappedSubjects.length === 0 && studentData.enrolledSubjects && studentData.enrolledSubjects.length > 0) {
+      mappedSubjects = studentData.enrolledSubjects.map(subName => ({
+          code: 'PENDING',
+          name: subName,
+          units: 3,
+          midterm: '---',
+          finals: '---'
+      }));
+  }
 
   return (
     <div className="min-h-screen bg-slate-50 font-sans pb-10">
@@ -75,6 +86,8 @@ const StudentPortal = ({ studentData, onLogout }) => {
             sex: 'Not Specified',
             phone: 'On File',
             email: studentData.email,
+            department: studentData.department,
+            section: studentData.section,
             address: 'Valenzuela City, Philippines' // Default or fetch from profile if added later
           }} 
         />
@@ -91,10 +104,10 @@ const StudentPortal = ({ studentData, onLogout }) => {
             <h3 className="text-xl font-bold text-[#003366]">Syncing Records with Blockchain Ledger...</h3>
             <p className="mt-2 text-sm text-slate-500">Please wait while we securely retrieve your academic records.</p>
           </div>
-        ) : grades.length === 0 ? (
+        ) : (mappedSubjects.length === 0 && (!studentData.enrolledSubjects || studentData.enrolledSubjects.length === 0)) ? (
           <div className="mx-6 mt-10 rounded-2xl border border-slate-200 bg-white p-10 text-center shadow-sm">
             <h3 className="text-xl font-bold text-slate-400">No Grades Found</h3>
-            <p className="mt-2 text-sm text-slate-500">No ledger records have been finalized for your account yet.</p>
+            <p className="mt-2 text-sm text-slate-500">No ledger records or enrollment data found for your account yet.</p>
           </div>
         ) : (
           <StudentGradesTable subjects={mappedSubjects} />

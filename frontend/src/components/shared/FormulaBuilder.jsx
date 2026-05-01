@@ -27,7 +27,8 @@ const FormulaBuilder = () => {
   const [templateName, setTemplateName] = useState('');
   const [department, setDepartment] = useState('Bachelor of Science in Information Technology');
   const [isSubmitting, setIsSubmitting] = useState(false);
-    const [columns, setColumns] = useState([
+  
+  const [columns, setColumns] = useState([
     { id: 'C', header: 'Quiz 1', type: 'input', value: '' },
     { id: 'D', header: 'Exam 1', type: 'input', value: '' },
     { id: 'E', header: 'Final Grade', type: 'formula', value: '=(C{row} * 0.3) + (D{row} * 0.7)' }

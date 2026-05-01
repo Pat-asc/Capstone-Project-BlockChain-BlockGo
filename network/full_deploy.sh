@@ -30,10 +30,8 @@ cleanup_processes() {
         if ps -p $pid > /dev/null 2>&1; then kill $pid 2>/dev/null || true; fi
     done
     pkill -f dotnet || true
-    pkill -f "npm start" || true
-    pkill -f "node" || true
-    docker compose -f docker-compose-main.yaml -f docker-compose-annex.yaml -f docker-compose-pubad.yaml down -v 2>/dev/null || true
-    docker rm -f couchdb_wallet 2>/dev/null || true
+    docker compose -f docker-compose-main.yaml -f docker-compose-annex.yaml -f docker-compose-pubad.yaml down -v --remove-orphans 2>/dev/null || true
+    docker rm -f couchdb_wallet blockgo-middleware 2>/dev/null || true
     log_info "All processes stopped and volumes wiped."
 }
 
@@ -48,6 +46,26 @@ wait_for_service() {
         sleep 2
     done
     log_info "$name is ready!"
+}
+
+wait_for_container_health() {
+    local container_name=$1; local timeout=$2
+    local start_time=$(date +%s)
+    log_info "Waiting for $container_name to become healthy..."
+    while true; do
+        local status=$(docker inspect --format '{{.State.Health.Status}}' "$container_name" 2>/dev/null)
+        if [ "$status" == "healthy" ]; then
+            log_info "$container_name is healthy!"
+            break
+        fi
+        if [ "$status" == "unhealthy" ]; then
+            log_error "$container_name reported as unhealthy. Check 'docker logs $container_name'."
+        fi
+        if [ $(($(date +%s) - start_time)) -ge $timeout ]; then
+            log_error "Timeout waiting for $container_name to become healthy. Last status: ${status:-not_found}"
+        fi
+        sleep 5
+    done
 }
 
 load_env_vars() {
@@ -84,10 +102,9 @@ log_warn "Wiping previous CA databases and crypto material..."
 
 # Purge orphaned local services holding ports for absolute idempotency
 pkill -f dotnet || true
-pkill -f "npm start" || true
-pkill -f "node" || true
 
-docker compose -f docker-compose-main.yaml -f docker-compose-annex.yaml -f docker-compose-pubad.yaml down -v 2>/dev/null || true
+docker compose -f docker-compose-main.yaml -f docker-compose-annex.yaml -f docker-compose-pubad.yaml down -v --remove-orphans 2>/dev/null || true
+docker rm -f blockgo-middleware 2>/dev/null || true
 rm -rf ./fabric-ca/registrar/* ./fabric-ca/faculty/* ./fabric-ca/department/* 2>/dev/null || true
 rm -rf "$CRYPTO_DIR" "$ARTIFACTS_DIR" 2>/dev/null || true
 rm -rf ../middleware/wallet 2>/dev/null || true
@@ -110,7 +127,7 @@ log_info "Phase 2: Enrolling Identities via Fabric CA..."
 
 enroll_org_identities() {
     local ORG=$1; local DOMAIN=$2; local PORT=$3; local MSP_ID=$4
-    local ADMIN_PASS=${BOOTSTRAP_REGISTRAR_PASS:-adminpw}
+    local ADMIN_PASS=adminpw
     local ORG_DIR="$(pwd)/${CRYPTO_DIR}/peerOrganizations/${DOMAIN}"
     local TLS_CERT="$(pwd)/fabric-ca/${ORG}/tls-cert.pem" 
     
@@ -170,7 +187,7 @@ EOF
 enroll_orderer_identities() {
     local DOMAIN="capstone.com"
     local PORT=7054 # Using Registrar CA for Orderer
-    local ADMIN_PASS=${BOOTSTRAP_REGISTRAR_PASS:-adminpw}
+    local ADMIN_PASS=adminpw
     local ORDERER_DIR="$(pwd)/${CRYPTO_DIR}/ordererOrganizations/${DOMAIN}"
     # Correctly use the TLS cert for the handshake, not the enrollment cert
     local TLS_CERT="$(pwd)/fabric-ca/registrar/tls-cert.pem"
@@ -339,6 +356,12 @@ if [ -d "../middleware/nginx/nginx.conf" ]; then
     rm -rf "../middleware/nginx/nginx.conf"
 fi
 
+# Ensure IPFS private swarm key exists to enforce distributed private network
+if [ ! -f "swarm.key" ]; then
+    log_info "Generating IPFS swarm.key for private distributed network..."
+    echo -e "/key/swarm/psk/1.0.0/\n/base16/\n$(tr -dc 'a-f0-9' < /dev/urandom | head -c64)" > swarm.key
+fi
+
 TMP_DOCKER_CFG=$(mktemp -d)
 echo "{}" > "$TMP_DOCKER_CFG/config.json"
 
@@ -346,7 +369,27 @@ echo "{}" > "$TMP_DOCKER_CFG/config.json"
 DOCKER_CONFIG=$TMP_DOCKER_CFG docker pull golang:1.23-alpine || true
 DOCKER_CONFIG=$TMP_DOCKER_CFG docker pull alpine:latest || true
 
+log_info "Bringing up core database services first..."
+DOCKER_CONFIG=$TMP_DOCKER_CFG docker compose -f docker-compose-main.yaml -f docker-compose-annex.yaml -f docker-compose-pubad.yaml up -d postgres postgres-annex postgres-pubad
+
+wait_for_container_health postgres 120
+wait_for_container_health postgres-annex 120
+wait_for_container_health postgres-pubad 120
+
+log_info "Databases are healthy. Creating the rest of the network containers (without starting)..."
+DOCKER_CONFIG=$TMP_DOCKER_CFG docker compose -f docker-compose-main.yaml -f docker-compose-annex.yaml -f docker-compose-pubad.yaml up --no-start
+
+log_info "Pre-configuring IPFS nodes to bypass AutoConf crash-loop..."
+IPFS_NODE_COUNT=6
+for i in $(seq 0 $(($IPFS_NODE_COUNT - 1))); do
+    IMAGE=$(docker inspect --format='{{.Config.Image}}' "ipfs${i}" 2>/dev/null || echo "ipfs/kubo:latest")
+    log_info "Initializing config for ipfs${i} offline..."
+    docker run --rm --volumes-from "ipfs${i}" --entrypoint sh "$IMAGE" -c "ipfs init 2>/dev/null || true; ipfs config --json AutoConf.Enabled false 2>/dev/null || true; ipfs config Routing.Type dht 2>/dev/null || true; ipfs config --json Bootstrap '[]' 2>/dev/null || true; ipfs config --json DNS.Resolvers '{}' 2>/dev/null || true; ipfs config --json Routing.DelegatedRouters '[]' 2>/dev/null || true; ipfs config --json Ipns.DelegatedPublishers '[]' 2>/dev/null || true"
+done
+
+log_info "Starting the rest of the network..."
 DOCKER_CONFIG=$TMP_DOCKER_CFG docker compose -f docker-compose-main.yaml -f docker-compose-annex.yaml -f docker-compose-pubad.yaml up -d
+
 rm -rf "$TMP_DOCKER_CFG"
 
 # Spawn the standalone couchdb wallet
@@ -360,6 +403,29 @@ wait_for_service 127.0.0.1 5990 "CouchDB Wallet" 60
 
 log_info "Waiting 15 seconds for Raft leader election..."
 sleep 15
+
+# ============================================================
+# PHASE 4.5: IPFS CLUSTER CONFIGURATION
+# ============================================================
+log_info "Phase 4.5: Configuring IPFS Distributed Private Network..."
+IPFS_NODE_COUNT=6
+
+log_info "Removing public bootstrap nodes and peering with ipfs0..."
+ID0=$(docker exec ipfs0 ipfs id -f "<id>" 2>/dev/null || true)
+
+if [ -n "$ID0" ]; then
+    for i in $(seq 0 $(($IPFS_NODE_COUNT - 1))); do
+        docker exec "ipfs${i}" ipfs bootstrap rm --all 2>/dev/null || true
+        if [ $i -gt 0 ]; then
+            docker exec "ipfs${i}" ipfs bootstrap add "/dns4/ipfs0/tcp/4001/p2p/${ID0}" 2>/dev/null || true
+            # Actively force swarm connection so they instantly sync
+            docker exec "ipfs${i}" ipfs swarm connect "/dns4/ipfs0/tcp/4001/p2p/${ID0}" 2>/dev/null || true
+        fi
+    done
+    log_info "IPFS Distributed Network Configured!"
+else
+    log_warn "Could not retrieve IPFS peer ID from ipfs0. IPFS peering may have failed."
+fi
 
 # ============================================================
 # PHASE 5: CHANNEL ESTABLISHMENT
@@ -653,12 +719,6 @@ cleanup_mock_data() {
 trap "cleanup_mock_data 2>/dev/null || true; cleanup_processes" EXIT
 
 log_info "Phase 6: Starting Application Services & Bootstrapping..."
-
-pushd ../middleware > /dev/null
-node enrollAdmin.js # This script now handles both admin enrollment AND root user bootstrapping.
-nohup npm start > middleware.log 2>&1 &
-PIDS+=($!)
-popd > /dev/null
 
 
 log_info "BLOCKGO IS LIVE! http://localhost:8080"

@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using Client_app.Services;
 using Npgsql;
 using Client_app.Models;
@@ -28,14 +29,16 @@ namespace Client_app.Controllers
         private readonly IConfiguration _configuration;
         private readonly IEmailService _emailService;
         private readonly IHttpClientFactory _httpClientFactory;
+        private readonly ILogger<AuthController> _logger;
 
-        public AuthController(IConfiguration configuration, IMemoryCache memoryCache, IEmailService emailService, IHttpClientFactory httpClientFactory)
+        public AuthController(IConfiguration configuration, IMemoryCache memoryCache, IEmailService emailService, IHttpClientFactory httpClientFactory, ILogger<AuthController> logger)
         {
             _connectionString = configuration.GetConnectionString("PostgresConnection") ?? throw new InvalidOperationException("PostgreSQL connection string 'PostgresConnection' not found.");
             _cache = memoryCache;
             _configuration = configuration;
             _emailService = emailService;
             _httpClientFactory = httpClientFactory;
+            _logger = logger;
         }
 
         [HttpPost("send-verification")]
@@ -1318,6 +1321,36 @@ namespace Client_app.Controllers
                 if (userProfile == null)
                 {
                     return NotFound(new { status = "Error", message = "User profile not found." });
+                }
+
+                // NEW: If student, fetch their enrolled subjects from FacultySections
+                if (role?.ToLower() == "student" && !string.IsNullOrEmpty(userProfile.Section))
+                {
+                    try
+                    {
+                        var subjects = new List<string>();
+                        using var cmdSub = new NpgsqlCommand(@"
+                            SELECT DISTINCT subject 
+                            FROM FacultySections 
+                            WHERE LOWER(TRIM(department)) = LOWER(TRIM(@dept)) 
+                            AND (LOWER(TRIM(section)) = LOWER(TRIM(@sec))
+                                 OR LOWER(TRIM(CONCAT(year_level, section))) = LOWER(TRIM(@sec))
+                                 OR LOWER(TRIM(CONCAT(year_level, '-', section))) = LOWER(TRIM(@sec)))
+                            AND subject IS NOT NULL", conn);
+                        cmdSub.Parameters.AddWithValue("dept", userProfile.Department ?? "");
+                        cmdSub.Parameters.AddWithValue("sec", userProfile.Section);
+
+                        using var readerSub = await cmdSub.ExecuteReaderAsync();
+                        while (await readerSub.ReadAsync())
+                        {
+                            subjects.Add(readerSub.GetString(0));
+                        }
+                        userProfile.EnrolledSubjects = subjects;
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning("Failed to fetch enrolled subjects: {Message}", ex.Message);
+                    }
                 }
 
                 return Ok(new { status = "Success", data = userProfile });

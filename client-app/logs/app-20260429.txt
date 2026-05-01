@@ -13089,3 +13089,997 @@
 2026-04-29 18:18:45.133 +00:00 [INF] HTTP GET /api/Auth/faculty/pascualpatrick264@gmail.com/students responded 200 in 9.2286 ms
 2026-04-29 18:18:45.134 +00:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/api/Auth/sections/department/BSIT - 200 null application/json; charset=utf-8 11.1886ms
 2026-04-29 18:18:45.134 +00:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/api/Auth/faculty/pascualpatrick264@gmail.com/students - 200 null application/json; charset=utf-8 11.4464ms
+2026-04-29 18:50:34.787 +00:00 [INF] Application starting up...
+2026-04-29 18:50:35.013 +00:00 [INF] HSTS enabled (HTTPS Redirection disabled for Nginx)
+2026-04-29 18:50:35.137 +00:00 [INF] Application configured successfully
+2026-04-29 18:50:35.138 +00:00 [INF] Listening on 
+2026-04-29 18:50:35.190 +00:00 [WRN] Overriding HTTP_PORTS '8080' and HTTPS_PORTS ''. Binding to values defined by URLS instead 'http://+:80;http://+:5001'.
+2026-04-29 18:50:35.246 +00:00 [INF] Now listening on: http://[::]:80
+2026-04-29 18:50:35.247 +00:00 [INF] Now listening on: http://[::]:5001
+2026-04-29 18:50:35.247 +00:00 [INF] Application started. Press Ctrl+C to shut down.
+2026-04-29 18:50:35.248 +00:00 [INF] Hosting environment: Production
+2026-04-29 18:50:35.248 +00:00 [INF] Content root path: /app
+2026-04-29 18:51:11.738 +00:00 [INF] Request starting HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/user-profile?email=registrar%40plv.edu.ph&role=registrar - null null
+2026-04-29 18:51:11.771 +00:00 [INF] CORS policy execution successful.
+2026-04-29 18:51:11.773 +00:00 [INF] HTTP OPTIONS /api/Auth/user-profile responded 204 in 12.1968 ms
+2026-04-29 18:51:11.780 +00:00 [INF] Request finished HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/user-profile?email=registrar%40plv.edu.ph&role=registrar - 204 null null 42.055ms
+2026-04-29 18:51:11.787 +00:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/api/Auth/user-profile?email=registrar%40plv.edu.ph&role=registrar - application/json null
+2026-04-29 18:51:11.794 +00:00 [INF] CORS policy execution successful.
+2026-04-29 18:51:11.797 +00:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone)'
+2026-04-29 18:51:11.811 +00:00 [INF] Route matched with {action = "GetUserProfile", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetUserProfile(System.String, System.String) on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-29 18:51:12.559 +00:00 [INF] Executing OkObjectResult, writing value of type '<>f__AnonymousType19`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[Client_app.Models.UserProfileDto, For_Testing_Only_Capstone, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]'.
+2026-04-29 18:51:12.584 +00:00 [INF] Executed action Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone) in 769.323ms
+2026-04-29 18:51:12.585 +00:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone)'
+2026-04-29 18:51:12.587 +00:00 [INF] HTTP GET /api/Auth/user-profile responded 200 in 796.5650 ms
+2026-04-29 18:51:12.588 +00:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/api/Auth/user-profile?email=registrar%40plv.edu.ph&role=registrar - 200 null application/json; charset=utf-8 800.7423ms
+2026-04-29 18:51:22.415 +00:00 [INF] Request starting HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/students/approved - null null
+2026-04-29 18:51:22.423 +00:00 [INF] Request starting HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/requests/pending - null null
+2026-04-29 18:51:22.447 +00:00 [WRN] As of ""2026-04-29T18:51:22.4088731+00:00"", the heartbeat has been running for ""00:00:09.0490914"" which is longer than ""00:00:01"". This could be caused by thread pool starvation.
+2026-04-29 18:51:22.815 +00:00 [INF] CORS policy execution successful.
+2026-04-29 18:51:22.815 +00:00 [INF] HTTP OPTIONS /api/Auth/requests/pending responded 204 in 139.8972 ms
+2026-04-29 18:51:22.816 +00:00 [INF] Request finished HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/requests/pending - 204 null null 392.4206ms
+2026-04-29 18:51:22.867 +00:00 [INF] CORS policy execution successful.
+2026-04-29 18:51:22.910 +00:00 [INF] HTTP OPTIONS /api/Auth/students/approved responded 204 in 234.9583 ms
+2026-04-29 18:51:22.970 +00:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/api/Auth/requests/pending - application/json null
+2026-04-29 18:51:22.971 +00:00 [INF] Request finished HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/students/approved - 204 null null 556.0152ms
+2026-04-29 18:51:23.135 +00:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/api/Auth/students/approved - application/json null
+2026-04-29 18:51:23.012 +00:00 [INF] CORS policy execution successful.
+2026-04-29 18:51:23.504 +00:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.GetPendingRequests (For_Testing_Only_Capstone)'
+2026-04-29 18:51:23.503 +00:00 [INF] CORS policy execution successful.
+2026-04-29 18:51:23.594 +00:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.GetApprovedStudents (For_Testing_Only_Capstone)'
+2026-04-29 18:51:23.598 +00:00 [INF] Route matched with {action = "GetApprovedStudents", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetApprovedStudents() on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-29 18:51:23.598 +00:00 [INF] Route matched with {action = "GetPendingRequests", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetPendingRequests() on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-29 18:51:23.742 +00:00 [INF] Executing OkObjectResult, writing value of type '<>f__AnonymousType7`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.Collections.Generic.List`1[[System.Object, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]], System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-29 18:51:23.751 +00:00 [INF] Executed action Client_app.Controllers.AuthController.GetApprovedStudents (For_Testing_Only_Capstone) in 151.9454ms
+2026-04-29 18:51:23.751 +00:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.GetApprovedStudents (For_Testing_Only_Capstone)'
+2026-04-29 18:51:23.751 +00:00 [INF] HTTP GET /api/Auth/students/approved responded 200 in 248.7464 ms
+2026-04-29 18:51:23.752 +00:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/api/Auth/students/approved - 200 null application/json; charset=utf-8 616.6565ms
+2026-04-29 18:51:23.792 +00:00 [INF] Executing OkObjectResult, writing value of type '<>f__AnonymousType4`3[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.Collections.Generic.List`1[[System.Object, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]], System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.Collections.Generic.List`1[[System.Object, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]], System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-29 18:51:23.794 +00:00 [INF] Executed action Client_app.Controllers.AuthController.GetPendingRequests (For_Testing_Only_Capstone) in 195.1184ms
+2026-04-29 18:51:23.795 +00:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.GetPendingRequests (For_Testing_Only_Capstone)'
+2026-04-29 18:51:23.795 +00:00 [INF] HTTP GET /api/Auth/requests/pending responded 200 in 783.7742 ms
+2026-04-29 18:51:23.795 +00:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/api/Auth/requests/pending - 200 null application/json; charset=utf-8 825.4649ms
+2026-04-29 18:51:27.380 +00:00 [INF] Request starting HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/faculty/approved - null null
+2026-04-29 18:51:27.439 +00:00 [INF] Request starting HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/sections/department/BSIT - null null
+2026-04-29 18:51:27.641 +00:00 [INF] CORS policy execution successful.
+2026-04-29 18:51:27.641 +00:00 [INF] CORS policy execution successful.
+2026-04-29 18:51:27.642 +00:00 [INF] HTTP OPTIONS /api/Auth/faculty/approved responded 204 in 0.8446 ms
+2026-04-29 18:51:27.693 +00:00 [INF] Request finished HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/faculty/approved - 204 null null 312.6539ms
+2026-04-29 18:51:27.794 +00:00 [INF] HTTP OPTIONS /api/Auth/sections/department/BSIT responded 204 in 51.1325 ms
+2026-04-29 18:51:27.833 +00:00 [INF] Request starting HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/department/pascualpatrick264@gmail.com/students/pending - null null
+2026-04-29 18:51:27.835 +00:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/api/Auth/faculty/approved - application/json null
+2026-04-29 18:51:28.233 +00:00 [INF] Request finished HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/sections/department/BSIT - 204 null null 794.5391ms
+2026-04-29 18:51:28.234 +00:00 [INF] CORS policy execution successful.
+2026-04-29 18:51:28.235 +00:00 [INF] CORS policy execution successful.
+2026-04-29 18:51:28.478 +00:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/api/Auth/sections/department/BSIT - application/json null
+2026-04-29 18:51:28.478 +00:00 [INF] HTTP OPTIONS /api/Auth/department/pascualpatrick264@gmail.com/students/pending responded 204 in 243.7414 ms
+2026-04-29 18:51:28.479 +00:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.GetApprovedFaculties (For_Testing_Only_Capstone)'
+2026-04-29 18:51:28.479 +00:00 [INF] CORS policy execution successful.
+2026-04-29 18:51:28.480 +00:00 [INF] Executing endpoint 'BlockGo.Controllers.SectionController.GetDepartmentSections (For_Testing_Only_Capstone)'
+2026-04-29 18:51:28.479 +00:00 [INF] Request finished HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/department/pascualpatrick264@gmail.com/students/pending - 204 null null 646.2528ms
+2026-04-29 18:51:28.672 +00:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/api/Auth/department/pascualpatrick264@gmail.com/students/pending - application/json null
+2026-04-29 18:51:28.996 +00:00 [INF] Route matched with {action = "GetApprovedFaculties", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetApprovedFaculties() on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-29 18:51:29.071 +00:00 [INF] CORS policy execution successful.
+2026-04-29 18:51:29.078 +00:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.GetDepartmentPendingStudents (For_Testing_Only_Capstone)'
+2026-04-29 18:51:29.830 +00:00 [INF] Route matched with {action = "GetDepartmentSections", controller = "Section"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetDepartmentSections(System.String) on controller BlockGo.Controllers.SectionController (For_Testing_Only_Capstone).
+2026-04-29 18:51:30.968 +00:00 [INF] Executing OkObjectResult, writing value of type '<>f__AnonymousType12`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.Collections.Generic.List`1[[System.Object, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]], System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-29 18:51:31.052 +00:00 [INF] Route matched with {action = "GetDepartmentPendingStudents", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetDepartmentPendingStudents(System.String) on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-29 18:51:31.428 +00:00 [INF] Executing OkObjectResult, writing value of type '<>f__AnonymousType7`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.Collections.Generic.List`1[[System.Object, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]], System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-29 18:51:31.579 +00:00 [INF] Request starting HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/user-profile?email=registrar%40plv.edu.ph&role=registrar - null null
+2026-04-29 18:51:31.596 +00:00 [INF] CORS policy execution successful.
+2026-04-29 18:51:31.598 +00:00 [INF] HTTP OPTIONS /api/Auth/user-profile responded 204 in 1.5507 ms
+2026-04-29 18:51:31.599 +00:00 [INF] Request finished HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/user-profile?email=registrar%40plv.edu.ph&role=registrar - 204 null null 19.8437ms
+2026-04-29 18:51:31.603 +00:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/api/Auth/user-profile?email=registrar%40plv.edu.ph&role=registrar - application/json null
+2026-04-29 18:51:31.604 +00:00 [INF] CORS policy execution successful.
+2026-04-29 18:51:31.887 +00:00 [INF] Executed action Client_app.Controllers.AuthController.GetApprovedFaculties (For_Testing_Only_Capstone) in 2810.1768ms
+2026-04-29 18:51:31.888 +00:00 [INF] Executed action Client_app.Controllers.AuthController.GetDepartmentPendingStudents (For_Testing_Only_Capstone) in 473.319ms
+2026-04-29 18:51:31.888 +00:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone)'
+2026-04-29 18:51:32.060 +00:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.GetDepartmentPendingStudents (For_Testing_Only_Capstone)'
+2026-04-29 18:51:32.058 +00:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.GetApprovedFaculties (For_Testing_Only_Capstone)'
+2026-04-29 18:51:32.061 +00:00 [INF] HTTP GET /api/Auth/department/pascualpatrick264@gmail.com/students/pending responded 200 in 2990.0590 ms
+2026-04-29 18:51:32.061 +00:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/api/Auth/department/pascualpatrick264@gmail.com/students/pending - 499 null application/json; charset=utf-8 3389.6675ms
+2026-04-29 18:51:32.061 +00:00 [INF] HTTP GET /api/Auth/faculty/approved responded 200 in 3826.4609 ms
+2026-04-29 18:51:32.061 +00:00 [INF] Route matched with {action = "GetUserProfile", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetUserProfile(System.String, System.String) on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-29 18:51:32.297 +00:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/api/Auth/faculty/approved - 499 null application/json; charset=utf-8 4462.5093ms
+2026-04-29 18:51:32.320 +00:00 [INF] Executing OkObjectResult, writing value of type '<>f__AnonymousType19`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[Client_app.Models.UserProfileDto, For_Testing_Only_Capstone, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]'.
+2026-04-29 18:51:32.572 +00:00 [INF] Executed action Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone) in 259.9671ms
+2026-04-29 18:51:32.572 +00:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone)'
+2026-04-29 18:51:32.573 +00:00 [INF] HTTP GET /api/Auth/user-profile responded 200 in 969.8404 ms
+2026-04-29 18:51:32.574 +00:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/api/Auth/user-profile?email=registrar%40plv.edu.ph&role=registrar - 200 null application/json; charset=utf-8 971.3648ms
+2026-04-29 18:51:41.090 +00:00 [INF] Executing OkObjectResult, writing value of type '<>f__AnonymousType19`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.Collections.Generic.List`1[[System.Object, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]], System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-29 18:51:42.367 +00:00 [INF] Executed action BlockGo.Controllers.SectionController.GetDepartmentSections (For_Testing_Only_Capstone) in 12448.297ms
+2026-04-29 18:51:42.694 +00:00 [INF] Executed endpoint 'BlockGo.Controllers.SectionController.GetDepartmentSections (For_Testing_Only_Capstone)'
+2026-04-29 18:51:42.758 +00:00 [INF] HTTP GET /api/Auth/sections/department/BSIT responded 200 in 14577.5219 ms
+2026-04-29 18:51:43.187 +00:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/api/Auth/sections/department/BSIT - 499 null application/json; charset=utf-8 15007.5906ms
+2026-04-29 18:51:47.487 +00:00 [INF] Request starting HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/user-profile?email=pascualpatrick264%40gmail.com&role=department_admin - null null
+2026-04-29 18:51:47.540 +00:00 [INF] CORS policy execution successful.
+2026-04-29 18:51:47.567 +00:00 [INF] HTTP OPTIONS /api/Auth/user-profile responded 204 in 26.7216 ms
+2026-04-29 18:51:47.776 +00:00 [INF] Request finished HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/user-profile?email=pascualpatrick264%40gmail.com&role=department_admin - 204 null null 288.5491ms
+2026-04-29 18:51:48.006 +00:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/api/Auth/user-profile?email=pascualpatrick264%40gmail.com&role=department_admin - application/json null
+2026-04-29 18:51:48.007 +00:00 [INF] CORS policy execution successful.
+2026-04-29 18:51:48.007 +00:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone)'
+2026-04-29 18:51:48.008 +00:00 [INF] Route matched with {action = "GetUserProfile", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetUserProfile(System.String, System.String) on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-29 18:51:48.012 +00:00 [INF] Executing OkObjectResult, writing value of type '<>f__AnonymousType19`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[Client_app.Models.UserProfileDto, For_Testing_Only_Capstone, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]'.
+2026-04-29 18:51:48.012 +00:00 [INF] Executed action Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone) in 3.9667ms
+2026-04-29 18:51:48.013 +00:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone)'
+2026-04-29 18:51:48.013 +00:00 [INF] HTTP GET /api/Auth/user-profile responded 200 in 6.3125 ms
+2026-04-29 18:51:48.013 +00:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/api/Auth/user-profile?email=pascualpatrick264%40gmail.com&role=department_admin - 200 null application/json; charset=utf-8 7.2748ms
+2026-04-29 18:51:49.589 +00:00 [INF] Request starting HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/department/pascualpatrick264@gmail.com/students/pending - null null
+2026-04-29 18:51:49.592 +00:00 [INF] CORS policy execution successful.
+2026-04-29 18:51:49.593 +00:00 [INF] HTTP OPTIONS /api/Auth/department/pascualpatrick264@gmail.com/students/pending responded 204 in 0.8137 ms
+2026-04-29 18:51:49.594 +00:00 [INF] Request finished HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/department/pascualpatrick264@gmail.com/students/pending - 204 null null 4.1437ms
+2026-04-29 18:51:49.599 +00:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/api/Auth/department/pascualpatrick264@gmail.com/students/pending - application/json null
+2026-04-29 18:51:49.600 +00:00 [INF] CORS policy execution successful.
+2026-04-29 18:51:49.600 +00:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.GetDepartmentPendingStudents (For_Testing_Only_Capstone)'
+2026-04-29 18:51:49.601 +00:00 [INF] Route matched with {action = "GetDepartmentPendingStudents", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetDepartmentPendingStudents(System.String) on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-29 18:51:49.604 +00:00 [INF] Executing OkObjectResult, writing value of type '<>f__AnonymousType7`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.Collections.Generic.List`1[[System.Object, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]], System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-29 18:51:49.605 +00:00 [INF] Executed action Client_app.Controllers.AuthController.GetDepartmentPendingStudents (For_Testing_Only_Capstone) in 3.2658ms
+2026-04-29 18:51:49.605 +00:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.GetDepartmentPendingStudents (For_Testing_Only_Capstone)'
+2026-04-29 18:51:49.606 +00:00 [INF] HTTP GET /api/Auth/department/pascualpatrick264@gmail.com/students/pending responded 200 in 5.7421 ms
+2026-04-29 18:51:49.606 +00:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/api/Auth/department/pascualpatrick264@gmail.com/students/pending - 200 null application/json; charset=utf-8 6.7956ms
+2026-04-29 18:51:50.945 +00:00 [INF] Request starting HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/sections/department/BSIT - null null
+2026-04-29 18:51:50.945 +00:00 [INF] CORS policy execution successful.
+2026-04-29 18:51:50.946 +00:00 [INF] Request starting HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/faculty/approved - null null
+2026-04-29 18:51:50.946 +00:00 [INF] HTTP OPTIONS /api/Auth/sections/department/BSIT responded 204 in 0.5219 ms
+2026-04-29 18:51:50.946 +00:00 [INF] CORS policy execution successful.
+2026-04-29 18:51:50.947 +00:00 [INF] Request finished HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/sections/department/BSIT - 204 null null 1.9137ms
+2026-04-29 18:51:50.947 +00:00 [INF] HTTP OPTIONS /api/Auth/faculty/approved responded 204 in 0.8871 ms
+2026-04-29 18:51:50.948 +00:00 [INF] Request finished HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/faculty/approved - 204 null null 2.1193ms
+2026-04-29 18:51:50.952 +00:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/api/Auth/sections/department/BSIT - application/json null
+2026-04-29 18:51:50.953 +00:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/api/Auth/faculty/approved - application/json null
+2026-04-29 18:51:50.953 +00:00 [INF] CORS policy execution successful.
+2026-04-29 18:51:50.953 +00:00 [INF] CORS policy execution successful.
+2026-04-29 18:51:50.954 +00:00 [INF] Executing endpoint 'BlockGo.Controllers.SectionController.GetDepartmentSections (For_Testing_Only_Capstone)'
+2026-04-29 18:51:50.954 +00:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.GetApprovedFaculties (For_Testing_Only_Capstone)'
+2026-04-29 18:51:50.954 +00:00 [INF] Route matched with {action = "GetDepartmentSections", controller = "Section"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetDepartmentSections(System.String) on controller BlockGo.Controllers.SectionController (For_Testing_Only_Capstone).
+2026-04-29 18:51:50.955 +00:00 [INF] Route matched with {action = "GetApprovedFaculties", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetApprovedFaculties() on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-29 18:51:50.955 +00:00 [INF] Executing OkObjectResult, writing value of type '<>f__AnonymousType12`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.Collections.Generic.List`1[[System.Object, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]], System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-29 18:51:50.956 +00:00 [INF] Executed action Client_app.Controllers.AuthController.GetApprovedFaculties (For_Testing_Only_Capstone) in 0.7131ms
+2026-04-29 18:51:50.957 +00:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.GetApprovedFaculties (For_Testing_Only_Capstone)'
+2026-04-29 18:51:50.957 +00:00 [INF] HTTP GET /api/Auth/faculty/approved responded 200 in 4.1242 ms
+2026-04-29 18:51:50.958 +00:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/api/Auth/faculty/approved - 200 null application/json; charset=utf-8 5.3067ms
+2026-04-29 18:51:51.064 +00:00 [INF] Executing OkObjectResult, writing value of type '<>f__AnonymousType19`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.Collections.Generic.List`1[[System.Object, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]], System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-29 18:51:51.064 +00:00 [INF] Executed action BlockGo.Controllers.SectionController.GetDepartmentSections (For_Testing_Only_Capstone) in 109.3379ms
+2026-04-29 18:51:51.065 +00:00 [INF] Executed endpoint 'BlockGo.Controllers.SectionController.GetDepartmentSections (For_Testing_Only_Capstone)'
+2026-04-29 18:51:51.065 +00:00 [INF] HTTP GET /api/Auth/sections/department/BSIT responded 200 in 111.8725 ms
+2026-04-29 18:51:51.066 +00:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/api/Auth/sections/department/BSIT - 200 null application/json; charset=utf-8 112.9776ms
+2026-04-29 18:51:51.844 +00:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/api/Auth/sections/department/BSIT - application/json null
+2026-04-29 18:51:51.844 +00:00 [INF] CORS policy execution successful.
+2026-04-29 18:51:51.845 +00:00 [INF] Executing endpoint 'BlockGo.Controllers.SectionController.GetDepartmentSections (For_Testing_Only_Capstone)'
+2026-04-29 18:51:51.845 +00:00 [INF] Route matched with {action = "GetDepartmentSections", controller = "Section"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetDepartmentSections(System.String) on controller BlockGo.Controllers.SectionController (For_Testing_Only_Capstone).
+2026-04-29 18:51:51.849 +00:00 [INF] Request starting HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/faculty/pascualpatrick264@gmail.com/assigned-sections - null null
+2026-04-29 18:51:51.850 +00:00 [INF] CORS policy execution successful.
+2026-04-29 18:51:51.851 +00:00 [INF] HTTP OPTIONS /api/Auth/faculty/pascualpatrick264@gmail.com/assigned-sections responded 204 in 0.5422 ms
+2026-04-29 18:51:51.851 +00:00 [INF] Request finished HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/faculty/pascualpatrick264@gmail.com/assigned-sections - 204 null null 1.5629ms
+2026-04-29 18:51:51.856 +00:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/api/Auth/faculty/pascualpatrick264@gmail.com/assigned-sections - application/json null
+2026-04-29 18:51:51.856 +00:00 [INF] CORS policy execution successful.
+2026-04-29 18:51:51.857 +00:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.GetFacultySections (For_Testing_Only_Capstone)'
+2026-04-29 18:51:51.860 +00:00 [INF] Route matched with {action = "GetFacultySections", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetFacultySections(System.String) on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-29 18:51:51.913 +00:00 [INF] Executing OkObjectResult, writing value of type '<>f__AnonymousType19`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.Collections.Generic.List`1[[System.Object, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]], System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-29 18:51:51.914 +00:00 [INF] Executing OkObjectResult, writing value of type '<>f__AnonymousType15`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.Collections.Generic.List`1[[System.Object, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]], System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-29 18:51:51.914 +00:00 [INF] Executed action BlockGo.Controllers.SectionController.GetDepartmentSections (For_Testing_Only_Capstone) in 68.2597ms
+2026-04-29 18:51:51.914 +00:00 [INF] Executed endpoint 'BlockGo.Controllers.SectionController.GetDepartmentSections (For_Testing_Only_Capstone)'
+2026-04-29 18:51:51.915 +00:00 [INF] HTTP GET /api/Auth/sections/department/BSIT responded 200 in 70.7185 ms
+2026-04-29 18:51:51.915 +00:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/api/Auth/sections/department/BSIT - 200 null application/json; charset=utf-8 71.6263ms
+2026-04-29 18:51:51.917 +00:00 [INF] Executed action Client_app.Controllers.AuthController.GetFacultySections (For_Testing_Only_Capstone) in 56.0447ms
+2026-04-29 18:51:51.917 +00:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.GetFacultySections (For_Testing_Only_Capstone)'
+2026-04-29 18:51:51.918 +00:00 [INF] HTTP GET /api/Auth/faculty/pascualpatrick264@gmail.com/assigned-sections responded 200 in 61.7464 ms
+2026-04-29 18:51:51.919 +00:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/api/Auth/faculty/pascualpatrick264@gmail.com/assigned-sections - 200 null application/json; charset=utf-8 63.2396ms
+2026-04-29 18:51:51.955 +00:00 [INF] Request starting HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/faculty/pascualpatrick264@gmail.com/students - null null
+2026-04-29 18:51:51.957 +00:00 [INF] CORS policy execution successful.
+2026-04-29 18:51:51.957 +00:00 [INF] HTTP OPTIONS /api/Auth/faculty/pascualpatrick264@gmail.com/students responded 204 in 0.5320 ms
+2026-04-29 18:51:51.958 +00:00 [INF] Request finished HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/faculty/pascualpatrick264@gmail.com/students - 204 null null 2.4408ms
+2026-04-29 18:51:51.961 +00:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/api/Auth/faculty/pascualpatrick264@gmail.com/students - application/json null
+2026-04-29 18:51:51.962 +00:00 [INF] CORS policy execution successful.
+2026-04-29 18:51:51.962 +00:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.GetFacultyStudents (For_Testing_Only_Capstone)'
+2026-04-29 18:51:51.966 +00:00 [INF] Route matched with {action = "GetFacultyStudents", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetFacultyStudents(System.String) on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-29 18:51:51.971 +00:00 [INF] Executing OkObjectResult, writing value of type '<>f__AnonymousType7`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.Collections.Generic.List`1[[System.Object, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]], System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-29 18:51:51.975 +00:00 [INF] Executed action Client_app.Controllers.AuthController.GetFacultyStudents (For_Testing_Only_Capstone) in 8.7974ms
+2026-04-29 18:51:51.975 +00:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.GetFacultyStudents (For_Testing_Only_Capstone)'
+2026-04-29 18:51:51.976 +00:00 [INF] HTTP GET /api/Auth/faculty/pascualpatrick264@gmail.com/students responded 200 in 14.0815 ms
+2026-04-29 18:51:51.977 +00:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/api/Auth/faculty/pascualpatrick264@gmail.com/students - 200 null application/json; charset=utf-8 15.644ms
+2026-04-29 18:52:36.939 +00:00 [INF] Request starting HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/students/11/drop - null null
+2026-04-29 18:52:36.940 +00:00 [INF] CORS policy execution successful.
+2026-04-29 18:52:36.940 +00:00 [INF] HTTP OPTIONS /api/Auth/students/11/drop responded 204 in 0.4399 ms
+2026-04-29 18:52:36.941 +00:00 [INF] Request finished HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/students/11/drop - 204 null null 1.5625ms
+2026-04-29 18:52:36.947 +00:00 [INF] Request starting HTTP/1.1 DELETE http://localhost:5000/api/Auth/students/11/drop - application/json null
+2026-04-29 18:52:36.948 +00:00 [INF] CORS policy execution successful.
+2026-04-29 18:52:36.949 +00:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.DropStudent (For_Testing_Only_Capstone)'
+2026-04-29 18:52:36.953 +00:00 [INF] Route matched with {action = "DropStudent", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] DropStudent(Int32) on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-29 18:52:36.960 +00:00 [INF] internal Fabric CA connection: Strict SSL validation ENABLED (Production Mode)
+2026-04-29 18:52:36.968 +00:00 [INF] Start processing HTTP request POST http://host.docker.internal:4000/api/revoke
+2026-04-29 18:52:36.970 +00:00 [INF] Sending HTTP request POST http://host.docker.internal:4000/api/revoke
+2026-04-29 18:52:37.384 +00:00 [INF] Received HTTP response headers after 411.7431ms - 500
+2026-04-29 18:52:37.385 +00:00 [INF] End processing HTTP request after 418.1265ms - 500
+2026-04-29 18:52:37.436 +00:00 [INF] Executing OkObjectResult, writing value of type '<>f__AnonymousType0`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-29 18:52:37.437 +00:00 [INF] Executed action Client_app.Controllers.AuthController.DropStudent (For_Testing_Only_Capstone) in 483.8938ms
+2026-04-29 18:52:37.438 +00:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.DropStudent (For_Testing_Only_Capstone)'
+2026-04-29 18:52:37.438 +00:00 [INF] HTTP DELETE /api/Auth/students/11/drop responded 200 in 489.9625 ms
+2026-04-29 18:52:37.439 +00:00 [INF] Request finished HTTP/1.1 DELETE http://localhost:5000/api/Auth/students/11/drop - 200 null application/json; charset=utf-8 491.6578ms
+2026-04-29 18:52:37.511 +00:00 [INF] Request starting HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/faculty/pascualpatrick264@gmail.com/assigned-sections - null null
+2026-04-29 18:52:37.511 +00:00 [INF] Request starting HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/department/pascualpatrick264@gmail.com/students/pending - null null
+2026-04-29 18:52:37.511 +00:00 [INF] CORS policy execution successful.
+2026-04-29 18:52:37.511 +00:00 [INF] CORS policy execution successful.
+2026-04-29 18:52:37.512 +00:00 [INF] HTTP OPTIONS /api/Auth/faculty/pascualpatrick264@gmail.com/assigned-sections responded 204 in 0.7175 ms
+2026-04-29 18:52:37.512 +00:00 [INF] HTTP OPTIONS /api/Auth/department/pascualpatrick264@gmail.com/students/pending responded 204 in 0.7372 ms
+2026-04-29 18:52:37.512 +00:00 [INF] Request finished HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/faculty/pascualpatrick264@gmail.com/assigned-sections - 204 null null 1.7907ms
+2026-04-29 18:52:37.513 +00:00 [INF] Request finished HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/department/pascualpatrick264@gmail.com/students/pending - 204 null null 2.2356ms
+2026-04-29 18:52:37.518 +00:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/api/Auth/department/pascualpatrick264@gmail.com/students/pending - application/json null
+2026-04-29 18:52:37.518 +00:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/api/Auth/faculty/pascualpatrick264@gmail.com/assigned-sections - application/json null
+2026-04-29 18:52:37.519 +00:00 [INF] CORS policy execution successful.
+2026-04-29 18:52:37.519 +00:00 [INF] CORS policy execution successful.
+2026-04-29 18:52:37.520 +00:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.GetDepartmentPendingStudents (For_Testing_Only_Capstone)'
+2026-04-29 18:52:37.520 +00:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.GetFacultySections (For_Testing_Only_Capstone)'
+2026-04-29 18:52:37.521 +00:00 [INF] Route matched with {action = "GetDepartmentPendingStudents", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetDepartmentPendingStudents(System.String) on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-29 18:52:37.521 +00:00 [INF] Route matched with {action = "GetFacultySections", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetFacultySections(System.String) on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-29 18:52:37.523 +00:00 [INF] Executing OkObjectResult, writing value of type '<>f__AnonymousType15`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.Collections.Generic.List`1[[System.Object, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]], System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-29 18:52:37.523 +00:00 [INF] Executed action Client_app.Controllers.AuthController.GetFacultySections (For_Testing_Only_Capstone) in 1.6454ms
+2026-04-29 18:52:37.523 +00:00 [INF] Executing OkObjectResult, writing value of type '<>f__AnonymousType7`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.Collections.Generic.List`1[[System.Object, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]], System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-29 18:52:37.523 +00:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.GetFacultySections (For_Testing_Only_Capstone)'
+2026-04-29 18:52:37.524 +00:00 [INF] Executed action Client_app.Controllers.AuthController.GetDepartmentPendingStudents (For_Testing_Only_Capstone) in 2.89ms
+2026-04-29 18:52:37.524 +00:00 [INF] HTTP GET /api/Auth/faculty/pascualpatrick264@gmail.com/assigned-sections responded 200 in 4.6639 ms
+2026-04-29 18:52:37.524 +00:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.GetDepartmentPendingStudents (For_Testing_Only_Capstone)'
+2026-04-29 18:52:37.525 +00:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/api/Auth/faculty/pascualpatrick264@gmail.com/assigned-sections - 200 null application/json; charset=utf-8 6.6372ms
+2026-04-29 18:52:37.525 +00:00 [INF] HTTP GET /api/Auth/department/pascualpatrick264@gmail.com/students/pending responded 200 in 6.5464 ms
+2026-04-29 18:52:37.526 +00:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/api/Auth/department/pascualpatrick264@gmail.com/students/pending - 200 null application/json; charset=utf-8 7.8513ms
+2026-04-29 18:52:37.614 +00:00 [INF] Request starting HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/faculty/pascualpatrick264@gmail.com/students - null null
+2026-04-29 18:52:37.617 +00:00 [INF] CORS policy execution successful.
+2026-04-29 18:52:37.618 +00:00 [INF] HTTP OPTIONS /api/Auth/faculty/pascualpatrick264@gmail.com/students responded 204 in 0.5833 ms
+2026-04-29 18:52:37.619 +00:00 [INF] Request finished HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/faculty/pascualpatrick264@gmail.com/students - 204 null null 5.6486ms
+2026-04-29 18:52:37.638 +00:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/api/Auth/faculty/pascualpatrick264@gmail.com/students - application/json null
+2026-04-29 18:52:37.639 +00:00 [INF] CORS policy execution successful.
+2026-04-29 18:52:37.640 +00:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.GetFacultyStudents (For_Testing_Only_Capstone)'
+2026-04-29 18:52:37.640 +00:00 [INF] Route matched with {action = "GetFacultyStudents", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetFacultyStudents(System.String) on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-29 18:52:37.643 +00:00 [INF] Executing OkObjectResult, writing value of type '<>f__AnonymousType7`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.Collections.Generic.List`1[[System.Object, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]], System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-29 18:52:37.643 +00:00 [INF] Executed action Client_app.Controllers.AuthController.GetFacultyStudents (For_Testing_Only_Capstone) in 2.6326ms
+2026-04-29 18:52:37.644 +00:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.GetFacultyStudents (For_Testing_Only_Capstone)'
+2026-04-29 18:52:37.644 +00:00 [INF] HTTP GET /api/Auth/faculty/pascualpatrick264@gmail.com/students responded 200 in 4.8881 ms
+2026-04-29 18:52:37.644 +00:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/api/Auth/faculty/pascualpatrick264@gmail.com/students - 200 null application/json; charset=utf-8 6.0348ms
+2026-04-29 18:52:41.078 +00:00 [INF] Request starting HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/sections/department/BSIT - null null
+2026-04-29 18:52:41.078 +00:00 [INF] Request starting HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/faculty/approved - null null
+2026-04-29 18:52:41.079 +00:00 [INF] CORS policy execution successful.
+2026-04-29 18:52:41.079 +00:00 [INF] CORS policy execution successful.
+2026-04-29 18:52:41.079 +00:00 [INF] HTTP OPTIONS /api/Auth/sections/department/BSIT responded 204 in 0.4872 ms
+2026-04-29 18:52:41.079 +00:00 [INF] HTTP OPTIONS /api/Auth/faculty/approved responded 204 in 0.6180 ms
+2026-04-29 18:52:41.080 +00:00 [INF] Request finished HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/sections/department/BSIT - 204 null null 2.0542ms
+2026-04-29 18:52:41.080 +00:00 [INF] Request finished HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/faculty/approved - 204 null null 2.3962ms
+2026-04-29 18:52:41.087 +00:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/api/Auth/sections/department/BSIT - application/json null
+2026-04-29 18:52:41.087 +00:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/api/Auth/faculty/approved - application/json null
+2026-04-29 18:52:41.088 +00:00 [INF] CORS policy execution successful.
+2026-04-29 18:52:41.088 +00:00 [INF] CORS policy execution successful.
+2026-04-29 18:52:41.089 +00:00 [INF] Executing endpoint 'BlockGo.Controllers.SectionController.GetDepartmentSections (For_Testing_Only_Capstone)'
+2026-04-29 18:52:41.089 +00:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.GetApprovedFaculties (For_Testing_Only_Capstone)'
+2026-04-29 18:52:41.090 +00:00 [INF] Route matched with {action = "GetDepartmentSections", controller = "Section"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetDepartmentSections(System.String) on controller BlockGo.Controllers.SectionController (For_Testing_Only_Capstone).
+2026-04-29 18:52:41.090 +00:00 [INF] Route matched with {action = "GetApprovedFaculties", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetApprovedFaculties() on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-29 18:52:41.091 +00:00 [INF] Executing OkObjectResult, writing value of type '<>f__AnonymousType12`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.Collections.Generic.List`1[[System.Object, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]], System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-29 18:52:41.092 +00:00 [INF] Executed action Client_app.Controllers.AuthController.GetApprovedFaculties (For_Testing_Only_Capstone) in 0.9939ms
+2026-04-29 18:52:41.092 +00:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.GetApprovedFaculties (For_Testing_Only_Capstone)'
+2026-04-29 18:52:41.093 +00:00 [INF] HTTP GET /api/Auth/faculty/approved responded 200 in 4.8032 ms
+2026-04-29 18:52:41.094 +00:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/api/Auth/faculty/approved - 200 null application/json; charset=utf-8 6.487ms
+2026-04-29 18:52:41.183 +00:00 [INF] Executing OkObjectResult, writing value of type '<>f__AnonymousType19`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.Collections.Generic.List`1[[System.Object, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]], System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-29 18:52:41.184 +00:00 [INF] Executed action BlockGo.Controllers.SectionController.GetDepartmentSections (For_Testing_Only_Capstone) in 93.2391ms
+2026-04-29 18:52:41.184 +00:00 [INF] Executed endpoint 'BlockGo.Controllers.SectionController.GetDepartmentSections (For_Testing_Only_Capstone)'
+2026-04-29 18:52:41.185 +00:00 [INF] HTTP GET /api/Auth/sections/department/BSIT responded 200 in 97.1280 ms
+2026-04-29 18:52:41.185 +00:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/api/Auth/sections/department/BSIT - 200 null application/json; charset=utf-8 98.3344ms
+2026-04-29 18:52:46.316 +00:00 [INF] Request starting HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/sections/department/BSIT - null null
+2026-04-29 18:52:46.316 +00:00 [INF] Request starting HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/faculty/pascualpatrick264@gmail.com/assigned-sections - null null
+2026-04-29 18:52:46.317 +00:00 [INF] CORS policy execution successful.
+2026-04-29 18:52:46.317 +00:00 [INF] CORS policy execution successful.
+2026-04-29 18:52:46.318 +00:00 [INF] HTTP OPTIONS /api/Auth/sections/department/BSIT responded 204 in 0.8736 ms
+2026-04-29 18:52:46.319 +00:00 [INF] Request finished HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/sections/department/BSIT - 204 null null 2.5785ms
+2026-04-29 18:52:46.319 +00:00 [INF] HTTP OPTIONS /api/Auth/faculty/pascualpatrick264@gmail.com/assigned-sections responded 204 in 1.6129 ms
+2026-04-29 18:52:46.320 +00:00 [INF] Request finished HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/faculty/pascualpatrick264@gmail.com/assigned-sections - 204 null null 3.6296ms
+2026-04-29 18:52:46.325 +00:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/api/Auth/sections/department/BSIT - application/json null
+2026-04-29 18:52:46.325 +00:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/api/Auth/faculty/pascualpatrick264@gmail.com/assigned-sections - application/json null
+2026-04-29 18:52:46.326 +00:00 [INF] CORS policy execution successful.
+2026-04-29 18:52:46.326 +00:00 [INF] CORS policy execution successful.
+2026-04-29 18:52:46.326 +00:00 [INF] Executing endpoint 'BlockGo.Controllers.SectionController.GetDepartmentSections (For_Testing_Only_Capstone)'
+2026-04-29 18:52:46.327 +00:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.GetFacultySections (For_Testing_Only_Capstone)'
+2026-04-29 18:52:46.327 +00:00 [INF] Route matched with {action = "GetDepartmentSections", controller = "Section"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetDepartmentSections(System.String) on controller BlockGo.Controllers.SectionController (For_Testing_Only_Capstone).
+2026-04-29 18:52:46.328 +00:00 [INF] Route matched with {action = "GetFacultySections", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetFacultySections(System.String) on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-29 18:52:46.330 +00:00 [INF] Executing OkObjectResult, writing value of type '<>f__AnonymousType15`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.Collections.Generic.List`1[[System.Object, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]], System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-29 18:52:46.330 +00:00 [INF] Executed action Client_app.Controllers.AuthController.GetFacultySections (For_Testing_Only_Capstone) in 2.1349ms
+2026-04-29 18:52:46.331 +00:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.GetFacultySections (For_Testing_Only_Capstone)'
+2026-04-29 18:52:46.331 +00:00 [INF] HTTP GET /api/Auth/faculty/pascualpatrick264@gmail.com/assigned-sections responded 200 in 5.5448 ms
+2026-04-29 18:52:46.332 +00:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/api/Auth/faculty/pascualpatrick264@gmail.com/assigned-sections - 200 null application/json; charset=utf-8 6.466ms
+2026-04-29 18:52:46.345 +00:00 [INF] Request starting HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/faculty/pascualpatrick264@gmail.com/students - null null
+2026-04-29 18:52:46.346 +00:00 [INF] CORS policy execution successful.
+2026-04-29 18:52:46.346 +00:00 [INF] HTTP OPTIONS /api/Auth/faculty/pascualpatrick264@gmail.com/students responded 204 in 0.3960 ms
+2026-04-29 18:52:46.347 +00:00 [INF] Request finished HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/faculty/pascualpatrick264@gmail.com/students - 204 null null 1.3041ms
+2026-04-29 18:52:46.351 +00:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/api/Auth/faculty/pascualpatrick264@gmail.com/students - application/json null
+2026-04-29 18:52:46.352 +00:00 [INF] CORS policy execution successful.
+2026-04-29 18:52:46.352 +00:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.GetFacultyStudents (For_Testing_Only_Capstone)'
+2026-04-29 18:52:46.353 +00:00 [INF] Route matched with {action = "GetFacultyStudents", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetFacultyStudents(System.String) on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-29 18:52:46.371 +00:00 [INF] Executing OkObjectResult, writing value of type '<>f__AnonymousType19`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.Collections.Generic.List`1[[System.Object, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]], System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-29 18:52:46.371 +00:00 [INF] Executing OkObjectResult, writing value of type '<>f__AnonymousType7`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.Collections.Generic.List`1[[System.Object, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]], System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-29 18:52:46.372 +00:00 [INF] Executed action BlockGo.Controllers.SectionController.GetDepartmentSections (For_Testing_Only_Capstone) in 44.2341ms
+2026-04-29 18:52:46.373 +00:00 [INF] Executed action Client_app.Controllers.AuthController.GetFacultyStudents (For_Testing_Only_Capstone) in 19.2719ms
+2026-04-29 18:52:46.373 +00:00 [INF] Executed endpoint 'BlockGo.Controllers.SectionController.GetDepartmentSections (For_Testing_Only_Capstone)'
+2026-04-29 18:52:46.373 +00:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.GetFacultyStudents (For_Testing_Only_Capstone)'
+2026-04-29 18:52:46.374 +00:00 [INF] HTTP GET /api/Auth/sections/department/BSIT responded 200 in 48.5498 ms
+2026-04-29 18:52:46.374 +00:00 [INF] HTTP GET /api/Auth/faculty/pascualpatrick264@gmail.com/students responded 200 in 22.6488 ms
+2026-04-29 18:52:46.375 +00:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/api/Auth/sections/department/BSIT - 200 null application/json; charset=utf-8 49.9039ms
+2026-04-29 18:52:46.375 +00:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/api/Auth/faculty/pascualpatrick264@gmail.com/students - 200 null application/json; charset=utf-8 24.0566ms
+2026-04-29 18:55:08.237 +00:00 [INF] Request starting HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/user-profile?email=pascualpatrick264%40gmail.com&role=department_admin - null null
+2026-04-29 18:55:08.237 +00:00 [INF] CORS policy execution successful.
+2026-04-29 18:55:08.238 +00:00 [INF] HTTP OPTIONS /api/Auth/user-profile responded 204 in 0.8345 ms
+2026-04-29 18:55:08.239 +00:00 [INF] Request finished HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/user-profile?email=pascualpatrick264%40gmail.com&role=department_admin - 204 null null 2.3964ms
+2026-04-29 18:55:08.247 +00:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/api/Auth/user-profile?email=pascualpatrick264%40gmail.com&role=department_admin - application/json null
+2026-04-29 18:55:08.248 +00:00 [INF] CORS policy execution successful.
+2026-04-29 18:55:08.249 +00:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone)'
+2026-04-29 18:55:08.250 +00:00 [INF] Route matched with {action = "GetUserProfile", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetUserProfile(System.String, System.String) on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-29 18:55:08.253 +00:00 [INF] Executing OkObjectResult, writing value of type '<>f__AnonymousType19`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[Client_app.Models.UserProfileDto, For_Testing_Only_Capstone, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]'.
+2026-04-29 18:55:08.254 +00:00 [INF] Executed action Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone) in 3.3401ms
+2026-04-29 18:55:08.254 +00:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone)'
+2026-04-29 18:55:08.255 +00:00 [INF] HTTP GET /api/Auth/user-profile responded 200 in 7.0286 ms
+2026-04-29 18:55:08.255 +00:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/api/Auth/user-profile?email=pascualpatrick264%40gmail.com&role=department_admin - 200 null application/json; charset=utf-8 8.1751ms
+2026-04-29 18:55:09.744 +00:00 [INF] Request starting HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/department/pascualpatrick264@gmail.com/students/pending - null null
+2026-04-29 18:55:09.745 +00:00 [INF] CORS policy execution successful.
+2026-04-29 18:55:09.745 +00:00 [INF] HTTP OPTIONS /api/Auth/department/pascualpatrick264@gmail.com/students/pending responded 204 in 0.4585 ms
+2026-04-29 18:55:09.745 +00:00 [INF] Request finished HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/department/pascualpatrick264@gmail.com/students/pending - 204 null null 1.5178ms
+2026-04-29 18:55:09.749 +00:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/api/Auth/department/pascualpatrick264@gmail.com/students/pending - application/json null
+2026-04-29 18:55:09.750 +00:00 [INF] CORS policy execution successful.
+2026-04-29 18:55:09.750 +00:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.GetDepartmentPendingStudents (For_Testing_Only_Capstone)'
+2026-04-29 18:55:09.751 +00:00 [INF] Route matched with {action = "GetDepartmentPendingStudents", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetDepartmentPendingStudents(System.String) on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-29 18:55:09.753 +00:00 [INF] Executing OkObjectResult, writing value of type '<>f__AnonymousType7`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.Collections.Generic.List`1[[System.Object, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]], System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-29 18:55:09.754 +00:00 [INF] Executed action Client_app.Controllers.AuthController.GetDepartmentPendingStudents (For_Testing_Only_Capstone) in 2.3391ms
+2026-04-29 18:55:09.754 +00:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.GetDepartmentPendingStudents (For_Testing_Only_Capstone)'
+2026-04-29 18:55:09.754 +00:00 [INF] HTTP GET /api/Auth/department/pascualpatrick264@gmail.com/students/pending responded 200 in 5.0148 ms
+2026-04-29 18:55:09.755 +00:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/api/Auth/department/pascualpatrick264@gmail.com/students/pending - 200 null application/json; charset=utf-8 5.8605ms
+2026-04-29 18:55:17.133 +00:00 [INF] Request starting HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/sections/department/BSIT - null null
+2026-04-29 18:55:17.134 +00:00 [INF] CORS policy execution successful.
+2026-04-29 18:55:17.134 +00:00 [INF] Request starting HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/faculty/approved - null null
+2026-04-29 18:55:17.135 +00:00 [INF] HTTP OPTIONS /api/Auth/sections/department/BSIT responded 204 in 0.7151 ms
+2026-04-29 18:55:17.135 +00:00 [INF] CORS policy execution successful.
+2026-04-29 18:55:17.136 +00:00 [INF] Request finished HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/sections/department/BSIT - 204 null null 2.633ms
+2026-04-29 18:55:17.136 +00:00 [INF] HTTP OPTIONS /api/Auth/faculty/approved responded 204 in 0.7856 ms
+2026-04-29 18:55:17.137 +00:00 [INF] Request finished HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/faculty/approved - 204 null null 2.2492ms
+2026-04-29 18:55:17.145 +00:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/api/Auth/sections/department/BSIT - application/json null
+2026-04-29 18:55:17.145 +00:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/api/Auth/faculty/approved - application/json null
+2026-04-29 18:55:17.146 +00:00 [INF] CORS policy execution successful.
+2026-04-29 18:55:17.147 +00:00 [INF] CORS policy execution successful.
+2026-04-29 18:55:17.147 +00:00 [INF] Executing endpoint 'BlockGo.Controllers.SectionController.GetDepartmentSections (For_Testing_Only_Capstone)'
+2026-04-29 18:55:17.147 +00:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.GetApprovedFaculties (For_Testing_Only_Capstone)'
+2026-04-29 18:55:17.148 +00:00 [INF] Route matched with {action = "GetDepartmentSections", controller = "Section"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetDepartmentSections(System.String) on controller BlockGo.Controllers.SectionController (For_Testing_Only_Capstone).
+2026-04-29 18:55:17.148 +00:00 [INF] Route matched with {action = "GetApprovedFaculties", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetApprovedFaculties() on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-29 18:55:17.149 +00:00 [INF] Executing OkObjectResult, writing value of type '<>f__AnonymousType12`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.Collections.Generic.List`1[[System.Object, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]], System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-29 18:55:17.150 +00:00 [INF] Executed action Client_app.Controllers.AuthController.GetApprovedFaculties (For_Testing_Only_Capstone) in 1.1395ms
+2026-04-29 18:55:17.150 +00:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.GetApprovedFaculties (For_Testing_Only_Capstone)'
+2026-04-29 18:55:17.151 +00:00 [INF] HTTP GET /api/Auth/faculty/approved responded 200 in 4.1428 ms
+2026-04-29 18:55:17.151 +00:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/api/Auth/faculty/approved - 200 null application/json; charset=utf-8 5.782ms
+2026-04-29 18:55:17.206 +00:00 [INF] Executing OkObjectResult, writing value of type '<>f__AnonymousType19`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.Collections.Generic.List`1[[System.Object, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]], System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-29 18:55:17.207 +00:00 [INF] Executed action BlockGo.Controllers.SectionController.GetDepartmentSections (For_Testing_Only_Capstone) in 58.4714ms
+2026-04-29 18:55:17.208 +00:00 [INF] Executed endpoint 'BlockGo.Controllers.SectionController.GetDepartmentSections (For_Testing_Only_Capstone)'
+2026-04-29 18:55:17.208 +00:00 [INF] HTTP GET /api/Auth/sections/department/BSIT responded 200 in 61.7291 ms
+2026-04-29 18:55:17.208 +00:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/api/Auth/sections/department/BSIT - 200 null application/json; charset=utf-8 63.4549ms
+2026-04-29 18:55:21.829 +00:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/api/Auth/sections/department/BSIT - application/json null
+2026-04-29 18:55:21.830 +00:00 [INF] CORS policy execution successful.
+2026-04-29 18:55:21.830 +00:00 [INF] Executing endpoint 'BlockGo.Controllers.SectionController.GetDepartmentSections (For_Testing_Only_Capstone)'
+2026-04-29 18:55:21.831 +00:00 [INF] Route matched with {action = "GetDepartmentSections", controller = "Section"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetDepartmentSections(System.String) on controller BlockGo.Controllers.SectionController (For_Testing_Only_Capstone).
+2026-04-29 18:55:21.835 +00:00 [INF] Request starting HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/faculty/pascualpatrick264@gmail.com/assigned-sections - null null
+2026-04-29 18:55:21.835 +00:00 [INF] CORS policy execution successful.
+2026-04-29 18:55:21.835 +00:00 [INF] HTTP OPTIONS /api/Auth/faculty/pascualpatrick264@gmail.com/assigned-sections responded 204 in 0.3964 ms
+2026-04-29 18:55:21.836 +00:00 [INF] Request finished HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/faculty/pascualpatrick264@gmail.com/assigned-sections - 204 null null 1.364ms
+2026-04-29 18:55:21.840 +00:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/api/Auth/faculty/pascualpatrick264@gmail.com/assigned-sections - application/json null
+2026-04-29 18:55:21.840 +00:00 [INF] CORS policy execution successful.
+2026-04-29 18:55:21.841 +00:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.GetFacultySections (For_Testing_Only_Capstone)'
+2026-04-29 18:55:21.841 +00:00 [INF] Route matched with {action = "GetFacultySections", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetFacultySections(System.String) on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-29 18:55:21.892 +00:00 [INF] Executing OkObjectResult, writing value of type '<>f__AnonymousType19`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.Collections.Generic.List`1[[System.Object, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]], System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-29 18:55:21.893 +00:00 [INF] Executed action BlockGo.Controllers.SectionController.GetDepartmentSections (For_Testing_Only_Capstone) in 62.0077ms
+2026-04-29 18:55:21.894 +00:00 [INF] Executed endpoint 'BlockGo.Controllers.SectionController.GetDepartmentSections (For_Testing_Only_Capstone)'
+2026-04-29 18:55:21.894 +00:00 [INF] HTTP GET /api/Auth/sections/department/BSIT responded 200 in 64.5483 ms
+2026-04-29 18:55:21.895 +00:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/api/Auth/sections/department/BSIT - 200 null application/json; charset=utf-8 66.2859ms
+2026-04-29 18:55:21.897 +00:00 [INF] Executing OkObjectResult, writing value of type '<>f__AnonymousType15`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.Collections.Generic.List`1[[System.Object, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]], System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-29 18:55:21.897 +00:00 [INF] Executed action Client_app.Controllers.AuthController.GetFacultySections (For_Testing_Only_Capstone) in 55.3519ms
+2026-04-29 18:55:21.898 +00:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.GetFacultySections (For_Testing_Only_Capstone)'
+2026-04-29 18:55:21.898 +00:00 [INF] HTTP GET /api/Auth/faculty/pascualpatrick264@gmail.com/assigned-sections responded 200 in 57.4497 ms
+2026-04-29 18:55:21.898 +00:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/api/Auth/faculty/pascualpatrick264@gmail.com/assigned-sections - 200 null application/json; charset=utf-8 58.3322ms
+2026-04-29 18:55:21.996 +00:00 [INF] Request starting HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/faculty/pascualpatrick264@gmail.com/students - null null
+2026-04-29 18:55:21.996 +00:00 [INF] CORS policy execution successful.
+2026-04-29 18:55:21.996 +00:00 [INF] HTTP OPTIONS /api/Auth/faculty/pascualpatrick264@gmail.com/students responded 204 in 0.3307 ms
+2026-04-29 18:55:21.997 +00:00 [INF] Request finished HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/faculty/pascualpatrick264@gmail.com/students - 204 null null 1.4517ms
+2026-04-29 18:55:22.010 +00:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/api/Auth/faculty/pascualpatrick264@gmail.com/students - application/json null
+2026-04-29 18:55:22.011 +00:00 [INF] CORS policy execution successful.
+2026-04-29 18:55:22.011 +00:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.GetFacultyStudents (For_Testing_Only_Capstone)'
+2026-04-29 18:55:22.012 +00:00 [INF] Route matched with {action = "GetFacultyStudents", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetFacultyStudents(System.String) on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-29 18:55:22.015 +00:00 [INF] Executing OkObjectResult, writing value of type '<>f__AnonymousType7`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.Collections.Generic.List`1[[System.Object, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]], System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-29 18:55:22.016 +00:00 [INF] Executed action Client_app.Controllers.AuthController.GetFacultyStudents (For_Testing_Only_Capstone) in 3.6757ms
+2026-04-29 18:55:22.016 +00:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.GetFacultyStudents (For_Testing_Only_Capstone)'
+2026-04-29 18:55:22.016 +00:00 [INF] HTTP GET /api/Auth/faculty/pascualpatrick264@gmail.com/students responded 200 in 5.9356 ms
+2026-04-29 18:55:22.017 +00:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/api/Auth/faculty/pascualpatrick264@gmail.com/students - 200 null application/json; charset=utf-8 6.8214ms
+2026-04-29 18:55:29.712 +00:00 [INF] Request starting HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/sections/department/BSIT - null null
+2026-04-29 18:55:29.712 +00:00 [INF] Request starting HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/faculty/approved - null null
+2026-04-29 18:55:29.713 +00:00 [INF] CORS policy execution successful.
+2026-04-29 18:55:29.713 +00:00 [INF] CORS policy execution successful.
+2026-04-29 18:55:29.714 +00:00 [INF] HTTP OPTIONS /api/Auth/sections/department/BSIT responded 204 in 1.0296 ms
+2026-04-29 18:55:29.714 +00:00 [INF] HTTP OPTIONS /api/Auth/faculty/approved responded 204 in 0.8841 ms
+2026-04-29 18:55:29.714 +00:00 [INF] Request finished HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/sections/department/BSIT - 204 null null 2.3077ms
+2026-04-29 18:55:29.715 +00:00 [INF] Request finished HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/faculty/approved - 204 null null 2.2766ms
+2026-04-29 18:55:29.721 +00:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/api/Auth/faculty/approved - application/json null
+2026-04-29 18:55:29.721 +00:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/api/Auth/sections/department/BSIT - application/json null
+2026-04-29 18:55:29.721 +00:00 [INF] CORS policy execution successful.
+2026-04-29 18:55:29.721 +00:00 [INF] CORS policy execution successful.
+2026-04-29 18:55:29.722 +00:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.GetApprovedFaculties (For_Testing_Only_Capstone)'
+2026-04-29 18:55:29.722 +00:00 [INF] Executing endpoint 'BlockGo.Controllers.SectionController.GetDepartmentSections (For_Testing_Only_Capstone)'
+2026-04-29 18:55:29.723 +00:00 [INF] Route matched with {action = "GetApprovedFaculties", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetApprovedFaculties() on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-29 18:55:29.723 +00:00 [INF] Route matched with {action = "GetDepartmentSections", controller = "Section"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetDepartmentSections(System.String) on controller BlockGo.Controllers.SectionController (For_Testing_Only_Capstone).
+2026-04-29 18:55:29.724 +00:00 [INF] Executing OkObjectResult, writing value of type '<>f__AnonymousType12`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.Collections.Generic.List`1[[System.Object, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]], System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-29 18:55:29.724 +00:00 [INF] Executed action Client_app.Controllers.AuthController.GetApprovedFaculties (For_Testing_Only_Capstone) in 1.0284ms
+2026-04-29 18:55:29.725 +00:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.GetApprovedFaculties (For_Testing_Only_Capstone)'
+2026-04-29 18:55:29.725 +00:00 [INF] HTTP GET /api/Auth/faculty/approved responded 200 in 4.1610 ms
+2026-04-29 18:55:29.726 +00:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/api/Auth/faculty/approved - 200 null application/json; charset=utf-8 5.2855ms
+2026-04-29 18:55:29.892 +00:00 [INF] Executing OkObjectResult, writing value of type '<>f__AnonymousType19`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.Collections.Generic.List`1[[System.Object, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]], System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-29 18:55:29.892 +00:00 [INF] Executed action BlockGo.Controllers.SectionController.GetDepartmentSections (For_Testing_Only_Capstone) in 168.7228ms
+2026-04-29 18:55:29.893 +00:00 [INF] Executed endpoint 'BlockGo.Controllers.SectionController.GetDepartmentSections (For_Testing_Only_Capstone)'
+2026-04-29 18:55:29.893 +00:00 [INF] HTTP GET /api/Auth/sections/department/BSIT responded 200 in 171.7923 ms
+2026-04-29 18:55:29.894 +00:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/api/Auth/sections/department/BSIT - 200 null application/json; charset=utf-8 172.9008ms
+2026-04-29 18:56:04.123 +00:00 [INF] Request starting HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/sections - null null
+2026-04-29 18:56:04.123 +00:00 [INF] CORS policy execution successful.
+2026-04-29 18:56:04.124 +00:00 [INF] HTTP OPTIONS /api/Auth/sections responded 204 in 0.5296 ms
+2026-04-29 18:56:04.124 +00:00 [INF] Request finished HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/sections - 204 null null 1.5709ms
+2026-04-29 18:56:04.166 +00:00 [INF] Request starting HTTP/1.1 POST http://localhost:5000/api/Auth/sections - application/json 150
+2026-04-29 18:56:04.167 +00:00 [INF] CORS policy execution successful.
+2026-04-29 18:56:04.168 +00:00 [INF] Executing endpoint 'BlockGo.Controllers.SectionController.CreateSection (For_Testing_Only_Capstone)'
+2026-04-29 18:56:04.171 +00:00 [INF] Route matched with {action = "CreateSection", controller = "Section"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] CreateSection(CreateSectionRequest) on controller BlockGo.Controllers.SectionController (For_Testing_Only_Capstone).
+2026-04-29 18:56:04.441 +00:00 [INF] Executing OkObjectResult, writing value of type '<>f__AnonymousType33`3[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.Object, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-29 18:56:04.447 +00:00 [INF] Executed action BlockGo.Controllers.SectionController.CreateSection (For_Testing_Only_Capstone) in 275.0901ms
+2026-04-29 18:56:04.448 +00:00 [INF] Executed endpoint 'BlockGo.Controllers.SectionController.CreateSection (For_Testing_Only_Capstone)'
+2026-04-29 18:56:04.448 +00:00 [INF] HTTP POST /api/Auth/sections responded 200 in 280.8805 ms
+2026-04-29 18:56:04.448 +00:00 [INF] Request finished HTTP/1.1 POST http://localhost:5000/api/Auth/sections - 200 null application/json; charset=utf-8 282.1345ms
+2026-04-29 18:56:04.468 +00:00 [INF] Request starting HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/sections/department/BSIT - null null
+2026-04-29 18:56:04.469 +00:00 [INF] CORS policy execution successful.
+2026-04-29 18:56:04.469 +00:00 [INF] HTTP OPTIONS /api/Auth/sections/department/BSIT responded 204 in 0.5018 ms
+2026-04-29 18:56:04.469 +00:00 [INF] Request finished HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/sections/department/BSIT - 204 null null 1.6591ms
+2026-04-29 18:56:04.473 +00:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/api/Auth/sections/department/BSIT - application/json null
+2026-04-29 18:56:04.473 +00:00 [INF] CORS policy execution successful.
+2026-04-29 18:56:04.474 +00:00 [INF] Executing endpoint 'BlockGo.Controllers.SectionController.GetDepartmentSections (For_Testing_Only_Capstone)'
+2026-04-29 18:56:04.474 +00:00 [INF] Route matched with {action = "GetDepartmentSections", controller = "Section"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetDepartmentSections(System.String) on controller BlockGo.Controllers.SectionController (For_Testing_Only_Capstone).
+2026-04-29 18:56:04.544 +00:00 [INF] Request starting HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/faculty/pascualpatrick264@gmail.com/assigned-sections - null null
+2026-04-29 18:56:04.545 +00:00 [INF] CORS policy execution successful.
+2026-04-29 18:56:04.545 +00:00 [INF] HTTP OPTIONS /api/Auth/faculty/pascualpatrick264@gmail.com/assigned-sections responded 204 in 0.4963 ms
+2026-04-29 18:56:04.546 +00:00 [INF] Request finished HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/faculty/pascualpatrick264@gmail.com/assigned-sections - 204 null null 1.8213ms
+2026-04-29 18:56:04.551 +00:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/api/Auth/faculty/pascualpatrick264@gmail.com/assigned-sections - application/json null
+2026-04-29 18:56:04.552 +00:00 [INF] CORS policy execution successful.
+2026-04-29 18:56:04.553 +00:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.GetFacultySections (For_Testing_Only_Capstone)'
+2026-04-29 18:56:04.553 +00:00 [INF] Route matched with {action = "GetFacultySections", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetFacultySections(System.String) on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-29 18:56:04.660 +00:00 [INF] Executing OkObjectResult, writing value of type '<>f__AnonymousType15`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.Collections.Generic.List`1[[System.Object, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]], System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-29 18:56:04.660 +00:00 [INF] Executing OkObjectResult, writing value of type '<>f__AnonymousType19`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.Collections.Generic.List`1[[System.Object, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]], System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-29 18:56:04.660 +00:00 [INF] Executed action Client_app.Controllers.AuthController.GetFacultySections (For_Testing_Only_Capstone) in 106.8226ms
+2026-04-29 18:56:04.661 +00:00 [INF] Executed action BlockGo.Controllers.SectionController.GetDepartmentSections (For_Testing_Only_Capstone) in 186.6396ms
+2026-04-29 18:56:04.661 +00:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.GetFacultySections (For_Testing_Only_Capstone)'
+2026-04-29 18:56:04.662 +00:00 [INF] Executed endpoint 'BlockGo.Controllers.SectionController.GetDepartmentSections (For_Testing_Only_Capstone)'
+2026-04-29 18:56:04.662 +00:00 [INF] HTTP GET /api/Auth/faculty/pascualpatrick264@gmail.com/assigned-sections responded 200 in 110.0718 ms
+2026-04-29 18:56:04.662 +00:00 [INF] HTTP GET /api/Auth/sections/department/BSIT responded 200 in 189.1869 ms
+2026-04-29 18:56:04.663 +00:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/api/Auth/sections/department/BSIT - 200 null application/json; charset=utf-8 190.347ms
+2026-04-29 18:56:04.663 +00:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/api/Auth/faculty/pascualpatrick264@gmail.com/assigned-sections - 200 null application/json; charset=utf-8 111.7693ms
+2026-04-29 18:56:04.816 +00:00 [INF] Request starting HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/faculty/pascualpatrick264@gmail.com/students - null null
+2026-04-29 18:56:04.816 +00:00 [INF] CORS policy execution successful.
+2026-04-29 18:56:04.817 +00:00 [INF] HTTP OPTIONS /api/Auth/faculty/pascualpatrick264@gmail.com/students responded 204 in 0.5857 ms
+2026-04-29 18:56:04.817 +00:00 [INF] Request finished HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/faculty/pascualpatrick264@gmail.com/students - 204 null null 1.3799ms
+2026-04-29 18:56:04.821 +00:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/api/Auth/faculty/pascualpatrick264@gmail.com/students - application/json null
+2026-04-29 18:56:04.821 +00:00 [INF] CORS policy execution successful.
+2026-04-29 18:56:04.822 +00:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.GetFacultyStudents (For_Testing_Only_Capstone)'
+2026-04-29 18:56:04.822 +00:00 [INF] Route matched with {action = "GetFacultyStudents", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetFacultyStudents(System.String) on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-29 18:56:04.824 +00:00 [INF] Executing OkObjectResult, writing value of type '<>f__AnonymousType7`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.Collections.Generic.List`1[[System.Object, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]], System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-29 18:56:04.825 +00:00 [INF] Executed action Client_app.Controllers.AuthController.GetFacultyStudents (For_Testing_Only_Capstone) in 2.4532ms
+2026-04-29 18:56:04.825 +00:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.GetFacultyStudents (For_Testing_Only_Capstone)'
+2026-04-29 18:56:04.826 +00:00 [INF] HTTP GET /api/Auth/faculty/pascualpatrick264@gmail.com/students responded 200 in 4.5656 ms
+2026-04-29 18:56:04.826 +00:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/api/Auth/faculty/pascualpatrick264@gmail.com/students - 200 null application/json; charset=utf-8 5.5898ms
+2026-04-29 18:56:05.380 +00:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/api/Auth/faculty/pascualpatrick264@gmail.com/assigned-sections - application/json null
+2026-04-29 18:56:05.380 +00:00 [INF] CORS policy execution successful.
+2026-04-29 18:56:05.381 +00:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.GetFacultySections (For_Testing_Only_Capstone)'
+2026-04-29 18:56:05.381 +00:00 [INF] Route matched with {action = "GetFacultySections", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetFacultySections(System.String) on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-29 18:56:05.381 +00:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/api/Auth/sections/department/BSIT - application/json null
+2026-04-29 18:56:05.382 +00:00 [INF] CORS policy execution successful.
+2026-04-29 18:56:05.382 +00:00 [INF] Executing endpoint 'BlockGo.Controllers.SectionController.GetDepartmentSections (For_Testing_Only_Capstone)'
+2026-04-29 18:56:05.383 +00:00 [INF] Route matched with {action = "GetDepartmentSections", controller = "Section"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetDepartmentSections(System.String) on controller BlockGo.Controllers.SectionController (For_Testing_Only_Capstone).
+2026-04-29 18:56:05.384 +00:00 [INF] Executing OkObjectResult, writing value of type '<>f__AnonymousType15`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.Collections.Generic.List`1[[System.Object, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]], System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-29 18:56:05.384 +00:00 [INF] Executed action Client_app.Controllers.AuthController.GetFacultySections (For_Testing_Only_Capstone) in 2.874ms
+2026-04-29 18:56:05.385 +00:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.GetFacultySections (For_Testing_Only_Capstone)'
+2026-04-29 18:56:05.385 +00:00 [INF] HTTP GET /api/Auth/faculty/pascualpatrick264@gmail.com/assigned-sections responded 200 in 5.0616 ms
+2026-04-29 18:56:05.386 +00:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/api/Auth/faculty/pascualpatrick264@gmail.com/assigned-sections - 200 null application/json; charset=utf-8 6.3509ms
+2026-04-29 18:56:05.394 +00:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/api/Auth/faculty/pascualpatrick264@gmail.com/students - application/json null
+2026-04-29 18:56:05.395 +00:00 [INF] CORS policy execution successful.
+2026-04-29 18:56:05.395 +00:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.GetFacultyStudents (For_Testing_Only_Capstone)'
+2026-04-29 18:56:05.396 +00:00 [INF] Route matched with {action = "GetFacultyStudents", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetFacultyStudents(System.String) on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-29 18:56:05.427 +00:00 [INF] Executing OkObjectResult, writing value of type '<>f__AnonymousType19`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.Collections.Generic.List`1[[System.Object, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]], System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-29 18:56:05.428 +00:00 [INF] Executing OkObjectResult, writing value of type '<>f__AnonymousType7`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.Collections.Generic.List`1[[System.Object, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]], System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-29 18:56:05.428 +00:00 [INF] Executed action BlockGo.Controllers.SectionController.GetDepartmentSections (For_Testing_Only_Capstone) in 44.6473ms
+2026-04-29 18:56:05.428 +00:00 [INF] Executed action Client_app.Controllers.AuthController.GetFacultyStudents (For_Testing_Only_Capstone) in 32.3052ms
+2026-04-29 18:56:05.429 +00:00 [INF] Executed endpoint 'BlockGo.Controllers.SectionController.GetDepartmentSections (For_Testing_Only_Capstone)'
+2026-04-29 18:56:05.429 +00:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.GetFacultyStudents (For_Testing_Only_Capstone)'
+2026-04-29 18:56:05.429 +00:00 [INF] HTTP GET /api/Auth/sections/department/BSIT responded 200 in 47.4765 ms
+2026-04-29 18:56:05.430 +00:00 [INF] HTTP GET /api/Auth/faculty/pascualpatrick264@gmail.com/students responded 200 in 35.0632 ms
+2026-04-29 18:56:05.430 +00:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/api/Auth/sections/department/BSIT - 200 null application/json; charset=utf-8 48.9262ms
+2026-04-29 18:56:05.431 +00:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/api/Auth/faculty/pascualpatrick264@gmail.com/students - 200 null application/json; charset=utf-8 36.338ms
+2026-04-29 18:56:24.821 +00:00 [INF] Request starting HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/department/pascualpatrick264@gmail.com/students/pending - null null
+2026-04-29 18:56:24.822 +00:00 [INF] CORS policy execution successful.
+2026-04-29 18:56:24.822 +00:00 [INF] HTTP OPTIONS /api/Auth/department/pascualpatrick264@gmail.com/students/pending responded 204 in 0.3633 ms
+2026-04-29 18:56:24.823 +00:00 [INF] Request finished HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/department/pascualpatrick264@gmail.com/students/pending - 204 null null 1.3749ms
+2026-04-29 18:56:24.828 +00:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/api/Auth/department/pascualpatrick264@gmail.com/students/pending - application/json null
+2026-04-29 18:56:24.829 +00:00 [INF] CORS policy execution successful.
+2026-04-29 18:56:24.829 +00:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.GetDepartmentPendingStudents (For_Testing_Only_Capstone)'
+2026-04-29 18:56:24.829 +00:00 [INF] Route matched with {action = "GetDepartmentPendingStudents", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetDepartmentPendingStudents(System.String) on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-29 18:56:24.844 +00:00 [INF] Executing OkObjectResult, writing value of type '<>f__AnonymousType7`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.Collections.Generic.List`1[[System.Object, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]], System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-29 18:56:24.845 +00:00 [INF] Executed action Client_app.Controllers.AuthController.GetDepartmentPendingStudents (For_Testing_Only_Capstone) in 14.9336ms
+2026-04-29 18:56:24.845 +00:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.GetDepartmentPendingStudents (For_Testing_Only_Capstone)'
+2026-04-29 18:56:24.845 +00:00 [INF] HTTP GET /api/Auth/department/pascualpatrick264@gmail.com/students/pending responded 200 in 16.8537 ms
+2026-04-29 18:56:24.846 +00:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/api/Auth/department/pascualpatrick264@gmail.com/students/pending - 200 null application/json; charset=utf-8 17.8551ms
+2026-04-29 18:56:33.687 +00:00 [INF] Request starting HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/user-profile?email=pascualpatrick264%40gmail.com&role=department_admin - null null
+2026-04-29 18:56:33.688 +00:00 [INF] CORS policy execution successful.
+2026-04-29 18:56:33.688 +00:00 [INF] HTTP OPTIONS /api/Auth/user-profile responded 204 in 0.3894 ms
+2026-04-29 18:56:33.689 +00:00 [INF] Request finished HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/user-profile?email=pascualpatrick264%40gmail.com&role=department_admin - 204 null null 1.868ms
+2026-04-29 18:56:33.693 +00:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/api/Auth/user-profile?email=pascualpatrick264%40gmail.com&role=department_admin - application/json null
+2026-04-29 18:56:33.694 +00:00 [INF] CORS policy execution successful.
+2026-04-29 18:56:33.694 +00:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone)'
+2026-04-29 18:56:33.695 +00:00 [INF] Route matched with {action = "GetUserProfile", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetUserProfile(System.String, System.String) on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-29 18:56:33.697 +00:00 [INF] Executing OkObjectResult, writing value of type '<>f__AnonymousType19`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[Client_app.Models.UserProfileDto, For_Testing_Only_Capstone, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]'.
+2026-04-29 18:56:33.698 +00:00 [INF] Executed action Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone) in 1.5967ms
+2026-04-29 18:56:33.698 +00:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone)'
+2026-04-29 18:56:33.698 +00:00 [INF] HTTP GET /api/Auth/user-profile responded 200 in 4.8877 ms
+2026-04-29 18:56:33.699 +00:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/api/Auth/user-profile?email=pascualpatrick264%40gmail.com&role=department_admin - 200 null application/json; charset=utf-8 5.7671ms
+2026-04-29 18:56:42.838 +00:00 [INF] Request starting HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/faculty/pascualpatrick264@gmail.com/assigned-sections - null null
+2026-04-29 18:56:42.838 +00:00 [INF] Request starting HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/sections/department/BSIT - null null
+2026-04-29 18:56:42.840 +00:00 [INF] CORS policy execution successful.
+2026-04-29 18:56:42.840 +00:00 [INF] CORS policy execution successful.
+2026-04-29 18:56:42.841 +00:00 [INF] HTTP OPTIONS /api/Auth/faculty/pascualpatrick264@gmail.com/assigned-sections responded 204 in 0.8640 ms
+2026-04-29 18:56:42.841 +00:00 [INF] HTTP OPTIONS /api/Auth/sections/department/BSIT responded 204 in 0.6688 ms
+2026-04-29 18:56:42.841 +00:00 [INF] Request finished HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/faculty/pascualpatrick264@gmail.com/assigned-sections - 204 null null 3.3846ms
+2026-04-29 18:56:42.843 +00:00 [INF] Request finished HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/sections/department/BSIT - 204 null null 5.1205ms
+2026-04-29 18:56:42.851 +00:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/api/Auth/faculty/pascualpatrick264@gmail.com/assigned-sections - application/json null
+2026-04-29 18:56:42.851 +00:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/api/Auth/sections/department/BSIT - application/json null
+2026-04-29 18:56:42.855 +00:00 [INF] CORS policy execution successful.
+2026-04-29 18:56:42.858 +00:00 [INF] CORS policy execution successful.
+2026-04-29 18:56:42.861 +00:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.GetFacultySections (For_Testing_Only_Capstone)'
+2026-04-29 18:56:42.865 +00:00 [INF] Executing endpoint 'BlockGo.Controllers.SectionController.GetDepartmentSections (For_Testing_Only_Capstone)'
+2026-04-29 18:56:42.865 +00:00 [INF] Route matched with {action = "GetFacultySections", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetFacultySections(System.String) on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-29 18:56:42.866 +00:00 [INF] Route matched with {action = "GetDepartmentSections", controller = "Section"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetDepartmentSections(System.String) on controller BlockGo.Controllers.SectionController (For_Testing_Only_Capstone).
+2026-04-29 18:56:42.922 +00:00 [INF] Executing OkObjectResult, writing value of type '<>f__AnonymousType19`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.Collections.Generic.List`1[[System.Object, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]], System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-29 18:56:42.923 +00:00 [INF] Executed action BlockGo.Controllers.SectionController.GetDepartmentSections (For_Testing_Only_Capstone) in 57.09ms
+2026-04-29 18:56:42.924 +00:00 [INF] Executing OkObjectResult, writing value of type '<>f__AnonymousType15`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.Collections.Generic.List`1[[System.Object, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]], System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-29 18:56:42.924 +00:00 [INF] Executed endpoint 'BlockGo.Controllers.SectionController.GetDepartmentSections (For_Testing_Only_Capstone)'
+2026-04-29 18:56:42.924 +00:00 [INF] Executed action Client_app.Controllers.AuthController.GetFacultySections (For_Testing_Only_Capstone) in 58.2157ms
+2026-04-29 18:56:42.924 +00:00 [INF] HTTP GET /api/Auth/sections/department/BSIT responded 200 in 66.1100 ms
+2026-04-29 18:56:42.925 +00:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.GetFacultySections (For_Testing_Only_Capstone)'
+2026-04-29 18:56:42.926 +00:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/api/Auth/sections/department/BSIT - 200 null application/json; charset=utf-8 75.0841ms
+2026-04-29 18:56:42.927 +00:00 [INF] HTTP GET /api/Auth/faculty/pascualpatrick264@gmail.com/assigned-sections responded 200 in 71.1009 ms
+2026-04-29 18:56:42.928 +00:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/api/Auth/faculty/pascualpatrick264@gmail.com/assigned-sections - 200 null application/json; charset=utf-8 76.9808ms
+2026-04-29 18:56:43.092 +00:00 [INF] Request starting HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/faculty/pascualpatrick264@gmail.com/students - null null
+2026-04-29 18:56:43.093 +00:00 [INF] CORS policy execution successful.
+2026-04-29 18:56:43.093 +00:00 [INF] HTTP OPTIONS /api/Auth/faculty/pascualpatrick264@gmail.com/students responded 204 in 0.4883 ms
+2026-04-29 18:56:43.094 +00:00 [INF] Request finished HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/faculty/pascualpatrick264@gmail.com/students - 204 null null 1.4993ms
+2026-04-29 18:56:43.097 +00:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/api/Auth/faculty/pascualpatrick264@gmail.com/students - application/json null
+2026-04-29 18:56:43.097 +00:00 [INF] CORS policy execution successful.
+2026-04-29 18:56:43.098 +00:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.GetFacultyStudents (For_Testing_Only_Capstone)'
+2026-04-29 18:56:43.098 +00:00 [INF] Route matched with {action = "GetFacultyStudents", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetFacultyStudents(System.String) on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-29 18:56:43.102 +00:00 [INF] Executing OkObjectResult, writing value of type '<>f__AnonymousType7`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.Collections.Generic.List`1[[System.Object, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]], System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-29 18:56:43.102 +00:00 [INF] Executed action Client_app.Controllers.AuthController.GetFacultyStudents (For_Testing_Only_Capstone) in 3.6151ms
+2026-04-29 18:56:43.102 +00:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.GetFacultyStudents (For_Testing_Only_Capstone)'
+2026-04-29 18:56:43.103 +00:00 [INF] HTTP GET /api/Auth/faculty/pascualpatrick264@gmail.com/students responded 200 in 5.3911 ms
+2026-04-29 18:56:43.103 +00:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/api/Auth/faculty/pascualpatrick264@gmail.com/students - 200 null application/json; charset=utf-8 6.2423ms
+2026-04-29 18:56:43.240 +00:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/api/Auth/sections/department/BSIT - application/json null
+2026-04-29 18:56:43.241 +00:00 [INF] CORS policy execution successful.
+2026-04-29 18:56:43.241 +00:00 [INF] Executing endpoint 'BlockGo.Controllers.SectionController.GetDepartmentSections (For_Testing_Only_Capstone)'
+2026-04-29 18:56:43.242 +00:00 [INF] Route matched with {action = "GetDepartmentSections", controller = "Section"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetDepartmentSections(System.String) on controller BlockGo.Controllers.SectionController (For_Testing_Only_Capstone).
+2026-04-29 18:56:43.246 +00:00 [INF] Request starting HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/faculty/approved - null null
+2026-04-29 18:56:43.247 +00:00 [INF] CORS policy execution successful.
+2026-04-29 18:56:43.247 +00:00 [INF] HTTP OPTIONS /api/Auth/faculty/approved responded 204 in 0.6016 ms
+2026-04-29 18:56:43.248 +00:00 [INF] Request finished HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/faculty/approved - 204 null null 1.6437ms
+2026-04-29 18:56:43.251 +00:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/api/Auth/faculty/approved - application/json null
+2026-04-29 18:56:43.251 +00:00 [INF] CORS policy execution successful.
+2026-04-29 18:56:43.252 +00:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.GetApprovedFaculties (For_Testing_Only_Capstone)'
+2026-04-29 18:56:43.252 +00:00 [INF] Route matched with {action = "GetApprovedFaculties", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetApprovedFaculties() on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-29 18:56:43.253 +00:00 [INF] Executing OkObjectResult, writing value of type '<>f__AnonymousType12`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.Collections.Generic.List`1[[System.Object, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]], System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-29 18:56:43.253 +00:00 [INF] Executed action Client_app.Controllers.AuthController.GetApprovedFaculties (For_Testing_Only_Capstone) in 1.0518ms
+2026-04-29 18:56:43.254 +00:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.GetApprovedFaculties (For_Testing_Only_Capstone)'
+2026-04-29 18:56:43.255 +00:00 [INF] HTTP GET /api/Auth/faculty/approved responded 200 in 3.4565 ms
+2026-04-29 18:56:43.255 +00:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/api/Auth/faculty/approved - 200 null application/json; charset=utf-8 4.7281ms
+2026-04-29 18:56:43.289 +00:00 [INF] Executing OkObjectResult, writing value of type '<>f__AnonymousType19`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.Collections.Generic.List`1[[System.Object, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]], System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-29 18:56:43.290 +00:00 [INF] Executed action BlockGo.Controllers.SectionController.GetDepartmentSections (For_Testing_Only_Capstone) in 47.7903ms
+2026-04-29 18:56:43.290 +00:00 [INF] Executed endpoint 'BlockGo.Controllers.SectionController.GetDepartmentSections (For_Testing_Only_Capstone)'
+2026-04-29 18:56:43.291 +00:00 [INF] HTTP GET /api/Auth/sections/department/BSIT responded 200 in 49.9352 ms
+2026-04-29 18:56:43.291 +00:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/api/Auth/sections/department/BSIT - 200 null application/json; charset=utf-8 50.9612ms
+2026-04-29 18:56:43.902 +00:00 [INF] Request starting HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/department/pascualpatrick264@gmail.com/students/pending - null null
+2026-04-29 18:56:43.902 +00:00 [INF] CORS policy execution successful.
+2026-04-29 18:56:43.903 +00:00 [INF] HTTP OPTIONS /api/Auth/department/pascualpatrick264@gmail.com/students/pending responded 204 in 0.4618 ms
+2026-04-29 18:56:43.903 +00:00 [INF] Request finished HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/department/pascualpatrick264@gmail.com/students/pending - 204 null null 1.5135ms
+2026-04-29 18:56:43.907 +00:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/api/Auth/department/pascualpatrick264@gmail.com/students/pending - application/json null
+2026-04-29 18:56:43.908 +00:00 [INF] CORS policy execution successful.
+2026-04-29 18:56:43.908 +00:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.GetDepartmentPendingStudents (For_Testing_Only_Capstone)'
+2026-04-29 18:56:43.909 +00:00 [INF] Route matched with {action = "GetDepartmentPendingStudents", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetDepartmentPendingStudents(System.String) on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-29 18:56:43.911 +00:00 [INF] Executing OkObjectResult, writing value of type '<>f__AnonymousType7`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.Collections.Generic.List`1[[System.Object, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]], System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-29 18:56:43.912 +00:00 [INF] Executed action Client_app.Controllers.AuthController.GetDepartmentPendingStudents (For_Testing_Only_Capstone) in 2.7217ms
+2026-04-29 18:56:43.912 +00:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.GetDepartmentPendingStudents (For_Testing_Only_Capstone)'
+2026-04-29 18:56:43.912 +00:00 [INF] HTTP GET /api/Auth/department/pascualpatrick264@gmail.com/students/pending responded 200 in 4.8224 ms
+2026-04-29 18:56:43.913 +00:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/api/Auth/department/pascualpatrick264@gmail.com/students/pending - 200 null application/json; charset=utf-8 5.6017ms
+2026-04-29 18:56:46.190 +00:00 [INF] Request starting HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/user-profile?email=registrar%40plv.edu.ph&role=registrar - null null
+2026-04-29 18:56:46.191 +00:00 [INF] CORS policy execution successful.
+2026-04-29 18:56:46.191 +00:00 [INF] HTTP OPTIONS /api/Auth/user-profile responded 204 in 0.3733 ms
+2026-04-29 18:56:46.192 +00:00 [INF] Request finished HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/user-profile?email=registrar%40plv.edu.ph&role=registrar - 204 null null 1.2954ms
+2026-04-29 18:56:46.195 +00:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/api/Auth/user-profile?email=registrar%40plv.edu.ph&role=registrar - application/json null
+2026-04-29 18:56:46.195 +00:00 [INF] CORS policy execution successful.
+2026-04-29 18:56:46.196 +00:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone)'
+2026-04-29 18:56:46.196 +00:00 [INF] Route matched with {action = "GetUserProfile", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetUserProfile(System.String, System.String) on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-29 18:56:46.198 +00:00 [INF] Executing OkObjectResult, writing value of type '<>f__AnonymousType19`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[Client_app.Models.UserProfileDto, For_Testing_Only_Capstone, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]'.
+2026-04-29 18:56:46.198 +00:00 [INF] Executed action Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone) in 1.8508ms
+2026-04-29 18:56:46.199 +00:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone)'
+2026-04-29 18:56:46.199 +00:00 [INF] HTTP GET /api/Auth/user-profile responded 200 in 3.8895 ms
+2026-04-29 18:56:46.200 +00:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/api/Auth/user-profile?email=registrar%40plv.edu.ph&role=registrar - 200 null application/json; charset=utf-8 4.9094ms
+2026-04-29 18:56:51.352 +00:00 [INF] Request starting HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/requests/pending - null null
+2026-04-29 18:56:51.353 +00:00 [INF] CORS policy execution successful.
+2026-04-29 18:56:51.353 +00:00 [INF] HTTP OPTIONS /api/Auth/requests/pending responded 204 in 0.4016 ms
+2026-04-29 18:56:51.354 +00:00 [INF] Request finished HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/requests/pending - 204 null null 1.3975ms
+2026-04-29 18:56:51.357 +00:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/api/Auth/requests/pending - application/json null
+2026-04-29 18:56:51.358 +00:00 [INF] CORS policy execution successful.
+2026-04-29 18:56:51.358 +00:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.GetPendingRequests (For_Testing_Only_Capstone)'
+2026-04-29 18:56:51.358 +00:00 [INF] Route matched with {action = "GetPendingRequests", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetPendingRequests() on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-29 18:56:51.361 +00:00 [INF] Executing OkObjectResult, writing value of type '<>f__AnonymousType4`3[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.Collections.Generic.List`1[[System.Object, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]], System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.Collections.Generic.List`1[[System.Object, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]], System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-29 18:56:51.362 +00:00 [INF] Executed action Client_app.Controllers.AuthController.GetPendingRequests (For_Testing_Only_Capstone) in 2.9912ms
+2026-04-29 18:56:51.362 +00:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.GetPendingRequests (For_Testing_Only_Capstone)'
+2026-04-29 18:56:51.362 +00:00 [INF] HTTP GET /api/Auth/requests/pending responded 200 in 4.6707 ms
+2026-04-29 18:56:51.363 +00:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/api/Auth/requests/pending - 200 null application/json; charset=utf-8 5.4373ms
+2026-04-29 18:56:52.774 +00:00 [INF] Request starting HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/students/approved - null null
+2026-04-29 18:56:52.774 +00:00 [INF] CORS policy execution successful.
+2026-04-29 18:56:52.775 +00:00 [INF] HTTP OPTIONS /api/Auth/students/approved responded 204 in 0.3797 ms
+2026-04-29 18:56:52.775 +00:00 [INF] Request finished HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/students/approved - 204 null null 1.2375ms
+2026-04-29 18:56:52.778 +00:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/api/Auth/students/approved - application/json null
+2026-04-29 18:56:52.778 +00:00 [INF] CORS policy execution successful.
+2026-04-29 18:56:52.779 +00:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.GetApprovedStudents (For_Testing_Only_Capstone)'
+2026-04-29 18:56:52.779 +00:00 [INF] Route matched with {action = "GetApprovedStudents", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetApprovedStudents() on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-29 18:56:52.781 +00:00 [INF] Executing OkObjectResult, writing value of type '<>f__AnonymousType7`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.Collections.Generic.List`1[[System.Object, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]], System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-29 18:56:52.782 +00:00 [INF] Executed action Client_app.Controllers.AuthController.GetApprovedStudents (For_Testing_Only_Capstone) in 1.7872ms
+2026-04-29 18:56:52.782 +00:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.GetApprovedStudents (For_Testing_Only_Capstone)'
+2026-04-29 18:56:52.782 +00:00 [INF] HTTP GET /api/Auth/students/approved responded 200 in 3.9100 ms
+2026-04-29 18:56:52.783 +00:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/api/Auth/students/approved - 200 null application/json; charset=utf-8 4.8757ms
+2026-04-29 18:57:24.233 +00:00 [INF] Request starting HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/faculty/pascualpatrick264@gmail.com/assigned-sections - null null
+2026-04-29 18:57:24.233 +00:00 [INF] Request starting HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/sections/department/BSIT - null null
+2026-04-29 18:57:24.234 +00:00 [INF] CORS policy execution successful.
+2026-04-29 18:57:24.235 +00:00 [INF] CORS policy execution successful.
+2026-04-29 18:57:24.235 +00:00 [INF] HTTP OPTIONS /api/Auth/faculty/pascualpatrick264@gmail.com/assigned-sections responded 204 in 1.7311 ms
+2026-04-29 18:57:24.236 +00:00 [INF] HTTP OPTIONS /api/Auth/sections/department/BSIT responded 204 in 1.0130 ms
+2026-04-29 18:57:24.236 +00:00 [INF] Request finished HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/faculty/pascualpatrick264@gmail.com/assigned-sections - 204 null null 3.1664ms
+2026-04-29 18:57:24.236 +00:00 [INF] Request finished HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/sections/department/BSIT - 204 null null 3.0836ms
+2026-04-29 18:57:24.240 +00:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/api/Auth/sections/department/BSIT - application/json null
+2026-04-29 18:57:24.240 +00:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/api/Auth/faculty/pascualpatrick264@gmail.com/assigned-sections - application/json null
+2026-04-29 18:57:24.241 +00:00 [INF] CORS policy execution successful.
+2026-04-29 18:57:24.241 +00:00 [INF] CORS policy execution successful.
+2026-04-29 18:57:24.242 +00:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.GetFacultySections (For_Testing_Only_Capstone)'
+2026-04-29 18:57:24.242 +00:00 [INF] Executing endpoint 'BlockGo.Controllers.SectionController.GetDepartmentSections (For_Testing_Only_Capstone)'
+2026-04-29 18:57:24.243 +00:00 [INF] Route matched with {action = "GetFacultySections", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetFacultySections(System.String) on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-29 18:57:24.243 +00:00 [INF] Route matched with {action = "GetDepartmentSections", controller = "Section"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetDepartmentSections(System.String) on controller BlockGo.Controllers.SectionController (For_Testing_Only_Capstone).
+2026-04-29 18:57:24.245 +00:00 [INF] Executing OkObjectResult, writing value of type '<>f__AnonymousType15`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.Collections.Generic.List`1[[System.Object, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]], System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-29 18:57:24.245 +00:00 [INF] Executed action Client_app.Controllers.AuthController.GetFacultySections (For_Testing_Only_Capstone) in 2.1533ms
+2026-04-29 18:57:24.246 +00:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.GetFacultySections (For_Testing_Only_Capstone)'
+2026-04-29 18:57:24.246 +00:00 [INF] HTTP GET /api/Auth/faculty/pascualpatrick264@gmail.com/assigned-sections responded 200 in 4.7749 ms
+2026-04-29 18:57:24.246 +00:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/api/Auth/faculty/pascualpatrick264@gmail.com/assigned-sections - 200 null application/json; charset=utf-8 6.0367ms
+2026-04-29 18:57:24.293 +00:00 [INF] Executing OkObjectResult, writing value of type '<>f__AnonymousType19`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.Collections.Generic.List`1[[System.Object, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]], System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-29 18:57:24.294 +00:00 [INF] Executed action BlockGo.Controllers.SectionController.GetDepartmentSections (For_Testing_Only_Capstone) in 50.669ms
+2026-04-29 18:57:24.294 +00:00 [INF] Executed endpoint 'BlockGo.Controllers.SectionController.GetDepartmentSections (For_Testing_Only_Capstone)'
+2026-04-29 18:57:24.295 +00:00 [INF] HTTP GET /api/Auth/sections/department/BSIT responded 200 in 54.0470 ms
+2026-04-29 18:57:24.295 +00:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/api/Auth/sections/department/BSIT - 200 null application/json; charset=utf-8 55.0126ms
+2026-04-29 18:57:24.300 +00:00 [INF] Request starting HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/faculty/pascualpatrick264@gmail.com/students - null null
+2026-04-29 18:57:24.300 +00:00 [INF] CORS policy execution successful.
+2026-04-29 18:57:24.301 +00:00 [INF] HTTP OPTIONS /api/Auth/faculty/pascualpatrick264@gmail.com/students responded 204 in 0.4084 ms
+2026-04-29 18:57:24.301 +00:00 [INF] Request finished HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/faculty/pascualpatrick264@gmail.com/students - 204 null null 1.1618ms
+2026-04-29 18:57:24.305 +00:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/api/Auth/faculty/pascualpatrick264@gmail.com/students - application/json null
+2026-04-29 18:57:24.305 +00:00 [INF] CORS policy execution successful.
+2026-04-29 18:57:24.306 +00:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.GetFacultyStudents (For_Testing_Only_Capstone)'
+2026-04-29 18:57:24.306 +00:00 [INF] Route matched with {action = "GetFacultyStudents", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetFacultyStudents(System.String) on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-29 18:57:24.308 +00:00 [INF] Executing OkObjectResult, writing value of type '<>f__AnonymousType7`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.Collections.Generic.List`1[[System.Object, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]], System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-29 18:57:24.309 +00:00 [INF] Executed action Client_app.Controllers.AuthController.GetFacultyStudents (For_Testing_Only_Capstone) in 2.2231ms
+2026-04-29 18:57:24.309 +00:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.GetFacultyStudents (For_Testing_Only_Capstone)'
+2026-04-29 18:57:24.309 +00:00 [INF] HTTP GET /api/Auth/faculty/pascualpatrick264@gmail.com/students responded 200 in 3.9642 ms
+2026-04-29 18:57:24.309 +00:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/api/Auth/faculty/pascualpatrick264@gmail.com/students - 200 null application/json; charset=utf-8 4.8765ms
+2026-04-29 18:57:25.217 +00:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/api/Auth/sections/department/BSIT - application/json null
+2026-04-29 18:57:25.218 +00:00 [INF] CORS policy execution successful.
+2026-04-29 18:57:25.219 +00:00 [INF] Executing endpoint 'BlockGo.Controllers.SectionController.GetDepartmentSections (For_Testing_Only_Capstone)'
+2026-04-29 18:57:25.219 +00:00 [INF] Route matched with {action = "GetDepartmentSections", controller = "Section"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetDepartmentSections(System.String) on controller BlockGo.Controllers.SectionController (For_Testing_Only_Capstone).
+2026-04-29 18:57:25.227 +00:00 [INF] Request starting HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/faculty/approved - null null
+2026-04-29 18:57:25.228 +00:00 [INF] CORS policy execution successful.
+2026-04-29 18:57:25.228 +00:00 [INF] HTTP OPTIONS /api/Auth/faculty/approved responded 204 in 0.4003 ms
+2026-04-29 18:57:25.228 +00:00 [INF] Request finished HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/faculty/approved - 204 null null 1.2803ms
+2026-04-29 18:57:25.231 +00:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/api/Auth/faculty/approved - application/json null
+2026-04-29 18:57:25.232 +00:00 [INF] CORS policy execution successful.
+2026-04-29 18:57:25.232 +00:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.GetApprovedFaculties (For_Testing_Only_Capstone)'
+2026-04-29 18:57:25.232 +00:00 [INF] Route matched with {action = "GetApprovedFaculties", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetApprovedFaculties() on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-29 18:57:25.233 +00:00 [INF] Executing OkObjectResult, writing value of type '<>f__AnonymousType12`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.Collections.Generic.List`1[[System.Object, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]], System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-29 18:57:25.234 +00:00 [INF] Executed action Client_app.Controllers.AuthController.GetApprovedFaculties (For_Testing_Only_Capstone) in 0.7733ms
+2026-04-29 18:57:25.234 +00:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.GetApprovedFaculties (For_Testing_Only_Capstone)'
+2026-04-29 18:57:25.235 +00:00 [INF] HTTP GET /api/Auth/faculty/approved responded 200 in 3.4654 ms
+2026-04-29 18:57:25.235 +00:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/api/Auth/faculty/approved - 200 null application/json; charset=utf-8 4.2751ms
+2026-04-29 18:57:25.269 +00:00 [INF] Executing OkObjectResult, writing value of type '<>f__AnonymousType19`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.Collections.Generic.List`1[[System.Object, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]], System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-29 18:57:25.269 +00:00 [INF] Executed action BlockGo.Controllers.SectionController.GetDepartmentSections (For_Testing_Only_Capstone) in 49.6518ms
+2026-04-29 18:57:25.270 +00:00 [INF] Executed endpoint 'BlockGo.Controllers.SectionController.GetDepartmentSections (For_Testing_Only_Capstone)'
+2026-04-29 18:57:25.270 +00:00 [INF] HTTP GET /api/Auth/sections/department/BSIT responded 200 in 52.4508 ms
+2026-04-29 18:57:25.271 +00:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/api/Auth/sections/department/BSIT - 200 null application/json; charset=utf-8 53.6161ms
+2026-04-29 18:57:26.373 +00:00 [INF] Request starting HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/department/pascualpatrick264@gmail.com/students/pending - null null
+2026-04-29 18:57:26.373 +00:00 [INF] CORS policy execution successful.
+2026-04-29 18:57:26.374 +00:00 [INF] HTTP OPTIONS /api/Auth/department/pascualpatrick264@gmail.com/students/pending responded 204 in 0.3700 ms
+2026-04-29 18:57:26.374 +00:00 [INF] Request finished HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/department/pascualpatrick264@gmail.com/students/pending - 204 null null 1.2873ms
+2026-04-29 18:57:26.378 +00:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/api/Auth/department/pascualpatrick264@gmail.com/students/pending - application/json null
+2026-04-29 18:57:26.379 +00:00 [INF] CORS policy execution successful.
+2026-04-29 18:57:26.379 +00:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.GetDepartmentPendingStudents (For_Testing_Only_Capstone)'
+2026-04-29 18:57:26.379 +00:00 [INF] Route matched with {action = "GetDepartmentPendingStudents", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetDepartmentPendingStudents(System.String) on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-29 18:57:26.381 +00:00 [INF] Executing OkObjectResult, writing value of type '<>f__AnonymousType7`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.Collections.Generic.List`1[[System.Object, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]], System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-29 18:57:26.382 +00:00 [INF] Executed action Client_app.Controllers.AuthController.GetDepartmentPendingStudents (For_Testing_Only_Capstone) in 2.0008ms
+2026-04-29 18:57:26.382 +00:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.GetDepartmentPendingStudents (For_Testing_Only_Capstone)'
+2026-04-29 18:57:26.382 +00:00 [INF] HTTP GET /api/Auth/department/pascualpatrick264@gmail.com/students/pending responded 200 in 3.7632 ms
+2026-04-29 18:57:26.383 +00:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/api/Auth/department/pascualpatrick264@gmail.com/students/pending - 200 null application/json; charset=utf-8 4.6896ms
+2026-04-29 18:57:35.765 +00:00 [INF] Request starting HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/sections/department/BSIT - null null
+2026-04-29 18:57:35.765 +00:00 [INF] Request starting HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/faculty/approved - null null
+2026-04-29 18:57:35.766 +00:00 [INF] CORS policy execution successful.
+2026-04-29 18:57:35.766 +00:00 [INF] CORS policy execution successful.
+2026-04-29 18:57:35.766 +00:00 [INF] HTTP OPTIONS /api/Auth/sections/department/BSIT responded 204 in 0.4935 ms
+2026-04-29 18:57:35.766 +00:00 [INF] HTTP OPTIONS /api/Auth/faculty/approved responded 204 in 0.3493 ms
+2026-04-29 18:57:35.767 +00:00 [INF] Request finished HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/sections/department/BSIT - 204 null null 1.9531ms
+2026-04-29 18:57:35.767 +00:00 [INF] Request finished HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/faculty/approved - 204 null null 2.3065ms
+2026-04-29 18:57:35.772 +00:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/api/Auth/faculty/approved - application/json null
+2026-04-29 18:57:35.772 +00:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/api/Auth/sections/department/BSIT - application/json null
+2026-04-29 18:57:35.772 +00:00 [INF] CORS policy execution successful.
+2026-04-29 18:57:35.773 +00:00 [INF] CORS policy execution successful.
+2026-04-29 18:57:35.773 +00:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.GetApprovedFaculties (For_Testing_Only_Capstone)'
+2026-04-29 18:57:35.773 +00:00 [INF] Executing endpoint 'BlockGo.Controllers.SectionController.GetDepartmentSections (For_Testing_Only_Capstone)'
+2026-04-29 18:57:35.774 +00:00 [INF] Route matched with {action = "GetApprovedFaculties", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetApprovedFaculties() on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-29 18:57:35.774 +00:00 [INF] Route matched with {action = "GetDepartmentSections", controller = "Section"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetDepartmentSections(System.String) on controller BlockGo.Controllers.SectionController (For_Testing_Only_Capstone).
+2026-04-29 18:57:35.775 +00:00 [INF] Executing OkObjectResult, writing value of type '<>f__AnonymousType12`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.Collections.Generic.List`1[[System.Object, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]], System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-29 18:57:35.776 +00:00 [INF] Executed action Client_app.Controllers.AuthController.GetApprovedFaculties (For_Testing_Only_Capstone) in 1.0415ms
+2026-04-29 18:57:35.777 +00:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.GetApprovedFaculties (For_Testing_Only_Capstone)'
+2026-04-29 18:57:35.777 +00:00 [INF] HTTP GET /api/Auth/faculty/approved responded 200 in 4.4512 ms
+2026-04-29 18:57:35.777 +00:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/api/Auth/faculty/approved - 200 null application/json; charset=utf-8 5.36ms
+2026-04-29 18:57:36.276 +00:00 [INF] Executing OkObjectResult, writing value of type '<>f__AnonymousType19`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.Collections.Generic.List`1[[System.Object, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]], System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-29 18:57:36.276 +00:00 [INF] Executed action BlockGo.Controllers.SectionController.GetDepartmentSections (For_Testing_Only_Capstone) in 500.7769ms
+2026-04-29 18:57:36.276 +00:00 [INF] Executed endpoint 'BlockGo.Controllers.SectionController.GetDepartmentSections (For_Testing_Only_Capstone)'
+2026-04-29 18:57:36.277 +00:00 [INF] HTTP GET /api/Auth/sections/department/BSIT responded 200 in 504.1124 ms
+2026-04-29 18:57:36.277 +00:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/api/Auth/sections/department/BSIT - 200 null application/json; charset=utf-8 505.3468ms
+2026-04-29 18:57:36.419 +00:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/api/Auth/sections/department/BSIT - application/json null
+2026-04-29 18:57:36.420 +00:00 [INF] CORS policy execution successful.
+2026-04-29 18:57:36.421 +00:00 [INF] Executing endpoint 'BlockGo.Controllers.SectionController.GetDepartmentSections (For_Testing_Only_Capstone)'
+2026-04-29 18:57:36.422 +00:00 [INF] Route matched with {action = "GetDepartmentSections", controller = "Section"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetDepartmentSections(System.String) on controller BlockGo.Controllers.SectionController (For_Testing_Only_Capstone).
+2026-04-29 18:57:36.427 +00:00 [INF] Request starting HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/faculty/pascualpatrick264@gmail.com/assigned-sections - null null
+2026-04-29 18:57:36.428 +00:00 [INF] CORS policy execution successful.
+2026-04-29 18:57:36.428 +00:00 [INF] HTTP OPTIONS /api/Auth/faculty/pascualpatrick264@gmail.com/assigned-sections responded 204 in 0.4225 ms
+2026-04-29 18:57:36.428 +00:00 [INF] Request finished HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/faculty/pascualpatrick264@gmail.com/assigned-sections - 204 null null 1.6001ms
+2026-04-29 18:57:36.431 +00:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/api/Auth/faculty/pascualpatrick264@gmail.com/assigned-sections - application/json null
+2026-04-29 18:57:36.432 +00:00 [INF] CORS policy execution successful.
+2026-04-29 18:57:36.432 +00:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.GetFacultySections (For_Testing_Only_Capstone)'
+2026-04-29 18:57:36.433 +00:00 [INF] Route matched with {action = "GetFacultySections", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetFacultySections(System.String) on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-29 18:57:36.508 +00:00 [INF] Executing OkObjectResult, writing value of type '<>f__AnonymousType15`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.Collections.Generic.List`1[[System.Object, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]], System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-29 18:57:36.508 +00:00 [INF] Executing OkObjectResult, writing value of type '<>f__AnonymousType19`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.Collections.Generic.List`1[[System.Object, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]], System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-29 18:57:36.509 +00:00 [INF] Executed action Client_app.Controllers.AuthController.GetFacultySections (For_Testing_Only_Capstone) in 75.2424ms
+2026-04-29 18:57:36.509 +00:00 [INF] Executed action BlockGo.Controllers.SectionController.GetDepartmentSections (For_Testing_Only_Capstone) in 86.546ms
+2026-04-29 18:57:36.509 +00:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.GetFacultySections (For_Testing_Only_Capstone)'
+2026-04-29 18:57:36.510 +00:00 [INF] Executed endpoint 'BlockGo.Controllers.SectionController.GetDepartmentSections (For_Testing_Only_Capstone)'
+2026-04-29 18:57:36.510 +00:00 [INF] HTTP GET /api/Auth/faculty/pascualpatrick264@gmail.com/assigned-sections responded 200 in 78.1398 ms
+2026-04-29 18:57:36.510 +00:00 [INF] HTTP GET /api/Auth/sections/department/BSIT responded 200 in 90.7121 ms
+2026-04-29 18:57:36.511 +00:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/api/Auth/faculty/pascualpatrick264@gmail.com/assigned-sections - 200 null application/json; charset=utf-8 79.6985ms
+2026-04-29 18:57:36.512 +00:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/api/Auth/sections/department/BSIT - 200 null application/json; charset=utf-8 92.5371ms
+2026-04-29 18:57:36.521 +00:00 [INF] Request starting HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/faculty/pascualpatrick264@gmail.com/students - null null
+2026-04-29 18:57:36.522 +00:00 [INF] CORS policy execution successful.
+2026-04-29 18:57:36.522 +00:00 [INF] HTTP OPTIONS /api/Auth/faculty/pascualpatrick264@gmail.com/students responded 204 in 0.4181 ms
+2026-04-29 18:57:36.523 +00:00 [INF] Request finished HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/faculty/pascualpatrick264@gmail.com/students - 204 null null 1.236ms
+2026-04-29 18:57:36.528 +00:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/api/Auth/faculty/pascualpatrick264@gmail.com/students - application/json null
+2026-04-29 18:57:36.529 +00:00 [INF] CORS policy execution successful.
+2026-04-29 18:57:36.529 +00:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.GetFacultyStudents (For_Testing_Only_Capstone)'
+2026-04-29 18:57:36.529 +00:00 [INF] Route matched with {action = "GetFacultyStudents", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetFacultyStudents(System.String) on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-29 18:57:36.532 +00:00 [INF] Executing OkObjectResult, writing value of type '<>f__AnonymousType7`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.Collections.Generic.List`1[[System.Object, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]], System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-29 18:57:36.532 +00:00 [INF] Executed action Client_app.Controllers.AuthController.GetFacultyStudents (For_Testing_Only_Capstone) in 2.5775ms
+2026-04-29 18:57:36.533 +00:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.GetFacultyStudents (For_Testing_Only_Capstone)'
+2026-04-29 18:57:36.533 +00:00 [INF] HTTP GET /api/Auth/faculty/pascualpatrick264@gmail.com/students responded 200 in 4.7420 ms
+2026-04-29 18:57:36.534 +00:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/api/Auth/faculty/pascualpatrick264@gmail.com/students - 200 null application/json; charset=utf-8 6.0041ms
+2026-04-29 18:57:48.654 +00:00 [INF] Request starting HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/students/14/assign - null null
+2026-04-29 18:57:48.654 +00:00 [INF] CORS policy execution successful.
+2026-04-29 18:57:48.655 +00:00 [INF] HTTP OPTIONS /api/Auth/students/14/assign responded 204 in 0.3537 ms
+2026-04-29 18:57:48.655 +00:00 [INF] Request finished HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/students/14/assign - 204 null null 1.3631ms
+2026-04-29 18:57:48.658 +00:00 [INF] Request starting HTTP/1.1 PUT http://localhost:5000/api/Auth/students/14/assign - application/json 78
+2026-04-29 18:57:48.660 +00:00 [INF] CORS policy execution successful.
+2026-04-29 18:57:48.660 +00:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.AssignStudent (For_Testing_Only_Capstone)'
+2026-04-29 18:57:48.664 +00:00 [INF] Route matched with {action = "AssignStudent", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] AssignStudent(Int32, Client_app.Models.AssignStudentRequest) on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-29 18:57:48.715 +00:00 [INF] Executing OkObjectResult, writing value of type '<>f__AnonymousType0`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-29 18:57:48.716 +00:00 [INF] Executed action Client_app.Controllers.AuthController.AssignStudent (For_Testing_Only_Capstone) in 50.7834ms
+2026-04-29 18:57:48.716 +00:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.AssignStudent (For_Testing_Only_Capstone)'
+2026-04-29 18:57:48.716 +00:00 [INF] HTTP PUT /api/Auth/students/14/assign responded 200 in 56.6593 ms
+2026-04-29 18:57:48.717 +00:00 [INF] Request finished HTTP/1.1 PUT http://localhost:5000/api/Auth/students/14/assign - 200 null application/json; charset=utf-8 58.4442ms
+2026-04-29 18:57:49.811 +00:00 [INF] Request starting HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/students/approved - null null
+2026-04-29 18:57:49.812 +00:00 [INF] CORS policy execution successful.
+2026-04-29 18:57:49.812 +00:00 [INF] HTTP OPTIONS /api/Auth/students/approved responded 204 in 0.5776 ms
+2026-04-29 18:57:49.813 +00:00 [INF] Request finished HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/students/approved - 204 null null 1.3882ms
+2026-04-29 18:57:49.816 +00:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/api/Auth/students/approved - application/json null
+2026-04-29 18:57:49.817 +00:00 [INF] CORS policy execution successful.
+2026-04-29 18:57:49.817 +00:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.GetApprovedStudents (For_Testing_Only_Capstone)'
+2026-04-29 18:57:49.817 +00:00 [INF] Route matched with {action = "GetApprovedStudents", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetApprovedStudents() on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-29 18:57:49.819 +00:00 [INF] Executing OkObjectResult, writing value of type '<>f__AnonymousType7`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.Collections.Generic.List`1[[System.Object, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]], System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-29 18:57:49.819 +00:00 [INF] Executed action Client_app.Controllers.AuthController.GetApprovedStudents (For_Testing_Only_Capstone) in 1.5842ms
+2026-04-29 18:57:49.820 +00:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.GetApprovedStudents (For_Testing_Only_Capstone)'
+2026-04-29 18:57:49.820 +00:00 [INF] HTTP GET /api/Auth/students/approved responded 200 in 3.2937 ms
+2026-04-29 18:57:49.820 +00:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/api/Auth/students/approved - 200 null application/json; charset=utf-8 4.0459ms
+2026-04-29 18:57:51.445 +00:00 [INF] Request starting HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/sections/department/BSIT - null null
+2026-04-29 18:57:51.445 +00:00 [INF] Request starting HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/faculty/approved - null null
+2026-04-29 18:57:51.445 +00:00 [INF] CORS policy execution successful.
+2026-04-29 18:57:51.446 +00:00 [INF] CORS policy execution successful.
+2026-04-29 18:57:51.446 +00:00 [INF] HTTP OPTIONS /api/Auth/sections/department/BSIT responded 204 in 0.8236 ms
+2026-04-29 18:57:51.446 +00:00 [INF] HTTP OPTIONS /api/Auth/faculty/approved responded 204 in 0.6506 ms
+2026-04-29 18:57:51.447 +00:00 [INF] Request finished HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/sections/department/BSIT - 204 null null 2.2875ms
+2026-04-29 18:57:51.447 +00:00 [INF] Request finished HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/faculty/approved - 204 null null 2.6668ms
+2026-04-29 18:57:51.451 +00:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/api/Auth/sections/department/BSIT - application/json null
+2026-04-29 18:57:51.451 +00:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/api/Auth/faculty/approved - application/json null
+2026-04-29 18:57:51.452 +00:00 [INF] CORS policy execution successful.
+2026-04-29 18:57:51.452 +00:00 [INF] CORS policy execution successful.
+2026-04-29 18:57:51.452 +00:00 [INF] Executing endpoint 'BlockGo.Controllers.SectionController.GetDepartmentSections (For_Testing_Only_Capstone)'
+2026-04-29 18:57:51.453 +00:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.GetApprovedFaculties (For_Testing_Only_Capstone)'
+2026-04-29 18:57:51.453 +00:00 [INF] Route matched with {action = "GetDepartmentSections", controller = "Section"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetDepartmentSections(System.String) on controller BlockGo.Controllers.SectionController (For_Testing_Only_Capstone).
+2026-04-29 18:57:51.453 +00:00 [INF] Route matched with {action = "GetApprovedFaculties", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetApprovedFaculties() on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-29 18:57:51.454 +00:00 [INF] Executing OkObjectResult, writing value of type '<>f__AnonymousType12`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.Collections.Generic.List`1[[System.Object, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]], System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-29 18:57:51.455 +00:00 [INF] Executed action Client_app.Controllers.AuthController.GetApprovedFaculties (For_Testing_Only_Capstone) in 0.5821ms
+2026-04-29 18:57:51.455 +00:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.GetApprovedFaculties (For_Testing_Only_Capstone)'
+2026-04-29 18:57:51.455 +00:00 [INF] HTTP GET /api/Auth/faculty/approved responded 200 in 3.5044 ms
+2026-04-29 18:57:51.456 +00:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/api/Auth/faculty/approved - 200 null application/json; charset=utf-8 4.8803ms
+2026-04-29 18:57:51.505 +00:00 [INF] Executing OkObjectResult, writing value of type '<>f__AnonymousType19`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.Collections.Generic.List`1[[System.Object, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]], System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-29 18:57:51.505 +00:00 [INF] Executed action BlockGo.Controllers.SectionController.GetDepartmentSections (For_Testing_Only_Capstone) in 51.1238ms
+2026-04-29 18:57:51.505 +00:00 [INF] Executed endpoint 'BlockGo.Controllers.SectionController.GetDepartmentSections (For_Testing_Only_Capstone)'
+2026-04-29 18:57:51.506 +00:00 [INF] HTTP GET /api/Auth/sections/department/BSIT responded 200 in 54.2122 ms
+2026-04-29 18:57:51.506 +00:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/api/Auth/sections/department/BSIT - 200 null application/json; charset=utf-8 55.2041ms
+2026-04-29 18:57:52.015 +00:00 [INF] Request starting HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/department/pascualpatrick264@gmail.com/students/pending - null null
+2026-04-29 18:57:52.016 +00:00 [INF] CORS policy execution successful.
+2026-04-29 18:57:52.016 +00:00 [INF] HTTP OPTIONS /api/Auth/department/pascualpatrick264@gmail.com/students/pending responded 204 in 0.4052 ms
+2026-04-29 18:57:52.016 +00:00 [INF] Request finished HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/department/pascualpatrick264@gmail.com/students/pending - 204 null null 1.3338ms
+2026-04-29 18:57:52.019 +00:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/api/Auth/department/pascualpatrick264@gmail.com/students/pending - application/json null
+2026-04-29 18:57:52.020 +00:00 [INF] CORS policy execution successful.
+2026-04-29 18:57:52.020 +00:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.GetDepartmentPendingStudents (For_Testing_Only_Capstone)'
+2026-04-29 18:57:52.020 +00:00 [INF] Route matched with {action = "GetDepartmentPendingStudents", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetDepartmentPendingStudents(System.String) on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-29 18:57:52.024 +00:00 [INF] Executing OkObjectResult, writing value of type '<>f__AnonymousType7`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.Collections.Generic.List`1[[System.Object, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]], System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-29 18:57:52.025 +00:00 [INF] Executed action Client_app.Controllers.AuthController.GetDepartmentPendingStudents (For_Testing_Only_Capstone) in 4.5027ms
+2026-04-29 18:57:52.026 +00:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.GetDepartmentPendingStudents (For_Testing_Only_Capstone)'
+2026-04-29 18:57:52.026 +00:00 [INF] HTTP GET /api/Auth/department/pascualpatrick264@gmail.com/students/pending responded 200 in 6.3624 ms
+2026-04-29 18:57:52.026 +00:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/api/Auth/department/pascualpatrick264@gmail.com/students/pending - 200 null application/json; charset=utf-8 7.2142ms
+2026-04-29 18:57:59.613 +00:00 [INF] Request starting HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/students/14/approve-enrollment - null null
+2026-04-29 18:57:59.613 +00:00 [INF] CORS policy execution successful.
+2026-04-29 18:57:59.614 +00:00 [INF] HTTP OPTIONS /api/Auth/students/14/approve-enrollment responded 204 in 0.3939 ms
+2026-04-29 18:57:59.614 +00:00 [INF] Request finished HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/students/14/approve-enrollment - 204 null null 1.4364ms
+2026-04-29 18:57:59.617 +00:00 [INF] Request starting HTTP/1.1 PUT http://localhost:5000/api/Auth/students/14/approve-enrollment - application/json 0
+2026-04-29 18:57:59.618 +00:00 [INF] CORS policy execution successful.
+2026-04-29 18:57:59.618 +00:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.ApproveStudentEnrollment (For_Testing_Only_Capstone)'
+2026-04-29 18:57:59.622 +00:00 [INF] Route matched with {action = "ApproveStudentEnrollment", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] ApproveStudentEnrollment(Int32) on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-29 18:57:59.664 +00:00 [INF] Executing OkObjectResult, writing value of type '<>f__AnonymousType0`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-29 18:57:59.664 +00:00 [INF] Executed action Client_app.Controllers.AuthController.ApproveStudentEnrollment (For_Testing_Only_Capstone) in 42.2039ms
+2026-04-29 18:57:59.665 +00:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.ApproveStudentEnrollment (For_Testing_Only_Capstone)'
+2026-04-29 18:57:59.665 +00:00 [INF] HTTP PUT /api/Auth/students/14/approve-enrollment responded 200 in 47.7765 ms
+2026-04-29 18:57:59.666 +00:00 [INF] Request finished HTTP/1.1 PUT http://localhost:5000/api/Auth/students/14/approve-enrollment - 200 null application/json; charset=utf-8 48.5961ms
+2026-04-29 18:57:59.763 +00:00 [INF] Request starting HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/department/pascualpatrick264@gmail.com/students/pending - null null
+2026-04-29 18:57:59.763 +00:00 [INF] Request starting HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/faculty/pascualpatrick264@gmail.com/assigned-sections - null null
+2026-04-29 18:57:59.765 +00:00 [INF] CORS policy execution successful.
+2026-04-29 18:57:59.765 +00:00 [INF] CORS policy execution successful.
+2026-04-29 18:57:59.766 +00:00 [INF] HTTP OPTIONS /api/Auth/department/pascualpatrick264@gmail.com/students/pending responded 204 in 0.6677 ms
+2026-04-29 18:57:59.766 +00:00 [INF] HTTP OPTIONS /api/Auth/faculty/pascualpatrick264@gmail.com/assigned-sections responded 204 in 0.6045 ms
+2026-04-29 18:57:59.766 +00:00 [INF] Request finished HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/department/pascualpatrick264@gmail.com/students/pending - 204 null null 2.9579ms
+2026-04-29 18:57:59.767 +00:00 [INF] Request finished HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/faculty/pascualpatrick264@gmail.com/assigned-sections - 204 null null 3.2766ms
+2026-04-29 18:57:59.771 +00:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/api/Auth/department/pascualpatrick264@gmail.com/students/pending - application/json null
+2026-04-29 18:57:59.771 +00:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/api/Auth/faculty/pascualpatrick264@gmail.com/assigned-sections - application/json null
+2026-04-29 18:57:59.771 +00:00 [INF] CORS policy execution successful.
+2026-04-29 18:57:59.771 +00:00 [INF] CORS policy execution successful.
+2026-04-29 18:57:59.772 +00:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.GetDepartmentPendingStudents (For_Testing_Only_Capstone)'
+2026-04-29 18:57:59.772 +00:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.GetFacultySections (For_Testing_Only_Capstone)'
+2026-04-29 18:57:59.772 +00:00 [INF] Route matched with {action = "GetDepartmentPendingStudents", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetDepartmentPendingStudents(System.String) on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-29 18:57:59.773 +00:00 [INF] Route matched with {action = "GetFacultySections", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetFacultySections(System.String) on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-29 18:57:59.775 +00:00 [INF] Executing OkObjectResult, writing value of type '<>f__AnonymousType7`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.Collections.Generic.List`1[[System.Object, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]], System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-29 18:57:59.778 +00:00 [INF] Executed action Client_app.Controllers.AuthController.GetDepartmentPendingStudents (For_Testing_Only_Capstone) in 5.2997ms
+2026-04-29 18:57:59.778 +00:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.GetDepartmentPendingStudents (For_Testing_Only_Capstone)'
+2026-04-29 18:57:59.779 +00:00 [INF] HTTP GET /api/Auth/department/pascualpatrick264@gmail.com/students/pending responded 200 in 7.9015 ms
+2026-04-29 18:57:59.779 +00:00 [INF] Executing OkObjectResult, writing value of type '<>f__AnonymousType15`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.Collections.Generic.List`1[[System.Object, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]], System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-29 18:57:59.779 +00:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/api/Auth/department/pascualpatrick264@gmail.com/students/pending - 200 null application/json; charset=utf-8 8.6325ms
+2026-04-29 18:57:59.780 +00:00 [INF] Executed action Client_app.Controllers.AuthController.GetFacultySections (For_Testing_Only_Capstone) in 1.9978ms
+2026-04-29 18:57:59.780 +00:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.GetFacultySections (For_Testing_Only_Capstone)'
+2026-04-29 18:57:59.780 +00:00 [INF] HTTP GET /api/Auth/faculty/pascualpatrick264@gmail.com/assigned-sections responded 200 in 9.1967 ms
+2026-04-29 18:57:59.781 +00:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/api/Auth/faculty/pascualpatrick264@gmail.com/assigned-sections - 200 null application/json; charset=utf-8 9.994ms
+2026-04-29 18:57:59.871 +00:00 [INF] Request starting HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/faculty/pascualpatrick264@gmail.com/students - null null
+2026-04-29 18:57:59.871 +00:00 [INF] CORS policy execution successful.
+2026-04-29 18:57:59.872 +00:00 [INF] HTTP OPTIONS /api/Auth/faculty/pascualpatrick264@gmail.com/students responded 204 in 0.4604 ms
+2026-04-29 18:57:59.872 +00:00 [INF] Request finished HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/faculty/pascualpatrick264@gmail.com/students - 204 null null 1.3931ms
+2026-04-29 18:57:59.875 +00:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/api/Auth/faculty/pascualpatrick264@gmail.com/students - application/json null
+2026-04-29 18:57:59.875 +00:00 [INF] CORS policy execution successful.
+2026-04-29 18:57:59.876 +00:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.GetFacultyStudents (For_Testing_Only_Capstone)'
+2026-04-29 18:57:59.876 +00:00 [INF] Route matched with {action = "GetFacultyStudents", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetFacultyStudents(System.String) on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-29 18:57:59.878 +00:00 [INF] Executing OkObjectResult, writing value of type '<>f__AnonymousType7`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.Collections.Generic.List`1[[System.Object, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]], System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-29 18:57:59.879 +00:00 [INF] Executed action Client_app.Controllers.AuthController.GetFacultyStudents (For_Testing_Only_Capstone) in 2.1202ms
+2026-04-29 18:57:59.879 +00:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.GetFacultyStudents (For_Testing_Only_Capstone)'
+2026-04-29 18:57:59.879 +00:00 [INF] HTTP GET /api/Auth/faculty/pascualpatrick264@gmail.com/students responded 200 in 4.1418 ms
+2026-04-29 18:57:59.880 +00:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/api/Auth/faculty/pascualpatrick264@gmail.com/students - 200 null application/json; charset=utf-8 4.888ms
+2026-04-29 18:58:00.906 +00:00 [INF] Request starting HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/sections/department/BSIT - null null
+2026-04-29 18:58:00.906 +00:00 [INF] Request starting HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/faculty/approved - null null
+2026-04-29 18:58:00.906 +00:00 [INF] CORS policy execution successful.
+2026-04-29 18:58:00.906 +00:00 [INF] CORS policy execution successful.
+2026-04-29 18:58:00.907 +00:00 [INF] HTTP OPTIONS /api/Auth/sections/department/BSIT responded 204 in 0.6736 ms
+2026-04-29 18:58:00.907 +00:00 [INF] HTTP OPTIONS /api/Auth/faculty/approved responded 204 in 0.7662 ms
+2026-04-29 18:58:00.908 +00:00 [INF] Request finished HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/sections/department/BSIT - 204 null null 1.959ms
+2026-04-29 18:58:00.908 +00:00 [INF] Request finished HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/faculty/approved - 204 null null 2.333ms
+2026-04-29 18:58:00.912 +00:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/api/Auth/sections/department/BSIT - application/json null
+2026-04-29 18:58:00.912 +00:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/api/Auth/faculty/approved - application/json null
+2026-04-29 18:58:00.912 +00:00 [INF] CORS policy execution successful.
+2026-04-29 18:58:00.913 +00:00 [INF] CORS policy execution successful.
+2026-04-29 18:58:00.913 +00:00 [INF] Executing endpoint 'BlockGo.Controllers.SectionController.GetDepartmentSections (For_Testing_Only_Capstone)'
+2026-04-29 18:58:00.913 +00:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.GetApprovedFaculties (For_Testing_Only_Capstone)'
+2026-04-29 18:58:00.914 +00:00 [INF] Route matched with {action = "GetDepartmentSections", controller = "Section"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetDepartmentSections(System.String) on controller BlockGo.Controllers.SectionController (For_Testing_Only_Capstone).
+2026-04-29 18:58:00.914 +00:00 [INF] Route matched with {action = "GetApprovedFaculties", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetApprovedFaculties() on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-29 18:58:00.915 +00:00 [INF] Executing OkObjectResult, writing value of type '<>f__AnonymousType12`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.Collections.Generic.List`1[[System.Object, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]], System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-29 18:58:00.916 +00:00 [INF] Executed action Client_app.Controllers.AuthController.GetApprovedFaculties (For_Testing_Only_Capstone) in 0.4655ms
+2026-04-29 18:58:00.916 +00:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.GetApprovedFaculties (For_Testing_Only_Capstone)'
+2026-04-29 18:58:00.916 +00:00 [INF] HTTP GET /api/Auth/faculty/approved responded 200 in 3.4694 ms
+2026-04-29 18:58:00.917 +00:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/api/Auth/faculty/approved - 200 null application/json; charset=utf-8 5.0991ms
+2026-04-29 18:58:00.961 +00:00 [INF] Executing OkObjectResult, writing value of type '<>f__AnonymousType19`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.Collections.Generic.List`1[[System.Object, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]], System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-29 18:58:00.962 +00:00 [INF] Executed action BlockGo.Controllers.SectionController.GetDepartmentSections (For_Testing_Only_Capstone) in 47.8452ms
+2026-04-29 18:58:00.963 +00:00 [INF] Executed endpoint 'BlockGo.Controllers.SectionController.GetDepartmentSections (For_Testing_Only_Capstone)'
+2026-04-29 18:58:00.963 +00:00 [INF] HTTP GET /api/Auth/sections/department/BSIT responded 200 in 50.6703 ms
+2026-04-29 18:58:00.963 +00:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/api/Auth/sections/department/BSIT - 200 null application/json; charset=utf-8 51.9057ms
+2026-04-29 18:58:08.457 +00:00 [INF] Request starting HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/department/pascualpatrick264@gmail.com/students/pending - null null
+2026-04-29 18:58:08.458 +00:00 [INF] CORS policy execution successful.
+2026-04-29 18:58:08.458 +00:00 [INF] HTTP OPTIONS /api/Auth/department/pascualpatrick264@gmail.com/students/pending responded 204 in 0.4634 ms
+2026-04-29 18:58:08.458 +00:00 [INF] Request finished HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/department/pascualpatrick264@gmail.com/students/pending - 204 null null 1.4032ms
+2026-04-29 18:58:08.462 +00:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/api/Auth/department/pascualpatrick264@gmail.com/students/pending - application/json null
+2026-04-29 18:58:08.463 +00:00 [INF] CORS policy execution successful.
+2026-04-29 18:58:08.463 +00:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.GetDepartmentPendingStudents (For_Testing_Only_Capstone)'
+2026-04-29 18:58:08.464 +00:00 [INF] Route matched with {action = "GetDepartmentPendingStudents", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetDepartmentPendingStudents(System.String) on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-29 18:58:08.466 +00:00 [INF] Executing OkObjectResult, writing value of type '<>f__AnonymousType7`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.Collections.Generic.List`1[[System.Object, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]], System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-29 18:58:08.466 +00:00 [INF] Executed action Client_app.Controllers.AuthController.GetDepartmentPendingStudents (For_Testing_Only_Capstone) in 2.1056ms
+2026-04-29 18:58:08.467 +00:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.GetDepartmentPendingStudents (For_Testing_Only_Capstone)'
+2026-04-29 18:58:08.467 +00:00 [INF] HTTP GET /api/Auth/department/pascualpatrick264@gmail.com/students/pending responded 200 in 4.6009 ms
+2026-04-29 18:58:08.469 +00:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/api/Auth/department/pascualpatrick264@gmail.com/students/pending - 200 null application/json; charset=utf-8 7.3704ms
+2026-04-29 18:58:15.392 +00:00 [INF] Request starting HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/sections/department/BSIT - null null
+2026-04-29 18:58:15.392 +00:00 [INF] Request starting HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/faculty/approved - null null
+2026-04-29 18:58:15.392 +00:00 [INF] CORS policy execution successful.
+2026-04-29 18:58:15.393 +00:00 [INF] CORS policy execution successful.
+2026-04-29 18:58:15.393 +00:00 [INF] HTTP OPTIONS /api/Auth/faculty/approved responded 204 in 0.8672 ms
+2026-04-29 18:58:15.393 +00:00 [INF] HTTP OPTIONS /api/Auth/sections/department/BSIT responded 204 in 1.1879 ms
+2026-04-29 18:58:15.394 +00:00 [INF] Request finished HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/faculty/approved - 204 null null 2.2364ms
+2026-04-29 18:58:15.394 +00:00 [INF] Request finished HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/sections/department/BSIT - 204 null null 2.577ms
+2026-04-29 18:58:15.398 +00:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/api/Auth/faculty/approved - application/json null
+2026-04-29 18:58:15.398 +00:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/api/Auth/sections/department/BSIT - application/json null
+2026-04-29 18:58:15.398 +00:00 [INF] CORS policy execution successful.
+2026-04-29 18:58:15.399 +00:00 [INF] CORS policy execution successful.
+2026-04-29 18:58:15.399 +00:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.GetApprovedFaculties (For_Testing_Only_Capstone)'
+2026-04-29 18:58:15.399 +00:00 [INF] Executing endpoint 'BlockGo.Controllers.SectionController.GetDepartmentSections (For_Testing_Only_Capstone)'
+2026-04-29 18:58:15.400 +00:00 [INF] Route matched with {action = "GetApprovedFaculties", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetApprovedFaculties() on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-29 18:58:15.400 +00:00 [INF] Route matched with {action = "GetDepartmentSections", controller = "Section"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetDepartmentSections(System.String) on controller BlockGo.Controllers.SectionController (For_Testing_Only_Capstone).
+2026-04-29 18:58:15.401 +00:00 [INF] Executing OkObjectResult, writing value of type '<>f__AnonymousType12`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.Collections.Generic.List`1[[System.Object, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]], System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-29 18:58:15.401 +00:00 [INF] Executed action Client_app.Controllers.AuthController.GetApprovedFaculties (For_Testing_Only_Capstone) in 0.7838ms
+2026-04-29 18:58:15.402 +00:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.GetApprovedFaculties (For_Testing_Only_Capstone)'
+2026-04-29 18:58:15.402 +00:00 [INF] HTTP GET /api/Auth/faculty/approved responded 200 in 3.8183 ms
+2026-04-29 18:58:15.403 +00:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/api/Auth/faculty/approved - 200 null application/json; charset=utf-8 4.837ms
+2026-04-29 18:58:15.505 +00:00 [INF] Executing OkObjectResult, writing value of type '<>f__AnonymousType19`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.Collections.Generic.List`1[[System.Object, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]], System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-29 18:58:15.505 +00:00 [INF] Executed action BlockGo.Controllers.SectionController.GetDepartmentSections (For_Testing_Only_Capstone) in 104.4371ms
+2026-04-29 18:58:15.506 +00:00 [INF] Executed endpoint 'BlockGo.Controllers.SectionController.GetDepartmentSections (For_Testing_Only_Capstone)'
+2026-04-29 18:58:15.507 +00:00 [INF] HTTP GET /api/Auth/sections/department/BSIT responded 200 in 107.8633 ms
+2026-04-29 18:58:15.507 +00:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/api/Auth/sections/department/BSIT - 200 null application/json; charset=utf-8 108.9358ms
+2026-04-29 18:58:16.331 +00:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/api/Auth/sections/department/BSIT - application/json null
+2026-04-29 18:58:16.332 +00:00 [INF] CORS policy execution successful.
+2026-04-29 18:58:16.332 +00:00 [INF] Executing endpoint 'BlockGo.Controllers.SectionController.GetDepartmentSections (For_Testing_Only_Capstone)'
+2026-04-29 18:58:16.333 +00:00 [INF] Route matched with {action = "GetDepartmentSections", controller = "Section"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetDepartmentSections(System.String) on controller BlockGo.Controllers.SectionController (For_Testing_Only_Capstone).
+2026-04-29 18:58:16.339 +00:00 [INF] Request starting HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/faculty/pascualpatrick264@gmail.com/assigned-sections - null null
+2026-04-29 18:58:16.339 +00:00 [INF] CORS policy execution successful.
+2026-04-29 18:58:16.340 +00:00 [INF] HTTP OPTIONS /api/Auth/faculty/pascualpatrick264@gmail.com/assigned-sections responded 204 in 0.6082 ms
+2026-04-29 18:58:16.340 +00:00 [INF] Request finished HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/faculty/pascualpatrick264@gmail.com/assigned-sections - 204 null null 1.4051ms
+2026-04-29 18:58:16.343 +00:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/api/Auth/faculty/pascualpatrick264@gmail.com/assigned-sections - application/json null
+2026-04-29 18:58:16.344 +00:00 [INF] CORS policy execution successful.
+2026-04-29 18:58:16.344 +00:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.GetFacultySections (For_Testing_Only_Capstone)'
+2026-04-29 18:58:16.345 +00:00 [INF] Route matched with {action = "GetFacultySections", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetFacultySections(System.String) on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-29 18:58:16.382 +00:00 [INF] Executing OkObjectResult, writing value of type '<>f__AnonymousType15`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.Collections.Generic.List`1[[System.Object, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]], System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-29 18:58:16.383 +00:00 [INF] Executing OkObjectResult, writing value of type '<>f__AnonymousType19`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.Collections.Generic.List`1[[System.Object, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]], System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-29 18:58:16.383 +00:00 [INF] Executed action Client_app.Controllers.AuthController.GetFacultySections (For_Testing_Only_Capstone) in 37.966ms
+2026-04-29 18:58:16.384 +00:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.GetFacultySections (For_Testing_Only_Capstone)'
+2026-04-29 18:58:16.383 +00:00 [INF] Executed action BlockGo.Controllers.SectionController.GetDepartmentSections (For_Testing_Only_Capstone) in 50.3701ms
+2026-04-29 18:58:16.385 +00:00 [INF] HTTP GET /api/Auth/faculty/pascualpatrick264@gmail.com/assigned-sections responded 200 in 40.9437 ms
+2026-04-29 18:58:16.385 +00:00 [INF] Executed endpoint 'BlockGo.Controllers.SectionController.GetDepartmentSections (For_Testing_Only_Capstone)'
+2026-04-29 18:58:16.385 +00:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/api/Auth/faculty/pascualpatrick264@gmail.com/assigned-sections - 200 null application/json; charset=utf-8 42.1921ms
+2026-04-29 18:58:16.386 +00:00 [INF] HTTP GET /api/Auth/sections/department/BSIT responded 200 in 54.0783 ms
+2026-04-29 18:58:16.387 +00:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/api/Auth/sections/department/BSIT - 200 null application/json; charset=utf-8 55.277ms
+2026-04-29 18:58:16.396 +00:00 [INF] Request starting HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/faculty/pascualpatrick264@gmail.com/students - null null
+2026-04-29 18:58:16.397 +00:00 [INF] CORS policy execution successful.
+2026-04-29 18:58:16.397 +00:00 [INF] HTTP OPTIONS /api/Auth/faculty/pascualpatrick264@gmail.com/students responded 204 in 0.4947 ms
+2026-04-29 18:58:16.398 +00:00 [INF] Request finished HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/faculty/pascualpatrick264@gmail.com/students - 204 null null 1.295ms
+2026-04-29 18:58:16.401 +00:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/api/Auth/faculty/pascualpatrick264@gmail.com/students - application/json null
+2026-04-29 18:58:16.401 +00:00 [INF] CORS policy execution successful.
+2026-04-29 18:58:16.402 +00:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.GetFacultyStudents (For_Testing_Only_Capstone)'
+2026-04-29 18:58:16.402 +00:00 [INF] Route matched with {action = "GetFacultyStudents", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetFacultyStudents(System.String) on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-29 18:58:16.405 +00:00 [INF] Executing OkObjectResult, writing value of type '<>f__AnonymousType7`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.Collections.Generic.List`1[[System.Object, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]], System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-29 18:58:16.405 +00:00 [INF] Executed action Client_app.Controllers.AuthController.GetFacultyStudents (For_Testing_Only_Capstone) in 2.7173ms
+2026-04-29 18:58:16.405 +00:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.GetFacultyStudents (For_Testing_Only_Capstone)'
+2026-04-29 18:58:16.406 +00:00 [INF] HTTP GET /api/Auth/faculty/pascualpatrick264@gmail.com/students responded 200 in 4.8008 ms
+2026-04-29 18:58:16.406 +00:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/api/Auth/faculty/pascualpatrick264@gmail.com/students - 200 null application/json; charset=utf-8 5.5505ms

@@ -21,9 +21,10 @@ const StudentGradesTable = ({ subjects = [] }) => {
       {/* Mobile View */}
       <div className="space-y-3 md:hidden">
         {subjects.map((sub, index) => {
-          const finalNumeric = ((Number(sub.midterm) + Number(sub.finals)) / 2).toFixed(2);
-          const finalEquivalent = getPLVPoint(sub.midterm, sub.finals);
-          const passed = finalEquivalent <= 3.0;
+          const isPending = sub.midterm === '---' || sub.finals === '---' || sub.code === 'PENDING';
+          const finalNumeric = isPending ? '---' : ((Number(sub.midterm) + Number(sub.finals)) / 2).toFixed(2);
+          const finalEquivalent = isPending ? '---' : getPLVPoint(sub.midterm, sub.finals).toFixed(2);
+          const passed = isPending ? null : getPLVPoint(sub.midterm, sub.finals) <= 3.0;
 
           return (
             <div key={index} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
@@ -54,13 +55,19 @@ const StudentGradesTable = ({ subjects = [] }) => {
                 </div>
                 <div>
                   <p className="text-slate-500">Grade Equivalent</p>
-                  <p className="font-semibold text-[#003366]">{finalEquivalent.toFixed(2)}</p>
+                  <p className="font-semibold text-[#003366]">{finalEquivalent}</p>
                 </div>
                 <div>
                   <p className="text-slate-500">Remarks</p>
-                  <span className={`inline-block rounded-full px-3 py-1 text-xs font-bold ${passed ? "bg-green-100 text-green-600" : "bg-red-100 text-red-600"}`}>
-                    {passed ? "PASSED" : "FAILED"}
-                  </span>
+                  {isPending ? (
+                    <span className="inline-block rounded-full bg-blue-100 px-3 py-1 text-xs font-bold text-blue-600">
+                      ENROLLED
+                    </span>
+                  ) : (
+                    <span className={`inline-block rounded-full px-3 py-1 text-xs font-bold ${passed ? "bg-green-100 text-green-600" : "bg-red-100 text-red-600"}`}>
+                      {passed ? "PASSED" : "FAILED"}
+                    </span>
+                  )}
                 </div>
               </div>
             </div>
@@ -85,9 +92,10 @@ const StudentGradesTable = ({ subjects = [] }) => {
           </thead>
           <tbody>
             {subjects.map((sub, index) => {
-              const finalNumeric = ((Number(sub.midterm) + Number(sub.finals)) / 2).toFixed(2);
-              const finalEquivalent = getPLVPoint(sub.midterm, sub.finals);
-              const passed = finalEquivalent <= 3.0;
+              const isPending = sub.midterm === '---' || sub.finals === '---' || sub.code === 'PENDING';
+              const finalNumeric = isPending ? '---' : ((Number(sub.midterm) + Number(sub.finals)) / 2).toFixed(2);
+              const finalEquivalent = isPending ? '---' : getPLVPoint(sub.midterm, sub.finals).toFixed(2);
+              const passed = isPending ? null : getPLVPoint(sub.midterm, sub.finals) <= 3.0;
 
               return (
                 <tr key={index} className="border-b border-slate-200 hover:bg-slate-50">
@@ -97,11 +105,17 @@ const StudentGradesTable = ({ subjects = [] }) => {
                   <td className="p-4 text-center">{sub.midterm}</td>
                   <td className="p-4 text-center">{sub.finals}</td>
                   <td className="p-4 text-center font-bold">{finalNumeric}</td>
-                  <td className="p-4 text-center font-bold text-[#003366]">{finalEquivalent.toFixed(2)}</td>
+                  <td className="p-4 text-center font-bold text-[#003366]">{finalEquivalent}</td>
                   <td className="p-4 text-center">
-                    <span className={`rounded-full px-3 py-1 text-xs font-bold ${passed ? "bg-green-100 text-green-600" : "bg-red-100 text-red-600"}`}>
-                      {passed ? "PASSED" : "FAILED"}
-                    </span>
+                    {isPending ? (
+                      <span className="rounded-full bg-blue-100 px-3 py-1 text-xs font-bold text-blue-600">
+                        ENROLLED
+                      </span>
+                    ) : (
+                      <span className={`rounded-full px-3 py-1 text-xs font-bold ${passed ? "bg-green-100 text-green-600" : "bg-red-100 text-red-600"}`}>
+                        {passed ? "PASSED" : "FAILED"}
+                      </span>
+                    )}
                   </td>
                 </tr>
               );

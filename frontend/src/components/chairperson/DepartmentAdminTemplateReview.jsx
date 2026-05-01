@@ -68,7 +68,6 @@ const DepartmentAdminTemplateReview = ({ adminData, onLogout }) => {
       }
     } catch (error) {
       console.error("Error fetching templates:", error);
-      // Fallback to mock data if the backend completely fails to connect
       setTemplates(mockTemplates);
     }
     setLoading(false);
