@@ -26,6 +26,12 @@ jobs:
 
       # --- PHASE 1: INITIAL VERIFICATION ---
       - name: Start System (Phase 1)
+        env:
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          INTERNAL_API_KEY: ${{ secrets.INTERNAL_API_KEY }}
+          POSTGRES_PASS: ${{ secrets.POSTGRES_PASS }}
+          BOOTSTRAP_REGISTRAR_PASS: ${{ secrets.BOOTSTRAP_REGISTRAR_PASS }}
+          MOCK_REGISTRAR_PASS: ${{ secrets.MOCK_REGISTRAR_PASS }}
         run: |
           chmod +x ./network/full_deploy.sh
           # full_deploy.sh contains an infinite loop, so it MUST be run in the background
@@ -38,6 +44,8 @@ jobs:
           sleep 15
 
       - name: Automated Functional Tests (Phase 1)
+        env:
+          MOCK_REGISTRAR_PASS: ${{ secrets.MOCK_REGISTRAR_PASS }}
         run: |
           echo "Running functional API tests..."
           # 1. Health Check
@@ -47,7 +55,7 @@ jobs:
           echo "Testing Login Flow..."
           LOGIN_RESP=$(curl -s -X POST http://localhost:8080/api/login \
             -H "Content-Type: application/json" \
-            -d '{"username":"registrar@plv.edu.ph", "password":"admin123"}')
+            -d "{\"username\":\"registrar@plv.edu.ph\", \"password\":\"$MOCK_REGISTRAR_PASS\"}")
           
           TOKEN=$(echo $LOGIN_RESP | jq -r '.token')
           if [ "$TOKEN" == "null" ] || [ -z "$TOKEN" ]; then
@@ -73,6 +81,12 @@ jobs:
 
       # --- PHASE 3: FINAL VERIFICATION ---
       - name: Start System (Phase 2 - Clean Run)
+        env:
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          INTERNAL_API_KEY: ${{ secrets.INTERNAL_API_KEY }}
+          POSTGRES_PASS: ${{ secrets.POSTGRES_PASS }}
+          BOOTSTRAP_REGISTRAR_PASS: ${{ secrets.BOOTSTRAP_REGISTRAR_PASS }}
+          MOCK_REGISTRAR_PASS: ${{ secrets.MOCK_REGISTRAR_PASS }}
         run: |
           cd network
           nohup ./full_deploy.sh > ../deploy_p2.log 2>&1 &

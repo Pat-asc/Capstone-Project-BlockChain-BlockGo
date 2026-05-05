@@ -1,12 +1,7 @@
 const getBaseUrl = (endpoint) => {
-    // Bypass Nginx proxy to prevent 404 routing errors to Express
-    // Force requests directly to the dedicated backend ports
-    const host = window.location.hostname || 'localhost';
-
-    if (endpoint.startsWith('/Auth') || endpoint.startsWith('/GradeTemplate') || endpoint.startsWith('/Grades')) {
-        return `http://${host}:5000/api`;
-    }
-    return `http://${host}:4000/api`;
+    // Traffic is routed through the Nginx proxy on Port 80/443
+    // The proxy handles path-based routing (/api/Auth -> C#, /api/ -> Node.js)
+    return '/api';
 };
 const fetchWithAuth = async (endpoint, options = {}) => {
     const token = localStorage.getItem('token');
@@ -29,13 +24,22 @@ const fetchWithAuth = async (endpoint, options = {}) => {
     if (response.status === 401 || response.status === 403) {
         console.warn("Session expired or unauthorized. Logging out...");
         localStorage.removeItem('token'); 
-        window.location.reload();         
+        window.location.href = '/';         
         throw new Error("Session expired");
     }
 
     if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || errorData.error || 'API Request Failed');
+        const errorMessage = String(errorData.message || errorData.error || 'API Request Failed');
+        
+        if (errorMessage.includes('Wallet identity') || errorMessage.includes('Access Denied')) {
+            console.warn("Blockchain wallet identity missing or wiped. Forcing re-authentication to trigger self-healing...");
+            localStorage.removeItem('token');
+            window.location.href = '/';
+            throw new Error("Identity missing");
+        }
+        
+        throw new Error(errorMessage);
     }
 
     return await response.json();
@@ -69,21 +73,21 @@ export const resetPassword = (token, newPassword) => {
     return fetchPublic('/reset-password', { method: 'POST', body: JSON.stringify({ token, newPassword }) });
 };
 export const fetchAllGrades = async (invokerId) => {
-    return await fetchWithAuth(`/all-grades`);
+    return await fetchWithAuth(`/Grades/all?invokerId=${encodeURIComponent(invokerId)}`);
 };
 export const issueGrade = async (gradeData) => {
-    return await fetchWithAuth(`/issue-grade`, {
+    return await fetchWithAuth(`/Grades/record`, {
         method: 'POST',
         body: JSON.stringify(gradeData)
     });
 };
 export const approveGrade = async (recordId, invokerId) => {
-    return await fetchWithAuth(`/approve-grade/${encodeURIComponent(recordId)}`, {
+    return await fetchWithAuth(`/Grades/approve/${encodeURIComponent(recordId)}?invokerId=${encodeURIComponent(invokerId)}`, {
         method: 'POST'
     });
 };
 export const finalizeGrade = async (recordId, invokerId) => {
-    return await fetchWithAuth(`/finalize-grade/${encodeURIComponent(recordId)}`, {
+    return await fetchWithAuth(`/Grades/finalize/${encodeURIComponent(recordId)}?invokerId=${encodeURIComponent(invokerId)}`, {
         method: 'POST'
     });
 };
@@ -195,19 +199,19 @@ export const batchEnrollStudentsToSection = async (file, sectionId) => {
     });
 };
 
-export const batchUploadGrades = async (file, semester = '', schoolYear = '', course = '') => {
+export const batchUploadGrades = async (file, semester = '', schoolYear = '', course = '', facultyId = '') => {
     const formData = new FormData();
     formData.append('file', file);
     if (semester) formData.append('semester', semester);
     if (schoolYear) formData.append('schoolYear', schoolYear);
     if (course) formData.append('course', course);
+    if (facultyId) formData.append('facultyId', facultyId);
 
     return await fetchWithAuth(`/Grades/bulk-upload`, {
         method: 'POST',
-        body: formData 
+        body: formData
     });
-};
-export const batchUploadStudents = async (file, defaultDepartment = '') => {
+};export const batchUploadStudents = async (file, defaultDepartment = '') => {
     const formData = new FormData();
     formData.append('file', file);
     if (defaultDepartment) formData.append('defaultDepartment', defaultDepartment);
@@ -216,6 +220,13 @@ export const batchUploadStudents = async (file, defaultDepartment = '') => {
         method: 'POST',
         body: formData 
     });
+};
+export const getDecryptedIpfsUrl = (cid, vaultPassword = '') => {
+    if (!cid) return "#";
+    const token = localStorage.getItem('token');
+    let url = `/api/Grades/view-ipfs/${cid}?vaultPassword=${encodeURIComponent(vaultPassword)}&access_token=${token}`;
+    console.log("Constructed IPFS URL:", url);
+    return url;
 };
 export const uploadToIpfs = async (file) => {
     const formData = new FormData();
@@ -236,6 +247,49 @@ export const reviewTemplate = async (id, status) => {
         body: JSON.stringify({ status })
     });
 };
+export const getSystemSetting = async (key) => {
+    return await fetchWithAuth(`/SystemSettings/${encodeURIComponent(key)}`);
+};
+
+export const updateSystemSetting = async (key, value) => {
+    return await fetchWithAuth(`/SystemSettings`, {
+        method: 'POST',
+        body: JSON.stringify({ key, value })
+    });
+};
+
+export const resetEncodingSeason = async () => {
+    return await fetchWithAuth(`/SystemSettings/reset-season`, {
+        method: 'POST'
+    });
+};
+
+export const fetchStagedGrades = async (status = '') => {
+    return await fetchWithAuth(`/BulkUpload/staged?status=${encodeURIComponent(status)}`);
+};
+
+export const approveStagedGrades = async (stagingIds) => {
+    return await fetchWithAuth(`/BulkUpload/approve-grades`, {
+        method: 'POST',
+        body: JSON.stringify({ StagingIds: stagingIds })
+    });
+};
+
+export const finalizeStagedGrades = async (stagingIds) => {
+    return await fetchWithAuth(`/BulkUpload/finalize-grades`, {
+        method: 'POST',
+        body: JSON.stringify({ StagingIds: stagingIds })
+    });
+};
+
+export const fetchSystemLogs = async () => {
+    return await fetchWithAuth(`/Grades/audit-all`);
+};
+
+export const getAuditLogs = async (recordId) => {
+    return await fetchWithAuth(`/Grades/audit-logs/${encodeURIComponent(recordId)}`);
+};
+
 export const downloadGradingSheet = async (department, section) => {
     const baseUrl = getBaseUrl('/GradeTemplate');
     const token = localStorage.getItem('token');

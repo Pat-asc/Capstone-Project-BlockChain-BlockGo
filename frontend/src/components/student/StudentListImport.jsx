@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { uploadToIpfs } from "../../services/api";
+import { uploadToIpfs, getDecryptedIpfsUrl } from "../../services/api";
+import Modal from "../../services/Modal";
 const programs = [
   "Bachelor of Science in Accountancy",
   "Bachelor of Science in Business Administration major in Financial Management",
@@ -36,6 +37,11 @@ function StudentListImport() {
   const [yearPickerAnchor, setYearPickerAnchor] = useState(() => new Date().getFullYear() - 5);
   const yearPickerRef = useRef(null);
   const [isUploading, setIsUploading] = useState(false);
+  
+  const [ipfsModalOpen, setIpfsModalOpen] = useState(false);
+  const [ipfsCid, setIpfsCid] = useState("");
+  const [vaultPassword, setVaultPassword] = useState("");
+  const [showVaultPassword, setShowVaultPassword] = useState(false);
 
   const [submissionBatches, setSubmissionBatches] = useState(() => {
     try { return JSON.parse(localStorage.getItem("STUDENT_BATCHES_KEY")) || []; } catch(e) { return []; }
@@ -69,12 +75,28 @@ function StudentListImport() {
   };
 
   const handleYearSelect = (year) => {
-    setSelectedBatchYear(year);
-    setIsYearPickerOpen(false);
+  setSelectedBatchYear(year);
+  setIsYearPickerOpen(false);
   };
 
-  const handleDownloadTemplate = () => {
-    if (!selectedProgram || !selectedBatchYear) {
+  const handleViewIpfs = (cid) => {
+      setIpfsCid(cid);
+      setVaultPassword("");
+      setShowVaultPassword(false);
+      setIpfsModalOpen(true);
+  };
+
+  const submitIpfsPassword = () => {
+      if (vaultPassword) {
+          const url = getDecryptedIpfsUrl(ipfsCid, vaultPassword);
+      window.open(url, "_blank");
+          setIpfsModalOpen(false);
+      } else {
+          alert("Vault Password is required");
+      }
+  };
+
+  const handleDownloadTemplate = () => {    if (!selectedProgram || !selectedBatchYear) {
       alert("Please complete the department and batch year first.");
       return;
     }
@@ -237,7 +259,7 @@ function StudentListImport() {
                       <td className="px-4 py-3">{log.batchYear}</td>
                       <td className="px-4 py-3">
                         {log.ipfsCid ? (
-                          <a href={`http://127.0.0.1:5001/ipfs/bafybeiddnr2jz65byk67sjt6jsu6g7tueddr7odhzzpzli3rgudlbnc6iq/#/ipfs/${log.ipfsCid}`} target="_blank" rel="noreferrer" className="text-blue-600 font-bold hover:underline"> View Content in IPFS</a>
+                          <button onClick={() => handleViewIpfs(log.ipfsCid)} className="text-blue-600 font-bold hover:underline"> View Content in IPFS</button>
                         ) : log.fileName}
                       </td>
                       <td className="px-4 py-3">{log.totalStudents}</td>
@@ -253,6 +275,38 @@ function StudentListImport() {
             </table>
           </div>
       </div>
+
+      {/* IPFS Vault Password Modal */}
+      <Modal isOpen={ipfsModalOpen} onClose={() => setIpfsModalOpen(false)} title="IPFS Vault Decryption">
+          <div className="flex flex-col gap-4">
+              <p className="text-sm text-slate-600">
+                  This academic record is encrypted and distributed across the PLV IPFS Network. 
+                  Enter the Vault Password to view the decrypted content.
+              </p>
+              <div className="relative">
+                  <input 
+                      type={showVaultPassword ? "text" : "password"} 
+                      value={vaultPassword} 
+                      onChange={(e) => setVaultPassword(e.target.value)} 
+                      className="w-full rounded-xl border border-slate-300 px-4 py-3 pr-10 text-sm outline-none focus:border-[#003366]" 
+                      placeholder="Enter Vault Password" 
+                      onKeyDown={(e) => e.key === 'Enter' && submitIpfsPassword()}
+                      autoFocus
+                  />
+                  <button type="button" onClick={() => setShowVaultPassword(!showVaultPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-[#003366]" title={showVaultPassword ? "Hide Password" : "Show Password"}>
+                      {showVaultPassword ? (
+                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88" /></svg>
+                      ) : (
+                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" /><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                      )}
+                  </button>
+              </div>
+              <div className="flex justify-end gap-3 mt-4">
+                  <button onClick={() => setIpfsModalOpen(false)} className="rounded-xl border border-slate-300 bg-white px-5 py-2.5 text-sm font-bold text-slate-700 transition hover:bg-slate-50">Cancel</button>
+                  <button onClick={submitIpfsPassword} className="rounded-xl bg-[#003366] px-5 py-2.5 text-sm font-bold text-white transition hover:bg-[#00264d]">Decrypt & View</button>
+              </div>
+          </div>
+      </Modal>
     </div>
   );
 }

@@ -26,6 +26,12 @@ jobs:
 
       # --- STAGE 1: FULL DEPLOYMENT ---
       - name: Start Network & Services
+        env:
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          INTERNAL_API_KEY: ${{ secrets.INTERNAL_API_KEY }}
+          POSTGRES_PASS: ${{ secrets.POSTGRES_PASS }}
+          BOOTSTRAP_REGISTRAR_PASS: ${{ secrets.BOOTSTRAP_REGISTRAR_PASS }}
+          MOCK_REGISTRAR_PASS: ${{ secrets.MOCK_REGISTRAR_PASS }}
         run: |
           chmod +x ./network/full_deploy.sh
           chmod +x ./network/fix-db-case-sensitivity.sh 2>/dev/null || true
@@ -40,6 +46,8 @@ jobs:
 
       # --- STAGE 2: AUTOMATED FILE UPLOAD TEST ---
       - name: Mock Excel/CSV Batch Upload
+        env:
+          MOCK_REGISTRAR_PASS: ${{ secrets.MOCK_REGISTRAR_PASS }}
         run: |
           echo "Creating dummy CSV grades file..."
           echo "StudentID,CourseCode,Grade" > batch_grades.csv
@@ -49,7 +57,7 @@ jobs:
           echo "Authenticating as Registrar to retrieve JWT..."
           TOKEN=$(curl -s -X POST http://localhost:8080/api/login \
             -H "Content-Type: application/json" \
-            -d '{"username":"registrar@plv.edu.ph", "password":"admin123"}' | jq -r '.token')
+            -d "{\"username\":\"registrar@plv.edu.ph\", \"password\":\"$MOCK_REGISTRAR_PASS\"}" | jq -r '.token')
             
           echo "Uploading file to Node.js Middleware through Nginx..."
           UPLOAD_RESP=$(curl -s -o upload_response.json -w "%{http_code}" -X POST http://localhost:8080/api/batch-upload \

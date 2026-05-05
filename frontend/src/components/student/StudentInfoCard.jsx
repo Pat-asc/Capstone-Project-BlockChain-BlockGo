@@ -19,8 +19,7 @@ const StudentInfoCard = ({ studentData, onProfileUpdated }) => {
         setIsLoading(true);
         try {
           const token = localStorage.getItem("token");
-          const apiUrl = process.env.REACT_APP_API_URL || "http://localhost:5000";
-          const response = await fetch(`${apiUrl}/api/Student/profile`, {
+          const response = await fetch(`/api/Student/profile`, {
             headers: { "Authorization": `Bearer ${token}` },
             cache: "no-store"
           });
@@ -60,9 +59,8 @@ const StudentInfoCard = ({ studentData, onProfileUpdated }) => {
 
     try {
       const token = localStorage.getItem("token");
-      const apiUrl = process.env.REACT_APP_API_URL || "http://localhost:5000";
 
-      const response = await fetch(`${apiUrl}/api/Student/profile`, {
+      const response = await fetch(`/api/Student/profile`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",

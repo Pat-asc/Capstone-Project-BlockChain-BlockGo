@@ -1,15 +1,25 @@
 import React, { useEffect, useState } from "react";
+import { getSystemSetting, updateSystemSetting, resetEncodingSeason } from "../../services/api";
 
 function EncodingPeriod({ onResetEncodingSeason }) {
   const [startDate, setStartDate] = useState("2026-05-01");
   const [endDate, setEndDate] = useState("2026-05-15");
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
-    const savedPeriod = JSON.parse(localStorage.getItem("encodingPeriod"));
-    if (savedPeriod) {
-      setStartDate(savedPeriod.startDate || "2026-05-01");
-      setEndDate(savedPeriod.endDate || "2026-05-15");
-    }
+    const loadPeriod = async () => {
+        try {
+            const res = await getSystemSetting("encoding_period");
+            if (res.status === "Success" && res.value) {
+                const parsed = JSON.parse(res.value);
+                setStartDate(parsed.startDate);
+                setEndDate(parsed.endDate);
+            }
+        } catch (e) {
+            console.error("Failed to load encoding period from database:", e);
+        }
+    };
+    loadPeriod();
   }, []);
 
   const getBannerStatus = () => {
@@ -31,19 +41,30 @@ function EncodingPeriod({ onResetEncodingSeason }) {
     return "Open";
   };
 
-  const handleSave = () => {
-    const encodingData = { startDate, endDate };
-    localStorage.setItem("encodingPeriod", JSON.stringify(encodingData));
-    alert("Encoding period saved successfully.");
+  const handleSave = async () => {
+    setIsLoading(true);
+    try {
+        const encodingData = { startDate, endDate };
+        await updateSystemSetting("encoding_period", JSON.stringify(encodingData));
+        alert("Encoding period saved to database successfully.");
+    } catch (e) {
+        alert("Failed to save schedule: " + e.message);
+    }
+    setIsLoading(false);
   };
 
-  const handleResetSeason = () => {
+  const handleResetSeason = async () => {
     const shouldReset = window.confirm(
-      "Reset this encoding season? This will clear saved faculty grades and chairperson review statuses."
+      "Reset this encoding season? This will clear all pending/staged faculty grades and chairperson review statuses."
     );
     if (!shouldReset) return;
-    onResetEncodingSeason?.();
-    alert("Encoding season data has been reset.");
+    try {
+        await resetEncodingSeason();
+        onResetEncodingSeason?.();
+        alert("Encoding season data has been reset.");
+    } catch (e) {
+        alert("Failed to reset season: " + e.message);
+    }
   };
 
   return (

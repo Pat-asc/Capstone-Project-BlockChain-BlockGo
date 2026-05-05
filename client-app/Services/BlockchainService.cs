@@ -4,6 +4,8 @@ using System.Net.Http.Json;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace BlockGo.Services
 {
@@ -44,17 +46,17 @@ namespace BlockGo.Services
 
         public async Task<string> GetGradeAsync(string recordId, string invokerUsername)
         {
-            _logger?.LogInformation("Getting grade for record ID: {RecordId} as {User}", recordId, invokerUsername);
+            _logger?.LogInformation("Getting grade for record: {RecordId} as {User}", recordId, invokerUsername);
             
             var request = new HttpRequestMessage(HttpMethod.Get, $"{_middlewareBaseUrl}/api/get-grade/{recordId}");
-            request.Headers.Add("x-user-identity", invokerUsername);
+            request.Headers.Add("x-user-identity", invokerUsername); 
 
             var response = await _httpClient.SendAsync(request);
             
             if (!response.IsSuccessStatusCode)
             {
                 var errorContent = await response.Content.ReadAsStringAsync();
-                _logger?.LogError("Middleware Approve Error: {Error}", errorContent);
+                _logger?.LogError("Middleware GetGrade Error: {Error}", errorContent);
                 throw new Exception($"Middleware Error: {errorContent}");
             }
             
@@ -76,8 +78,30 @@ namespace BlockGo.Services
             if (!response.IsSuccessStatusCode)
             {
                 var errorContent = await response.Content.ReadAsStringAsync();
-                _logger?.LogError("Middleware Error: {Error}", errorContent);
-                response.EnsureSuccessStatusCode();
+                _logger?.LogError("Middleware Issue Error: {Error}", errorContent);
+                throw new Exception($"Middleware Error: {errorContent}");
+            }
+            
+            return await response.Content.ReadAsStringAsync();
+        }
+
+        public async Task<string> SubmitBatchGradesAsync(IEnumerable<AcademicRecord> records, string invokerUsername)
+        {
+            _logger?.LogInformation("Submitting batch grades ({Count} records) as {User}", records.Count(), invokerUsername);
+            
+            var request = new HttpRequestMessage(HttpMethod.Post, $"{_middlewareBaseUrl}/api/batch-issue-grade")
+            {
+                Content = JsonContent.Create(records)
+            };
+            request.Headers.Add("x-user-identity", invokerUsername);
+            
+            var response = await _httpClient.SendAsync(request);
+            
+            if (!response.IsSuccessStatusCode)
+            {
+                var errorContent = await response.Content.ReadAsStringAsync();
+                _logger?.LogError("Middleware Batch Error: {Error}", errorContent);
+                throw new Exception($"Middleware Batch Error: {errorContent}");
             }
             
             return await response.Content.ReadAsStringAsync();
@@ -102,6 +126,28 @@ namespace BlockGo.Services
                 throw new Exception($"Middleware Error: {errorContent}");
             }
             
+            return await response.Content.ReadAsStringAsync();
+        }
+
+        public async Task<string> ReturnGradeAsync(string recordId, string note, string invokerUsername)
+        {
+            _logger?.LogInformation("Returning record: {RecordId} for revision as {User}", recordId, invokerUsername);
+
+            var request = new HttpRequestMessage(HttpMethod.Post, $"{_middlewareBaseUrl}/api/return-grade/{recordId}")
+            {
+                Content = JsonContent.Create(new { note })
+            };
+            request.Headers.Add("x-user-identity", invokerUsername);
+
+            var response = await _httpClient.SendAsync(request);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                var errorContent = await response.Content.ReadAsStringAsync();
+                _logger?.LogError("Middleware Return Error: {Error}", errorContent);
+                throw new Exception($"Middleware Return Error: {errorContent}");
+            }
+
             return await response.Content.ReadAsStringAsync();
         }
 

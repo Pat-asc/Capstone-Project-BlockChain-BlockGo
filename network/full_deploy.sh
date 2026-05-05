@@ -31,11 +31,11 @@ cleanup_processes() {
     done
     pkill -f dotnet || true
     docker compose -f docker-compose-main.yaml -f docker-compose-annex.yaml -f docker-compose-pubad.yaml down -v --remove-orphans 2>/dev/null || true
-    docker rm -f couchdb_wallet blockgo-middleware 2>/dev/null || true
+    docker rm -f -v couchdb_wallet couchdb_wallet_faculty couchdb_wallet_department blockgo-middleware 2>/dev/null || true
     log_info "All processes stopped and volumes wiped."
 }
 
-trap cleanup_processes EXIT
+trap cleanup_processes SIGINT SIGTERM ERR
 
 wait_for_service() {
     local host=$1; local port=$2; local name=$3; local timeout=$4
@@ -59,7 +59,8 @@ wait_for_container_health() {
             break
         fi
         if [ "$status" == "unhealthy" ]; then
-            log_error "$container_name reported as unhealthy. Check 'docker logs $container_name'."
+                # Do not exit immediately; Postgres restarts itself during initialization which can temporarily flag it as unhealthy
+                log_warn "$container_name reported as unhealthy. Waiting for recovery..."
         fi
         if [ $(($(date +%s) - start_time)) -ge $timeout ]; then
             log_error "Timeout waiting for $container_name to become healthy. Last status: ${status:-not_found}"
@@ -70,22 +71,32 @@ wait_for_container_health() {
 
 load_env_vars() {
     if [ -f .env ]; then
+        log_info "Loading environment variables from .env file..."
         while IFS='=' read -r key value || [ -n "$key" ]; do
-            if [[ -n "$key" && "$key" != \#* ]]; then
-                value="${value%\"}"
-                value="${value#\"}"
-                value="${value%\'}"
-                value="${value#\'}"
-                export "$key"="$value"
-            fi
+            # Skip empty lines and comments
+            [[ -z "$key" || "$key" =~ ^# ]] && continue
+            
+            # Remove any leading/trailing quotes from the value
+            value="${value%\"}"
+            value="${value#\"}"
+            value="${value%\'}"
+            value="${value#\'}"
+            
+            export "$key"="$value"
         done < .env
     fi
 }
-load_env_vars # Load .env variables like BOOTSTRAP_REGISTRAR_PASS
+load_env_vars
+
+# Critical Secret Validation
+if [ -z "$JWT_SECRET" ] || [ -z "$INTERNAL_API_KEY" ] || [ -z "$POSTGRES_PASS" ]; then
+    log_error "Critical environment variables (JWT_SECRET, INTERNAL_API_KEY, POSTGRES_PASS) are not set. Please define them in your .env file."
+fi
 
 spawn_couchdb_wallet() {
     log_info "Spawning standalone CouchDB Wallet container on port 5990..."
-    docker rm -f couchdb_wallet 2>/dev/null || true
+    # Prune existing wallet to ensure a clean state
+    docker rm -f -v couchdb_wallet 2>/dev/null || true
     docker run -d --name couchdb_wallet \
         --network registrar-net \
         -e COUCHDB_USER="${COUCHDB_USER:-capstone}" \
@@ -104,7 +115,7 @@ log_warn "Wiping previous CA databases and crypto material..."
 pkill -f dotnet || true
 
 docker compose -f docker-compose-main.yaml -f docker-compose-annex.yaml -f docker-compose-pubad.yaml down -v --remove-orphans 2>/dev/null || true
-docker rm -f blockgo-middleware 2>/dev/null || true
+docker rm -f -v couchdb_wallet couchdb_wallet_faculty couchdb_wallet_department blockgo-middleware 2>/dev/null || true
 rm -rf ./fabric-ca/registrar/* ./fabric-ca/faculty/* ./fabric-ca/department/* 2>/dev/null || true
 rm -rf "$CRYPTO_DIR" "$ARTIFACTS_DIR" 2>/dev/null || true
 rm -rf ../middleware/wallet 2>/dev/null || true
@@ -127,7 +138,7 @@ log_info "Phase 2: Enrolling Identities via Fabric CA..."
 
 enroll_org_identities() {
     local ORG=$1; local DOMAIN=$2; local PORT=$3; local MSP_ID=$4
-    local ADMIN_PASS=adminpw
+    local ADMIN_PASS=${BOOTSTRAP_REGISTRAR_PASS:-adminpw}
     local ORG_DIR="$(pwd)/${CRYPTO_DIR}/peerOrganizations/${DOMAIN}"
     local TLS_CERT="$(pwd)/fabric-ca/${ORG}/tls-cert.pem" 
     
@@ -187,9 +198,8 @@ EOF
 enroll_orderer_identities() {
     local DOMAIN="capstone.com"
     local PORT=7054 # Using Registrar CA for Orderer
-    local ADMIN_PASS=adminpw
+    local ADMIN_PASS=${BOOTSTRAP_REGISTRAR_PASS:-adminpw}
     local ORDERER_DIR="$(pwd)/${CRYPTO_DIR}/ordererOrganizations/${DOMAIN}"
-    # Correctly use the TLS cert for the handshake, not the enrollment cert
     local TLS_CERT="$(pwd)/fabric-ca/registrar/tls-cert.pem"
 
     log_info "Bootstrapping Orderer (capstone.com)..."
@@ -351,9 +361,8 @@ docker exec cli configtxgen -profile RegistrarChannel -outputCreateChannelTx "/o
 
 log_info "Phase 4: Launching Core Network Nodes..."
 
-    # Ensure Docker didn't accidentally create an empty folder for the wrong filename
-if [ -d "../middleware/nginx/nginx.conf" ]; then
-    rm -rf "../middleware/nginx/nginx.conf"
+if [ -d "../middleware/nginx/default.conf" ]; then
+    rm -rf "../middleware/nginx/default.conf"
 fi
 
 # Ensure IPFS private swarm key exists to enforce distributed private network
@@ -376,7 +385,7 @@ wait_for_container_health postgres 120
 wait_for_container_health postgres-annex 120
 wait_for_container_health postgres-pubad 120
 
-log_info "Databases are healthy. Creating the rest of the network containers (without starting)..."
+log_info "Creating the network containers (without starting)..."
 DOCKER_CONFIG=$TMP_DOCKER_CFG docker compose -f docker-compose-main.yaml -f docker-compose-annex.yaml -f docker-compose-pubad.yaml up --no-start
 
 log_info "Pre-configuring IPFS nodes to bypass AutoConf crash-loop..."
@@ -384,22 +393,25 @@ IPFS_NODE_COUNT=6
 for i in $(seq 0 $(($IPFS_NODE_COUNT - 1))); do
     IMAGE=$(docker inspect --format='{{.Config.Image}}' "ipfs${i}" 2>/dev/null || echo "ipfs/kubo:latest")
     log_info "Initializing config for ipfs${i} offline..."
-    docker run --rm --volumes-from "ipfs${i}" --entrypoint sh "$IMAGE" -c "ipfs init 2>/dev/null || true; ipfs config --json AutoConf.Enabled false 2>/dev/null || true; ipfs config Routing.Type dht 2>/dev/null || true; ipfs config --json Bootstrap '[]' 2>/dev/null || true; ipfs config --json DNS.Resolvers '{}' 2>/dev/null || true; ipfs config --json Routing.DelegatedRouters '[]' 2>/dev/null || true; ipfs config --json Ipns.DelegatedPublishers '[]' 2>/dev/null || true"
+    docker run --rm --volumes-from "ipfs${i}" --entrypoint sh "$IMAGE" -c "ipfs init 2>/dev/null || true; ipfs config --json AutoConf.Enabled false 2>/dev/null || true; ipfs config Routing.Type dht 2>/dev/null || true; ipfs config --json Bootstrap '[]' 2>/dev/null || true; ipfs config --json DNS.Resolvers '{}' 2>/dev/null || true; ipfs config --json Routing.DelegatedRouters '[]' 2>/dev/null || true; ipfs config --json Ipns.DelegatedPublishers '[]' 2>/dev/null || true; ipfs config --json API.HTTPHeaders.Access-Control-Allow-Origin '[\"http://localhost:8080\", \"http://127.0.0.1:8080\"]' 2>/dev/null || true; ipfs config --json API.HTTPHeaders.Access-Control-Allow-Methods '[\"PUT\", \"POST\", \"GET\", \"OPTIONS\"]' 2>/dev/null || true"
 done
 
+log_info "Starting IPFS nodes..."
+DOCKER_CONFIG=$TMP_DOCKER_CFG docker compose -f docker-compose-main.yaml -f docker-compose-annex.yaml -f docker-compose-pubad.yaml up -d ipfs0 ipfs1 ipfs2 ipfs3 ipfs4 ipfs5
+wait_for_service 127.0.0.1 5001 "IPFS0 API" 60
+
 log_info "Starting the rest of the network..."
-DOCKER_CONFIG=$TMP_DOCKER_CFG docker compose -f docker-compose-main.yaml -f docker-compose-annex.yaml -f docker-compose-pubad.yaml up -d
+DOCKER_CONFIG=$TMP_DOCKER_CFG docker compose -f docker-compose-main.yaml -f docker-compose-annex.yaml -f docker-compose-pubad.yaml up -d --build
 
 rm -rf "$TMP_DOCKER_CFG"
-
-# Spawn the standalone couchdb wallet
-spawn_couchdb_wallet
 
 wait_for_service 127.0.0.1 7050 "Orderer" 120
 wait_for_service 127.0.0.1 8050 "Orderer2" 120
 wait_for_service 127.0.0.1 9050 "Orderer3" 120
 wait_for_service 127.0.0.1 7051 "Peer0 Registrar" 60
-wait_for_service 127.0.0.1 5990 "CouchDB Wallet" 60
+wait_for_service 127.0.0.1 5990 "CouchDB Wallet Registrar" 60
+wait_for_service 127.0.0.1 6990 "CouchDB Wallet Faculty" 60
+wait_for_service 127.0.0.1 7990 "CouchDB Wallet Department" 60
 
 log_info "Waiting 15 seconds for Raft leader election..."
 sleep 15
@@ -620,88 +632,127 @@ wait_for_service $POSTGRES_HOST $POSTGRES_PORT "Postgres" 120
 # Run schema migrations (init-db-schema.sql already auto-run, but ensure new columns)
 docker exec -e PGPASSWORD="$POSTGRES_PASS" postgres psql -U $POSTGRES_USER -d $POSTGRES_DB -f /docker-entrypoint-initdb.d/init.sql
 
-# Inject 10 MOCK students with DOB passwords
+# Inject MOCK data for testing (Registrar, Faculty, Chairperson, and Students)
 cat << 'EOF' | docker exec -i -e PGPASSWORD="$POSTGRES_PASS" postgres psql -U $POSTGRES_USER -d $POSTGRES_DB
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
--- Create MOCK Registrar (for chat testing)
+-- 1. Create MOCK Registrar
 WITH reg_user AS (
-  INSERT INTO users (email, password_hash, role, status, created_at) VALUES 
-  ('registrar@plv.edu.ph', crypt('admin123', gen_salt('bf', 12)), 'registrar', 'APPROVED', NOW())
+  INSERT INTO users (username, email, password_hash, role, status, created_at) VALUES 
+  ('registrar', 'registrar@plv.edu.ph', crypt('admin123', gen_salt('bf', 12)), 'registrar', 'APPROVED', NOW())
   ON CONFLICT (email) DO NOTHING RETURNING id
 )
-INSERT INTO AdminProfiles (user_id, full_name, admin_level, department)
-SELECT id, 'System Registrar', 'registrar', 'Registrar' FROM reg_user;
+INSERT INTO adminprofiles (user_id, full_name, admin_level, department)
+SELECT id, 'System Registrar', 'registrar', 'Registrar' FROM reg_user
+ON CONFLICT (user_id) DO NOTHING;
 
--- Create 10 MOCK students with DOB passwords
+-- 2. Create MOCK Faculty
+WITH fac_user AS (
+  INSERT INTO users (username, email, password_hash, role, status, created_at) VALUES 
+  ('faculty', 'faculty@plv.edu.ph', crypt('faculty123', gen_salt('bf', 12)), 'faculty', 'APPROVED', NOW())
+  ON CONFLICT (email) DO NOTHING RETURNING id
+)
+INSERT INTO facultyprofiles (user_id, full_name, department)
+SELECT id, 'Dr. Juan Dela Cruz', 'Bachelor of Science in Information Technology' FROM fac_user
+ON CONFLICT (user_id) DO NOTHING;
+
+-- 3. Create MOCK Chairperson
+WITH chair_user AS (
+  INSERT INTO users (username, email, password_hash, role, status, created_at) VALUES 
+  ('chairperson', 'chairperson@plv.edu.ph', crypt('chair123', gen_salt('bf', 12)), 'department_admin', 'APPROVED', NOW())
+  ON CONFLICT (email) DO NOTHING RETURNING id
+)
+INSERT INTO adminprofiles (user_id, full_name, admin_level, department)
+SELECT id, 'Dean Maria Santos', 'department_admin', 'Bachelor of Science in Information Technology' FROM chair_user
+ON CONFLICT (user_id) DO NOTHING;
+
+-- 4. Create 10 MOCK students
 WITH mock_users AS (
-  INSERT INTO users (email, password_hash, role, status, created_at) VALUES 
-    ('mock.student1@plv.edu.ph', crypt('05/15/2005', gen_salt('bf', 12)), 'student', 'APPROVED', NOW()),
-    ('mock.student2@plv.edu.ph', crypt('06/20/2004', gen_salt('bf', 12)), 'student', 'APPROVED', NOW()),
-    ('mock.student3@plv.edu.ph', crypt('03/10/2005', gen_salt('bf', 12)), 'student', 'APPROVED', NOW()),
-    ('mock.student4@plv.edu.ph', crypt('11/25/2003', gen_salt('bf', 12)), 'student', 'APPROVED', NOW()),
-    ('mock.student5@plv.edu.ph', crypt('08/05/2004', gen_salt('bf', 12)), 'student', 'APPROVED', NOW()),
-    ('mock.student6@plv.edu.ph', crypt('01/12/2005', gen_salt('bf', 12)), 'student', 'APPROVED', NOW()),
-    ('mock.student7@plv.edu.ph', crypt('07/30/2003', gen_salt('bf', 12)), 'student', 'APPROVED', NOW()),
-    ('mock.student8@plv.edu.ph', crypt('04/18/2004', gen_salt('bf', 12)), 'student', 'APPROVED', NOW()),
-    ('mock.student9@plv.edu.ph', crypt('12/22/2005', gen_salt('bf', 12)), 'student', 'APPROVED', NOW()),
-    ('mock.student10@plv.edu.ph', crypt('09/08/2003', gen_salt('bf', 12)), 'student', 'APPROVED', NOW())
+  INSERT INTO users (username, email, password_hash, role, status, created_at) VALUES 
+    ('mock-student1', 'mock-student1@plv.edu.ph', crypt('05/15/2005', gen_salt('bf', 12)), 'student', 'APPROVED', NOW()),
+    ('mock-student2', 'mock-student2@plv.edu.ph', crypt('06/20/2004', gen_salt('bf', 12)), 'student', 'APPROVED', NOW()),
+    ('mock-student3', 'mock-student3@plv.edu.ph', crypt('03/10/2005', gen_salt('bf', 12)), 'student', 'APPROVED', NOW()),
+    ('mock-student4', 'mock-student4@plv.edu.ph', crypt('11/25/2003', gen_salt('bf', 12)), 'student', 'APPROVED', NOW()),
+    ('mock-student5', 'mock-student5@plv.edu.ph', crypt('08/05/2004', gen_salt('bf', 12)), 'student', 'APPROVED', NOW()),
+    ('mock-student6', 'mock-student6@plv.edu.ph', crypt('01/12/2005', gen_salt('bf', 12)), 'student', 'APPROVED', NOW()),
+    ('mock-student7', 'mock-student7@plv.edu.ph', crypt('07/30/2003', gen_salt('bf', 12)), 'student', 'APPROVED', NOW()),
+    ('mock-student8', 'mock-student8@plv.edu.ph', crypt('04/18/2004', gen_salt('bf', 12)), 'student', 'APPROVED', NOW()),
+    ('mock-student9', 'mock-student9@plv.edu.ph', crypt('12/22/2005', gen_salt('bf', 12)), 'student', 'APPROVED', NOW()),
+    ('mock-student10', 'mock-student10@plv.edu.ph', crypt('09/08/2003', gen_salt('bf', 12)), 'student', 'APPROVED', NOW())
   ON CONFLICT (email) DO NOTHING
   RETURNING id, email
 ),
 mock_profiles AS (
-  INSERT INTO StudentProfiles (user_id, full_name, student_no, department, date_of_birth, section, assignment_status)
+  INSERT INTO studentprofiles (user_id, full_name, student_no, department, date_of_birth, section, year_level, assignment_status)
   SELECT u.id, 
          CASE 
-           WHEN u.email LIKE '%1@%' THEN 'Juan Dela Cruz' 
-           WHEN u.email LIKE '%2@%' THEN 'Maria Santos' 
-           WHEN u.email LIKE '%3@%' THEN 'Pedro Reyes' 
-           WHEN u.email LIKE '%4@%' THEN 'Ana Lopez' 
-           WHEN u.email LIKE '%5@%' THEN 'Jose Garcia' 
-           WHEN u.email LIKE '%6@%' THEN 'Luz Mendoza' 
-           WHEN u.email LIKE '%7@%' THEN 'Carlo Torres' 
-           WHEN u.email LIKE '%8@%' THEN 'Sofia Ramos' 
-           WHEN u.email LIKE '%9@%' THEN 'Miguel Lim' 
+           WHEN u.email LIKE '%1%' THEN 'Juan Dela Cruz' 
+           WHEN u.email LIKE '%2%' THEN 'Maria Santos' 
+           WHEN u.email LIKE '%3%' THEN 'Pedro Reyes' 
+           WHEN u.email LIKE '%4%' THEN 'Ana Lopez' 
+           WHEN u.email LIKE '%5%' THEN 'Jose Garcia' 
+           WHEN u.email LIKE '%6%' THEN 'Luz Mendoza' 
+           WHEN u.email LIKE '%7%' THEN 'Carlo Torres' 
+           WHEN u.email LIKE '%8%' THEN 'Sofia Ramos' 
+           WHEN u.email LIKE '%9%' THEN 'Miguel Lim' 
            ELSE 'Nina Tan'
          END,
-         'MOCK-' || substring(u.email from position('@' in u.email)-7 for 7),
+         split_part(u.email, '@', 1),
          CASE 
-           WHEN u.email LIKE '%1@%' OR u.email LIKE '%6@%' THEN 'Bachelor of Science in Computer Science'
-           WHEN u.email LIKE '%2@%' OR u.email LIKE '%7@%' THEN 'Bachelor of Science in Civil Engineering' 
-           WHEN u.email LIKE '%3@%' OR u.email LIKE '%8@%' THEN 'Bachelor of Science in Information Technology'
+           WHEN u.email LIKE '%1%' OR u.email LIKE '%6%' THEN 'Bachelor of Science in Psychology'
+           WHEN u.email LIKE '%2%' OR u.email LIKE '%7%' THEN 'Bachelor of Science in Civil Engineering' 
+           WHEN u.email LIKE '%3%' OR u.email LIKE '%8%' THEN 'Bachelor of Science in Information Technology'
            ELSE 'Bachelor of Science in Computer Science'
          END,
          CASE 
-           WHEN u.email LIKE '%1@%' THEN '2005-05-15'::date
-           WHEN u.email LIKE '%2@%' THEN '2004-06-20'::date
-           WHEN u.email LIKE '%3@%' THEN '2005-03-10'::date
-           WHEN u.email LIKE '%4@%' THEN '2003-11-25'::date
-           WHEN u.email LIKE '%5@%' THEN '2004-08-05'::date
-           WHEN u.email LIKE '%6@%' THEN '2005-01-12'::date
-           WHEN u.email LIKE '%7@%' THEN '2003-07-30'::date
-           WHEN u.email LIKE '%8@%' THEN '2004-04-18'::date
-           WHEN u.email LIKE '%9@%' THEN '2005-12-22'::date
+           WHEN u.email LIKE '%1%' THEN '2005-05-15'::date
+           WHEN u.email LIKE '%2%' THEN '2004-06-20'::date
+           WHEN u.email LIKE '%3%' THEN '2005-03-10'::date
+           WHEN u.email LIKE '%4%' THEN '2003-11-25'::date
+           WHEN u.email LIKE '%5%' THEN '2004-08-05'::date
+           WHEN u.email LIKE '%6%' THEN '2005-01-12'::date
+           WHEN u.email LIKE '%7%' THEN '2003-07-30'::date
+           WHEN u.email LIKE '%8%' THEN '2004-04-18'::date
+           WHEN u.email LIKE '%9%' THEN '2005-12-22'::date
            ELSE '2003-09-08'::date
          END,
-         CASE 
-           WHEN u.email LIKE '%1@%' OR u.email LIKE '%2@%' THEN '3-1'
-           WHEN u.email LIKE '%3@%' OR u.email LIKE '%4@%' THEN '3-1'
-           ELSE '3-1'
-         END,
-         'Pending Department Approval'
+         '1',
+         '3',
+         'Enrolled'
   FROM mock_users u
   ON CONFLICT (user_id) DO NOTHING
   RETURNING user_id
 )
-SELECT 'Mock data injected: ' || count(*) || ' students' FROM mock_profiles;
+SELECT 'Mock users and profiles injected successfully.' AS result;
+
+-- 5. Create 50 BSIT students for Bulk Enroll Testing
+WITH bsit_users AS (
+  INSERT INTO users (username, email, password_hash, role, status, created_at)
+  SELECT 
+    '2023-' || lpad(i::text, 4, '0'),
+    '2023-' || lpad(i::text, 4, '0') || '@plv.edu.ph',
+    crypt('01/01/2005', gen_salt('bf', 12)),
+    'student', 'APPROVED', NOW()
+  FROM generate_series(1, 50) i
+  ON CONFLICT (email) DO NOTHING
+  RETURNING id, email
+),
+bsit_profiles AS (
+  INSERT INTO studentprofiles (user_id, full_name, student_no, department, date_of_birth, section, year_level, assignment_status)
+      SELECT id, 'Student ' || split_part(email, '@', 1), split_part(email, '@', 1), 'Bachelor of Science in Information Technology', '2005-01-01'::date, '1', '1', 'Enrolled'
+  FROM bsit_users
+  ON CONFLICT (user_id) DO NOTHING
+  RETURNING user_id
+)
+SELECT 'BSIT mock students injected successfully.' AS result;
 EOF
 
 # Generate CSV export
 docker exec -e PGPASSWORD="$POSTGRES_PASS" postgres psql -U $POSTGRES_USER -d $POSTGRES_DB -c "
 COPY (
   SELECT sp.student_no, sp.full_name, u.email, sp.date_of_birth::text AS date_of_birth, sp.department, sp.section, '95' AS grade, sp.department AS course, '2nd Semester' AS semester, '2024' AS school_year
-  FROM StudentProfiles sp JOIN Users u ON sp.user_id = u.id 
-  WHERE u.email LIKE 'mock.%'
+  FROM studentprofiles sp JOIN users u ON sp.user_id = u.id 
+  WHERE u.email LIKE '%mock-student%'
 ) TO STDOUT WITH CSV HEADER;
 " > ./mock_students.csv
 log_info "Mock students CSV generated: ./mock_students.csv"
@@ -710,13 +761,14 @@ log_info "Mock students CSV generated: ./mock_students.csv"
 cleanup_mock_data() {
   log_info "Cleaning up MOCK data..."
   docker exec -e PGPASSWORD="$POSTGRES_PASS" postgres psql -U $POSTGRES_USER -d $POSTGRES_DB -c "
-    DELETE FROM AdminProfiles WHERE full_name = 'System Registrar';
-    DELETE FROM StudentProfiles WHERE student_no LIKE 'MOCK-%';
-    DELETE FROM Users WHERE email LIKE 'mock.student%' OR email = 'registrar@plv.edu.ph';
+    DELETE FROM adminprofiles WHERE full_name IN ('System Registrar', 'Dean Maria Santos');
+    DELETE FROM facultyprofiles WHERE full_name = 'Dr. Juan Dela Cruz';
+    DELETE FROM studentprofiles WHERE student_no LIKE 'mock-student%' OR student_no LIKE '2023-%';
+    DELETE FROM users WHERE email LIKE '%mock-student%' OR email LIKE '2023-%' OR email IN ('registrar@plv.edu.ph', 'faculty@plv.edu.ph', 'chairperson@plv.edu.ph');
   "
 }
 
-trap "cleanup_mock_data 2>/dev/null || true; cleanup_processes" EXIT
+trap "cleanup_mock_data 2>/dev/null || true; cleanup_processes" SIGINT SIGTERM ERR
 
 log_info "Phase 6: Starting Application Services & Bootstrapping..."
 
@@ -725,4 +777,6 @@ log_info "BLOCKGO IS LIVE! http://localhost:8080"
 log_info "Student: http://localhost:8080/student | Faculty: http://localhost:8080/faculty"
 log_info "Chat is embedded in the frontend! | Upload ./mock_students.csv in the frontend to test committing grades to CouchDB."
 
-while true; do sleep 86400; done
+if [ "$CI" != "true" ]; then
+    while true; do sleep 86400; done
+fi

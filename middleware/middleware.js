@@ -12,35 +12,95 @@ require('dotenv').config({ path: path.resolve(__dirname, '../network/.env'), ove
 const multer = require('multer');
 const { spawn } = require('child_process');
 const nodemailer = require('nodemailer');
+const { Worker } = require('worker_threads');
+const util = require('util');
+const scryptAsync = util.promisify(crypto.scrypt);
+
+require('events').EventEmitter.defaultMaxListeners = 100;
 
 const uploadDir = path.join(__dirname, 'uploads');
 if (!fs.existsSync(uploadDir)) {
     fs.mkdirSync(uploadDir, { recursive: true });
 }
 
-const getCAConfig = (role) => {
-    // Default to localhost for CA connections (allows running on host easily)
-    // Only use container DNS if NODE_ENV is production AND we are NOT explicitly running on host
-    const useDockerDns = process.env.NODE_ENV === 'production' && process.env.RUNNING_ON_HOST !== 'true';
+// --- Automatic Uploads Garbage Collector ---
+// Cleans up orphaned Excel/CSV files in case a worker crashes or times out.
+setInterval(() => {
+    fs.readdir(uploadDir, (err, files) => {
+        if (err) return;
+        const now = Date.now();
+        const maxAgeMs = 2 * 60 * 60 * 1000; // 2 Hours
+        
+        files.forEach(file => {
+            const filePath = path.join(uploadDir, file);
+            fs.stat(filePath, (err, stats) => {
+                if (err) return;
+                if (now - stats.mtime.getTime() > maxAgeMs) {
+                    fs.unlink(filePath, e => {
+                        if (!e) console.log(`[Garbage Collector] Deleted orphaned upload file: ${file}`);
+                    });
+                }
+            });
+        });
+    });
+}, 60 * 60 * 1000); // Runs every hour
 
-    if (role === 'faculty') return { 
-        caURL: useDockerDns ? 'https://ca.faculty.capstone.com:7054' : 'https://localhost:8054', 
-        caName: 'ca-faculty', 
-        adminLabel: 'admin-faculty', 
-        mspId: 'FacultyMSP' 
+const caConfigCache = new Map();
+
+// Global cache for Gateway connections to prevent re-initialization overhead
+global.userGatewayCache = global.userGatewayCache || new Map();
+const userGatewayCache = global.userGatewayCache;
+
+const IDLE_TIMEOUT_MS = 60 * 60 * 1000;
+setInterval(() => {
+    const now = Date.now();
+    for (const [username, cached] of userGatewayCache.entries()) {
+        if (now - cached.lastAccessed > IDLE_TIMEOUT_MS) {
+            console.log(`[Cache Pruner] Closing idle connection for ${username}`);
+            cached.gateway.disconnect();
+            userGatewayCache.delete(username);
+        }
+    }
+}, 15 * 60 * 1000);
+
+const getCAConfig = (role) => {
+    if (caConfigCache.has(role)) {
+        return caConfigCache.get(role);
+    }
+
+    const isDocker = fs.existsSync('/.dockerenv');
+    let caURL, caName, adminLabel, mspId, certPath;
+
+    if (role === 'faculty') {
+        caURL = isDocker ? 'https://ca.faculty.capstone.com:7054' : 'https://localhost:8054';
+        caName = 'ca-faculty';
+        adminLabel = 'admin-faculty';
+        mspId = 'FacultyMSP';
+        certPath = path.resolve(__dirname, '../network/fabric-ca/faculty/ca-cert.pem');
+    } else if (role === 'department_admin' || role === 'admin' || role === 'deptAdmin') {
+        caURL = isDocker ? 'https://ca.department.capstone.com:7054' : 'https://localhost:9054';
+        caName = 'ca-department';
+        adminLabel = 'admin-department';
+        mspId = 'DepartmentMSP';
+        certPath = path.resolve(__dirname, '../network/fabric-ca/department/ca-cert.pem');
+    } else {
+        caURL = isDocker ? 'https://ca.registrar.capstone.com:7054' : 'https://localhost:7054';
+        caName = 'ca-registrar';
+        adminLabel = 'admin-registrar';
+        mspId = 'RegistrarMSP';
+        certPath = path.resolve(__dirname, '../network/fabric-ca/registrar/ca-cert.pem');
+    }
+
+    const tlsOptions = {
+        trustedRoots: [fs.readFileSync(certPath, 'utf8')],
+        verify: true
     };
-    if (role === 'department_admin' || role === 'admin' || role === 'deptAdmin') return { 
-        caURL: useDockerDns ? 'https://ca.department.capstone.com:7054' : 'https://localhost:9054', 
-        caName: 'ca-department', 
-        adminLabel: 'admin-department', 
-        mspId: 'DepartmentMSP' 
-    };
-    return { 
-        caURL: useDockerDns ? 'https://ca.registrar.capstone.com:7054' : 'https://localhost:7054', 
-        caName: 'ca-registrar', 
-        adminLabel: 'admin-registrar', 
-        mspId: 'RegistrarMSP' 
-    };
+
+    const caClient = new FabricCAServices(caURL, tlsOptions, caName);
+
+    const config = { caURL, caName, adminLabel, mspId, tlsOptions, caClient };
+    caConfigCache.set(role, config);
+    return config;
 };
 
 const uploadExcel = multer({
@@ -51,12 +111,20 @@ const uploadExcel = multer({
             cb(null, Date.now() + '-' + safeName);
         }
     }),
-    limits: { fileSize: 15 * 1024 * 1024 } 
+    limits: { fileSize: 15 * 1024 * 1024 }, // 15MB limit
+    fileFilter: (req, file, cb) => {
+        const ext = path.extname(file.originalname).toLowerCase();
+        if (ext !== '.csv' && ext !== '.xlsx' && ext !== '.xls') {
+            return cb(new Error('INVALID_FILE_TYPE'));
+        }
+        cb(null, true);
+    }
 }).single('excel');
 
 const handleUploadMiddleware = (req, res, next) => {
     uploadExcel(req, res, (err) => {
         if (err instanceof multer.MulterError) return res.status(400).json({ error: `Upload error: ${err.message}.` });
+        if (err && err.message === 'INVALID_FILE_TYPE') return res.status(400).json({ error: 'Only Excel (.xlsx, .xls) and CSV (.csv) files are allowed.' });
         if (err) return res.status(500).json({ error: `Unknown upload error: ${err.message}` });
         next();
     });
@@ -78,25 +146,27 @@ app.use((req, res, next) => {
     next();
 });
 
-// Read Pool (Connects to Local Replica / Fallback to Localhost)
 const dbRead = new Pool({
     user: process.env.POSTGRES_USER || 'postgres',
     host: process.env.POSTGRES_HOST === 'postgres' ? '127.0.0.1' : (process.env.POSTGRES_HOST || '127.0.0.1'),
     database: process.env.POSTGRES_DB || 'ActivityLogs',
     password: process.env.POSTGRES_PASS || 'password',
     port: process.env.POSTGRES_PORT || 5432,
+    max: 20,
+    idleTimeoutMillis: 30000
 });
 
 let mainIp = process.env.MAIN_CAMPUS_IP;
 if (mainIp === 'host-gateway') mainIp = '127.0.0.1';
 
-// Write Pool (Strictly connects to Main Campus Master)
 const dbWrite = new Pool({
     user: process.env.POSTGRES_USER || 'postgres',
     host: mainIp || process.env.POSTGRES_HOST || '127.0.0.1',
     database: process.env.POSTGRES_DB || 'ActivityLogs',
     password: process.env.POSTGRES_PASS || 'password',
     port: process.env.POSTGRES_PORT || 5432,
+    max: 20,
+    idleTimeoutMillis: 30000
 });
 
 dbRead.on('error', (err, client) => {
@@ -105,14 +175,24 @@ dbRead.on('error', (err, client) => {
 dbWrite.on('error', (err, client) => {
     console.error('Unexpected error on idle PostgreSQL write client:', err);
 });
-async function getWallet() {
-    let couchUrl = process.env.COUCHDB_WALLET_URL;
-    if (!couchUrl && process.env.COUCHDB_USER && process.env.COUCHDB_PASS) {
-        couchUrl = `http://${process.env.COUCHDB_USER}:${process.env.COUCHDB_PASS}@127.0.0.1:5990`;
+async function getWallet(role = 'registrar') {
+    if (!role) role = 'registrar';
+    let couchUrl;
+    const user = process.env.COUCHDB_USER || 'admin';
+    const pass = process.env.COUCHDB_PASS || 'password';
+    const host = fs.existsSync('/.dockerenv') ? 'host.docker.internal' : '127.0.0.1';
+
+    if (role === 'faculty') {
+        couchUrl = process.env.COUCHDB_WALLET_FACULTY_URL || `http://${user}:${pass}@${host}:6990`;
+    } else if (role === 'department_admin' || role === 'deptAdmin' || role === 'department') {
+        couchUrl = process.env.COUCHDB_WALLET_DEPARTMENT_URL || `http://${user}:${pass}@${host}:7990`;
+    } else {
+        couchUrl = process.env.COUCHDB_WALLET_REGISTRAR_URL || process.env.COUCHDB_WALLET_URL || `http://${user}:${pass}@${host}:5990`;
     }
 
     if (couchUrl) {
-        const wallet = await Wallets.newCouchDBWallet(couchUrl, 'fabric_wallet');
+        const walletName = `fabric_wallet_${role === 'faculty' ? 'faculty' : (role.includes('dept') ? 'department' : 'registrar')}`;
+        const wallet = await Wallets.newCouchDBWallet(couchUrl, walletName);
         const encryptionKey = process.env.WALLET_ENCRYPTION_KEY;
         if (encryptionKey) {
             const originalPut = wallet.put.bind(wallet);
@@ -127,7 +207,7 @@ async function getWallet() {
                 if (identityToStore.credentials && identityToStore.credentials.privateKey) {
                     const salt = crypto.randomBytes(16);
                     
-                    const key = crypto.scryptSync(encryptionKey, salt, 32);
+                    const key = await scryptAsync(encryptionKey, salt, 32);
                     const iv = crypto.randomBytes(12);
                     const cipher = crypto.createCipheriv('aes-256-gcm', key, iv);
                     
@@ -148,13 +228,13 @@ async function getWallet() {
                     
                     if (parts.length === 5) {
                         const [, saltHex, ivPart, authTagPart, encryptedPart] = parts;
-                        key = crypto.scryptSync(encryptionKey, Buffer.from(saltHex, 'hex'), 32);
+                        key = await scryptAsync(encryptionKey, Buffer.from(saltHex, 'hex'), 32);
                         ivHex = ivPart;
                         authTagHex = authTagPart;
                         encryptedHex = encryptedPart;
                     } else if (parts.length === 4) {
                         const [, ivPart, authTagPart, encryptedPart] = parts;
-                        key = crypto.scryptSync(encryptionKey, 'salt', 32);
+                        key = await scryptAsync(encryptionKey, 'salt', 32);
                         ivHex = ivPart;
                         authTagHex = authTagPart;
                         encryptedHex = encryptedPart;
@@ -176,11 +256,13 @@ async function getWallet() {
     return await Wallets.newFileSystemWallet(walletPath);
 }
 
-const JWT_SECRET = process.env.JWT_SECRET;
+let JWT_SECRET = process.env.JWT_SECRET;
 if (!JWT_SECRET) {
     console.error("FATAL ERROR: JWT_SECRET environment variable is missing. Please set it in your .env file.");
     process.exit(1);
 }
+// Normalize to exactly 32 bytes to prevent C# ASP.NET Core HS256 minimum key size exceptions (IDX10603)
+JWT_SECRET = JWT_SECRET.trim().padEnd(32, '0').substring(0, 32);
 
 const INTERNAL_API_KEY = process.env.INTERNAL_API_KEY;
 if (!INTERNAL_API_KEY) {
@@ -209,6 +291,7 @@ const authenticateJWT = (req, res, next) => {
 
 const authorizeRole = (allowedRoles) => {
     return (req, res, next) => {
+        if (req.isInternal) return next();
         if (!req.user || !req.user.role) {
             return res.status(403).json({ error: "Access denied: No role information found in token." });
         }
@@ -219,7 +302,7 @@ const authorizeRole = (allowedRoles) => {
     };
 };
 const requireRegistrarOrInternal = (req, res, next) => {
-    if (req.headers['x-api-key'] === INTERNAL_API_KEY || req.headers['x-api-key'] === 'dev-internal-api-key') {
+    if (req.headers['x-api-key'] === INTERNAL_API_KEY) {
         return next();
     }
 
@@ -232,43 +315,43 @@ const requireRegistrarOrInternal = (req, res, next) => {
     });
 };
 
-const userGatewayCache = new Map();
-const IDLE_TIMEOUT_MS = 60 * 60 * 1000;
-setInterval(() => {
-    const now = Date.now();
-    for (const [username, cached] of userGatewayCache.entries()) {
-        if (now - cached.lastAccessed > IDLE_TIMEOUT_MS) {
-            console.log(`[Cache Pruner] Closing idle connection for ${username}`);
-            cached.gateway.disconnect();
-            userGatewayCache.delete(username);
-        }
-    }
-}, 15 * 60 * 1000);
-
-const clearCacheOnError = (username, error) => {
+const clearCacheOnError = async (username, error) => {
     if (!username || !error || !error.message) return;
     if (error.message.includes('creator is malformed') || error.message.includes('access denied') || error.message.includes('UNAVAILABLE') || error.message.includes('UNKNOWN')) {
+        console.warn(`[Self-Healing] Detected stale or rejected identity for ${username}`);
         if (userGatewayCache.has(username)) {
-            console.warn(`[Self-Healing] Evicting poisoned connection cache for ${username}`);
             try { userGatewayCache.get(username).gateway.disconnect(); } catch (e) {}
             userGatewayCache.delete(username);
+        }
+        try {
+            const roles = ['registrar', 'faculty', 'department_admin'];
+            for (const r of roles) {
+                const wallet = await getWallet(r);
+                if (await wallet.get(username)) {
+                    console.warn(`[Self-Healing] Wiping stale wallet identity for ${username} in ${r} wallet`);
+                    await wallet.remove(username);
+                }
+            }
+        } catch (walletErr) {
+            console.error(`[Self-Healing] Failed to remove stale wallet identity: ${walletErr.message}`);
         }
     }
 };
 
-async function importCryptogenAdmins(wallet) {
+async function importCryptogenAdmins() {
     console.log("Syncing natively trusted Cryptogen Admin certificates...");
     try {
         const orgs = [
-            { mspId: 'RegistrarMSP', domain: 'registrar.capstone.com', label: 'system-admin-registrar' },
-            { mspId: 'FacultyMSP', domain: 'faculty.capstone.com', label: 'system-admin-faculty' },
-            { mspId: 'DepartmentMSP', domain: 'department.capstone.com', label: 'system-admin-department' }
+            { mspId: 'RegistrarMSP', domain: 'registrar.capstone.com', label: 'system-admin-registrar', role: 'registrar' },
+            { mspId: 'FacultyMSP', domain: 'faculty.capstone.com', label: 'system-admin-faculty', role: 'faculty' },
+            { mspId: 'DepartmentMSP', domain: 'department.capstone.com', label: 'system-admin-department', role: 'department_admin' }
         ];
 
         const cryptoBase = '../network/crypto-config-final-v2';
 
         for (const org of orgs) {
             try {
+                const wallet = await getWallet(org.role);
                 let certPath = path.resolve(__dirname, `${cryptoBase}/peerOrganizations/${org.domain}/users/Admin@${org.domain}/msp/signcerts/Admin@${org.domain}-cert.pem`);
                 
                 if (!fs.existsSync(certPath)) {
@@ -307,12 +390,20 @@ async function importCryptogenAdmins(wallet) {
     }
 }
 
-async function ensureAdminEnrolled(caURL, caName, mspId, adminLabel) {
+async function ensureAdminEnrolled(caURL, caName, mspId, adminLabel, tlsOptions, caClient) {
     try {
-        const wallet = await getWallet();
-        const identity = await wallet.get(adminLabel);
+        let role = 'registrar';
+        if (adminLabel === 'admin-faculty') role = 'faculty';
+        else if (adminLabel === 'admin-department') role = 'department_admin';
         
+        const wallet = await getWallet(role);
+        let identity = await wallet.get(adminLabel);
+        
+        // If identity exists, we should still verify if it's actually valid for the current CA
+        // For now, if we get an Authentication Failure later, we know we need to re-enroll.
+        // A simple way to trigger re-enrollment is to check if the admin identity is present.
         if (identity) {
+            console.log(`[Identity Guard] '${adminLabel}' already in wallet.`);
             return; 
         }
 
@@ -320,7 +411,7 @@ async function ensureAdminEnrolled(caURL, caName, mspId, adminLabel) {
         
         const enrollSecret = process.env.BOOTSTRAP_REGISTRAR_PASS || 'adminpw';
         
-        const ca = new FabricCAServices(caURL, { verify: false }, caName);
+        const ca = caClient || new FabricCAServices(caURL, tlsOptions, caName);
         
         const enrollment = await ca.enroll({
             enrollmentID: 'admin',
@@ -345,7 +436,7 @@ async function ensureAdminEnrolled(caURL, caName, mspId, adminLabel) {
     }
 }
 
-async function getContractForUser(username) {
+async function getContractForUser(username, roleHint) {
     if (!username) {
         throw new Error('No identity provided. Transaction requires a valid username/identity.');
     }
@@ -359,8 +450,17 @@ async function getContractForUser(username) {
     const ccpPath = path.resolve(__dirname, '..', 'network', 'connection-profile.json');
     const ccp = JSON.parse(fs.readFileSync(ccpPath, 'utf8'));
     
-    const wallet = await getWallet();
-    const identity = await wallet.get(username);
+    let wallet = await getWallet(roleHint);
+    let identity = await wallet.get(username);
+    if (!identity && !roleHint) {
+        const roles = ['registrar', 'faculty', 'department_admin'];
+        for (const r of roles) {
+            wallet = await getWallet(r);
+            identity = await wallet.get(username);
+            if (identity) break;
+        }
+    }
+
     if (!identity) {
         throw new Error(`Access Denied: Wallet identity for '${username}' not found. The Registrar must register this user first.`);
     }
@@ -382,16 +482,63 @@ async function getContractForUser(username) {
     if (!ccp.client) ccp.client = {};
     ccp.client.organization = clientOrgName;
 
-        let gatewayIdentity = username;
-        if (clientOrgName === 'Registrar') gatewayIdentity = 'system-admin-registrar';
-        else if (clientOrgName === 'Faculty') gatewayIdentity = 'system-admin-faculty';
-        else if (clientOrgName === 'Department') gatewayIdentity = 'system-admin-department';
+    // Inject full network routing to bypass broken Docker Service Discovery on localhost
+    if (!fs.existsSync('/.dockerenv')) {
+        const getPEM = (org, peer) => {
+            try { return fs.readFileSync(path.resolve(__dirname, `../network/crypto-config-final-v2/peerOrganizations/${org}/peers/${peer}/tls/ca.crt`), 'utf8'); } catch(e) { return ""; }
+        };
+        const getOrdererPEM = () => {
+            try { return fs.readFileSync(path.resolve(__dirname, `../network/crypto-config-final-v2/ordererOrganizations/capstone.com/orderers/orderer.capstone.com/tls/ca.crt`), 'utf8'); } catch(e) { return ""; }
+        };
+
+        ccp.peers = {
+            ...ccp.peers,
+            'peer0.registrar.capstone.com': { url: 'grpcs://localhost:7051', tlsCACerts: { pem: getPEM('registrar.capstone.com', 'peer0.registrar.capstone.com') }, grpcOptions: { 'ssl-target-name-override': 'peer0.registrar.capstone.com' } },
+            'peer0.faculty.capstone.com': { url: 'grpcs://localhost:9051', tlsCACerts: { pem: getPEM('faculty.capstone.com', 'peer0.faculty.capstone.com') }, grpcOptions: { 'ssl-target-name-override': 'peer0.faculty.capstone.com' } },
+            'peer0.department.capstone.com': { url: 'grpcs://localhost:11051', tlsCACerts: { pem: getPEM('department.capstone.com', 'peer0.department.capstone.com') }, grpcOptions: { 'ssl-target-name-override': 'peer0.department.capstone.com' } }
+        };
+
+        ccp.orderers = {
+            ...ccp.orderers,
+            'orderer.capstone.com': { url: 'grpcs://localhost:7050', tlsCACerts: { pem: getOrdererPEM() }, grpcOptions: { 'ssl-target-name-override': 'orderer.capstone.com' } }
+        };
+
+        ccp.channels = {
+            [process.env.CHANNEL_NAME || 'registrar-channel']: {
+                orderers: ['orderer.capstone.com'],
+                peers: {
+                    'peer0.registrar.capstone.com': { endorsingPeer: true, chaincodeQuery: true, ledgerQuery: true, eventSource: true },
+                    'peer0.faculty.capstone.com': { endorsingPeer: true, chaincodeQuery: true, ledgerQuery: true, eventSource: true },
+                    'peer0.department.capstone.com': { endorsingPeer: true, chaincodeQuery: true, ledgerQuery: true, eventSource: true }
+                }
+            }
+        };
+    }
+
+    const grpcOptions = {
+        'grpc.keepalive_time_ms': 120000,
+        'grpc.keepalive_timeout_ms': 20000,
+        'grpc.keepalive_permit_without_calls': 1,
+        'grpc.max_send_message_length': -1,
+        'grpc.max_receive_message_length': -1
+    };
+
+    if (ccp.peers) {
+        for (const peer in ccp.peers) {
+            ccp.peers[peer].grpcOptions = { ...ccp.peers[peer].grpcOptions, ...grpcOptions };
+        }
+    }
+    if (ccp.orderers) {
+        for (const orderer in ccp.orderers) {
+            ccp.orderers[orderer].grpcOptions = { ...ccp.orderers[orderer].grpcOptions, ...grpcOptions };
+        }
+    }
 
     const gateway = new Gateway();
     await gateway.connect(ccp, {
         wallet,
-            identity: gatewayIdentity, 
-        discovery: { enabled: false, asLocalhost: true }
+        identity: username, 
+        discovery: { enabled: fs.existsSync('/.dockerenv'), asLocalhost: false }
     });
 
     const network = await gateway.getNetwork(process.env.CHANNEL_NAME || 'registrar-channel');
@@ -406,7 +553,7 @@ const getCallerIdentity = (req) => {
     if (req.user && req.user.username) return req.user.username;
     
     if (req.isInternal) {
-        return req.headers['x-user-identity'] || req.body.facultyId || req.body.ApprovedBy;
+        return req.headers['x-user-identity'] || req.query.invokerId || req.body.facultyId || req.body.FacultyId || req.body.ApprovedBy || req.body.approvedBy;
     }
     throw new Error("Unauthorized caller identity access attempt.");
 };  
@@ -440,14 +587,98 @@ app.post('/api/login', loginLimiter, async (req, res) => {
             return res.status(401).json({ error: "Invalid email or password." });
         }
 
-        const wallet = await getWallet();
+        const wallet = await getWallet(userRecord.role);
         let identity = await wallet.get(normalizedUsername);
         
         if (!identity) {
-            return res.status(401).json({ error: "Blockchain Identity not found in wallet. Please contact admin." });
+            console.warn(`[Self-Healing] Wallet missing for ${normalizedUsername}. Attempting automatic recovery...`);
+            try {
+                const { caURL, caName, adminLabel, mspId, tlsOptions, caClient } = getCAConfig(userRecord.role);
+                const ca = caClient;
+                
+                try {
+                    const enrollment = await ca.enroll({
+                        enrollmentID: normalizedUsername,
+                        enrollmentSecret: password,
+                        attr_reqs: [{ name: 'role', optional: true }, { name: 'grade.manage', optional: true }]
+                    });
+                    await wallet.put(normalizedUsername, {
+                        credentials: { certificate: enrollment.certificate, privateKey: enrollment.key.toBytes() },
+                        mspId: mspId,
+                        type: 'X.509'
+                    });
+                } catch (enrollErr) {
+                    console.log(`[Self-Healing] Enrollment failed, attempting to register ${normalizedUsername} into CA...`);
+                    
+                    await ensureAdminEnrolled(caURL, caName, mspId, adminLabel, tlsOptions, caClient);
+                    
+                    const adminIdentity = await wallet.get(adminLabel);
+                    if (!adminIdentity) throw new Error(`Admin ${adminLabel} missing from wallet.`);
+                    
+                    const provider = wallet.getProviderRegistry().getProvider(adminIdentity.type);
+                    let adminUser = await provider.getUserContext(adminIdentity, 'admin');
+                    
+                    const registerPayload = {
+                        enrollmentID: normalizedUsername,
+                        enrollmentSecret: password,
+                        role: (userRecord.role === 'registrar' || userRecord.role === 'department_admin' || userRecord.role === 'deptAdmin') ? 'admin' : 'client',
+                        attrs: [
+                            { name: 'role', value: userRecord.role, ecert: true },
+                            { name: 'grade.manage', value: userRecord.role === 'faculty' ? 'true' : 'false', ecert: true }
+                        ]
+                    };
+                    
+                    try {
+                        await ca.register(registerPayload, adminUser);
+                    } catch (regErr) {
+                        if (regErr.toString().includes('code: 20') || regErr.toString().includes('Authentication failure')) {
+                            console.warn(`[Self-Healing] Admin authentication failed for ${adminLabel}. Stale cert suspected. Re-enrolling...`);
+                            await wallet.remove(adminLabel);
+                            await ensureAdminEnrolled(caURL, caName, mspId, adminLabel, tlsOptions, caClient);
+                            
+                            const newAdminIdentity = await wallet.get(adminLabel);
+                            adminUser = await provider.getUserContext(newAdminIdentity, 'admin');
+                            await ca.register(registerPayload, adminUser);
+                        } else {
+                            throw regErr;
+                        }
+                    }
+                    
+                    const newEnrollment = await ca.enroll({
+                        enrollmentID: normalizedUsername,
+                        enrollmentSecret: password,
+                        attr_reqs: [{ name: 'role', optional: true }, { name: 'grade.manage', optional: true }]
+                    });
+                    await wallet.put(normalizedUsername, {
+                        credentials: { certificate: newEnrollment.certificate, privateKey: newEnrollment.key.toBytes() },
+                        mspId: mspId,
+                        type: 'X.509'
+                    });
+                }
+                console.log(`[Self-Healing] Successfully recovered wallet for ${normalizedUsername}`);
+                identity = await wallet.get(normalizedUsername);
+            } catch (recoveryErr) {
+                console.error(`[Self-Healing] Recovery failed: ${recoveryErr.message}`);
+                return res.status(401).json({ error: "Blockchain Identity not found, and automatic recovery failed. Please contact admin." });
+            }
         }
 
-        const token = jwt.sign({ username: normalizedUsername, role: identity.mspId, dbRole: userRecord.role }, JWT_SECRET, { expiresIn: '4h' });
+
+        const tokenPayload = { 
+            username: normalizedUsername, 
+            role: identity.mspId, 
+            dbRole: userRecord.role,
+            "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier": normalizedUsername,
+            "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name": normalizedUsername,
+            "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress": normalizedUsername,
+            "http://schemas.microsoft.com/ws/2008/06/identity/claims/role": userRecord.role
+        };
+        
+        const jwtOptions = { expiresIn: '2hr' };
+        if (process.env.JWT_ISSUER) jwtOptions.issuer = process.env.JWT_ISSUER;
+        if (process.env.JWT_AUDIENCE) jwtOptions.audience = process.env.JWT_AUDIENCE;
+
+        const token = jwt.sign(tokenPayload, JWT_SECRET, jwtOptions);
         res.status(200).json({ status: "success", token, message: "Use this token in the Authorization header: Bearer <token>" });
     } catch (error) {
         res.status(500).json({ error: error.message });
@@ -471,61 +702,61 @@ app.post('/api/fabric/register-user', authenticateJWT, requireRegistrarOrInterna
     try {
         const { email, role } = req.body;
         
-        const wallet = await getWallet();
-        const { caURL, caName, adminLabel, mspId } = getCAConfig(role);
+        const { caURL, caName, adminLabel, mspId, tlsOptions, caClient } = getCAConfig(role);
         
-        await ensureAdminEnrolled(caURL, caName, mspId, adminLabel);
+        await ensureAdminEnrolled(caURL, caName, mspId, adminLabel, tlsOptions, caClient);
 
-        const ca = new FabricCAServices(caURL, { verify: false }, caName);
-        let adminIdentity = await wallet.get(adminLabel);
+        const ca = caClient;
+        const wallet = await getWallet(role);
+        const adminIdentity = await wallet.get(adminLabel);
         if (!adminIdentity) {
             return res.status(500).json({ error: `Blockchain Admin '${adminLabel}' not found in wallet. Cannot register users.` });
         }
 
-        let provider = wallet.getProviderRegistry().getProvider(adminIdentity.type);
+        const provider = wallet.getProviderRegistry().getProvider(adminIdentity.type);
         let adminUser = await provider.getUserContext(adminIdentity, 'admin');
 
         const secret = req.body.password || crypto.randomBytes(12).toString('hex');
-        try {
-            await ca.register({
+        
+        const registerUser = async (user) => {
+            return await ca.register({
                 enrollmentID: email,
                 enrollmentSecret: secret,
                 role: (role === 'registrar' || role === 'department_admin' || role === 'deptAdmin') ? 'admin' : 'client',
                 attrs: [{ name: 'role', value: role, ecert: true }, { name: 'grade.manage', value: role === 'faculty' ? 'true' : 'false', ecert: true }]
-            }, adminUser);
-        } catch (regErr) {
-            const errStr = regErr.toString();
-            if (errStr.includes('Authentication failure') || errStr.includes('code: 20')) {
-                console.warn(`[Fabric CA] Stale admin identity detected for '${adminLabel}'. Forcing re-enrollment...`);
-                await wallet.remove(adminLabel);
-                await ensureAdminEnrolled(caURL, caName, mspId, adminLabel);
-                
-                adminIdentity = await wallet.get(adminLabel);
-                provider = wallet.getProviderRegistry().getProvider(adminIdentity.type);
-                adminUser = await provider.getUserContext(adminIdentity, 'admin');
+            }, user);
+        };
 
-                console.log(`[Fabric CA] Retrying registration for ${email} with fresh admin identity.`);
-                await ca.register({
-                    enrollmentID: email,
-                    enrollmentSecret: secret,
-                    role: (role === 'registrar' || role === 'department_admin' || role === 'deptAdmin') ? 'admin' : 'client',
-                    attrs: [{ name: 'role', value: role, ecert: true }, { name: 'grade.manage', value: role === 'faculty' ? 'true' : 'false', ecert: true }]
-                }, adminUser);
-            } else if (errStr.includes('code: 74') || errStr.includes('is already registered')) {
-                console.log(`[Fabric CA] ${email} is already registered. Skipping registration and attempting to enroll...`);
-                try {
-                    const identityService = ca.newIdentityService();
-                    await identityService.update(email, { enrollmentSecret: secret }, adminUser);
-                    console.log(`[Fabric CA] Force-updated password for ${email} in CA.`);
-                } catch (updateErr) {
-                    console.warn(`[Fabric CA] Could not update password for ${email}: ${updateErr.message}`);
-                }
+        try {
+            await registerUser(adminUser);
+        } catch (regErr) {
+            // Self-Healing: If authentication failed (code 20), the admin cert might be stale (CA reset).
+            // Delete the admin from wallet, re-enroll, and retry once.
+            if (regErr.toString().includes('code: 20') || regErr.toString().includes('Authentication failure')) {
+                console.warn(`[Self-Healing] Admin authentication failed for ${adminLabel}. Stale cert suspected. Re-enrolling...`);
+                await wallet.remove(adminLabel);
+                await ensureAdminEnrolled(caURL, caName, mspId, adminLabel, tlsOptions, caClient);
+                
+                const newAdminIdentity = await wallet.get(adminLabel);
+                adminUser = await provider.getUserContext(newAdminIdentity, 'admin');
+                await registerUser(adminUser);
+            } else if (regErr.toString().includes('code: 74') || regErr.toString().includes('is already registered')) {
+                console.log(`[Fabric CA] ${email} is already registered. Updating secret...`);
+                const identityService = ca.newIdentityService();
+                await identityService.update(email, { enrollmentSecret: secret }, adminUser);
             } else {
                 throw regErr;
             }
         }
 
-        const enrollment = await ca.enroll({ enrollmentID: email, enrollmentSecret: secret });
+        const enrollment = await ca.enroll({ 
+            enrollmentID: email, 
+            enrollmentSecret: secret,
+            attr_reqs: [
+                { name: 'role', optional: true },
+                { name: 'grade.manage', optional: true }
+            ]
+        });
         const x509Identity = { credentials: { certificate: enrollment.certificate, privateKey: enrollment.key.toBytes() }, mspId: mspId, type: 'X.509' };
         await wallet.put(email, x509Identity);
 
@@ -610,10 +841,10 @@ app.post('/api/reset-password', async (req, res) => {
 app.post('/api/enroll', authenticateJWT, requireRegistrarOrInternal, async (req, res) => {
     try {
         const { username, password, role } = req.body;
-        const { caURL, caName, mspId } = getCAConfig(role);
+        const { mspId, caClient } = getCAConfig(role);
 
-        const ca = new FabricCAServices(caURL, { verify: false }, caName);
-        const wallet = await getWallet();
+        const ca = caClient;
+        const wallet = await getWallet(role);
 
         if (await wallet.get(username)) {
             return res.status(200).json({ status: "success", message: "User is already enrolled in the wallet." });
@@ -622,7 +853,11 @@ app.post('/api/enroll', authenticateJWT, requireRegistrarOrInternal, async (req,
         console.log(`[Enroll] Downloading certificates for ${username} from ${caName}...`);
         const enrollment = await ca.enroll({
             enrollmentID: username,
-            enrollmentSecret: password
+            enrollmentSecret: password,
+            attr_reqs: [
+                { name: 'role', optional: true },
+                { name: 'grade.manage', optional: true }
+            ]
         });
         
         const x509Identity = {
@@ -647,14 +882,13 @@ app.post('/api/enroll', authenticateJWT, requireRegistrarOrInternal, async (req,
 app.post('/api/register', authenticateJWT, requireRegistrarOrInternal, async (req, res) => {
     try {
         const { username, password, role } = req.body;
-        const wallet = await getWallet();
         
-        const { caURL, caName, adminLabel, mspId } = getCAConfig(role);
+        const { caURL, caName, adminLabel, mspId, tlsOptions, caClient } = getCAConfig(role);
         
-        await ensureAdminEnrolled(caURL, caName, mspId, adminLabel);
+        await ensureAdminEnrolled(caURL, caName, mspId, adminLabel, tlsOptions, caClient);
         
-        const ca = new FabricCAServices(caURL, { verify: false }, caName);
-        let adminIdentity = await wallet.get(adminLabel);
+        const wallet = await getWallet(role);
+        const adminIdentity = await wallet.get(adminLabel);
 
         if (!adminIdentity) {
             console.error("Identity Guard Failed: Admin wallet missing from /wallet/ directory.");
@@ -664,42 +898,24 @@ app.post('/api/register', authenticateJWT, requireRegistrarOrInternal, async (re
             });
         }
 
-        let provider = wallet.getProviderRegistry().getProvider(adminIdentity.type);
-        let adminUser = await provider.getUserContext(adminIdentity, 'admin');
+        const ca = caClient;
+
+        const provider = wallet.getProviderRegistry().getProvider(adminIdentity.type);
+        const adminUser = await provider.getUserContext(adminIdentity, 'admin');
 
         let secret = password;
         try {
             secret = await ca.register({
                 enrollmentID: username,
                 enrollmentSecret: password,
-                role: (role === 'registrar' || role === 'department_admin' || role === 'dept') ? 'admin' : 'client',
+                role: (role === 'registrar' || role === 'department_admin' || role === 'deptAdmin') ? 'admin' : 'client',
                 attrs: [
                     { name: 'role', value: role, ecert: true },
                     { name: 'grade.manage', value: role === 'faculty' ? 'true' : 'false', ecert: true }
                 ]
             }, adminUser);
         } catch (regErr) {
-            const errStr = regErr.toString();
-            if (errStr.includes('Authentication failure') || errStr.includes('code: 20')) {
-                console.warn(`[Fabric CA] Stale admin identity detected for '${adminLabel}'. Forcing re-enrollment...`);
-                await wallet.remove(adminLabel);
-                await ensureAdminEnrolled(caURL, caName, mspId, adminLabel);
-
-                adminIdentity = await wallet.get(adminLabel);
-                provider = wallet.getProviderRegistry().getProvider(adminIdentity.type);
-                adminUser = await provider.getUserContext(adminIdentity, 'admin');
-
-                console.log(`[Fabric CA] Retrying registration for ${username} with fresh admin identity.`);
-                secret = await ca.register({
-                    enrollmentID: username,
-                    enrollmentSecret: password,
-                    role: (role === 'registrar' || role === 'department_admin' || role === 'dept') ? 'admin' : 'client',
-                    attrs: [
-                        { name: 'role', value: role, ecert: true },
-                        { name: 'grade.manage', value: role === 'faculty' ? 'true' : 'false', ecert: true }
-                    ]
-                }, adminUser);
-            } else if (errStr.includes('code: 74') || errStr.includes('is already registered')) {
+            if (regErr.toString().includes('code: 74') || regErr.toString().includes('is already registered')) {
                 console.log(`[Fabric CA] ${username} is already registered. Updating secret...`);
                 try {
                     const identityService = ca.newIdentityService();
@@ -723,13 +939,13 @@ app.post('/api/register', authenticateJWT, requireRegistrarOrInternal, async (re
 app.post('/api/revoke', authenticateJWT, requireRegistrarOrInternal, async (req, res) => {
     try {
         const { username, role } = req.body;
-        const wallet = await getWallet();
         
-        const { caURL, caName, adminLabel, mspId } = getCAConfig(role);
+        const { caURL, caName, adminLabel, mspId, tlsOptions, caClient } = getCAConfig(role);
         
-        await ensureAdminEnrolled(caURL, caName, mspId, adminLabel);
+        await ensureAdminEnrolled(caURL, caName, mspId, adminLabel, tlsOptions, caClient);
         
-        let adminIdentity = await wallet.get(adminLabel);
+        const wallet = await getWallet(role);
+        const adminIdentity = await wallet.get(adminLabel);
 
         if (!adminIdentity) {
             console.error("Identity Guard Failed: Admin wallet missing from /wallet/ directory.");
@@ -747,30 +963,12 @@ app.post('/api/revoke', authenticateJWT, requireRegistrarOrInternal, async (req,
             });
         }
 
-        const ca = new FabricCAServices(caURL, { verify: false }, caName);
+        const ca = caClient;
 
-        let provider = wallet.getProviderRegistry().getProvider(adminIdentity.type);
-        let adminUser = await provider.getUserContext(adminIdentity, 'admin');
+        const provider = wallet.getProviderRegistry().getProvider(adminIdentity.type);
+        const adminUser = await provider.getUserContext(adminIdentity, 'admin');
 
-        try {
-            await ca.revoke({ enrollmentID: username, reason: "Revoked by admin" }, adminUser);
-        } catch (revErr) {
-            const errStr = revErr.toString();
-            if (errStr.includes('Authentication failure') || errStr.includes('code: 20')) {
-                console.warn(`[Fabric CA] Stale admin identity detected for '${adminLabel}'. Forcing re-enrollment...`);
-                await wallet.remove(adminLabel);
-                await ensureAdminEnrolled(caURL, caName, mspId, adminLabel);
-
-                adminIdentity = await wallet.get(adminLabel);
-                provider = wallet.getProviderRegistry().getProvider(adminIdentity.type);
-                adminUser = await provider.getUserContext(adminIdentity, 'admin');
-
-                console.log(`[Fabric CA] Retrying revocation for ${username} with fresh admin identity.`);
-                await ca.revoke({ enrollmentID: username, reason: "Revoked by admin" }, adminUser);
-            } else {
-                throw revErr;
-            }
-        }
+        await ca.revoke({ enrollmentID: username, reason: "Revoked by admin" }, adminUser);
         if (await wallet.get(username)) await wallet.remove(username);
 
         if (userGatewayCache.has(username)) {
@@ -789,14 +987,66 @@ app.get('/api/all-grades', authenticateJWT, async (req, res) => {
     let username;
     try {
         username = getCallerIdentity(req);
-        const { contract } = await getContractForUser(username);
-
-        console.log(`[GetAllGrades] Querying as ${username} (using cached user context)...`);
-        const result = await contract.evaluateTransaction('GetAllGrades');
         
+        let contractToUse;
+        try {
+            const { contract } = await getContractForUser(username, req.user ? req.user.dbRole : null);
+            contractToUse = contract;
+        } catch (walletErr) {
+            if (req.isInternal || walletErr.message.includes('not found')) {
+                console.warn(`[Ledger Gateway] Wallet missing for ${username}. Falling back to system-admin-registrar for internal read query.`);
+                const { contract } = await getContractForUser('system-admin-registrar', 'registrar');
+                contractToUse = contract;
+            } else {
+                throw walletErr;
+            }
+        }
+
+        console.log(`[GetAllGrades] Querying for ${username}...`);
+        let result;
+        try {
+            result = await contractToUse.evaluateTransaction('GetAllGrades');
+        } catch (evalErr) {
+            if (evalErr.message.includes('creator is malformed') || evalErr.message.includes('access denied') || evalErr.message.includes('UNKNOWN')) {
+                console.warn(`[Self-Healing] ${username} identity rejected by peer. Falling back to system-admin-registrar.`);
+                clearCacheOnError(username, evalErr); // Wipe the stale wallet in background
+                const { contract: fallbackContract } = await getContractForUser('system-admin-registrar', 'registrar');
+                result = await fallbackContract.evaluateTransaction('GetAllGrades');
+            } else { throw evalErr; }
+        }
+
         try {
             const grades = JSON.parse(result.toString());
-            if (req.user && req.user.dbRole === 'student') {
+            
+            if (Array.isArray(grades)) {
+                // --- Decode Base64 X.509 Identity from Chaincode for Frontend display ---
+                grades.forEach(g => {
+                    const facId = g.faculty_id || g.facultyId || g.FacultyId;
+                    if (facId && facId.length > 40 && !facId.includes('@')) {
+                        try {
+                            const decoded = Buffer.from(facId, 'base64').toString('utf8');
+                            const cnMatch = decoded.match(/CN=([^,]+)/);
+                            if (cnMatch && cnMatch[1]) {
+                                if (g.faculty_id) g.faculty_id = cnMatch[1];
+                                if (g.facultyId) g.facultyId = cnMatch[1];
+                                if (g.FacultyId) g.FacultyId = cnMatch[1];
+                            }
+                        } catch(e) {}
+                    }
+                });
+            }
+            
+            let userRole = req.user ? req.user.dbRole : null;
+            if (!userRole && req.isInternal) {
+                try {
+                    const userRes = await dbRead.query('SELECT role FROM Users WHERE email = $1', [username]);
+                    if (userRes.rows.length > 0) userRole = userRes.rows[0].role;
+                } catch (dbErr) {
+                    console.error(`[DB Error] Failed to fetch role for ${username}: ${dbErr.message}`);
+                }
+            }
+            
+            if (userRole === 'student') {
                 const studentGrades = grades.filter(g => 
                     g.student_hash === username || 
                     g.studentId === username ||
@@ -804,12 +1054,11 @@ app.get('/api/all-grades', authenticateJWT, async (req, res) => {
                 );
                 return res.status(200).json({ status: 'success', data: studentGrades });
             }
-            else if (req.user && req.user.dbRole === 'faculty') {
+            else if (userRole === 'faculty') {
                 const facultyGrades = grades.filter(g => g.faculty_id === username);
                 return res.status(200).json({ status: 'success', data: facultyGrades });
             }
-            else if (req.user && (req.user.dbRole === 'department_admin' || req.user.dbRole === 'deptAdmin')) {
-                // SECURITY FIX: Restrict Department Admins to only see grades for their assigned department
+            else if (userRole === 'department_admin' || userRole === 'deptAdmin') {
                 const profileRes = await dbRead.query(
                     'SELECT ap.department FROM AdminProfiles ap JOIN Users u ON ap.user_id = u.id WHERE u.email = $1',
                     [username]
@@ -818,7 +1067,6 @@ app.get('/api/all-grades', authenticateJWT, async (req, res) => {
                 if (profileRes.rows.length > 0 && profileRes.rows[0].department && profileRes.rows[0].department !== 'Unassigned') {
                     const adminDept = profileRes.rows[0].department;
                     
-                    // Normalizes "BSIT" to "IT" or "BSCS" to "CS" for broader matching
                     const baseDept = adminDept.toUpperCase().startsWith('BS') ? adminDept.substring(2) : adminDept;
                     
                     const deptGrades = grades.filter(g => {
@@ -829,7 +1077,7 @@ app.get('/api/all-grades', authenticateJWT, async (req, res) => {
                     });
                     return res.status(200).json({ status: 'success', data: deptGrades });
                 }
-                return res.status(200).json({ status: 'success', data: [] }); // If no department assigned, return empty
+                return res.status(200).json({ status: 'success', data: [] });
             }
             
             res.status(200).json({ status: 'success', data: grades });
@@ -846,7 +1094,7 @@ app.post('/api/issue-grade', authenticateJWT, authorizeRole(['FacultyMSP', 'Depa
     let username;
     try {
         username = getCallerIdentity(req);
-        const { contract } = await getContractForUser(username);
+        const { contract } = await getContractForUser(username, req.user ? req.user.dbRole : null);
 
         const gradeAsset = JSON.stringify(req.body);
         console.log(`[IssueGrade] Submitting as ${username}... Payload: ${gradeAsset}`);
@@ -864,11 +1112,30 @@ app.get('/api/get-grade/:id', authenticateJWT, async (req, res) => {
     let username;
     try {
         username = getCallerIdentity(req);
-        const { contract } = await getContractForUser(username);
-
-        console.log(`[ReadGrade] Fetching ${req.params.id} as ${username} (using cached user context)...`);
-        const result = await contract.evaluateTransaction('ReadGrade', req.params.id);
         
+        let contractToUse;
+        try {
+            const { contract } = await getContractForUser(username, req.user ? req.user.dbRole : null);
+            contractToUse = contract;
+        } catch (walletErr) {
+            if (req.isInternal || walletErr.message.includes('not found')) {
+                const { contract } = await getContractForUser('system-admin-registrar', 'registrar');
+                contractToUse = contract;
+            } else { throw walletErr; }
+        }
+
+        console.log(`[ReadGrade] Fetching ${req.params.id} for ${username}...`);
+        let result;
+        try {
+            result = await contractToUse.evaluateTransaction('ReadGrade', req.params.id);
+        } catch (evalErr) {
+            if (evalErr.message.includes('creator is malformed') || evalErr.message.includes('access denied') || evalErr.message.includes('UNKNOWN')) {
+                clearCacheOnError(username, evalErr);
+                const { contract: fallbackContract } = await getContractForUser('system-admin-registrar', 'registrar');
+                result = await fallbackContract.evaluateTransaction('ReadGrade', req.params.id);
+            } else { throw evalErr; }
+        }
+
         res.status(200).json(JSON.parse(result.toString()));
     } catch (error) {
         clearCacheOnError(username, error);
@@ -880,7 +1147,7 @@ app.post('/api/update-grade', authenticateJWT, async (req, res) => {
     let username;
     try {
         username = getCallerIdentity(req);
-        const { contract } = await getContractForUser(username);
+        const { contract } = await getContractForUser(username, req.user ? req.user.dbRole : null);
 
         const gradeAsset = JSON.stringify(req.body);
         console.log(`[UpdateGrade] Updating as ${username}`);
@@ -897,7 +1164,7 @@ app.post('/api/approve-grade/:id', authenticateJWT, async (req, res) => {
     let username;
     try {
         username = getCallerIdentity(req);
-        const { contract } = await getContractForUser(username);
+        const { contract } = await getContractForUser(username, req.user ? req.user.dbRole : null);
 
         await contract.submitTransaction('ApproveGrade', req.params.id);
         res.status(200).json({ status: "success", message: "Grade approved" });
@@ -911,7 +1178,7 @@ app.post('/api/finalize-grade/:id', authenticateJWT, async (req, res) => {
     let username;
     try {
         username = getCallerIdentity(req);
-        const { contract } = await getContractForUser(username);
+        const { contract } = await getContractForUser(username, req.user ? req.user.dbRole : null);
 
         await contract.submitTransaction('FinalizeRecord', req.params.id);
         res.status(200).json({ status: "success", message: "Record finalized" });
@@ -921,14 +1188,33 @@ app.post('/api/finalize-grade/:id', authenticateJWT, async (req, res) => {
     }
 });
 
+app.post('/api/return-grade/:id', authenticateJWT, async (req, res) => {
+    let username;
+    try {
+        username = getCallerIdentity(req);
+        const { note } = req.body;
+        const { contract } = await getContractForUser(username, req.user ? req.user.dbRole : null);
+
+        await contract.submitTransaction('ReturnGrade', req.params.id, note || 'Returned for revision');
+        res.status(200).json({ status: "success", message: "Record returned for revision" });
+    } catch (error) {
+        clearCacheOnError(username, error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
 app.delete('/api/wallet/:username', authenticateJWT, requireRegistrarOrInternal, async (req, res) => {
     try {
-        const wallet = await getWallet();
-        
-        const exists = await wallet.get(req.params.username);
-        if (exists) {
-            await wallet.remove(req.params.username);
-            
+        let deleted = false;
+        const roles = ['registrar', 'faculty', 'department_admin'];
+        for (const r of roles) {
+            const wallet = await getWallet(r);
+            if (await wallet.get(req.params.username)) {
+                await wallet.remove(req.params.username);
+                deleted = true;
+            }
+        }
+        if (deleted) {
             if (userGatewayCache.has(req.params.username)) {
                 userGatewayCache.get(req.params.username).gateway.disconnect();
                 userGatewayCache.delete(req.params.username);
@@ -938,6 +1224,52 @@ app.delete('/api/wallet/:username', authenticateJWT, requireRegistrarOrInternal,
         res.status(404).json({ status: "error", message: "Identity not found in wallet." });
     } catch (error) {
         res.status(500).json({ error: error.message });
+    }
+});
+
+app.get('/api/SystemSettings/:key', async (req, res) => {
+    try {
+        const { key } = req.params;
+        await dbWrite.query("CREATE TABLE IF NOT EXISTS systemsettings (key VARCHAR(100) PRIMARY KEY, value TEXT NOT NULL)");
+        const result = await dbRead.query("SELECT value FROM systemsettings WHERE key = $1", [key]);
+        if (result.rows.length > 0) {
+            return res.status(200).json({ status: "Success", value: result.rows[0].value });
+        }
+        return res.status(200).json({ status: "NotFound", value: null });
+    } catch (error) {
+        res.status(500).json({ status: "Error", message: error.message });
+    }
+});
+
+app.post('/api/SystemSettings', authenticateJWT, async (req, res) => {
+    try {
+        if (req.user && req.user.dbRole !== 'registrar' && req.user.dbRole !== 'admin') {
+            return res.status(403).json({ status: "Error", message: "Only registrars can modify system settings." });
+        }
+        const key = req.body.key || req.body.Key;
+        const value = req.body.value || req.body.Value;
+        if (!key) return res.status(400).json({ status: "Error", message: "Key is required" });
+        
+        await dbWrite.query("CREATE TABLE IF NOT EXISTS systemsettings (key VARCHAR(100) PRIMARY KEY, value TEXT NOT NULL)");
+        await dbWrite.query(
+            "INSERT INTO systemsettings (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value",
+            [key, value]
+        );
+        return res.status(200).json({ status: "Success", message: "Setting updated successfully" });
+    } catch (error) {
+        res.status(500).json({ status: "Error", message: error.message });
+    }
+});
+
+app.post('/api/SystemSettings/reset-season', authenticateJWT, async (req, res) => {
+    try {
+        if (req.user && req.user.dbRole !== 'registrar' && req.user.dbRole !== 'admin') {
+            return res.status(403).json({ status: "Error", message: "Only registrars can reset the season." });
+        }
+        await dbWrite.query("TRUNCATE TABLE pending_grade_records");
+        return res.status(200).json({ status: "Success", message: "Encoding season reset. Staging area cleared." });
+    } catch (error) {
+        res.status(500).json({ status: "Error", message: error.message });
     }
 });
 
@@ -956,46 +1288,37 @@ const handleBatchUpload = async (req, res) => {
 
         const facultyId = req.body.facultyId || req.body.username || req.user?.username || 'admin';
         
-        console.log(`[BatchUpload] Starting mapper for ${facultyId}: python3 ${mapperPath}`);
+        const workerPath = path.resolve(__dirname, 'uploadWorker.js');
+        if (!fs.existsSync(workerPath)) {
+            return res.status(500).json({ error: 'Worker script not found' });
+        }
 
-        const pythonProcess = spawn('python3', [
-            mapperPath,
-            filePath,
-            facultyId,
-            INTERNAL_API_KEY
-        ]);
+        console.log(`[BatchUpload] Dispatching upload to worker thread for ${facultyId}`);
 
-        let output = '';
-        let errorOutput = '';
-
-        pythonProcess.on('error', (err) => {
-            console.error('[Mapper] Failed to start python process:', err);
-            if (!res.headersSent) res.status(500).json({ status: 'error', error: 'Failed to start mapper process: ' + err.message });
+        const worker = new Worker(workerPath, {
+            workerData: { mapperPath, filePath, facultyId, INTERNAL_API_KEY }
         });
 
-        pythonProcess.stdout.on('data', (data) => output += data.toString());
-        pythonProcess.stderr.on('data', (data) => errorOutput += data.toString());
-
-        pythonProcess.on('close', (code) => {
-            fs.unlink(filePath, (err) => { if (err) console.error('File cleanup error:', err); });
-
+        worker.on('message', (message) => {
             if (!res.headersSent) {
-                if (code === 0) {
-                    res.status(200).json({ status: 'success', message: 'Batch grades processed successfully', output });
+                if (message.status === 'success') {
+                    res.status(200).json({ status: 'success', message: 'Batch grades processed successfully', output: message.output });
                 } else {
-                    res.status(500).json({ status: 'error', error: 'Mapper process failed', exitCode: code, output, errorOutput });
+                    res.status(500).json({ status: 'error', ...message });
                 }
             }
         });
 
-        const timeoutId = setTimeout(() => {
-            if (!res.headersSent) {
-                pythonProcess.kill('SIGTERM');
-                res.status(504).json({ error: 'Batch upload timeout' });
-            }
-        }, 5 * 60 * 1000);
+        worker.on('error', (err) => {
+            console.error('[Worker] Error:', err);
+            if (!res.headersSent) res.status(500).json({ status: 'error', error: 'Worker process failed: ' + err.message });
+        });
 
-        pythonProcess.on('exit', () => clearTimeout(timeoutId));
+        worker.on('exit', (code) => {
+            if (code !== 0 && !res.headersSent) {
+                res.status(500).json({ status: 'error', error: `Worker stopped with exit code ${code}` });
+            }
+        });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
@@ -1019,8 +1342,12 @@ app.post('/api/batch-issue-grade', async (req, res) => {
             });
         }
 
-        const wallet = await getWallet();
-        const identity = await wallet.get(username);
+        let wallet = await getWallet('faculty');
+        let identity = await wallet.get(username);
+        if (!identity) {
+            wallet = await getWallet('department_admin');
+            identity = await wallet.get(username);
+        }
         if (!identity) {
             return res.status(401).json({ 
                 error: `Faculty ${username} not found in wallet`,
@@ -1034,15 +1361,16 @@ app.post('/api/batch-issue-grade', async (req, res) => {
             });
         }
 
-        const { contract } = await getContractForUser(username);
+        const { contract } = await getContractForUser(username, 'faculty'); // either faculty or department works for getting the contract
 
-        const gradeAsset = JSON.stringify(req.body);
-        console.log(`[BatchIssueGrade] Submitting as ${username}... Payload size: ${gradeAsset.length} bytes`);
+        const records = req.body; // Expecting an array of AcademicRecord objects
+        const recordsJSON = JSON.stringify(records);
+        console.log(`[BatchIssueGrade] Submitting as ${username}... Payload: ${recordsJSON.length} bytes`);
         
-        const result = await contract.submitTransaction('IssueGrade', gradeAsset);
+        const result = await contract.submitTransaction('IssueBatchGrades', recordsJSON);
         res.status(201).json({ 
             status: 'success', 
-            message: 'Grade recorded',
+            message: 'Batch grades recorded',
             facultyId: username,
             details: result.toString() 
         });
@@ -1075,42 +1403,22 @@ app.get('/api/bootstrap', async (req, res) => {
             [userResult.rows[0].id, 'System Registrar', role, 'Registrar']
         );
 
-        const wallet = await getWallet();
-        const { caURL, caName, adminLabel, mspId } = getCAConfig(role);
-        await ensureAdminEnrolled(caURL, caName, mspId, adminLabel);
+        const { caURL, caName, adminLabel, mspId, tlsOptions, caClient } = getCAConfig(role);
+        await ensureAdminEnrolled(caURL, caName, mspId, adminLabel, tlsOptions, caClient);
         
-        const ca = new FabricCAServices(caURL, { verify: false }, caName);
+        const ca = caClient;
+        const wallet = await getWallet(role);
         try {
-            let adminIdentity = await wallet.get(adminLabel);
-            let provider = wallet.getProviderRegistry().getProvider(adminIdentity.type);
-            let adminUser = await provider.getUserContext(adminIdentity, 'admin');
-            
-            try {
-                await ca.register({ enrollmentID: email, enrollmentSecret: password, role: 'admin', attrs: [{ name: 'role', value: role, ecert: true }] }, adminUser);
-            } catch (regErr) {
-                const errStr = regErr.toString();
-                if (errStr.includes('Authentication failure') || errStr.includes('code: 20')) {
-                    console.warn(`[Bootstrap] Stale admin identity detected. Forcing re-enrollment...`);
-                    await wallet.remove(adminLabel);
-                    await ensureAdminEnrolled(caURL, caName, mspId, adminLabel);
-                    
-                    adminIdentity = await wallet.get(adminLabel);
-                    provider = wallet.getProviderRegistry().getProvider(adminIdentity.type);
-                    adminUser = await provider.getUserContext(adminIdentity, 'admin');
-                    
-                    await ca.register({ enrollmentID: email, enrollmentSecret: password, role: 'admin', attrs: [{ name: 'role', value: role, ecert: true }] }, adminUser);
-                } else if (!errStr.includes('is already registered')) {
-                    throw regErr;
-                }
-            }
-        } catch (err) { 
-            console.error(`[Bootstrap] CA interaction failed: ${err.message}`);
-            // Fallback: if registration fails for other reasons, we might still want to try enrollment if they are already registered
-        }
+            const adminIdentity = await wallet.get(adminLabel);
+            const provider = wallet.getProviderRegistry().getProvider(adminIdentity.type);
+            const adminUser = await provider.getUserContext(adminIdentity, 'admin');
+            await ca.register({ enrollmentID: email, enrollmentSecret: password, role: 'admin', attrs: [{ name: 'role', value: role, ecert: true }] }, adminUser);
+        } catch (err) { if (!err.toString().includes('is already registered')) throw err; }
 
         const enrollment = await ca.enroll({ 
             enrollmentID: email, 
-            enrollmentSecret: password
+            enrollmentSecret: password,
+            attr_reqs: [{ name: 'role', optional: true }]
         });
         await wallet.put(email, { credentials: { certificate: enrollment.certificate, privateKey: enrollment.key.toBytes() }, mspId: mspId, type: 'X.509' });
 
@@ -1126,8 +1434,7 @@ const PORT = process.env.PORT || 4000;
 
 async function startServer() {
     try {
-        const wallet = await getWallet();
-        await importCryptogenAdmins(wallet);
+        await importCryptogenAdmins();
     } catch (e) {
         console.error("Startup wallet sync failed:", e.message);
     }

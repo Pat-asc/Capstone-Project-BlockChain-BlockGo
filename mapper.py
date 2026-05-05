@@ -1,11 +1,14 @@
 import sys
 import os
-import pandas as pd
+import csv
 import json
 import requests
 import ipfshttpclient
 from pathlib import Path
 from dotenv import load_dotenv
+from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives import padding
 
 load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), 'network', '.env'), override=True)
 
@@ -19,6 +22,30 @@ class GradeMapper:
             sys.exit(1)
         self.ipfs_url = os.getenv('IPFS_API_URL', ipfs_api_url)
         self.ipfs_client = None
+        self.encryption_key = os.getenv('IPFS_ENCRYPTION_KEY', 'default-encryption-key-32chars!!!').ljust(32)[:32].encode()
+
+    def encrypt_file(self, file_path):
+        """Encrypt file with AES-256-CBC (Matching .NET Implementation)"""
+        try:
+            with open(file_path, 'rb') as f:
+                data = f.read()
+            
+            # Padding
+            padder = padding.PKCS7(128).padder()
+            padded_data = padder.update(data) + padder.finalize()
+            
+            iv = b'\x00' * 16 # Matching .NET IV for simplicity in this project
+            cipher = Cipher(algorithms.AES(self.encryption_key), modes.CBC(iv), backend=default_backend())
+            encryptor = cipher.encryptor()
+            encrypted_data = encryptor.update(padded_data) + encryptor.finalize()
+            
+            enc_path = file_path + ".enc"
+            with open(enc_path, 'wb') as f:
+                f.write(encrypted_data)
+            return enc_path
+        except Exception as e:
+            print(f"Encryption Error: {e}")
+            return None
 
     def connect_ipfs(self):
         """Establish IPFS connection"""
@@ -32,22 +59,31 @@ class GradeMapper:
             return False
 
     def upload_to_ipfs(self, file_path):
-        """Upload file to IPFS and return hash"""
+        """Upload encrypted file to IPFS and return hash"""
         try:
             if not Path(file_path).exists():
                 print(f"Error: File not found: {file_path}")
                 return "FILE_NOT_FOUND"
             
+            enc_path = self.encrypt_file(file_path)
+            if not enc_path:
+                return "ENCRYPTION_FAILED"
+
             if not self.ipfs_client:
                 if not self.connect_ipfs():
                     return "CONNECTION_FAILED"
             
             try:
-                res = self.ipfs_client.add(file_path, encoding='utf-8')
-                return res['Hash']
-            except Exception:
-                res = self.ipfs_client.add(file_path)
-                return res['Hash']
+                res = self.ipfs_client.add(enc_path)
+                cid = res['Hash']
+                
+                if enc_path.endswith(".enc"):
+                    os.remove(enc_path)
+                    
+                return cid
+            except Exception as e:
+                print(f"IPFS API Error: {e}")
+                return "UPLOAD_FAILED"
             
         except Exception as e:
             print(f"IPFS Upload Error: {e}")
@@ -62,9 +98,15 @@ class GradeMapper:
                 print("Please install it using: pip install openpyxl")
                 return None
 
-            df = pd.read_excel(excel_path)
+            wb = openpyxl.load_workbook(excel_path, data_only=True)
+            sheet = wb.active
             csv_path = str(Path(excel_path).with_suffix('.csv'))
-            df.to_csv(csv_path, index=False)
+            
+            with open(csv_path, 'w', encoding='utf-8', newline='') as f:
+                writer = csv.writer(f)
+                for row in sheet.iter_rows(values_only=True):
+                    writer.writerow(row)
+                    
             print(f"Converted Excel to CSV: {csv_path}")
             return csv_path
         except Exception as e:
@@ -73,50 +115,65 @@ class GradeMapper:
 
     def validate_csv(self, csv_path, ipfs_cid=None):
         try:
-            df = None
-            # Try multiple encodings for CSV
-            for encoding in ['utf-8', 'utf-8-sig', 'latin-1', 'iso-8859-1', 'cp1252']:
-                try:
-                    df = pd.read_csv(csv_path, encoding=encoding, on_bad_lines='skip')
-                    break
-                except (UnicodeDecodeError, pd.errors.ParserError):
-                    continue
-            
-            if df is None:
-                print(f"Failed to read CSV file with any common encoding.")
-                return False
-            
-            df = df.dropna(how='all')
-            if len(df) == 0:
-                print(f"File has no valid data")
-                return False
-            
-            df.columns = [str(col).lower().strip().replace(' ', '_') for col in df.columns]
-            required = ['student_id', 'grade']
-            has_required = all(col in df.columns for col in required)
-            if not has_required:
-                print(f"Missing required columns (expected 'student_id', 'grade'). Found: {list(df.columns)}")
-                return False
-            
-            # Define the exact columns that the C# backend expects
             expected_columns = [
                 'student_id', 'grade', 'course', 'section', 'subject_code',
                 'semester', 'school_year', 'date', 'faculty_id', 'student_hash', 'ipfs_cid'
             ]
             
-            if ipfs_cid and ipfs_cid not in ["CONNECTION_FAILED", "UPLOAD_FAILED", "FILE_NOT_FOUND"]:
-                df['ipfs_cid'] = ipfs_cid
-            else:
-                df['ipfs_cid'] = "N/A"
+            rows = []
+            
+            with open(csv_path, 'r', encoding='utf-8-sig') as f:
+                reader = csv.reader(f)
+                try:
+                    headers = next(reader)
+                except StopIteration:
+                    print("File has no valid data")
+                    return False
+                    
+                normalized_headers = [str(col).lower().strip().replace(' ', '_') for col in headers]
+                
+                # Map alternate names to expected ones
+                header_mapping = {
+                    'student_no': 'student_id',
+                    'id_number': 'student_id',
+                    'studentid': 'student_id',
+                    'id': 'student_id',
+                    'subject': 'subject_code',
+                    'course_code': 'subject_code',
+                    'final_grade': 'grade',
+                    'course_name': 'course',
+                    'program': 'course',
+                    'sec': 'section',
+                    'class_section': 'section'
+                }
+                normalized_headers = [header_mapping.get(col, col) for col in normalized_headers]
 
-            # Filter out any extra junk columns not in our expected list
-            columns_to_keep = [col for col in df.columns if col in expected_columns]
-            df = df[columns_to_keep]
+                if 'student_id' not in normalized_headers or 'grade' not in normalized_headers:
+                    print(f"Missing required columns (expected 'student_id', 'grade'). Found: {normalized_headers}")
+                    return False
+                
+                for row in reader:
+                    if not any(row): continue
+                    
+                    row_dict = dict(zip(normalized_headers, row))
+                    new_row = {}
+                    for col in expected_columns:
+                        if col == 'ipfs_cid':
+                            new_row[col] = ipfs_cid if ipfs_cid and ipfs_cid not in ["CONNECTION_FAILED", "UPLOAD_FAILED", "FILE_NOT_FOUND"] else "N/A"
+                        else:
+                            new_row[col] = row_dict.get(col, "")
+                    rows.append(new_row)
+
+            if len(rows) == 0:
+                print(f"File has no valid data")
+                return False
             
-            # Save the cleaned, strictly-formatted data back to the CSV
-            df.to_csv(csv_path, index=False)
-            
-            print(f"File validation passed: {len(df)} records. Filtered to {len(df.columns)} needed columns.")
+            with open(csv_path, 'w', encoding='utf-8', newline='') as f:
+                writer = csv.DictWriter(f, fieldnames=expected_columns)
+                writer.writeheader()
+                writer.writerows(rows)
+                
+            print(f"File validation passed: {len(rows)} records. Filtered to {len(expected_columns)} needed columns.")
             return True
         except Exception as e:
             print(f"File validation error: {e}")
@@ -130,10 +187,10 @@ class GradeMapper:
         try:
             print(f"Uploading to {self.api_endpoint}...")
             with open(csv_path, 'rb') as f:
-                files = {'csvFile': (Path(csv_path).name, f, 'text/csv')}
+                files = {'file': (Path(csv_path).name, f, 'text/csv')}
                 headers = {
                     'x-api-key': self.api_key,
-                    'x-user-identity': faculty_id  # Pass faculty ID from login
+                    'x-user-identity': faculty_id
                 }
                 response = requests.post(self.api_endpoint, files=files, headers=headers, timeout=120)
             

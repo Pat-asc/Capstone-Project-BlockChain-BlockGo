@@ -47,13 +47,16 @@ try
                 if (parts.Length == 2)
                 {
                     var key = parts[0].Trim();
-                    var value = parts[1].Trim().Trim('"', '\'');
+                    var value = parts[1].Split('#')[0].Trim().Trim('"', '\'');
                     
                     if (value.Contains("prefer-standby", StringComparison.OrdinalIgnoreCase)) 
                         value = System.Text.RegularExpressions.Regex.Replace(value, @"(?i)prefer-standby", "PreferStandby");
                     value = System.Text.RegularExpressions.Regex.Replace(value, @"(?i)target[\s_]*session[\s_]*attributes\s*=\s*[^;]+;?", "");
                     
+                    if (string.IsNullOrEmpty(Environment.GetEnvironmentVariable(key)))
+                    {
                         Environment.SetEnvironmentVariable(key, value);
+                    }
                 }
             }
         }
@@ -84,6 +87,7 @@ try
     Environment.SetEnvironmentVariable("PGTARGETSESSIONATTR", null);
 
     var builder = WebApplication.CreateBuilder(args);
+    builder.WebHost.UseUrls("http://0.0.0.0:5000"); // Ensure C# binds correctly for Nginx to reach it
     builder.Host.UseSerilog();
 
 
@@ -95,6 +99,10 @@ try
     if (!string.IsNullOrEmpty(masterConn)) configOverrides["ConnectionStrings:MasterConnection"] = stripRegex.Replace(masterConn, "");
     if (!string.IsNullOrEmpty(replicaConn)) configOverrides["ConnectionStrings:ReplicaConnection"] = stripRegex.Replace(replicaConn, "");
     if (!string.IsNullOrEmpty(postgresConn)) configOverrides["ConnectionStrings:PostgresConnection"] = stripRegex.Replace(postgresConn, "");
+
+    var internalApiKey = Environment.GetEnvironmentVariable("INTERNAL_API_KEY");
+    if (!string.IsNullOrEmpty(internalApiKey)) configOverrides["InternalApiKey"] = internalApiKey;
+
     builder.Configuration.AddInMemoryCollection(configOverrides);
 
     builder.Services.AddCors(options =>
@@ -102,8 +110,8 @@ try
         options.AddPolicy("AllowFrontend", policy =>
         {
             policy.WithOrigins("http://localhost:8080", "http://localhost:3000") 
-                  .AllowAnyMethod()
-                  .AllowAnyHeader()
+                  .WithMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
+                  .WithHeaders("Content-Type", "Authorization", "x-user-identity", "x-api-key")
                   .AllowCredentials();
         });
     });
@@ -117,8 +125,9 @@ try
     builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
     builder.Services.AddProblemDetails();
 
-    var jwtSecret = Environment.GetEnvironmentVariable("JWT_SECRET") ?? "your-secret-key";
-    var jwtKey = Encoding.ASCII.GetBytes(jwtSecret);
+    var jwtSecret = Environment.GetEnvironmentVariable("JWT_SECRET") ?? throw new InvalidOperationException("JWT_SECRET environment variable is required.");
+    jwtSecret = jwtSecret.Trim().PadRight(32, '0').Substring(0, 32);
+    var jwtKey = Encoding.UTF8.GetBytes(jwtSecret);
 
     builder.Services.AddAuthorization();
     builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -141,7 +150,8 @@ try
             {
                 var accessToken = context.Request.Query["access_token"];
                 var path = context.HttpContext.Request.Path;
-                if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/chatHub"))
+                if (!string.IsNullOrEmpty(accessToken) && 
+                    (path.StartsWithSegments("/chatHub") || path.StartsWithSegments("/api/Grades/view-ipfs")))
                 {
                     context.Token = accessToken;
                 }

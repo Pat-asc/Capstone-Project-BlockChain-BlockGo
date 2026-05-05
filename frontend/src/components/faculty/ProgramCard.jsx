@@ -8,7 +8,9 @@ const ProgramCard = ({
   reviewStatus = "pending",
   reviewNote = "",
   onSubmit,
-  onUpload
+  onUpload,
+  isUploading = false,
+  isClosed = false
 }) => {
   const totalStudents = sectionData.students?.length || 0;
   const isStarted = progress > 0;
@@ -71,10 +73,31 @@ const ProgramCard = ({
           {isStarted ? "View Grades" : "Encode Now"}
         </button>
 
+        <div className="relative">
+          <input
+            type="file"
+            accept=".csv, .xlsx"
+            className="absolute inset-0 z-10 cursor-pointer opacity-0"
+            onClick={(e) => e.stopPropagation()}
+            onChange={(e) => {
+              e.stopPropagation();
+              onUpload?.(e);
+            }}
+            disabled={isForwarded || isApproved || isSubmitted || isClosed}
+          />
+          <button
+            type="button"
+            className="flex h-12 w-full items-center justify-center gap-2 rounded-xl border border-blue-200 bg-blue-50 font-bold text-[#003366] transition hover:bg-blue-100 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
+            disabled={isForwarded || isApproved || isSubmitted || isClosed}
+          >
+            {isUploading ? 'Uploading...' : 'Bulk Upload Grades'}
+          </button>
+        </div>
+
         <button
           type="button"
           onClick={(e) => { e.stopPropagation(); onSubmit?.(); }}
-          disabled={!isCompleted || isSubmitted || isApproved || isForwarded}
+          disabled={!isCompleted || isSubmitted || isApproved || isForwarded || isClosed}
           className="h-12 rounded-xl border border-green-200 bg-green-50 font-bold text-green-700 transition hover:bg-green-500 hover:text-white disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-400"
         >
           {getSubmitLabel()}

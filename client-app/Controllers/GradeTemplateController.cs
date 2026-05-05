@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -12,6 +13,7 @@ using System.Threading.Tasks;
 
 namespace Client_app.Controllers
 {
+    [Authorize]
     [ApiController]
     [Route("api/[controller]")]
     public class GradeTemplateController : ControllerBase

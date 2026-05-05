@@ -1,11 +1,27 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { fetchAllGrades, approveGrade, finalizeGrade, fetchDepartmentPendingStudents, approveStudentEnrollment, batchUploadGrades, fetchFacultySections, fetchFacultyStudents, createSection, fetchDepartmentSections, batchEnrollStudentsToSection, dropStudent, fetchApprovedFaculties, unassignFacultySection } from '../../services/api';
+import { fetchAllGrades, approveGrade, finalizeGrade, fetchDepartmentPendingStudents, approveStudentEnrollment, batchUploadGrades, fetchFacultySections, fetchFacultyStudents, createSection, fetchDepartmentSections, batchEnrollStudentsToSection, dropStudent, fetchApprovedFaculties, unassignFacultySection, getDecryptedIpfsUrl } from '../../services/api';
 import { useNotification } from '../../services/NotificationContext';
 import ChairpersonHeader from './ChairpersonHeader';
 import ChairpersonSidebar from './ChairpersonSidebar';
 import ChairpersonOverview from './ChairpersonOverview';
 import FacultyStatusTable from '../faculty/FacultyStatusTable';
 import SectionReviewPanel from './SectionReviewPanel';
+import Modal from '../../services/Modal';
+import StudentSectioning from './StudentSectioning';
+
+const getGradeEquivalent = (grade) => {
+    const n = parseFloat(grade);
+    if (isNaN(n) || n === 0) return '5.00';
+    if (n >= 98.5) return '1.00';
+    if (n >= 94) return '1.25';
+    if (n >= 91) return '1.50';
+    if (n >= 88) return '1.75';
+    if (n >= 85) return '2.00';
+    if (n >= 82) return '2.25';
+    if (n >= 79) return '2.50';
+    if (n >= 75) return '3.00';
+    return '5.00';
+};
 
 const HoverableID = ({ fullId, isAuthorized }) => {
     const [isRevealed, setIsRevealed] = useState(false);
@@ -49,14 +65,55 @@ const DeptAdminGradesView = ({ loggedInEmail = '', loggedInName = '', userRole =
     const [isEnrolling, setIsEnrolling] = useState(false);
     const [assignToFaculty, setAssignToFaculty] = useState('self');
     const [departmentFaculties, setDepartmentFaculties] = useState([]);
-    const [forwardedBatches, setForwardedBatches] = useState([]);
+    const [masterlistFile, setMasterlistFile] = useState(null);
+    const [isUploadingMasterlist, setIsUploadingMasterlist] = useState(false);
+    const [classGrades, setClassGrades] = useState({});
+    const [classValidationErrors, setClassValidationErrors] = useState({});
+    const [isSavingGrades, setIsSavingGrades] = useState(false);
+
+    const [ipfsModalOpen, setIpfsModalOpen] = useState(false);
+    const [ipfsCid, setIpfsCid] = useState("");
+    const [vaultPassword, setVaultPassword] = useState("");
+    const [showVaultPassword, setShowVaultPassword] = useState(false);
+    const [confirmModal, setConfirmModal] = useState({ isOpen: false, title: "", message: "", onConfirm: null });
+
+    const [passThreshold, setPassThreshold] = useState(75);
+    const [statusFilter, setStatusFilter] = useState("All");
+
+    useEffect(() => {
+        const fetchThreshold = async () => {
+            try {
+                const token = localStorage.getItem("token");
+                const res = await fetch('/api/SystemSettings/pass_fail_threshold', {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+                const data = await res.json();
+                if (data.status === "Success" && data.value) {
+                    setPassThreshold(parseFloat(data.value));
+                }
+            } catch (e) {
+                console.warn("Using default pass/fail threshold");
+            }
+        };
+        fetchThreshold();
+    }, []);
 
     const deptMetrics = useMemo(() => {
         const facultySet = new Set();
         const sectionMap = {};
 
         grades.forEach(g => {
-            const facId = g.facultyId || g.faculty_id || g.FacultyId || 'Unknown';
+            let facId = g.facultyId || g.faculty_id || g.FacultyId || 'Unknown';
+            
+            // Clean up Fabric Base64 X.509 Identity
+            if (facId.length > 40 && !facId.includes('@')) {
+                try {
+                    const decoded = atob(facId);
+                    const cnMatch = decoded.match(/CN=([^,]+)/);
+                    if (cnMatch && cnMatch[1]) facId = cnMatch[1];
+                } catch(e) {}
+            }
+
             const course = g.course || g.Course || g.subject_code || g.subjectCode || 'Unknown Section';
             const status = g.status || g.Status || '';
 
@@ -98,7 +155,17 @@ const DeptAdminGradesView = ({ loggedInEmail = '', loggedInName = '', userRole =
     const facultyRows = useMemo(() => {
         const groups = {};
         grades.forEach(g => {
-            const facId = g.facultyId || g.faculty_id || g.FacultyId || 'Unknown';
+            let facId = g.facultyId || g.faculty_id || g.FacultyId || 'Unknown';
+            
+            // Clean up Fabric Base64 X.509 Identity
+            if (facId.length > 40 && !facId.includes('@')) {
+                try {
+                    const decoded = atob(facId);
+                    const cnMatch = decoded.match(/CN=([^,]+)/);
+                    if (cnMatch && cnMatch[1]) facId = cnMatch[1];
+                } catch(e) {}
+            }
+
             const course = g.course || g.Course || g.subject_code || g.subjectCode || 'Unknown Section';
             const status = (g.status || g.Status || '').toLowerCase();
             const key = `${facId}-${course}`;
@@ -143,8 +210,8 @@ const DeptAdminGradesView = ({ loggedInEmail = '', loggedInName = '', userRole =
                 midterm: '-',
                 finals: '-',
                 finalAverage: gradeVal || '-',
-                standing: 'active',
-                flagged: false
+                    standing: g.remarks || g.Remarks || 'active',
+                    flagged: g.flagged || g.Flagged === true || String(g.flagged).toLowerCase() === "true"
             };
             
             if (status.includes('issued') || status.includes('submitted')) groups[key].reviewStatus = 'submitted';
@@ -186,41 +253,7 @@ const DeptAdminGradesView = ({ loggedInEmail = '', loggedInName = '', userRole =
 
     useEffect(() => {
         if (mainTab === 'sectioning') loadDeptPendingStudents();
-        if (mainTab === 'sectioning') {
-            try {
-                const batches = JSON.parse(localStorage.getItem("STUDENT_BATCHES_KEY")) || [];
-                
-                // Robust normalization to match old shortcodes (e.g., "IT") with new full program names
-                const normalizeDept = (dept) => {
-                    const d = (dept || "").toLowerCase();
-                    if (d === "it" || d === "bsit" || d.includes("information technology")) return "it";                
-                    if (d === "ece" || d === "bsece" || d.includes("electrical engineering") || d.includes("electronics")) return "ece";
-                    if (d === "ce" || d === "bsce" || d.includes("civil engineering")) return "ce";
-                    if (d.includes("accountancy")) return "acc";
-                    if (d.includes("financial")) return "fm";
-                    if (d.includes("marketing")) return "mm";
-                    if (d.includes("human resource")) return "hrm";
-                    if (d.includes("entrepreneurship")) return "ent";
-                    if (d.includes("early childhood")) return "eced";
-                    if (d.includes("english")) return "eng";
-                    if (d.includes("filipino")) return "fil";
-                    if (d.includes("mathematics")) return "math";
-                    if (d.includes("science")) return "sci";
-                    if (d.includes("social studies")) return "soc";
-                    if (d.includes("physical education")) return "pe";
-                    if (d.includes("communication")) return "comm";
-                    if (d.includes("psychology")) return "psy";
-                    if (d.includes("social work")) return "sw";
-                    if (d.includes("public administration")) return "pa";
-                    return d.replace(/[^a-z0-9]/g, '');
-                };
-
-                const normalizedAdminDept = normalizeDept(department);
-                const myBatches = batches.filter(b => normalizeDept(b.program) === normalizedAdminDept);
-                setForwardedBatches(myBatches);
-            } catch (e) {}
-        }
-    }, [mainTab, loadDeptPendingStudents, department]);
+    }, [mainTab, loadDeptPendingStudents]);
 
     const loadMyClasses = useCallback(async () => {
         try {
@@ -266,6 +299,99 @@ const DeptAdminGradesView = ({ loggedInEmail = '', loggedInName = '', userRole =
         }
     }, [mainTab, loadAcademicSections, loadDepartmentFaculties]);
 
+    const getGradeStatus = useCallback((finalGrade) => {
+        const n = parseFloat(finalGrade);
+        if (isNaN(n)) return 'Incomplete';
+        // Handle both PLV 1.0-5.0 system and 100-60 base systems
+        if (passThreshold <= 5.0) {
+             return n <= passThreshold ? 'Passed' : 'Failed';
+        }
+        return n >= passThreshold ? 'Passed' : 'Failed';
+    }, [passThreshold]);
+
+    useEffect(() => {
+        if (selectedMySection && mainTab === 'myClasses') {
+            const initialGrades = {};
+            const sectionStudents = myStudents.filter(s => 
+                s.department === selectedMySection.department && 
+                String(s.yearLevel) === String(selectedMySection.yearLevel) && 
+                String(s.sectionNum || s.section) === String(selectedMySection.sectionNum || selectedMySection.section)
+            );
+            sectionStudents.forEach(student => {
+                const existing = grades.find(g => 
+                    (g.studentId === student.studentno || g.studentId === student.email) && 
+                    (g.subjectCode === selectedMySection.subject || g.course === selectedMySection.department)
+                );
+                let parsedGrade = { midterm: '', finals: '', finalAverage: '' };
+                if (existing && existing.grade) {
+                    if (!isNaN(existing.grade)) {
+                        parsedGrade.finalAverage = existing.grade;
+                    } else {
+                        try { 
+                            const parsed = JSON.parse(existing.grade);
+                            parsedGrade.midterm = parsed.midterm || '';
+                            parsedGrade.finals = parsed.finals || '';
+                            parsedGrade.finalAverage = parsed.finalAverage || existing.grade;
+                        } catch(e) { parsedGrade.finalAverage = existing.grade; }
+                    }
+                }
+                initialGrades[student.id] = {
+                    ...parsedGrade,
+                    standing: student.assignmentStatus || 'Enrolled',
+                    flagged: existing?.flagged || false,
+                    remarks: existing?.remarks || ''
+                };
+            });
+            setClassGrades(initialGrades);
+        }
+    }, [selectedMySection, myStudents, grades, mainTab]);
+
+    const validateGrade = (value) => {
+        const num = parseFloat(value);
+        if (value === '' || value === '0' || num === 0) return '';
+        if (isNaN(num)) return 'Must be a number';
+        if (num < 60 || num > 100) return 'Must be 60–100';
+        return '';
+    };
+
+    const handleClassGradeChange = (studentId, field, value) => {
+        if (field === 'midterm' || field === 'finals') {
+            const error = validateGrade(value);
+            setClassValidationErrors(prev => ({
+                ...prev,
+                [studentId]: { ...prev[studentId], [field]: error }
+            }));
+        }
+
+        setClassGrades(prev => {
+            const studentGrade = prev[studentId] || {};
+            const updated = { ...studentGrade, [field]: value };
+            
+            if (field === 'midterm' || field === 'finals') {
+                const mid = field === 'midterm' ? value : updated.midterm;
+                const fin = field === 'finals' ? value : updated.finals;
+                if (mid && fin && !isNaN(mid) && !isNaN(fin)) {
+                    updated.finalAverage = ((parseFloat(mid) + parseFloat(fin)) / 2).toFixed(2);
+                } else {
+                    updated.finalAverage = '';
+                }
+            }
+            return { ...prev, [studentId]: updated };
+        });
+    };
+
+    const handleDownloadMasterlistTemplate = () => {
+        const csvContent = "Student No,Last Name,First Name,MI,Sex,Year Level,Section,Subject Code,Faculty Name,Faculty Email\n23-0001,Dela Cruz,Juan,A,Male,3,1,IT-101,Prof. Smith,smith@plv.edu.ph\n";
+        const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.setAttribute("download", `Masterlist_Template_${department}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+
     const handleBulkApprove = async () => {
         if (!selectedReviewSection) return;
         try {
@@ -306,9 +432,10 @@ const DeptAdminGradesView = ({ loggedInEmail = '', loggedInName = '', userRole =
         try {
             const semester = selectedMySection?.semester || "2nd Semester";
             const schoolYear = selectedMySection?.schoolYear || "2024";
-            const course = selectedMySection?.subjectCode || "Unknown";
+            const course = selectedMySection?.subject || "Unknown";
+            const facultyId = selectedMySection?.facultyId || loggedInEmail;
 
-            const res = await batchUploadGrades(uploadFile, semester, schoolYear, course);
+            const res = await batchUploadGrades(uploadFile, semester, schoolYear, course, facultyId);
             if (res.status === 'Success' || res.status === 'Partial Success') {
                 addNotification(`Uploaded successfully! Processed: ${res.totalProcessed}, Success: ${res.successful}`, 'success');
                 setUploadFile(null);
@@ -322,6 +449,66 @@ const DeptAdminGradesView = ({ loggedInEmail = '', loggedInName = '', userRole =
             addNotification(`Error: ${e.message}`, 'error');
         }
         setIsUploading(false);
+    };
+
+    const handleSaveClassGrades = async () => {
+        const hasErrors = Object.values(classValidationErrors).some(errs => errs.midterm || errs.finals);
+        if (hasErrors) {
+            addNotification('Please fix validation errors before saving.', 'error');
+            return;
+        }
+
+        setIsSavingGrades(true);
+        const token = localStorage.getItem('token');
+        try {
+            const sectionStudents = myStudents.filter(s => 
+                s.department === selectedMySection.department && 
+                String(s.yearLevel) === String(selectedMySection.yearLevel) && 
+                String(s.sectionNum || s.section) === String(selectedMySection.sectionNum || selectedMySection.section)
+            );
+
+            for (const student of sectionStudents) {
+                const cg = classGrades[student.id];
+                if (!cg || (!cg.midterm && !cg.finals && !cg.finalAverage)) continue;
+                
+                const gradePayload = JSON.stringify({ midterm: cg.midterm, finals: cg.finals, finalAverage: cg.finalAverage });
+                const payload = {
+                    StudentId: student.studentno || student.email,
+                    FacultyId: loggedInEmail,
+                    SubjectCode: selectedMySection.subject || 'Unknown',
+                    SubjectName: selectedMySection.subject || 'Unknown',
+                    Course: selectedMySection.department,
+                    Semester: "2nd Semester",
+                    SchoolYear: "2024",
+                    Grade: gradePayload
+                };
+                await fetch('/api/Grades/record', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify(payload) });
+            }
+            addNotification('Grades saved successfully to the ledger!', 'success');
+            loadGrades();
+        } catch (e) { addNotification(`Error saving grades: ${e.message}`, 'error'); }
+        setIsSavingGrades(false);
+    };
+
+    const handleExportClassGrades = () => {
+        if (!selectedMySection) return;
+        const sectionStudents = myStudents.filter(s => 
+            s.department === selectedMySection.department && 
+            String(s.yearLevel) === String(selectedMySection.yearLevel) && 
+            String(s.sectionNum || s.section) === String(selectedMySection.sectionNum || selectedMySection.section)
+        );
+        
+        const headers = ["Student ID", "Student Name", "Midterm", "Finals", "Final Grade"];
+        const rows = sectionStudents.map(student => {
+            const cg = classGrades[student.id] || {};
+            return [student.studentno || student.email, `"${student.fullname}"`, cg.midterm || "", cg.finals || "", cg.finalAverage || ""].join(",");
+        });
+        
+        const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows].join("\n");
+        const link = document.createElement("a");
+        link.href = encodeURI(csvContent);
+        link.setAttribute("download", `${selectedMySection.department}_${selectedMySection.yearLevel}-${selectedMySection.sectionNum || selectedMySection.section}_Grades.csv`);
+        link.click();
     };
 
     const handleCreateSection = async (e) => {
@@ -412,31 +599,141 @@ const DeptAdminGradesView = ({ loggedInEmail = '', loggedInName = '', userRole =
         setIsEnrolling(false);
     };
 
+    const handleMasterlistUpload = async () => {
+        if (!masterlistFile) {
+            addNotification('Please select a CSV or Excel file to upload.', 'error');
+            return;
+        }
+        setIsUploadingMasterlist(true);
+        try {
+            const formData = new FormData();
+            formData.append('file', masterlistFile);
+            formData.append('department', department);
+
+            const token = localStorage.getItem('token');
+            // Calls the backend to parse the CSV/XLSX, auto-create Postgres records, and mint Fabric Wallets
+            const res = await fetch('/api/Auth/bulk-masterlist', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                },
+                body: formData
+            });
+
+            const data = await res.json();
+            if (res.ok && (data.status === 'Success' || data.status === 'Partial Success')) {
+                addNotification(data.message || 'Masterlist processed successfully. Accounts and sections created.', 'success');
+                setMasterlistFile(null);
+                const fileInput = document.getElementById('masterlist-upload');
+                if (fileInput) fileInput.value = '';
+                loadMyClasses();
+                loadAcademicSections();
+                loadDepartmentFaculties();
+            } else {
+                addNotification(data.message || 'Masterlist upload failed.', 'error');
+            }
+        } catch (err) {
+            addNotification(err.message, 'error');
+        }
+        setIsUploadingMasterlist(false);
+    };
+
     const handleUnassignSection = async () => {
         if (!selectedMySection) return;
-        if (!window.confirm(`Are you sure you want to unassign ${selectedMySection.department} ${selectedMySection.yearLevel}-${selectedMySection.sectionNum || selectedMySection.section} from your classes?`)) return;
-
-        try {
-            await unassignFacultySection(loggedInEmail, selectedMySection.department, selectedMySection.yearLevel, selectedMySection.sectionNum || selectedMySection.section);
-            addNotification("Class unassigned successfully.", "success");
-            setSelectedMySection(null);
-            loadMyClasses();
-        } catch (e) {
-            addNotification(e.message, "error");
-        }
+        setConfirmModal({
+            isOpen: true,
+            title: "Unassign Class",
+            message: `Are you sure you want to unassign ${selectedMySection.department} ${selectedMySection.yearLevel}-${selectedMySection.sectionNum || selectedMySection.section} from your classes?`,
+            onConfirm: async () => {
+                try {
+                    await unassignFacultySection(loggedInEmail, selectedMySection.department, selectedMySection.yearLevel, selectedMySection.sectionNum || selectedMySection.section);
+                    addNotification("Class unassigned successfully.", "success");
+                    setSelectedMySection(null);
+                    loadMyClasses();
+                } catch (e) {
+                    addNotification(e.message, "error");
+                }
+                setConfirmModal({ isOpen: false, title: "", message: "", onConfirm: null });
+            }
+        });
     };
 
     const handleDropStudent = async (id, name) => {
-        if (window.confirm(`Are you sure you want to drop ${name}? This will revoke their system access completely.`)) {
-            try {
-                await dropStudent(id);
-                addNotification(`${name} has been dropped and access revoked.`, 'success');
-                loadDeptPendingStudents();
-                loadMyClasses();
-            } catch (e) {
-                addNotification(e.message, 'error');
+        setConfirmModal({
+            isOpen: true,
+            title: "Drop Student",
+            message: `Are you sure you want to drop ${name}? This will revoke their system access completely.`,
+            onConfirm: async () => {
+                try {
+                    await dropStudent(id);
+                    addNotification(`${name} has been dropped and access revoked.`, 'success');
+                    loadDeptPendingStudents();
+                    loadMyClasses();
+                } catch (e) {
+                    addNotification(e.message, 'error');
+                }
+                setConfirmModal({ isOpen: false, title: "", message: "", onConfirm: null });
             }
+        });
+    };
+
+    const handleViewIpfs = (cid) => {
+        setIpfsCid(cid);
+        setVaultPassword("");
+        setShowVaultPassword(false);
+        setIpfsModalOpen(true);
+    };
+
+    const submitIpfsPassword = () => {
+        if (vaultPassword) {
+            const url = getDecryptedIpfsUrl(ipfsCid, vaultPassword);
+            window.open(url, "_blank");
+            setIpfsModalOpen(false);
+        } else {
+            addNotification("Vault Password is required", "error");
         }
+    };
+
+    const handleDeleteSection = async (id, sectionName) => {
+        setConfirmModal({
+            isOpen: true,
+            title: "Delete Section",
+            message: `Are you sure you want to delete Section ${sectionName}? This will also remove the faculty assignment for this section.`,
+            onConfirm: async () => {
+                try {
+                    const token = localStorage.getItem('token');
+                    const res = await fetch(`/api/Auth/sections/${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
+                    const data = await res.json();
+                    if (!res.ok) throw new Error(data.message || 'Failed to delete section');
+                    
+                    addNotification(`Section ${sectionName} deleted successfully.`, "success");
+                    loadAcademicSections();
+                    loadMyClasses();
+                } catch (e) { addNotification(e.message, "error"); }
+                setConfirmModal({ isOpen: false, title: "", message: "", onConfirm: null });
+            }
+        });
+    };
+
+    const handleDeleteAllSections = async () => {
+        setConfirmModal({
+            isOpen: true,
+            title: "Clear All Sections",
+            message: `Are you sure you want to delete ALL academic sections for ${department}? This is typically done at the end of the school year.`,
+            onConfirm: async () => {
+                try {
+                    const token = localStorage.getItem('token');
+                    const res = await fetch(`/api/Auth/sections/department/${encodeURIComponent(department)}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
+                    const data = await res.json();
+                    if (!res.ok) throw new Error(data.message || 'Failed to delete sections');
+                    
+                    addNotification(`All sections for ${department} cleared.`, "success");
+                    loadAcademicSections();
+                    loadMyClasses();
+                } catch (e) { addNotification(e.message, "error"); }
+                setConfirmModal({ isOpen: false, title: "", message: "", onConfirm: null });
+            }
+        });
     };
 
     const activeChairTab = mainTab;
@@ -448,7 +745,7 @@ const DeptAdminGradesView = ({ loggedInEmail = '', loggedInName = '', userRole =
                 <ChairpersonSidebar activeTab={activeChairTab === 'grades' ? 'dashboard' : activeChairTab} setActiveTab={setMainTab} />
                 <main className="flex-1 overflow-y-auto pr-2">
                     {(activeChairTab === 'dashboard' || activeChairTab === 'grades') && <ChairpersonOverview metrics={deptMetrics} />}
-                    {['forReview', 'returned', 'approved', 'forwarded'].includes(activeChairTab) && (
+                        {['forReview', 'returned', 'approved', 'forwarded', 'flagged'].includes(activeChairTab) && (
                         <div className="flex flex-col gap-6">
                             <FacultyStatusTable 
                                 rows={facultyRows.filter(r => {
@@ -456,49 +753,41 @@ const DeptAdminGradesView = ({ loggedInEmail = '', loggedInName = '', userRole =
                                     if (activeChairTab === 'returned') return r.reviewStatus === 'returned';
                                     if (activeChairTab === 'approved') return r.reviewStatus === 'approved';
                                     if (activeChairTab === 'forwarded') return r.reviewStatus === 'forwarded';
+                                        if (activeChairTab === 'flagged') return Object.values(r.grades).some(g => g.flagged);
                                     return true;
                                 })} 
                                 selectedReviewKey={selectedReviewSection?.reviewKey} 
                                 onSelectSection={setSelectedReviewSection} 
                             />
                             {selectedReviewSection && (
-                                <SectionReviewPanel selectedSection={selectedReviewSection} activeTerm="finals" onApprove={handleBulkApprove} onSubmitToRegistrar={handleBulkForward} onSendBack={() => { addNotification("Section sent back to faculty.", "success"); setSelectedReviewSection(null); }} />
+                                <div className="flex flex-col gap-4">
+                                    {selectedReviewSection.ipfsCid && (
+                                        <div className="flex items-center justify-between rounded-xl border border-blue-200 bg-blue-50 p-5 shadow-sm">
+                                            <div>
+                                                <h4 className="font-bold text-blue-900">Attached Grading Sheet (IPFS Vault)</h4>
+                                                <p className="text-sm text-blue-700">The faculty member securely attached the source Excel/CSV file.</p>
+                                            </div>
+                                            <button onClick={() => handleViewIpfs(selectedReviewSection.ipfsCid)} className="rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-blue-700">
+                                                Decrypt & View
+                                            </button>
+                                        </div>
+                                    )}
+                                    <SectionReviewPanel 
+                                        selectedSection={selectedReviewSection} 
+                                        activeTerm="finals" 
+                                        onApprove={handleBulkApprove} 
+                                        onSubmitToRegistrar={handleBulkForward} 
+                                        onSendBack={() => { addNotification("Section sent back to faculty.", "success"); setSelectedReviewSection(null); }} 
+                                        onViewIpfs={handleViewIpfs}
+                                    />
+                                </div>
                             )}
                         </div>
                     )}
                     {activeChairTab === 'sectioning' && (
                         <div className="flex flex-col gap-6">
-                            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-                                <h2 className="text-xl font-bold text-[#003366] mb-4">Forwarded Student Lists (From Registrar)</h2>
-                                {forwardedBatches.length === 0 ? (
-                                    <p className="text-slate-500">No student lists have been forwarded to your department yet.</p>
-                                ) : (
-                                    <div className="overflow-x-auto">
-                                        <table className="w-full text-left border-collapse">
-                                            <thead>
-                                                <tr className="border-b border-slate-200 bg-slate-50 text-sm font-semibold text-[#003366]">
-                                                    <th className="p-3">Batch Year</th>
-                                                    <th className="p-3">Attached File</th>
-                                                    <th className="p-3">Students</th>
-                                                    <th className="p-3">Date Forwarded</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                {forwardedBatches.map(batch => (
-                                                    <tr key={batch.id} className="border-b border-slate-100 hover:bg-slate-50">
-                                                        <td className="p-3 text-slate-800 font-bold">{batch.batchYear}</td>
-                                                        <td className="p-3">
-                                                            {batch.ipfsCid ? <a href={`http://127.0.0.1:5001/ipfs/bafybeiddnr2jz65byk67sjt6jsu6g7tueddr7odhzzpzli3rgudlbnc6iq/#/ipfs/${batch.ipfsCid}`} target="_blank" rel="noreferrer" className="text-blue-600 font-bold hover:underline"> View Content in IPFS</a> : batch.fileName}
-                                                        </td>
-                                                        <td className="p-3 text-slate-600">{batch.totalStudents}</td>
-                                                        <td className="p-3 text-slate-500">{new Date(batch.submittedAt).toLocaleString()}</td>
-                                                    </tr>
-                                                ))}
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                )}
-                            </div>
+                            <StudentSectioning chairpersonDepartment={department} />
+                            
                             <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
                             <h2 className="text-xl font-bold text-[#003366] mb-4">Pending Student Enrollments</h2>
                             {deptPendingStudents.length === 0 ? (
@@ -568,79 +857,163 @@ const DeptAdminGradesView = ({ loggedInEmail = '', loggedInName = '', userRole =
                                     </div>
                                     <h2 className="text-xl font-bold text-[#003366] mb-6">{selectedMySection.department} {selectedMySection.yearLevel}-{selectedMySection.sectionNum || selectedMySection.section} ({selectedMySection.subject})</h2>
                                     
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-                                        {/* Upload Grades Panel */}
-                                        <div className="rounded-xl bg-slate-50 p-5 border border-slate-200">
-                                            <h3 className="font-bold text-[#003366] mb-2">1. Upload Grades</h3>
-                                            <p className="text-sm text-slate-500 mb-4">Issue grades for this section.</p>
-                                            <input 
-                                                id="chair-grade-upload"
-                                                type="file" 
-                                                accept=".csv, .xlsx"
-                                                onChange={(e) => setUploadFile(e.target.files[0])}
-                                                className="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 mb-4"
-                                            />
-                                            <button 
-                                                onClick={handleBulkUpload}
-                                                disabled={!uploadFile || isUploading}
-                                                className="w-full rounded-xl bg-[#003366] px-5 py-2.5 text-sm font-bold text-white transition hover:bg-[#00264d] disabled:opacity-50"
-                                            >
-                                                {isUploading ? 'Uploading...' : 'Upload Grades'}
-                                            </button>
-                                        </div>
-
-                                        {/* Enroll Students Panel */}
-                                        <div className="rounded-xl bg-slate-50 p-5 border border-slate-200">
-                                            <h3 className="font-bold text-emerald-700 mb-2">2. Enroll Students</h3>
-                                            <p className="text-sm text-slate-500 mb-4">Add students into this section.</p>
+                                    <div className="mb-6 rounded-xl bg-slate-50 p-5 border border-slate-200 flex flex-col md:flex-row md:items-end gap-4">
+                                        <div className="flex-1">
+                                            <h3 className="font-bold text-emerald-700 mb-2">Enroll Missing Students</h3>
+                                            <p className="text-sm text-slate-500 mb-4">Upload a CSV/Excel file to add students to this section.</p>
                                             <input 
                                                 id="myclass-student-enroll-upload"
                                                 type="file" 
                                                 accept=".csv, .xlsx"
                                                 onChange={(e) => setEnrollFile(e.target.files[0])}
-                                                className="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100 mb-4"
+                                                className="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100"
                                             />
-                                            <button 
-                                                onClick={handleBulkEnrollMyClass}
-                                                disabled={!enrollFile || isEnrolling}
-                                                className="w-full rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-bold text-white transition hover:bg-emerald-700 disabled:opacity-50"
-                                            >
-                                                {isEnrolling ? 'Enrolling...' : 'Bulk Enroll Students'}
-                                            </button>
                                         </div>
+                                        <button 
+                                            onClick={handleBulkEnrollMyClass}
+                                            disabled={!enrollFile || isEnrolling}
+                                            className="rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-bold text-white transition hover:bg-emerald-700 disabled:opacity-50"
+                                        >
+                                            {isEnrolling ? 'Enrolling...' : 'Bulk Enroll Students'}
+                                        </button>
                                     </div>
 
-                                    <h3 className="font-bold text-lg text-slate-800 mb-4">Enrolled Students</h3>
-                                    <div className="overflow-x-auto">
-                                        <table className="w-full text-left border-collapse">
-                                            <thead>
-                                                <tr className="border-b border-slate-200 bg-slate-50 text-sm font-semibold text-[#003366]">
-                                                    <th className="p-3">Student Name</th>
-                                                    <th className="p-3">Student No.</th>
-                                                    <th className="p-3">Email</th>
-                                                    <th className="p-3">Action</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                {myStudents.filter(s => s.department === selectedMySection.department && String(s.yearLevel) === String(selectedMySection.yearLevel) && String(s.sectionNum || s.section) === String(selectedMySection.sectionNum || selectedMySection.section)).map(student => (
-                                                    <tr key={student.id} className="border-b border-slate-100 hover:bg-slate-50 text-sm">
-                                                        <td className="p-3 font-medium text-slate-800">{student.fullname}</td>
-                                                        <td className="p-3 text-slate-600">{student.studentno}</td>
-                                                        <td className="p-3 text-slate-500">{student.email}</td>
-                                                        <td className="p-3">
-                                                            <button onClick={() => handleDropStudent(student.id, student.fullname)} className="rounded-lg bg-red-50 px-3 py-1 text-xs font-bold text-red-600 transition hover:bg-red-100 border border-red-200">
-                                                                Drop
-                                                            </button>
-                                                        </td>
-                                                    </tr>
-                                                ))}
-                                                {myStudents.filter(s => s.department === selectedMySection.department && String(s.yearLevel) === String(selectedMySection.yearLevel) && String(s.sectionNum || s.section) === String(selectedMySection.sectionNum || selectedMySection.section)).length === 0 && (
-                                                    <tr>
-                                                        <td colSpan="3" className="p-6 text-center text-slate-500 bg-slate-50 rounded-b-xl">No students are currently assigned to this section.</td>
-                                                    </tr>
+                                    <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-md mt-6">
+                                        <div className="flex flex-col gap-4 px-6 py-5 md:flex-row md:items-center md:justify-between bg-slate-50 border-b border-slate-200">
+                                            <div className="flex flex-col gap-1">
+                                                <div className="flex items-center gap-3">
+                                                    <span className="shrink-0 rounded-lg bg-blue-100 px-3 py-1 text-sm font-bold text-blue-700">
+                                                        {selectedMySection.subject || 'Subject'}
+                                                    </span>
+                                                    <h2 className="text-xl font-bold text-[#003366]">
+                                                        Section: {selectedMySection.yearLevel}-{selectedMySection.sectionNum || selectedMySection.section}
+                                                    </h2>
+                                                </div>
+                                            </div>
+                                            <div className="flex flex-wrap items-center gap-3">
+                                                <select 
+                                                    value={statusFilter} 
+                                                    onChange={e => setStatusFilter(e.target.value)} 
+                                                    className="rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm font-bold text-slate-700 outline-none focus:border-[#003366]"
+                                                >
+                                                    <option value="All">All Statuses</option>
+                                                    <option value="Enrolled">Active</option>
+                                                    <option value="Dropped">Dropped</option>
+                                                    <option value="UD">UD</option>
+                                                    <option value="W">W</option>
+                                                    <option value="INC">INC</option>
+                                                </select>
+                                                <div className="relative overflow-hidden">
+                                                    <input 
+                                                        type="file" 
+                                                        accept=".csv, .xlsx"
+                                                        onChange={(e) => setUploadFile(e.target.files[0])}
+                                                        className="absolute inset-0 z-10 h-full w-full cursor-pointer opacity-0"
+                                                    />
+                                                    <button
+                                                        disabled={isUploading}
+                                                        className="rounded-lg bg-yellow-400 px-4 py-2.5 text-sm font-bold text-[#003366] transition hover:bg-yellow-500 disabled:opacity-50"
+                                                    >
+                                                        {uploadFile ? `Selected: ${uploadFile.name.substring(0, 10)}...` : 'Select File'}
+                                                    </button>
+                                                </div>
+                                                {uploadFile && (
+                                                    <button
+                                                        onClick={handleBulkUpload}
+                                                        disabled={isUploading}
+                                                        className="rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-blue-700 disabled:opacity-50"
+                                                    >
+                                                        {isUploading ? 'Uploading...' : 'Confirm Upload'}
+                                                    </button>
                                                 )}
-                                            </tbody>
-                                        </table>
+                                                <button
+                                                    onClick={handleExportClassGrades}
+                                                    className="rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm font-bold text-slate-700 transition hover:bg-slate-50"
+                                                >
+                                                    Export CSV
+                                                </button>
+                                                <button
+                                                    onClick={handleSaveClassGrades}
+                                                    disabled={isSavingGrades || Object.values(classValidationErrors).some(errs => errs.midterm || errs.finals)}
+                                                    className="rounded-xl bg-[#003366] px-5 py-2.5 text-sm font-bold text-white transition hover:bg-[#00264d] disabled:opacity-50"
+                                                >
+                                                    {isSavingGrades ? 'Saving to Ledger...' : 'Save Grades to Ledger'}
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        <div className="overflow-x-auto">
+                                            <table className="w-full min-w-[900px]">
+                                                <thead>
+                                                    <tr className="border-b-4 border-yellow-400 bg-[#003b78] text-white">
+                                                        <th className="px-6 py-4 text-left text-[15px] font-bold uppercase tracking-wide">Student ID</th>
+                                                        <th className="px-6 py-4 text-left text-[15px] font-bold uppercase tracking-wide">Student Name</th>
+                                                        <th className="px-6 py-4 text-center text-[15px] font-bold uppercase tracking-wide">Midterm <span className="font-normal text-slate-300">(60-100)</span></th>
+                                                        <th className="px-6 py-4 text-center text-[15px] font-bold uppercase tracking-wide">Finals <span className="font-normal text-slate-300">(60-100)</span></th>
+                                                        <th className="px-6 py-4 text-center text-[15px] font-bold uppercase tracking-wide">Final Grade</th>
+                                                        <th className="px-6 py-4 text-center text-[15px] font-bold uppercase tracking-wide">Equivalent</th>
+                                                        <th className="px-6 py-4 text-center text-[15px] font-bold uppercase tracking-wide">Status</th>
+                                                        <th className="px-6 py-4 text-center text-[15px] font-bold uppercase tracking-wide">Standing</th>
+                                                        <th className="px-6 py-4 text-center text-[15px] font-bold uppercase tracking-wide">Action</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {myStudents.filter(s => s.department === selectedMySection.department && String(s.yearLevel) === String(selectedMySection.yearLevel) && String(s.sectionNum || s.section) === String(selectedMySection.sectionNum || selectedMySection.section))
+                                                    .filter(s => {
+                                                        const standing = (classGrades[s.id] || {}).standing || 'Enrolled';
+                                                        return statusFilter === "All" || standing === statusFilter;
+                                                    })
+                                                    .map(student => {
+                                                        const studentData = classGrades[student.id] || {};
+                                                        const final = studentData.finalAverage || '-';
+                                                        const status = getGradeStatus(final);
+                                                        const standing = studentData.standing || 'Enrolled';
+                                                        const isFlagged = studentData.flagged;
+                                                        const errors = classValidationErrors[student.id] || {};
+                                                        const hasError = errors.midterm || errors.finals;
+
+                                                        return (
+                                                            <tr key={student.id} className={`border-b border-slate-200 hover:bg-slate-50 ${hasError || isFlagged ? 'bg-red-50' : 'bg-white'}`}>
+                                                                <td className="px-6 py-5 font-semibold text-slate-700">{student.studentno}</td>
+                                                                <td className="px-6 py-5 font-medium text-slate-800">{student.fullname}</td>
+                                                                <td className="px-6 py-5 text-center">
+                                                                    <div className="relative inline-block">
+                                                                        <input type="number" min="60" max="100" value={studentData.midterm || ''} onChange={(e) => handleClassGradeChange(student.id, 'midterm', e.target.value)} className={`h-10 w-20 rounded-xl border px-2 text-center outline-none focus:ring-2 focus:ring-[#003366]/20 ${errors.midterm ? 'border-red-500 bg-red-50' : 'border-slate-300 bg-white'}`} placeholder="60-100" />
+                                                                        {errors.midterm && <div className="absolute left-1/2 -translate-x-1/2 -bottom-5 whitespace-nowrap text-[10px] font-bold text-red-600">{errors.midterm}</div>}
+                                                                    </div>
+                                                                </td>
+                                                                <td className="px-6 py-5 text-center">
+                                                                    <div className="relative inline-block">
+                                                                        <input type="number" min="60" max="100" value={studentData.finals || ''} onChange={(e) => handleClassGradeChange(student.id, 'finals', e.target.value)} className={`h-10 w-20 rounded-xl border px-2 text-center outline-none focus:ring-2 focus:ring-[#003366]/20 ${errors.finals ? 'border-red-500 bg-red-50' : 'border-slate-300 bg-white'}`} placeholder="60-100" />
+                                                                        {errors.finals && <div className="absolute left-1/2 -translate-x-1/2 -bottom-5 whitespace-nowrap text-[10px] font-bold text-red-600">{errors.finals}</div>}
+                                                                    </div>
+                                                                </td>
+                                                                <td className="px-6 py-5 text-center font-bold text-[#003366] text-lg">{final}</td>
+                                                                <td className="px-6 py-5 text-center font-bold text-slate-700">{final !== '-' && !isNaN(final) ? getGradeEquivalent(final) : final}</td>
+                                                                <td className="px-6 py-5 text-center">
+                                                                    <span className={`inline-flex rounded-full px-3 py-1 text-xs font-bold ${status === 'Passed' ? 'bg-green-100 text-green-700' : status === 'Failed' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'}`}>{status}</span>
+                                                                </td>
+                                                                <td className="px-6 py-5 text-center">
+                                                                    <select value={standing} onChange={(e) => handleClassGradeChange(student.id, 'standing', e.target.value)} className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium outline-none text-slate-700">
+                                                                        <option value="Enrolled">Active</option>
+                                                                        <option value="Dropped">Dropped</option>
+                                                                        <option value="UD">UD</option>
+                                                                        <option value="W">W</option>
+                                                                        <option value="INC">INC</option>
+                                                                    </select>
+                                                                </td>
+                                                                <td className="px-6 py-5 text-center">
+                                                                    <button onClick={() => handleDropStudent(student.id, student.fullname)} className="rounded-lg bg-red-50 px-3 py-1.5 text-xs font-bold text-red-600 transition hover:bg-red-100 border border-red-200">Drop</button>
+                                                                </td>
+                                                            </tr>
+                                                        );
+                                                    })}
+                                                    {myStudents.filter(s => s.department === selectedMySection.department && String(s.yearLevel) === String(selectedMySection.yearLevel) && String(s.sectionNum || s.section) === String(selectedMySection.sectionNum || selectedMySection.section)).length === 0 && (
+                                                        <tr><td colSpan="9" className="p-8 text-center text-slate-500 bg-slate-50 rounded-b-xl text-base">No students are currently assigned to this section.</td></tr>
+                                                    )}
+                                                </tbody>
+                                            </table>
+                                        </div>
                                     </div>
                                 </div>
                             )}
@@ -648,11 +1021,38 @@ const DeptAdminGradesView = ({ loggedInEmail = '', loggedInName = '', userRole =
                     )}
                     {activeChairTab === 'assignment' && (
                         <div className="flex flex-col gap-6">
+                            {/* Masterlist Bulk Import */}
+                            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                                <h2 className="text-xl font-bold text-[#003366] mb-4">Masterlist Bulk Import (Auto-Create Sections & Accounts)</h2>
+                                <p className="text-slate-500 mb-4">
+                                    Upload a masterlist (CSV or XLSX) to automatically create sections, enroll students, and assign faculties. 
+                                    Missing students will be registered using their <strong>Student No.</strong> as credentials, and faculties via their <strong>Email or Name</strong>.
+                                </p>
+                                <div className="mb-6 rounded-lg bg-blue-50 p-4 border border-blue-200">
+                                    <h4 className="text-sm font-bold text-blue-900 mb-2">Required Columns:</h4>
+                                    <p className="text-xs text-blue-800 font-mono">student_no | last_name | first_name | mi | sex | year_level | section | subject_code | faculty_name | faculty_email</p>
+                                </div>
+                                <div className="flex flex-col gap-4">
+                                    <div>
+                                        <label htmlFor="masterlist-upload" className="block text-sm font-medium text-slate-600 mb-1">Masterlist File (.csv, .xlsx)</label>
+                                        <input id="masterlist-upload" type="file" accept=".csv, .xlsx" onChange={(e) => setMasterlistFile(e.target.files[0])} className="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" />
+                                    </div>
+                                    <div className="flex flex-wrap items-center gap-3 mt-2">
+                                        <button onClick={handleDownloadMasterlistTemplate} className="rounded-lg border border-[#003366] px-5 py-2.5 text-sm font-bold text-[#003366] transition hover:bg-[#003366] hover:text-white">
+                                            Download Template
+                                        </button>
+                                        <button onClick={handleMasterlistUpload} disabled={isUploadingMasterlist || !masterlistFile} className="rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-bold text-white transition hover:bg-blue-700 disabled:opacity-50">
+                                            {isUploadingMasterlist ? 'Processing Masterlist...' : 'Process Masterlist'}
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
                             {/* Section Creation Form */}
                             <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
                                 <h2 className="text-xl font-bold text-[#003366] mb-4">Create New Academic Section</h2>
-                                <form onSubmit={handleCreateSection} className="flex flex-col md:flex-row items-end gap-4">
-                                    <div className="flex-1">
+                                <form onSubmit={handleCreateSection} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                                    <div>
                                         <label className="block text-sm font-medium text-slate-600 mb-1">Department</label>
                                         <input type="text" value={department} disabled className="w-full rounded-lg border border-slate-300 bg-slate-100 px-3 py-2 text-slate-500" />
                                     </div>
@@ -670,13 +1070,15 @@ const DeptAdminGradesView = ({ loggedInEmail = '', loggedInName = '', userRole =
                                         <label htmlFor="sectionNum" className="block text-sm font-medium text-slate-600 mb-1">Section Number</label>
                                         <input id="sectionNum" type="number" min="1" value={newSectionData.sectionNum} onChange={e => setNewSectionData(p => ({...p, sectionNum: e.target.value}))} required placeholder="e.g., 1" className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 outline-none focus:border-[#003366]" />
                                     </div>
-                                    <div className="flex-1">
+                                    <div>
                                         <label htmlFor="subjectCode" className="block text-sm font-medium text-slate-600 mb-1">Subject Code</label>
                                         <input id="subjectCode" type="text" value={newSectionData.subjectCode} onChange={e => setNewSectionData(p => ({...p, subjectCode: e.target.value}))} required placeholder="e.g., IT-101" className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 outline-none focus:border-[#003366]" />
                                     </div>
-                                    <button type="submit" disabled={isCreatingSection} className="rounded-lg bg-[#003366] px-5 py-2.5 text-sm font-bold text-white transition hover:bg-[#00264d] disabled:opacity-50">
-                                        {isCreatingSection ? 'Creating...' : 'Create Section'}
-                                    </button>
+                                    <div className="md:col-span-2 lg:col-span-4 flex justify-end mt-2">
+                                        <button type="submit" disabled={isCreatingSection} className="rounded-lg bg-[#003366] px-6 py-2.5 text-sm font-bold text-white transition hover:bg-[#00264d] disabled:opacity-50">
+                                            {isCreatingSection ? 'Creating...' : 'Create Section'}
+                                        </button>
+                                    </div>
                                 </form>
                                 <div className="mt-4">
                                     <label htmlFor="assignTo" className="block text-sm font-medium text-slate-600 mb-1">Assign Section To Professor</label>
@@ -699,8 +1101,8 @@ const DeptAdminGradesView = ({ loggedInEmail = '', loggedInName = '', userRole =
                             <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
                                 <h2 className="text-xl font-bold text-[#003366] mb-4">Bulk Enroll Students to Section</h2>
                                 <p className="text-slate-500 mb-6">Upload a CSV or Excel file with student details to enroll them into a specific section. The file should contain at least a 'student_no' or 'email' column.</p>
-                                <div className="flex flex-col md:flex-row items-end gap-4">
-                                    <div className="flex-1">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
                                         <label htmlFor="enrollSection" className="block text-sm font-medium text-slate-600 mb-1">Target Section</label>
                                         <select id="enrollSection" value={enrollSectionId} onChange={e => setEnrollSectionId(e.target.value)} required className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 outline-none focus:border-[#003366]">
                                             <option value="" disabled>Select a section to enroll students into</option>
@@ -709,19 +1111,108 @@ const DeptAdminGradesView = ({ loggedInEmail = '', loggedInName = '', userRole =
                                             ))}
                                         </select>
                                     </div>
-                                    <div className="flex-1">
+                                    <div>
                                         <label htmlFor="student-enroll-upload" className="block text-sm font-medium text-slate-600 mb-1">Student List File</label>
                                         <input id="student-enroll-upload" type="file" accept=".csv, .xlsx" onChange={(e) => setEnrollFile(e.target.files[0])} className="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" />
                                     </div>
-                                    <button onClick={handleBulkEnroll} disabled={isEnrolling || !enrollFile || !enrollSectionId} className="rounded-lg bg-emerald-600 px-5 py-2.5 text-sm font-bold text-white transition hover:bg-emerald-700 disabled:opacity-50">
-                                        {isEnrolling ? 'Enrolling...' : 'Bulk Enroll Students'}
+                                    <div className="md:col-span-2 flex justify-end mt-2">
+                                        <button onClick={handleBulkEnroll} disabled={isEnrolling || !enrollFile || !enrollSectionId} className="rounded-lg bg-emerald-600 px-6 py-2.5 text-sm font-bold text-white transition hover:bg-emerald-700 disabled:opacity-50">
+                                            {isEnrolling ? 'Enrolling...' : 'Bulk Enroll Students'}
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Manage Academic Sections */}
+                            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                                <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-4">
+                                    <div>
+                                        <h2 className="text-xl font-bold text-[#003366]">Manage Academic Sections</h2>
+                                        <p className="text-sm text-slate-500">Remove individual sections or clear all sections at the end of the school year.</p>
+                                    </div>
+                                    <button onClick={handleDeleteAllSections} disabled={academicSections.length === 0} className="rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm font-bold text-red-600 transition hover:bg-red-100 disabled:opacity-50">
+                                        Clear All Sections
                                     </button>
+                                </div>
+                                
+                                <div className="overflow-x-auto">
+                                    <table className="w-full text-left border-collapse">
+                                        <thead>
+                                            <tr className="border-b border-slate-200 bg-slate-50 text-sm font-semibold text-[#003366]">
+                                                <th className="p-3">Department</th>
+                                                <th className="p-3">Year Level</th>
+                                                <th className="p-3">Section</th>
+                                                <th className="p-3 w-24">Action</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {academicSections.length === 0 ? (
+                                                <tr><td colSpan="4" className="p-4 text-center text-slate-500">No sections found for this department.</td></tr>
+                                            ) : (
+                                                academicSections.map(sec => (
+                                                    <tr key={sec.id} className="border-b border-slate-100 hover:bg-slate-50">
+                                                        <td className="p-3 font-medium text-slate-800">{sec.department}</td>
+                                                        <td className="p-3 text-slate-600">{sec.yearLevel}</td>
+                                                        <td className="p-3 text-slate-600">{sec.sectionNum}</td>
+                                                        <td className="p-3"><button onClick={() => handleDeleteSection(sec.id, `${sec.yearLevel}-${sec.sectionNum}`)} className="rounded-lg bg-red-50 px-3 py-1 text-xs font-bold text-red-600 transition hover:bg-red-100 border border-red-200">Delete</button></td>
+                                                    </tr>
+                                                ))
+                                            )}
+                                        </tbody>
+                                    </table>
                                 </div>
                             </div>
                         </div>
                     )}
                 </main>
             </div>
+            {/* IPFS Vault Password Modal */}
+            <Modal isOpen={ipfsModalOpen} onClose={() => setIpfsModalOpen(false)} title="IPFS Vault Decryption">
+                <div className="flex flex-col gap-4">
+                    <p className="text-sm text-slate-600">
+                        This academic record is encrypted and distributed across the PLV IPFS Network. 
+                        Enter the Vault Password to view the decrypted content.
+                    </p>
+                    <div className="relative">
+                        <input 
+                            type={showVaultPassword ? "text" : "password"} 
+                            value={vaultPassword} 
+                            onChange={(e) => setVaultPassword(e.target.value)} 
+                            className="w-full rounded-xl border border-slate-300 px-4 py-3 pr-10 text-sm outline-none focus:border-[#003366]" 
+                            placeholder="Enter Vault Password" 
+                            onKeyDown={(e) => e.key === 'Enter' && submitIpfsPassword()}
+                            autoFocus
+                        />
+                        <button
+                            type="button"
+                            onClick={() => setShowVaultPassword(!showVaultPassword)}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-[#003366]"
+                            title={showVaultPassword ? "Hide Password" : "Show Password"}
+                        >
+                            {showVaultPassword ? (
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88" /></svg>
+                            ) : (
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" /><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                            )}
+                        </button>
+                    </div>
+                    <div className="flex justify-end gap-3 mt-4">
+                        <button onClick={() => setIpfsModalOpen(false)} className="rounded-xl border border-slate-300 bg-white px-5 py-2.5 text-sm font-bold text-slate-700 transition hover:bg-slate-50">Cancel</button>
+                        <button onClick={submitIpfsPassword} className="rounded-xl bg-[#003366] px-5 py-2.5 text-sm font-bold text-white transition hover:bg-[#00264d]">Decrypt & View</button>
+                    </div>
+                </div>
+            </Modal>
+            
+            {/* Confirmation Modal */}
+            <Modal isOpen={confirmModal.isOpen} onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })} title={confirmModal.title}>
+                <div className="flex flex-col gap-4">
+                    <p className="text-sm text-slate-600">{confirmModal.message}</p>
+                    <div className="flex justify-end gap-3 mt-4">
+                        <button onClick={() => setConfirmModal({ ...confirmModal, isOpen: false })} className="rounded-xl border border-slate-300 bg-white px-5 py-2.5 text-sm font-bold text-slate-700 transition hover:bg-slate-50">Cancel</button>
+                        <button onClick={confirmModal.onConfirm} className="rounded-xl bg-red-600 px-5 py-2.5 text-sm font-bold text-white transition hover:bg-red-700">Confirm</button>
+                    </div>
+                </div>
+            </Modal>
         </div>
     );
 };

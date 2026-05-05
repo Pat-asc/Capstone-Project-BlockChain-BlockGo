@@ -148,14 +148,10 @@ CREATE TABLE IF NOT EXISTS facultysections (
     assigned_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
--- Prevent assigning the exact same subject for the same section twice to the same professor
 CREATE UNIQUE INDEX idx_unique_faculty_section ON FacultySections(user_id, department, section, subject);
-
--- Optional: Create an index on the department for faster lookups
 CREATE INDEX idx_gradetemplates_department ON GradeTemplates(department);
 
 
--- Add date_of_birth to StudentProfiles (existing table)
 ALTER TABLE studentprofiles ADD COLUMN IF NOT EXISTS date_of_birth DATE;
 ALTER TABLE studentprofiles ADD COLUMN IF NOT EXISTS phone VARCHAR(50);
 ALTER TABLE studentprofiles ADD COLUMN IF NOT EXISTS sex VARCHAR(20);
@@ -186,6 +182,24 @@ CREATE INDEX IF NOT EXISTS idx_chat_messages_sender ON chat_messages(sender_emai
 CREATE INDEX IF NOT EXISTS idx_chat_messages_receiver ON chat_messages(receiver_email);
 CREATE INDEX IF NOT EXISTS idx_chat_messages_timestamp ON chat_messages(timestamp);
 
+-- Bulk Grade Staging table (for validation before ledger entry)
+CREATE TABLE IF NOT EXISTS bulk_grade_staging (
+    staging_id SERIAL PRIMARY KEY,
+    batch_id VARCHAR(100) NOT NULL,
+    student_hash VARCHAR(100) NOT NULL,
+    course VARCHAR(100),
+    subject_code VARCHAR(50),
+    subject_name VARCHAR(255),
+    grade VARCHAR(10),
+    semester VARCHAR(20),
+    school_year VARCHAR(20),
+    year_level VARCHAR(10),
+    section VARCHAR(50),
+    faculty_id VARCHAR(100),
+    status VARCHAR(50) DEFAULT 'PENDING_APPROVAL',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 -- Indexes for performance
 CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
 CREATE INDEX IF NOT EXISTS idx_users_role ON users(role);
@@ -196,6 +210,3 @@ CREATE INDEX IF NOT EXISTS idx_academic_records_semester ON academic_records(sem
 CREATE INDEX IF NOT EXISTS idx_grade_records_status ON grade_records(status);
 CREATE INDEX IF NOT EXISTS idx_audit_logs_user ON audit_logs(user_id);
 CREATE INDEX IF NOT EXISTS idx_audit_logs_timestamp ON audit_logs(timestamp);
-
--- Grant permissions (optional - adjust as needed)
--- GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO blockgo;

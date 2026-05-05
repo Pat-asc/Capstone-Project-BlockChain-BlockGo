@@ -1,6 +1,17 @@
 {
   "API": {
-    "HTTPHeaders": {}
+    "HTTPHeaders": {
+      "Access-Control-Allow-Methods": [
+        "PUT",
+        "POST",
+        "GET",
+        "OPTIONS"
+      ],
+      "Access-Control-Allow-Origin": [
+        "http://localhost:8080",
+        "http://127.0.0.1:8080"
+      ]
+    }
   },
   "Addresses": {
     "API": "/ip4/0.0.0.0/tcp/5001",

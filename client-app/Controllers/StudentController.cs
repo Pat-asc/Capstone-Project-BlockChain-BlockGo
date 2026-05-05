@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 
 namespace Client_app.Controllers
 {
+    [Authorize]
     [ApiController]
     [Route("api/[controller]")]
     public class StudentController : ControllerBase
@@ -59,10 +60,12 @@ namespace Client_app.Controllers
         }
 
         [HttpPut("profile")]
-        [Authorize(Roles = "student")] // Ensure only students can call this
+        [Authorize(Roles = "student,registrar,department_admin,deptAdmin,faculty")] 
         public async Task<IActionResult> UpdateProfile([FromBody] UpdateProfileRequest request)
         {
             var email = User.Identity?.Name;
+            // If the user is an admin/faculty, they might be passing a specific student email
+            // (Need to extend UpdateProfileRequest to support this if we want admins to edit others)
             if (string.IsNullOrEmpty(email)) return Unauthorized();
 
             try

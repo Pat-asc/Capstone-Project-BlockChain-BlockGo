@@ -149,17 +149,34 @@ chmod +x full_deploy.sh
 ```
 
 ### Step 2: Bootstrap the Root Registrar
-Because the system utilizes a strict waitlist, a "Catch-22" exists where you need an admin to approve an admin. To bypass this for the initial setup, navigate to the bootstrap endpoint in your browser:
+Because the system utilizes a strict waitlist, a "Catch-22" exists where you need an admin to approve an admin. To bypass this for the initial setup, you must call the bootstrap endpoint with your `INTERNAL_API_KEY`:
 
- **http://localhost/api/bootstrap**
+**Command:**
+```bash
+curl -X GET http://localhost/api/bootstrap -H "x-api-key: your-internal-api-key"
+```
 
-*This will securely inject `registrar@plv.edu.ph` into PostgreSQL and instantly generate their Hyperledger Fabric wallet.*
+*This will securely inject `registrar@plv.edu.ph` into PostgreSQL and instantly generate their Hyperledger Fabric wallet using the `MOCK_REGISTRAR_PASS` defined in your environment.*
 
 ### Step 3: Access the Portal
 Navigate to **http://localhost** in your browser.
 Log in using the bootstrapped credentials:
 - **Email:** `registrar@plv.edu.ph`
-- **Password:** `admin123`
+- **Password:** [Your environment-defined MOCK_REGISTRAR_PASS]
+
+---
+
+## Environment Configuration
+The following environment variables are **mandatory** and must be defined in your `network/.env` file before deployment:
+
+| Variable | Description |
+| :--- | :--- |
+| `JWT_SECRET` | A long, secure random string for JWT signing. |
+| `INTERNAL_API_KEY` | Secure key for cross-service authentication. |
+| `POSTGRES_PASS` | Password for the PostgreSQL database cluster. |
+| `BOOTSTRAP_REGISTRAR_PASS` | Admin password for the Fabric Certificate Authorities. |
+| `IPFS_ENCRYPTION_KEY` | 32-character key for encrypting IPFS grading sheets. |
+| `MOCK_REGISTRAR_PASS` | Password for the initial bootstrapped registrar account. |
 
 ---
 

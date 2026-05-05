@@ -13,6 +13,9 @@ namespace BlockGo.Models
         [JsonPropertyName("section")]
         public string Section { get; set; } = string.Empty;
 
+        [JsonPropertyName("year_level")]
+        public string YearLevel { get; set; } = string.Empty;
+
         [JsonPropertyName("course")]
         public string Course { get; set; } = string.Empty;
 
@@ -42,6 +45,9 @@ namespace BlockGo.Models
 
         [JsonPropertyName("status")]
         public string Status { get; set; } = string.Empty;
+
+        [JsonPropertyName("note")]
+        public string? Note { get; set; }
 
         [JsonPropertyName("version")]
         public int Version { get; set; }

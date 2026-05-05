@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import plvlogo from '../../assets/plvlogo.png';
 import DownloadGradingSheetButton from './DownloadGradingSheetButton';
-import { fetchFacultySections, fetchApprovedStudents, batchUploadGrades } from '../../services/api';
+import { fetchFacultySections, fetchFacultyStudents, batchUploadGrades, getSystemSetting, issueGrade } from '../../services/api';
 import FacultyHeader from './FacultyHeader';
 import YearTabs from './YearTabs';
 import ProgramCard from './ProgramCard';
@@ -21,6 +21,25 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
   const [isLoadingData, setIsLoadingData] = useState(true);
 
   const [sections, setSections] = useState({});
+
+  const [encodingStart, setEncodingStart] = useState(new Date('2026-04-01T00:00:00'));
+  const [encodingEnd, setEncodingEnd] = useState(new Date('2026-04-10T23:59:59'));
+
+  useEffect(() => {
+    const loadEncodingPeriod = async () => {
+        try {
+            const res = await getSystemSetting("encoding_period");
+            if (res.status === "Success" && res.value) {
+                const parsed = JSON.parse(res.value);
+                setEncodingStart(new Date(parsed.startDate));
+                const end = new Date(parsed.endDate);
+                end.setHours(23, 59, 59, 999);
+                setEncodingEnd(end);
+            }
+        } catch (e) { console.error(e); }
+    };
+    loadEncodingPeriod();
+  }, []);
 
   const loadFacultyData = useCallback(async () => {
     setIsLoadingData(true);
@@ -43,7 +62,7 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
 
     try {
       const sectionsData = await fetchFacultySections(facultyData.email).catch(() => null);
-      const studentsData = await fetchApprovedStudents().catch(() => null);
+      const studentsData = await fetchFacultyStudents(facultyData.email).catch(() => null);
 
       const actualSections = sectionsData?.sections?.length > 0 ? sectionsData.sections : mockSectionsList;
       const actualStudents = studentsData?.students?.length > 0 ? studentsData.students : mockStudentsList;
@@ -55,11 +74,12 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
         
         const enrolledStudents = actualStudents.filter(s => 
           s.department === sec.department && 
-          s.section === sec.section && 
-          s.assignmentStatus === 'Enrolled'
+          (String(s.section) === String(sec.section) || String(s.sectionNum) === String(sec.section)) && 
+          (s.assignmentStatus === 'Enrolled' || s.enrollmentStatus === 'Enrolled')
         ).map(s => ({
           id: s.studentno || 'N/A',
           name: s.fullname,
+          email: s.email,
           midterm: 0,
           finals: 0,
           remarks: 'Incomplete',
@@ -89,18 +109,16 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
 
   const totalSections = Object.keys(sections).length;
 
-  const ENCODING_START = new Date('2026-04-01T00:00:00');
-  const ENCODING_END   = new Date('2026-04-10T23:59:59');
   const now            = new Date();
-  const msLeft         = ENCODING_END - now;
+  const msLeft         = encodingEnd - now;
   const daysLeft       = Math.ceil(msLeft / (1000 * 60 * 60 * 24));
-  const isClosed       = now < ENCODING_START || now > ENCODING_END;
+  const isClosed       = now < encodingStart || now > encodingEnd;
   const isUrgent       = !isClosed && daysLeft <= 3;
   const isOpen         = !isClosed && !isUrgent;
 
   const getBannerState = () => {
-    if (now > ENCODING_END)   return 'closed_after';
-    if (now < ENCODING_START) return 'closed_before';
+    if (now > encodingEnd)   return 'closed_after';
+    if (now < encodingStart) return 'closed_before';
     if (isUrgent)             return 'urgent';
     return 'open';
   };
@@ -198,18 +216,88 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
     setRowSaveState(prev => ({ ...prev, [sectionName]: { ...(prev[sectionName] || {}), [index]: 'idle' } }));
   }, [sections, sectionStatus]);
 
+  const handleExportPDFClassGrades = (sectionName) => {
+    const sectionData = sections[sectionName];
+    if (!sectionData || !sectionData.students) return;
+    
+    try {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+        
+        doc.setTextColor(0, 51, 102);
+        doc.setFontSize(16);
+        doc.text("PLV OFFICIAL GRADING SHEET", 14, 20);
+        
+        doc.setFontSize(10);
+        doc.setTextColor(100);
+        doc.text(`Department: ${sectionData.sectionCourse}`, 14, 28);
+        doc.text(`Section: ${sectionName}`, 14, 33);
+        doc.text(`Faculty: ${facultyData.name}`, 14, 38);
+        
+        const tableColumn = ["Student ID", "Student Name", "Midterm", "Finals", "Final Grade", "Remarks"];
+        const tableRows = sectionData.students.map(student => {
+            const finalGrade = calculatePLVPoint(student);
+            return [ student.id, student.name, student.midterm || "", student.finals || "", finalGrade > 0 ? finalGrade.toFixed(2) : "", student.remarks || "Incomplete" ];
+        });
+        
+        doc.autoTable({
+            head: [tableColumn], body: tableRows, startY: 45, theme: 'striped',
+            headStyles: { fillColor: [0, 51, 102], fontSize: 9 }, bodyStyles: { fontSize: 8 }
+        });
+        
+        doc.save(`${sectionName.replace(/[^a-zA-Z0-9-]/g, "_")}_GradingSheet.pdf`);
+    } catch (err) {
+        alert("Could not generate PDF. Make sure jsPDF is available.");
+    }
+  };
+
+  const handleExportClassGrades = (sectionName) => {
+    const sectionData = sections[sectionName];
+    if (!sectionData || !sectionData.students) return;
+    
+    const headers = ["Student ID", "Student Name", "Midterm", "Finals", "Final Grade"];
+    const rows = sectionData.students.map(student => {
+        const finalGrade = calculatePLVPoint(student);
+        return [
+            student.id, 
+            `"${student.name}"`, 
+            student.midterm || "", 
+            student.finals || "", 
+            finalGrade > 0 ? finalGrade.toFixed(2) : ""
+        ].join(",");
+    });
+    
+    const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows].join("\n");
+    const link = document.createElement("a");
+    link.href = encodeURI(csvContent);
+    link.setAttribute("download", `${sectionName.replace(/[^a-zA-Z0-9-]/g, "_")}_Grades.csv`);
+    link.click();
+  };
+
   const handleFileUpload = async (sectionName, e) => {
     const file = e.target.files[0];
     if (!file) return;
 
+    const sectionData = sections[sectionName];
+    const semester = "2nd Semester"; 
+    const schoolYear = "2024";
+    const course = sectionData.subjectCode || sectionName;
+
     setUploadingSection(sectionName);
-    const formData = new FormData();
-    formData.append('excel', file);
-    formData.append('facultyId', facultyData.email);
 
     try {
-      const data = await batchUploadGrades(formData);
-      setUploadResult({ type: 'success', title: 'Upload Successful', message: data.message || 'Grades mapped', details: data.output });
+      const res = await batchUploadGrades(file, semester, schoolYear, course, facultyData.email);
+      if (res.status === 'Success' || res.status === 'Partial Success') {
+        setUploadResult({ 
+          type: 'success', 
+          title: 'Upload Successful', 
+          message: `Processed: ${res.totalProcessed}, Success: ${res.successful}`, 
+          details: res.errors ? JSON.stringify(res.errors, null, 2) : 'All records processed successfully.'
+        });
+        loadFacultyData();
+      } else {
+        setUploadResult({ type: 'error', title: 'Upload Failed', message: res.message });
+      }
     } catch (err) {
       console.error(err);
       setUploadResult({ type: 'error', title: 'Batch Upload Failed', message: err.message });
@@ -223,29 +311,97 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
     const errors = validationErrors[sectionName]?.[index] || {};
     if (errors.midterm || errors.finals) return;
     setRowSaveState(prev => ({ ...prev, [sectionName]: { ...(prev[sectionName] || {}), [index]: 'saving' } }));
-    setTimeout(() => {
-      setRowSaveState(prev => ({ ...prev, [sectionName]: { ...(prev[sectionName] || {}), [index]: 'saved' } }));
-    }, 800);
+    
+    try {
+      const student = sections[sectionName].students[index];
+      const sectionData = sections[sectionName];
+      const gradePayload = {
+          StudentId: student.id,
+          StudentHash: student.email || student.id,
+          Section: String(sectionData.subjectCode).split('-').pop() || "1",
+          Course: sectionData.sectionCourse,
+          SubjectCode: sectionData.subjectCode,
+          Grade: JSON.stringify({ midterm: student.midterm, finals: student.finals, finalAverage: calculatePLVPoint(student).toFixed(2) }),
+          Semester: "2nd Semester",
+          SchoolYear: "2024",
+          FacultyId: facultyData.email,
+          Date: new Date().toISOString().split('T')[0]
+      };
+      
+      issueGrade(gradePayload).then(() => {
+        setRowSaveState(prev => ({ ...prev, [sectionName]: { ...(prev[sectionName] || {}), [index]: 'saved' } }));
+      }).catch((e) => {
+        console.error(e);
+        alert("Failed to save grade: " + e.message);
+        setRowSaveState(prev => ({ ...prev, [sectionName]: { ...(prev[sectionName] || {}), [index]: 'idle' } }));
+      });
+    } catch(e) {
+      console.error(e);
+      setRowSaveState(prev => ({ ...prev, [sectionName]: { ...(prev[sectionName] || {}), [index]: 'idle' } }));
+    }
   };
 
-  const handleSaveAll = (sectionName) => {
+  const handleSaveAll = async (sectionName) => {
     const students = sections[sectionName].students;
     const saving = {};
     students.forEach((_, i) => { saving[i] = 'saving'; });
     setRowSaveState(prev => ({ ...prev, [sectionName]: saving }));
-    setTimeout(() => {
+    
+    try {
+      const sectionData = sections[sectionName];
+      const promises = students.map(student => {
+          const gradePayload = {
+              StudentId: student.id,
+              StudentHash: student.email || student.id,
+              Section: String(sectionData.subjectCode).split('-').pop() || "1",
+              Course: sectionData.sectionCourse,
+              SubjectCode: sectionData.subjectCode,
+              Grade: JSON.stringify({ midterm: student.midterm, finals: student.finals, finalAverage: calculatePLVPoint(student).toFixed(2) }),
+              Semester: "2nd Semester",
+              SchoolYear: "2024",
+              FacultyId: facultyData.email,
+              Date: new Date().toISOString().split('T')[0]
+          };
+          return issueGrade(gradePayload);
+      });
+      
+      await Promise.all(promises);
+      
       const saved = {};
       students.forEach((_, i) => { saved[i] = 'saved'; });
       setRowSaveState(prev => ({ ...prev, [sectionName]: saved }));
       setSectionStatus(prev => ({ ...prev, [sectionName]: 'draft' }));
-    }, 1000);
+    } catch (error) {
+      console.error(error);
+      alert(`Failed to save all grades: ${error.message}`);
+      const idle = {};
+      students.forEach((_, i) => { idle[i] = 'idle'; });
+      setRowSaveState(prev => ({ ...prev, [sectionName]: idle }));
+    }
   };
 
-  const handleSubmit = (sectionName) => {
-    handleSaveAll(sectionName);
-    setTimeout(() => {
-      setSectionStatus(prev => ({ ...prev, [sectionName]: 'submitted' }));
-    }, 1200);
+  const handleSubmit = async (sectionName) => {
+    const students = sections[sectionName].students;
+    const hasIncomplete = students.some(s => (parseFloat(s.midterm) || 0) === 0 || (parseFloat(s.finals) || 0) === 0);
+    
+    if (hasIncomplete) {
+      alert("Submission Blocked: All students in the section must have both Midterm and Final grades encoded before submitting to the Chairperson.");
+      return;
+    }
+
+    try {
+      await handleSaveAll(sectionName);
+      
+      const token = localStorage.getItem('token');
+      const res = await fetch(`/api/Grades/submit-section?department=${encodeURIComponent(sections[sectionName].sectionCourse)}&section=${encodeURIComponent(sectionName)}`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await res.json();
+      
+      if (res.ok) setSectionStatus(prev => ({ ...prev, [sectionName]: 'submitted' }));
+      else alert(data.message || "Failed to submit section.");
+    } catch (e) { alert("Error submitting section: " + e.message); }
   };
 
   const handleFinalize = (sectionName) => {
@@ -269,10 +425,10 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
       <div className="mx-auto max-w-7xl">
         {bannerState === 'closed_after' && (
           <div className="mx-6 mt-5 flex items-center gap-4 rounded-xl border-l-4 border-red-500 bg-red-50 p-4 text-red-900 shadow-sm">
-            <div className="text-2xl">🔒</div>
+            <div className="text-2xl">LOCKED</div>
             <div>
               <strong className="block text-lg">Grade Encoding Period is currently Closed</strong>
-              <p className="mt-1 text-sm">The encoding deadline has passed as of <strong>{formatDate(ENCODING_END)}</strong>. Contact or visit the Registrar's Office for any concerns.</p>
+              <p className="mt-1 text-sm">The encoding deadline has passed as of <strong>{formatDate(encodingEnd)}</strong>. Contact or visit the Registrar's Office for any concerns.</p>
             </div>
           </div>
         )}
@@ -281,7 +437,7 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
           <div className="mx-6 mt-5 flex items-center gap-4 rounded-xl border-l-4 border-slate-500 bg-slate-50 p-4 text-slate-800 shadow-sm">
             <div>
               <strong className="block text-lg">Grade Encoding Period has not started yet</strong>
-              <p className="mt-1 text-sm">Encoding opens on <strong>{formatDate(ENCODING_START)}</strong>. Please check back then.</p>
+              <p className="mt-1 text-sm">Encoding opens on <strong>{formatDate(encodingStart)}</strong>. Please check back then.</p>
             </div>
           </div>
         )}
@@ -290,7 +446,7 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
           <div className="mx-6 mt-5 flex items-center gap-4 rounded-xl border-l-4 border-green-500 bg-green-50 p-4 text-green-900 shadow-sm">
             <div>
               <strong className="block text-lg">Grade Encoding Period is Open!</strong>
-              <p className="mt-1 text-sm">Finalize your section grades and upload to the Registrar by <strong>{formatDate(ENCODING_END)}</strong></p>
+              <p className="mt-1 text-sm">Finalize your section grades and upload to the Registrar by <strong>{formatDate(encodingEnd)}</strong></p>
             </div>
           </div>
         )}
@@ -299,7 +455,7 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
           <div className="mx-6 mt-5 flex items-center gap-4 rounded-xl border-l-4 border-yellow-500 bg-yellow-50 p-4 text-yellow-900 shadow-sm">
             <div>
               <strong className="block text-lg">Encoding Deadline in {daysLeft} {daysLeft === 1 ? 'Day' : 'Days'}!</strong>
-              <p className="mt-1 text-sm">You have <strong>{daysLeft} {daysLeft === 1 ? 'day' : 'days'}</strong> left to submit grades before the deadline on <strong>{formatDate(ENCODING_END)}</strong>. Please upload immediately.</p>
+              <p className="mt-1 text-sm">You have <strong>{daysLeft} {daysLeft === 1 ? 'day' : 'days'}</strong> left to submit grades before the deadline on <strong>{formatDate(encodingEnd)}</strong>. Please upload immediately.</p>
             </div>
           </div>
         )}
@@ -310,7 +466,7 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
 
           <div className="relative max-w-md my-6">
             <input type="text" placeholder="Search for a section..." className="w-full rounded-xl border border-slate-300 py-3 pl-10 pr-4 outline-none focus:border-[#003366] focus:ring-2 focus:ring-[#003366]/20" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">🔍</span>
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">SEARCH</span>
           </div>
 
           <h2 className="mb-4 text-2xl font-bold text-[#003366]">{searchQuery ? `Results for "${searchQuery}"` : `${activeTab}`}</h2>
@@ -343,6 +499,8 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
                     reviewStatus={secStatus === 'finalized' ? 'forwarded' : secStatus === 'submitted' ? 'submitted' : 'pending'}
                     onSubmit={() => handleSubmit(sectionName)}
                     onUpload={(e) => handleFileUpload(sectionName, e)}
+                    isUploading={uploadingSection === sectionName}
+                    isClosed={isClosed}
                   />
                 );
               })
@@ -352,7 +510,7 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
       ) : (
         <div className="animate-in fade-in duration-300 px-6 py-6">
           <button className="mb-6 flex items-center gap-2 text-sm font-bold text-[#003366] hover:underline" onClick={() => setActiveSection(null)}>
-            ← Back to Sections
+            Back to Sections
           </button>
 
           <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
@@ -366,21 +524,40 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
                     currentStatus === 'submitted' ? 'bg-blue-100 text-blue-800' :
                     'bg-green-100 text-green-800'
                   }`}>
-                    {currentStatus === 'draft' ? 'Draft Saved' : currentStatus === 'submitted' ? 'Submitted' : 'Finalized 🔒'}
+                    {currentStatus === 'draft' ? 'Draft Saved' : currentStatus === 'submitted' ? 'Submitted' : 'Finalized'}
                   </span>
                 )}
               </div>
               <div className="flex flex-wrap items-center gap-3">
                 {!isFinalized && (
                   <>
-                    <button className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-50" onClick={() => handleSaveAll(activeSection)} disabled={hasValidationErrors(activeSection)}>
+                    <div className="relative overflow-hidden">
+                      <input
+                        type="file"
+                        accept=".csv, .xlsx"
+                        className="absolute inset-0 z-10 h-full w-full cursor-pointer opacity-0"
+                        onChange={(e) => handleFileUpload(activeSection, e)}
+                        disabled={uploadingSection === activeSection || isClosed}
+                      />
+                      <button className="rounded-lg bg-yellow-400 px-4 py-2.5 text-sm font-bold text-[#003366] transition hover:bg-yellow-500 disabled:opacity-50" disabled={uploadingSection === activeSection || isClosed}>
+                        {uploadingSection === activeSection ? 'Upload' : 'Bulk Upload'}
+                      </button>
+                    </div>
+
+                    <button onClick={() => handleExportClassGrades(activeSection)} className="rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm font-bold text-slate-700 transition hover:bg-slate-50">
+                      Export CSV
+                    </button>
+                    <button onClick={() => handleExportPDFClassGrades(activeSection)} className="rounded-lg border border-emerald-600 bg-white px-4 py-2.5 text-sm font-bold text-emerald-700 transition hover:bg-emerald-50">
+                      Export PDF
+                    </button>
+                    <button className="rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-blue-700 disabled:opacity-50" onClick={() => handleSaveAll(activeSection)} disabled={hasValidationErrors(activeSection) || isClosed}>
                        Save All (Draft)
                     </button>
-                    <button className="rounded-xl bg-[#003366] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#002244] disabled:opacity-50" onClick={() => handleSubmit(activeSection)} disabled={hasValidationErrors(activeSection)}>
-                       Submit Grades
+                    <button className="rounded-lg bg-[#003366] px-5 py-2.5 text-sm font-bold text-white transition hover:bg-[#00264d] disabled:opacity-50" onClick={() => handleSubmit(activeSection)} disabled={hasValidationErrors(activeSection) || isClosed}>
+                       Submit to Chairperson
                     </button>
                     {currentStatus === 'submitted' && (
-                      <button className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700" onClick={() => handleFinalize(activeSection)}>
+                      <button className="rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-emerald-700" onClick={() => handleFinalize(activeSection)}>
                          Finalize & Lock
                       </button>
                     )}
@@ -423,7 +600,7 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
                           <div className="relative inline-block">
                             <input
                               className={`w-20 rounded-lg border p-2 text-center outline-none focus:ring-2 focus:ring-[#003366]/20 disabled:bg-slate-100 disabled:text-slate-500 ${errors.midterm ? 'border-red-500 bg-red-50' : 'border-slate-300'}`}
-                              type="number" min="60" max="100" value={stu.midterm || ''} disabled={isFinalized}
+                              type="number" min="60" max="100" value={stu.midterm || ''} disabled={isFinalized || isClosed}
                               onChange={e => handleGradeChange(activeSection, i, 'midterm', e.target.value)} placeholder="60-100"
                             />
                             {errors.midterm && <div className="absolute left-1/2 -translate-x-1/2 -bottom-5 whitespace-nowrap text-[10px] font-bold text-red-600">{errors.midterm}</div>}
@@ -433,13 +610,13 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
                           <div className="relative inline-block">
                             <input
                               className={`w-20 rounded-lg border p-2 text-center outline-none focus:ring-2 focus:ring-[#003366]/20 disabled:bg-slate-100 disabled:text-slate-500 ${errors.finals ? 'border-red-500 bg-red-50' : 'border-slate-300'}`}
-                              type="number" min="60" max="100" value={stu.finals || ''} disabled={isFinalized}
+                              type="number" min="60" max="100" value={stu.finals || ''} disabled={isFinalized || isClosed}
                               onChange={e => handleGradeChange(activeSection, i, 'finals', e.target.value)} placeholder="60-100"
                             />
                             {errors.finals && <div className="absolute left-1/2 -translate-x-1/2 -bottom-5 whitespace-nowrap text-[10px] font-bold text-red-600">{errors.finals}</div>}
                           </div>
                         </td>
-                        <td className="p-4 text-center font-bold text-[#003366]">{pt > 0 ? pt.toFixed(2) : '—'}</td>
+                        <td className="p-4 text-center text-lg font-bold text-[#003366]">{pt > 0 ? pt.toFixed(2) : '—'}</td>
                         <td className="p-4 text-center">
                           <span className={`inline-block rounded-full px-3 py-1 text-xs font-bold ${
                               stu.remarks === 'Passed' ? 'bg-green-100 text-green-700' :
@@ -455,13 +632,13 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
                             <div className="flex items-center justify-center gap-2">
                               <button
                                 className="rounded-lg border border-slate-300 bg-slate-50 px-3 py-1 text-lg hover:bg-blue-50 hover:border-blue-300 disabled:opacity-50"
-                                onClick={() => handleSaveRow(activeSection, i)} disabled={hasError || rowState === 'saving'} title="Save Row"
+                                onClick={() => handleSaveRow(activeSection, i)} disabled={hasError || rowState === 'saving' || isClosed} title="Save Row"
                               >
-                                {rowState === 'saving' ? '⏳' : '💾'}
+                                {rowState === 'saving' ? 'Loading..' : 'Upload'}
                               </button>
                             </div>
                           ) : (
-                            <span className="text-xs font-bold text-slate-500">🔒 Locked</span>
+                            <span className="text-xs font-bold text-slate-500">Locked</span>
                           )}
                         </td>
                       </tr>

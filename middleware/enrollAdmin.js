@@ -209,16 +209,16 @@ async function bootstrapMockStudents(wallet) {
     const adminUser = await provider.getUserContext(adminIdentity, 'admin');
 
     const mockData = [
-        { email: 'mock.student1@plv.edu.ph', pass: '05/15/2005' },
-        { email: 'mock.student2@plv.edu.ph', pass: '06/20/2004' },
-        { email: 'mock.student3@plv.edu.ph', pass: '03/10/2005' },
-        { email: 'mock.student4@plv.edu.ph', pass: '11/25/2003' },
-        { email: 'mock.student5@plv.edu.ph', pass: '08/05/2004' },
-        { email: 'mock.student6@plv.edu.ph', pass: '01/12/2005' },
-        { email: 'mock.student7@plv.edu.ph', pass: '07/30/2003' },
-        { email: 'mock.student8@plv.edu.ph', pass: '04/18/2004' },
-        { email: 'mock.student9@plv.edu.ph', pass: '12/22/2005' },
-        { email: 'mock.student10@plv.edu.ph', pass: '09/08/2003' }
+        { email: 'mock-student1@plv.edu.ph', pass: 'mock-student1' },
+        { email: 'mock-student2@plv.edu.ph', pass: 'mock-student2' },
+        { email: 'mock-student3@plv.edu.ph', pass: 'mock-student3' },
+        { email: 'mock-student4@plv.edu.ph', pass: 'mock-student4' },
+        { email: 'mock-student5@plv.edu.ph', pass: 'mock-student5' },
+        { email: 'mock-student6@plv.edu.ph', pass: 'mock-student6' },
+        { email: 'mock-student7@plv.edu.ph', pass: 'mock-student7' },
+        { email: 'mock-student8@plv.edu.ph', pass: 'mock-student8' },
+        { email: 'mock-student9@plv.edu.ph', pass: 'mock-student9' },
+        { email: 'mock-student10@plv.edu.ph', pass: 'mock-student10' }
     ];
 
     for (const student of mockData) {
@@ -256,21 +256,35 @@ async function bootstrapMockStudents(wallet) {
 }
 
 async function main() {
-    console.log('--- Running CA Admin Enrollment Script ---');
+    console.log('--- Running Decentralized CA Admin Enrollment Script ---');
     try {
-        const wallet = await getWallet();
-        const enrollSecret = process.env.BOOTSTRAP_REGISTRAR_PASS || 'adminpw';
+        const caAdminSecret = process.env.CA_ADMIN_PASS || 'adminpw';
+        
+        // 1. Registrar Wallet & Admin
+        const walletRegistrar = await getWallet('registrar');
         const caRegistrar = new FabricCAServices('https://localhost:7054', { tlsCACerts: [], verify: false }, 'ca-registrar');
-        await enrollCAAdmin(caRegistrar, wallet, 'RegistrarMSP', 'admin', enrollSecret, 'admin-registrar');
+        await enrollCAAdmin(caRegistrar, walletRegistrar, 'RegistrarMSP', 'admin', caAdminSecret, 'admin-registrar');
+        
+        // 2. Faculty Wallet & Admin
+        const walletFaculty = await getWallet('faculty');
         const caFaculty = new FabricCAServices('https://localhost:8054', { tlsCACerts: [], verify: false }, 'ca-faculty');
-        await enrollCAAdmin(caFaculty, wallet, 'FacultyMSP', 'admin', enrollSecret, 'admin-faculty');
+        await enrollCAAdmin(caFaculty, walletFaculty, 'FacultyMSP', 'admin', caAdminSecret, 'admin-faculty');
+        
+        // 3. Department Wallet & Admin
+        const walletDept = await getWallet('department');
         const caDepartment = new FabricCAServices('https://localhost:9054', { tlsCACerts: [], verify: false }, 'ca-department');
-        await enrollCAAdmin(caDepartment, wallet, 'DepartmentMSP', 'admin', enrollSecret, 'admin-department');
-        await bootstrapRootUser(wallet);
-        await bootstrapMockStudents(wallet);
+        await enrollCAAdmin(caDepartment, walletDept, 'DepartmentMSP', 'admin', caAdminSecret, 'admin-department');
+
+        await bootstrapRootUser(walletRegistrar);
+        await bootstrapMockStudents(walletRegistrar);
 
     } catch (error) {
         console.error(`\nEnrollment script failed: ${error}`);
+        process.exit(1);
+    }
+    console.log('\n--- Enrollment Script Finished ---');
+}
+main();ollment script failed: ${error}`);
         process.exit(1);
     }
     console.log('\n--- Enrollment Script Finished ---');
