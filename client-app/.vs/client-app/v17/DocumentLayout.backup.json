@@ -1,0 +1,122 @@
+{
+  "Version": 1,
+  "WorkspaceRootPath": "C:\\Users\\Carmela\\Documents\\GitHub\\Capstone-Project-\\For_Testing_Only_Capstone\\client-app\\",
+  "Documents": [
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\Carmela\\Documents\\GitHub\\Capstone-Project-\\For_Testing_Only_Capstone\\client-app\\Program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:Program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\Carmela\\Documents\\GitHub\\Capstone-Project-\\For_Testing_Only_Capstone\\client-app\\Controllers\\GradeController.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:Controllers\\GradeController.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\Carmela\\Documents\\GitHub\\Capstone-Project-\\For_Testing_Only_Capstone\\client-app\\Models\\GradeRequest.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:Models\\GradeRequest.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\Carmela\\Documents\\GitHub\\Capstone-Project-\\For_Testing_Only_Capstone\\client-app\\Services\\BlockchainService.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:Services\\BlockchainService.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\Carmela\\Documents\\GitHub\\Capstone-Project-\\For_Testing_Only_Capstone\\client-app\\Services\\IBlockchainService.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:Services\\IBlockchainService.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\Carmela\\Documents\\GitHub\\Capstone-Project-\\For_Testing_Only_Capstone\\client-app\\app.py||{3B902123-F8A7-4915-9F01-361F908088D0}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:app.py||{3B902123-F8A7-4915-9F01-361F908088D0}"
+    }
+  ],
+  "DocumentGroupContainers": [
+    {
+      "Orientation": 0,
+      "VerticalTabListWidth": 256,
+      "DocumentGroups": [
+        {
+          "DockedWidth": 200,
+          "SelectedChildIndex": 1,
+          "Children": [
+            {
+              "$type": "Document",
+              "DocumentIndex": 4,
+              "Title": "IBlockchainService.cs",
+              "DocumentMoniker": "C:\\Users\\Carmela\\Documents\\GitHub\\Capstone-Project-\\For_Testing_Only_Capstone\\client-app\\Services\\IBlockchainService.cs",
+              "RelativeDocumentMoniker": "Services\\IBlockchainService.cs",
+              "ToolTip": "C:\\Users\\Carmela\\Documents\\GitHub\\Capstone-Project-\\For_Testing_Only_Capstone\\client-app\\Services\\IBlockchainService.cs",
+              "RelativeToolTip": "Services\\IBlockchainService.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAkAAAABAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-02-20T09:46:31.686Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "Program.cs",
+              "DocumentMoniker": "C:\\Users\\Carmela\\Documents\\GitHub\\Capstone-Project-\\For_Testing_Only_Capstone\\client-app\\Program.cs",
+              "RelativeDocumentMoniker": "Program.cs",
+              "ToolTip": "C:\\Users\\Carmela\\Documents\\GitHub\\Capstone-Project-\\For_Testing_Only_Capstone\\client-app\\Program.cs",
+              "RelativeToolTip": "Program.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAgAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-02-20T09:44:05.827Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 3,
+              "Title": "BlockchainService.cs",
+              "DocumentMoniker": "C:\\Users\\Carmela\\Documents\\GitHub\\Capstone-Project-\\For_Testing_Only_Capstone\\client-app\\Services\\BlockchainService.cs",
+              "RelativeDocumentMoniker": "Services\\BlockchainService.cs",
+              "ToolTip": "C:\\Users\\Carmela\\Documents\\GitHub\\Capstone-Project-\\For_Testing_Only_Capstone\\client-app\\Services\\BlockchainService.cs",
+              "RelativeToolTip": "Services\\BlockchainService.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABkAAAABAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-02-20T09:43:12.189Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 2,
+              "Title": "GradeRequest.cs",
+              "DocumentMoniker": "C:\\Users\\Carmela\\Documents\\GitHub\\Capstone-Project-\\For_Testing_Only_Capstone\\client-app\\Models\\GradeRequest.cs",
+              "RelativeDocumentMoniker": "Models\\GradeRequest.cs",
+              "ToolTip": "C:\\Users\\Carmela\\Documents\\GitHub\\Capstone-Project-\\For_Testing_Only_Capstone\\client-app\\Models\\GradeRequest.cs",
+              "RelativeToolTip": "Models\\GradeRequest.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABAAAAAvAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-02-20T09:42:27.528Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 1,
+              "Title": "GradeController.cs",
+              "DocumentMoniker": "C:\\Users\\Carmela\\Documents\\GitHub\\Capstone-Project-\\For_Testing_Only_Capstone\\client-app\\Controllers\\GradeController.cs",
+              "RelativeDocumentMoniker": "Controllers\\GradeController.cs",
+              "ToolTip": "C:\\Users\\Carmela\\Documents\\GitHub\\Capstone-Project-\\For_Testing_Only_Capstone\\client-app\\Controllers\\GradeController.cs",
+              "RelativeToolTip": "Controllers\\GradeController.cs",
+              "ViewState": "AgIAAAsAAAAAAAAAAAAiwBsAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-02-20T09:41:43.607Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 5,
+              "Title": "app.py",
+              "DocumentMoniker": "C:\\Users\\Carmela\\Documents\\GitHub\\Capstone-Project-\\For_Testing_Only_Capstone\\client-app\\app.py",
+              "RelativeDocumentMoniker": "app.py",
+              "ToolTip": "C:\\Users\\Carmela\\Documents\\GitHub\\Capstone-Project-\\For_Testing_Only_Capstone\\client-app\\app.py",
+              "RelativeToolTip": "app.py",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.002457|",
+              "WhenOpened": "2026-02-20T09:40:50.382Z",
+              "EditorCaption": ""
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

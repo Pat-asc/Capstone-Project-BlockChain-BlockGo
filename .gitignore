@@ -1,0 +1,83 @@
+# =========================
+# GLOBAL OS & IDE TEMP FILES
+# =========================
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+*.swp
+*.swo
+*~
+.idea/
+.vscode/
+*.user
+*.suo
+.project
+.classpath
+.c9/
+tmp/
+temp/
+.cache/
+*.cache
+*.cache.json
+
+# =========================
+# GLOBAL DEPENDENCIES & BUILD
+# =========================
+node_modules/
+**/node_modules/
+*.dll
+*.exe
+*.pdb
+.venv/
+venv/
+ENV/
+__pycache__/
+*.pyc
+.Python
+
+# =========================
+# GLOBAL SECRETS & LOGS
+# =========================
+.env
+.env.*
+*.bak
+appsettings.*.json
+.fake
+
+# =========================
+# GLOBAL DATABASES
+# =========================
+*.db
+*.sqlite
+*.sqlite3
+*.mdb
+
+# =========================
+# DOCKER & DEPLOYMENT
+# =========================
+docker-compose.override.yml
+# =========================
+# BLOCKCHAIN NETWORK SPECIFIC
+# =========================
+fabric_deploy_*/
+network/postgres-data/
+network/ipfs/
+
+# Dynamic Chaincode Env
+chaincode/.env
+
+# Ignore Cryptogen materials but KEEP directories
+!network/crypto-config-final-v2/.gitkeep
+
+# Ignore Artifacts but KEEP directory
+!network/channel-artifacts-final/.gitkeep
+
+# Ignore Binaries but KEEP directory
+!network/bin/.gitkeep
+
+# Fabric CA generated keys and databases

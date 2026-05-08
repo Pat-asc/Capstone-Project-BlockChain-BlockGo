@@ -1,0 +1,44 @@
+peer:
+  # This file provides settings that are common to all peers.
+  # Peer-specific settings (id, address, localMspId, and all TLS paths)
+  # are correctly defined via environment variables in the docker-compose.yaml file.
+  # By removing the hardcoded paths from this file, we allow the environment
+  # variables to properly configure each peer, which fixes the TLS handshake
+  # and identity validation errors.
+  #
+  # The only settings retained here are for CCaaS and the Docker VM network mode,
+  # which are common across all peers in this deployment.
+  tls:
+    enabled: true
+    clientAuthRequired: false
+  chaincodeListenAddress: 0.0.0.0:7052
+  chaincodeAddress: 0.0.0.0:7052
+  
+  # BCCSP (Blockchain crypto provider)
+  BCCSP:
+    Default: SW
+    SW:
+      Hash: SHA2
+      Security: 256
+      # The FileKeyStore is intentionally left blank.
+      # The peer will default to using the 'keystore' directory
+      # inside the CORE_PEER_MSPCONFIGPATH, which is correct.
+      FileKeyStore:
+        KeyStore:
+
+vm:
+  endpoint: unix:///var/run/docker.sock
+  docker:
+    hostConfig:
+      NetworkMode: registrar-net
+
+chaincode:
+  externalBuilders:
+    - path: /opt/hyperledger/ccaas_builder
+      name: ccaas_builder
+      propagateEnvironment:
+        - CHAINCODE_AS_A_SERVICE_BUILDER_CONFIG
+    - path: /etc/hyperledger/fabric/builders/ccaas
+      name: ccaas_builder_fallback
+      propagateEnvironment:
+        - CHAINCODE_AS_A_SERVICE_BUILDER_CONFIG

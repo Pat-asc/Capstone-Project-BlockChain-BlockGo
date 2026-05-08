@@ -1,0 +1,438 @@
+2026-04-20 00:15:55.292 +08:00 [INF] Application starting up...
+2026-04-20 00:15:55.662 +08:00 [INF] HSTS enabled (HTTPS Redirection disabled for Nginx)
+2026-04-20 00:15:55.739 +08:00 [INF] Application configured successfully
+2026-04-20 00:15:55.740 +08:00 [INF] Listening on 
+2026-04-20 00:15:55.809 +08:00 [INF] Now listening on: http://0.0.0.0:5000
+2026-04-20 00:15:55.812 +08:00 [INF] Application started. Press Ctrl+C to shut down.
+2026-04-20 00:15:55.812 +08:00 [INF] Hosting environment: Production
+2026-04-20 00:15:55.813 +08:00 [INF] Content root path: /mnt/c/Users/pascu/Documents/GitHub2/GitHub/Capstone-Project-/For_Testing_Only_Capstone/client-app
+2026-04-20 00:19:00.844 +08:00 [INF] Application is shutting down...
+2026-04-20 00:45:37.320 +08:00 [INF] Application starting up...
+2026-04-20 00:45:37.764 +08:00 [INF] HSTS enabled (HTTPS Redirection disabled for Nginx)
+2026-04-20 00:45:37.863 +08:00 [INF] Application configured successfully
+2026-04-20 00:45:37.864 +08:00 [INF] Listening on 
+2026-04-20 00:45:37.962 +08:00 [INF] Now listening on: http://0.0.0.0:5000
+2026-04-20 00:45:37.967 +08:00 [INF] Application started. Press Ctrl+C to shut down.
+2026-04-20 00:45:37.968 +08:00 [INF] Hosting environment: Production
+2026-04-20 00:45:37.969 +08:00 [INF] Content root path: /mnt/c/Users/pascu/Documents/GitHub2/GitHub/Capstone-Project-/For_Testing_Only_Capstone/client-app
+2026-04-20 00:49:47.850 +08:00 [INF] Application is shutting down...
+2026-04-20 00:58:55.421 +08:00 [INF] Application starting up...
+2026-04-20 00:58:55.752 +08:00 [INF] HSTS enabled (HTTPS Redirection disabled for Nginx)
+2026-04-20 00:58:55.865 +08:00 [INF] Application configured successfully
+2026-04-20 00:58:55.867 +08:00 [INF] Listening on 
+2026-04-20 00:58:55.934 +08:00 [INF] Now listening on: http://0.0.0.0:5000
+2026-04-20 00:58:55.937 +08:00 [INF] Application started. Press Ctrl+C to shut down.
+2026-04-20 00:58:55.938 +08:00 [INF] Hosting environment: Production
+2026-04-20 00:58:55.938 +08:00 [INF] Content root path: /mnt/c/Users/pascu/Documents/GitHub2/GitHub/Capstone-Project-/For_Testing_Only_Capstone/client-app
+2026-04-20 01:01:15.799 +08:00 [INF] Request starting HTTP/1.0 GET http://client_app_backend/api/Auth/user-profile?email=registrar%40plv.edu.ph&role=registrar - application/json null
+2026-04-20 01:01:15.899 +08:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone)'
+2026-04-20 01:01:15.927 +08:00 [INF] Route matched with {action = "GetUserProfile", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetUserProfile(System.String, System.String) on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-20 01:01:17.903 +08:00 [INF] Executing ObjectResult, writing value of type '<>f__AnonymousType0`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-20 01:01:17.928 +08:00 [INF] Executed action Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone) in 1996.2929ms
+2026-04-20 01:01:17.932 +08:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone)'
+2026-04-20 01:01:17.940 +08:00 [ERR] HTTP GET /api/Auth/user-profile responded 500 in 2071.1259 ms
+2026-04-20 01:01:17.952 +08:00 [INF] Request finished HTTP/1.0 GET http://client_app_backend/api/Auth/user-profile?email=registrar%40plv.edu.ph&role=registrar - 500 null application/json; charset=utf-8 2154.9929ms
+2026-04-20 01:01:20.078 +08:00 [INF] Request starting HTTP/1.0 GET http://client_app_backend/api/Auth/user-profile?email=registrar%40plv.edu.ph&role=registrar - application/json null
+2026-04-20 01:01:20.082 +08:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone)'
+2026-04-20 01:01:20.083 +08:00 [INF] Route matched with {action = "GetUserProfile", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetUserProfile(System.String, System.String) on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-20 01:01:20.130 +08:00 [INF] Executing ObjectResult, writing value of type '<>f__AnonymousType0`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-20 01:01:20.132 +08:00 [INF] Executed action Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone) in 48.4153ms
+2026-04-20 01:01:20.133 +08:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone)'
+2026-04-20 01:01:20.133 +08:00 [ERR] HTTP GET /api/Auth/user-profile responded 500 in 52.5086 ms
+2026-04-20 01:01:20.134 +08:00 [INF] Request finished HTTP/1.0 GET http://client_app_backend/api/Auth/user-profile?email=registrar%40plv.edu.ph&role=registrar - 500 null application/json; charset=utf-8 56.1472ms
+2026-04-20 01:01:20.874 +08:00 [INF] Request starting HTTP/1.0 GET http://client_app_backend/api/Auth/user-profile?email=registrar%40plv.edu.ph&role=registrar - application/json null
+2026-04-20 01:01:20.877 +08:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone)'
+2026-04-20 01:01:20.878 +08:00 [INF] Route matched with {action = "GetUserProfile", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetUserProfile(System.String, System.String) on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-20 01:01:20.884 +08:00 [INF] Executing ObjectResult, writing value of type '<>f__AnonymousType0`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-20 01:01:20.885 +08:00 [INF] Executed action Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone) in 6.8193ms
+2026-04-20 01:01:20.886 +08:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone)'
+2026-04-20 01:01:20.886 +08:00 [ERR] HTTP GET /api/Auth/user-profile responded 500 in 10.6488 ms
+2026-04-20 01:01:20.887 +08:00 [INF] Request finished HTTP/1.0 GET http://client_app_backend/api/Auth/user-profile?email=registrar%40plv.edu.ph&role=registrar - 500 null application/json; charset=utf-8 13.4584ms
+2026-04-20 01:01:31.494 +08:00 [INF] Request starting HTTP/1.0 GET http://client_app_backend/api/Auth/user-profile?email=registrar%40plv.edu.ph&role=registrar - application/json null
+2026-04-20 01:01:31.496 +08:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone)'
+2026-04-20 01:01:31.497 +08:00 [INF] Route matched with {action = "GetUserProfile", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetUserProfile(System.String, System.String) on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-20 01:01:31.500 +08:00 [INF] Executing ObjectResult, writing value of type '<>f__AnonymousType0`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-20 01:01:31.501 +08:00 [INF] Executed action Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone) in 3.6595ms
+2026-04-20 01:01:31.502 +08:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone)'
+2026-04-20 01:01:31.503 +08:00 [ERR] HTTP GET /api/Auth/user-profile responded 500 in 7.6766 ms
+2026-04-20 01:01:31.504 +08:00 [INF] Request finished HTTP/1.0 GET http://client_app_backend/api/Auth/user-profile?email=registrar%40plv.edu.ph&role=registrar - 500 null application/json; charset=utf-8 10.0371ms
+2026-04-20 01:01:34.520 +08:00 [INF] Request starting HTTP/1.0 GET http://client_app_backend/api/Auth/user-profile?email=registrar%40plv.edu.ph&role=registrar - application/json null
+2026-04-20 01:01:34.524 +08:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone)'
+2026-04-20 01:01:34.525 +08:00 [INF] Route matched with {action = "GetUserProfile", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetUserProfile(System.String, System.String) on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-20 01:01:34.527 +08:00 [INF] Executing ObjectResult, writing value of type '<>f__AnonymousType0`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-20 01:01:34.527 +08:00 [INF] Executed action Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone) in 2.1387ms
+2026-04-20 01:01:34.528 +08:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone)'
+2026-04-20 01:01:34.529 +08:00 [ERR] HTTP GET /api/Auth/user-profile responded 500 in 4.7819 ms
+2026-04-20 01:01:34.530 +08:00 [INF] Request finished HTTP/1.0 GET http://client_app_backend/api/Auth/user-profile?email=registrar%40plv.edu.ph&role=registrar - 500 null application/json; charset=utf-8 9.1737ms
+2026-04-20 01:01:40.490 +08:00 [INF] Request starting HTTP/1.0 GET http://client_app_backend/api/Auth/user-profile?email=registrar%40plv.edu.ph&role=registrar - application/json null
+2026-04-20 01:01:40.496 +08:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone)'
+2026-04-20 01:01:40.498 +08:00 [INF] Route matched with {action = "GetUserProfile", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetUserProfile(System.String, System.String) on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-20 01:01:40.502 +08:00 [INF] Executing ObjectResult, writing value of type '<>f__AnonymousType0`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-20 01:01:40.503 +08:00 [INF] Executed action Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone) in 3.6681ms
+2026-04-20 01:01:40.503 +08:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone)'
+2026-04-20 01:01:40.504 +08:00 [ERR] HTTP GET /api/Auth/user-profile responded 500 in 8.1735 ms
+2026-04-20 01:01:40.505 +08:00 [INF] Request finished HTTP/1.0 GET http://client_app_backend/api/Auth/user-profile?email=registrar%40plv.edu.ph&role=registrar - 500 null application/json; charset=utf-8 14.9184ms
+2026-04-20 01:01:45.363 +08:00 [INF] Request starting HTTP/1.0 GET http://client_app_backend/api/Auth/user-profile?email=registrar%40plv.edu.ph&role=registrar - application/json null
+2026-04-20 01:01:45.364 +08:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone)'
+2026-04-20 01:01:45.365 +08:00 [INF] Route matched with {action = "GetUserProfile", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetUserProfile(System.String, System.String) on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-20 01:01:45.367 +08:00 [INF] Executing ObjectResult, writing value of type '<>f__AnonymousType0`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-20 01:01:45.368 +08:00 [INF] Executed action Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone) in 2.6956ms
+2026-04-20 01:01:45.369 +08:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone)'
+2026-04-20 01:01:45.369 +08:00 [ERR] HTTP GET /api/Auth/user-profile responded 500 in 5.2243 ms
+2026-04-20 01:01:45.370 +08:00 [INF] Request finished HTTP/1.0 GET http://client_app_backend/api/Auth/user-profile?email=registrar%40plv.edu.ph&role=registrar - 500 null application/json; charset=utf-8 6.8234ms
+2026-04-20 01:01:49.451 +08:00 [INF] Request starting HTTP/1.0 GET http://client_app_backend/api/Auth/user-profile?email=registrar%40plv.edu.ph&role=registrar - null null
+2026-04-20 01:01:49.452 +08:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone)'
+2026-04-20 01:01:49.452 +08:00 [INF] Route matched with {action = "GetUserProfile", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetUserProfile(System.String, System.String) on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-20 01:01:49.463 +08:00 [INF] Executing ObjectResult, writing value of type '<>f__AnonymousType0`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-20 01:01:49.464 +08:00 [INF] Executed action Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone) in 11.1128ms
+2026-04-20 01:01:49.465 +08:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone)'
+2026-04-20 01:01:49.465 +08:00 [ERR] HTTP GET /api/Auth/user-profile responded 500 in 14.0562 ms
+2026-04-20 01:01:49.466 +08:00 [INF] Request finished HTTP/1.0 GET http://client_app_backend/api/Auth/user-profile?email=registrar%40plv.edu.ph&role=registrar - 500 null application/json; charset=utf-8 15.4062ms
+2026-04-20 01:02:23.810 +08:00 [INF] Request starting HTTP/1.0 POST http://client_app_backend/api/Auth/send-verification - application/json 39
+2026-04-20 01:02:23.814 +08:00 [INF] CORS policy execution successful.
+2026-04-20 01:02:23.816 +08:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.SendVerificationCode (For_Testing_Only_Capstone)'
+2026-04-20 01:02:23.821 +08:00 [INF] Route matched with {action = "SendVerificationCode", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] SendVerificationCode(Client_app.Models.VerificationRequest) on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-20 01:02:23.834 +08:00 [INF] Executing ObjectResult, writing value of type '<>f__AnonymousType0`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-20 01:02:23.836 +08:00 [INF] Executed action Client_app.Controllers.AuthController.SendVerificationCode (For_Testing_Only_Capstone) in 14.6921ms
+2026-04-20 01:02:23.837 +08:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.SendVerificationCode (For_Testing_Only_Capstone)'
+2026-04-20 01:02:23.838 +08:00 [ERR] HTTP POST /api/Auth/send-verification responded 500 in 25.4171 ms
+2026-04-20 01:02:23.838 +08:00 [INF] Request finished HTTP/1.0 POST http://client_app_backend/api/Auth/send-verification - 500 null application/json; charset=utf-8 28.0966ms
+2026-04-20 01:03:02.096 +08:00 [INF] Request starting HTTP/1.0 GET http://client_app_backend/api/Auth/user-profile?email=registrar%40plv.edu.ph&role=registrar - application/json null
+2026-04-20 01:03:02.098 +08:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone)'
+2026-04-20 01:03:02.099 +08:00 [INF] Route matched with {action = "GetUserProfile", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetUserProfile(System.String, System.String) on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-20 01:03:02.103 +08:00 [INF] Executing ObjectResult, writing value of type '<>f__AnonymousType0`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-20 01:03:02.109 +08:00 [INF] Executed action Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone) in 8.0717ms
+2026-04-20 01:03:02.109 +08:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone)'
+2026-04-20 01:03:02.110 +08:00 [ERR] HTTP GET /api/Auth/user-profile responded 500 in 12.3335 ms
+2026-04-20 01:03:02.110 +08:00 [INF] Request finished HTTP/1.0 GET http://client_app_backend/api/Auth/user-profile?email=registrar%40plv.edu.ph&role=registrar - 500 null application/json; charset=utf-8 14.4127ms
+2026-04-20 01:04:16.986 +08:00 [INF] Request starting HTTP/1.0 GET http://client_app_backend/api/Auth/user-profile?email=registrar%40plv.edu.ph&role=registrar - application/json null
+2026-04-20 01:04:16.987 +08:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone)'
+2026-04-20 01:04:16.988 +08:00 [INF] Route matched with {action = "GetUserProfile", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetUserProfile(System.String, System.String) on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-20 01:04:16.991 +08:00 [INF] Executing ObjectResult, writing value of type '<>f__AnonymousType0`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-20 01:04:16.992 +08:00 [INF] Executed action Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone) in 3.5798ms
+2026-04-20 01:04:16.993 +08:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone)'
+2026-04-20 01:04:16.994 +08:00 [ERR] HTTP GET /api/Auth/user-profile responded 500 in 7.3061 ms
+2026-04-20 01:04:16.994 +08:00 [INF] Request finished HTTP/1.0 GET http://client_app_backend/api/Auth/user-profile?email=registrar%40plv.edu.ph&role=registrar - 500 null application/json; charset=utf-8 8.8568ms
+2026-04-20 01:04:24.739 +08:00 [INF] Request starting HTTP/1.0 GET http://client_app_backend/api/Auth/user-profile?email=registrar%40plv.edu.ph&role=registrar - application/json null
+2026-04-20 01:04:24.740 +08:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone)'
+2026-04-20 01:04:24.741 +08:00 [INF] Route matched with {action = "GetUserProfile", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetUserProfile(System.String, System.String) on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-20 01:04:24.744 +08:00 [INF] Executing ObjectResult, writing value of type '<>f__AnonymousType0`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-20 01:04:24.746 +08:00 [INF] Executed action Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone) in 3.36ms
+2026-04-20 01:04:24.747 +08:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone)'
+2026-04-20 01:04:24.748 +08:00 [ERR] HTTP GET /api/Auth/user-profile responded 500 in 7.3510 ms
+2026-04-20 01:04:24.748 +08:00 [INF] Request finished HTTP/1.0 GET http://client_app_backend/api/Auth/user-profile?email=registrar%40plv.edu.ph&role=registrar - 500 null application/json; charset=utf-8 9.0366ms
+2026-04-20 01:06:00.338 +08:00 [INF] Request starting HTTP/1.0 GET http://client_app_backend/api/Auth/user-profile?email=registrar%40plv.edu.ph&role=registrar - application/json null
+2026-04-20 01:06:00.339 +08:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone)'
+2026-04-20 01:06:00.340 +08:00 [INF] Route matched with {action = "GetUserProfile", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetUserProfile(System.String, System.String) on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-20 01:06:00.342 +08:00 [INF] Executing ObjectResult, writing value of type '<>f__AnonymousType0`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-20 01:06:00.344 +08:00 [INF] Executed action Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone) in 3.2708ms
+2026-04-20 01:06:00.344 +08:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone)'
+2026-04-20 01:06:00.345 +08:00 [ERR] HTTP GET /api/Auth/user-profile responded 500 in 6.0244 ms
+2026-04-20 01:06:00.346 +08:00 [INF] Request finished HTTP/1.0 GET http://client_app_backend/api/Auth/user-profile?email=registrar%40plv.edu.ph&role=registrar - 500 null application/json; charset=utf-8 7.5138ms
+2026-04-20 01:06:03.265 +08:00 [INF] Request starting HTTP/1.0 GET http://client_app_backend/api/Auth/user-profile?email=registrar%40plv.edu.ph&role=registrar - application/json null
+2026-04-20 01:06:03.266 +08:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone)'
+2026-04-20 01:06:03.266 +08:00 [INF] Route matched with {action = "GetUserProfile", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetUserProfile(System.String, System.String) on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-20 01:06:03.268 +08:00 [INF] Executing ObjectResult, writing value of type '<>f__AnonymousType0`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-20 01:06:03.269 +08:00 [INF] Executed action Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone) in 2.275ms
+2026-04-20 01:06:03.270 +08:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone)'
+2026-04-20 01:06:03.270 +08:00 [ERR] HTTP GET /api/Auth/user-profile responded 500 in 4.6234 ms
+2026-04-20 01:06:03.271 +08:00 [INF] Request finished HTTP/1.0 GET http://client_app_backend/api/Auth/user-profile?email=registrar%40plv.edu.ph&role=registrar - 500 null application/json; charset=utf-8 5.7737ms
+2026-04-20 01:06:26.494 +08:00 [INF] Request starting HTTP/1.0 GET http://client_app_backend/api/Auth/user-profile?email=registrar%40plv.edu.ph&role=registrar - application/json null
+2026-04-20 01:06:26.495 +08:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone)'
+2026-04-20 01:06:26.496 +08:00 [INF] Route matched with {action = "GetUserProfile", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetUserProfile(System.String, System.String) on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-20 01:06:26.498 +08:00 [INF] Executing ObjectResult, writing value of type '<>f__AnonymousType0`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-20 01:06:26.499 +08:00 [INF] Executed action Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone) in 2.5466ms
+2026-04-20 01:06:26.500 +08:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone)'
+2026-04-20 01:06:26.501 +08:00 [ERR] HTTP GET /api/Auth/user-profile responded 500 in 5.4611 ms
+2026-04-20 01:06:26.501 +08:00 [INF] Request finished HTTP/1.0 GET http://client_app_backend/api/Auth/user-profile?email=registrar%40plv.edu.ph&role=registrar - 500 null application/json; charset=utf-8 7.1301ms
+2026-04-20 01:06:28.506 +08:00 [INF] Request starting HTTP/1.0 GET http://client_app_backend/api/Auth/user-profile?email=registrar%40plv.edu.ph&role=registrar - application/json null
+2026-04-20 01:06:28.507 +08:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone)'
+2026-04-20 01:06:28.508 +08:00 [INF] Route matched with {action = "GetUserProfile", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetUserProfile(System.String, System.String) on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-20 01:06:28.511 +08:00 [INF] Executing ObjectResult, writing value of type '<>f__AnonymousType0`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-20 01:06:28.513 +08:00 [INF] Executed action Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone) in 3.32ms
+2026-04-20 01:06:28.513 +08:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone)'
+2026-04-20 01:06:28.514 +08:00 [ERR] HTTP GET /api/Auth/user-profile responded 500 in 6.7459 ms
+2026-04-20 01:06:28.515 +08:00 [INF] Request finished HTTP/1.0 GET http://client_app_backend/api/Auth/user-profile?email=registrar%40plv.edu.ph&role=registrar - 500 null application/json; charset=utf-8 8.5091ms
+2026-04-20 01:06:55.141 +08:00 [INF] Request starting HTTP/1.0 GET http://client_app_backend/api/Auth/user-profile?email=registrar%40plv.edu.ph&role=registrar - application/json null
+2026-04-20 01:06:55.142 +08:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone)'
+2026-04-20 01:06:55.143 +08:00 [INF] Route matched with {action = "GetUserProfile", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetUserProfile(System.String, System.String) on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-20 01:06:55.145 +08:00 [INF] Executing ObjectResult, writing value of type '<>f__AnonymousType0`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-20 01:06:55.146 +08:00 [INF] Executed action Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone) in 2.2159ms
+2026-04-20 01:06:55.147 +08:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone)'
+2026-04-20 01:06:55.148 +08:00 [ERR] HTTP GET /api/Auth/user-profile responded 500 in 5.7949 ms
+2026-04-20 01:06:55.149 +08:00 [INF] Request finished HTTP/1.0 GET http://client_app_backend/api/Auth/user-profile?email=registrar%40plv.edu.ph&role=registrar - 500 null application/json; charset=utf-8 7.4939ms
+2026-04-20 01:10:18.457 +08:00 [INF] Request starting HTTP/1.0 GET http://client_app_backend/api/Auth/user-profile?email=registrar%40plv.edu.ph&role=registrar - application/json null
+2026-04-20 01:10:18.459 +08:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone)'
+2026-04-20 01:10:18.460 +08:00 [INF] Route matched with {action = "GetUserProfile", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetUserProfile(System.String, System.String) on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-20 01:10:18.463 +08:00 [INF] Executing ObjectResult, writing value of type '<>f__AnonymousType0`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-20 01:10:18.475 +08:00 [INF] Executed action Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone) in 13.4166ms
+2026-04-20 01:10:18.477 +08:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone)'
+2026-04-20 01:10:18.478 +08:00 [ERR] HTTP GET /api/Auth/user-profile responded 500 in 19.1214 ms
+2026-04-20 01:10:18.479 +08:00 [INF] Request finished HTTP/1.0 GET http://client_app_backend/api/Auth/user-profile?email=registrar%40plv.edu.ph&role=registrar - 500 null application/json; charset=utf-8 21.8606ms
+2026-04-20 01:10:21.034 +08:00 [INF] Request starting HTTP/1.0 GET http://client_app_backend/api/Auth/user-profile?email=registrar%40plv.edu.ph&role=registrar - application/json null
+2026-04-20 01:10:21.035 +08:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone)'
+2026-04-20 01:10:21.035 +08:00 [INF] Route matched with {action = "GetUserProfile", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetUserProfile(System.String, System.String) on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-20 01:10:21.038 +08:00 [INF] Executing ObjectResult, writing value of type '<>f__AnonymousType0`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-20 01:10:21.038 +08:00 [INF] Executed action Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone) in 2.2983ms
+2026-04-20 01:10:21.039 +08:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone)'
+2026-04-20 01:10:21.040 +08:00 [ERR] HTTP GET /api/Auth/user-profile responded 500 in 4.9069 ms
+2026-04-20 01:10:21.041 +08:00 [INF] Request finished HTTP/1.0 GET http://client_app_backend/api/Auth/user-profile?email=registrar%40plv.edu.ph&role=registrar - 500 null application/json; charset=utf-8 6.9521ms
+2026-04-20 01:13:50.986 +08:00 [INF] Request starting HTTP/1.0 GET http://client_app_backend/api/Auth/user-profile?email=registrar%40plv.edu.ph&role=registrar - application/json null
+2026-04-20 01:13:50.987 +08:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone)'
+2026-04-20 01:13:50.988 +08:00 [INF] Route matched with {action = "GetUserProfile", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetUserProfile(System.String, System.String) on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-20 01:13:50.992 +08:00 [INF] Executing ObjectResult, writing value of type '<>f__AnonymousType0`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-20 01:13:50.993 +08:00 [INF] Executed action Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone) in 3.0701ms
+2026-04-20 01:13:50.993 +08:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone)'
+2026-04-20 01:13:50.994 +08:00 [ERR] HTTP GET /api/Auth/user-profile responded 500 in 6.7620 ms
+2026-04-20 01:13:50.995 +08:00 [INF] Request finished HTTP/1.0 GET http://client_app_backend/api/Auth/user-profile?email=registrar%40plv.edu.ph&role=registrar - 500 null application/json; charset=utf-8 9.2941ms
+2026-04-20 01:13:53.442 +08:00 [INF] Request starting HTTP/1.0 GET http://client_app_backend/api/Auth/user-profile?email=registrar%40plv.edu.ph&role=registrar - application/json null
+2026-04-20 01:13:53.443 +08:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone)'
+2026-04-20 01:13:53.444 +08:00 [INF] Route matched with {action = "GetUserProfile", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetUserProfile(System.String, System.String) on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-20 01:13:53.446 +08:00 [INF] Executing ObjectResult, writing value of type '<>f__AnonymousType0`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-20 01:13:53.447 +08:00 [INF] Executed action Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone) in 2.0965ms
+2026-04-20 01:13:53.447 +08:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone)'
+2026-04-20 01:13:53.448 +08:00 [ERR] HTTP GET /api/Auth/user-profile responded 500 in 4.8987 ms
+2026-04-20 01:13:53.448 +08:00 [INF] Request finished HTTP/1.0 GET http://client_app_backend/api/Auth/user-profile?email=registrar%40plv.edu.ph&role=registrar - 500 null application/json; charset=utf-8 6.5697ms
+2026-04-20 01:14:52.396 +08:00 [INF] Request starting HTTP/1.0 GET http://client_app_backend/api/Auth/user-profile?email=registrar%40plv.edu.ph&role=registrar - application/json null
+2026-04-20 01:14:52.397 +08:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone)'
+2026-04-20 01:14:52.398 +08:00 [INF] Route matched with {action = "GetUserProfile", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetUserProfile(System.String, System.String) on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-20 01:14:52.400 +08:00 [INF] Executing ObjectResult, writing value of type '<>f__AnonymousType0`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-20 01:14:52.402 +08:00 [INF] Executed action Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone) in 3.0022ms
+2026-04-20 01:14:52.402 +08:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone)'
+2026-04-20 01:14:52.403 +08:00 [ERR] HTTP GET /api/Auth/user-profile responded 500 in 5.8775 ms
+2026-04-20 01:14:52.403 +08:00 [INF] Request finished HTTP/1.0 GET http://client_app_backend/api/Auth/user-profile?email=registrar%40plv.edu.ph&role=registrar - 500 null application/json; charset=utf-8 7.2707ms
+2026-04-20 01:14:55.554 +08:00 [INF] Request starting HTTP/1.0 GET http://client_app_backend/api/Auth/user-profile?email=registrar%40plv.edu.ph&role=registrar - application/json null
+2026-04-20 01:14:55.555 +08:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone)'
+2026-04-20 01:14:55.555 +08:00 [INF] Route matched with {action = "GetUserProfile", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetUserProfile(System.String, System.String) on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-20 01:14:55.557 +08:00 [INF] Executing ObjectResult, writing value of type '<>f__AnonymousType0`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-20 01:14:55.558 +08:00 [INF] Executed action Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone) in 2.0838ms
+2026-04-20 01:14:55.559 +08:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone)'
+2026-04-20 01:14:55.559 +08:00 [ERR] HTTP GET /api/Auth/user-profile responded 500 in 4.7502 ms
+2026-04-20 01:14:55.560 +08:00 [INF] Request finished HTTP/1.0 GET http://client_app_backend/api/Auth/user-profile?email=registrar%40plv.edu.ph&role=registrar - 500 null application/json; charset=utf-8 6.1673ms
+2026-04-20 01:14:57.066 +08:00 [INF] Request starting HTTP/1.0 GET http://client_app_backend/api/Auth/user-profile?email=registrar%40plv.edu.ph&role=registrar - application/json null
+2026-04-20 01:14:57.067 +08:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone)'
+2026-04-20 01:14:57.067 +08:00 [INF] Route matched with {action = "GetUserProfile", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetUserProfile(System.String, System.String) on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-20 01:14:57.069 +08:00 [INF] Executing ObjectResult, writing value of type '<>f__AnonymousType0`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-20 01:14:57.070 +08:00 [INF] Executed action Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone) in 1.863ms
+2026-04-20 01:14:57.071 +08:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone)'
+2026-04-20 01:14:57.071 +08:00 [ERR] HTTP GET /api/Auth/user-profile responded 500 in 4.2116 ms
+2026-04-20 01:14:57.072 +08:00 [INF] Request finished HTTP/1.0 GET http://client_app_backend/api/Auth/user-profile?email=registrar%40plv.edu.ph&role=registrar - 500 null application/json; charset=utf-8 5.3272ms
+2026-04-20 01:16:02.986 +08:00 [INF] Request starting HTTP/1.0 GET http://client_app_backend/api/Auth/user-profile?email=registrar%40plv.edu.ph&role=registrar - application/json null
+2026-04-20 01:16:02.988 +08:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone)'
+2026-04-20 01:16:02.989 +08:00 [INF] Route matched with {action = "GetUserProfile", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetUserProfile(System.String, System.String) on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-20 01:16:02.994 +08:00 [INF] Executing ObjectResult, writing value of type '<>f__AnonymousType0`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-20 01:16:02.996 +08:00 [INF] Executed action Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone) in 5.3ms
+2026-04-20 01:16:02.997 +08:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone)'
+2026-04-20 01:16:02.997 +08:00 [ERR] HTTP GET /api/Auth/user-profile responded 500 in 9.7257 ms
+2026-04-20 01:16:02.998 +08:00 [INF] Request finished HTTP/1.0 GET http://client_app_backend/api/Auth/user-profile?email=registrar%40plv.edu.ph&role=registrar - 500 null application/json; charset=utf-8 12.0953ms
+2026-04-20 01:16:05.625 +08:00 [INF] Request starting HTTP/1.0 GET http://client_app_backend/api/Auth/user-profile?email=registrar%40plv.edu.ph&role=registrar - application/json null
+2026-04-20 01:16:05.626 +08:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone)'
+2026-04-20 01:16:05.627 +08:00 [INF] Route matched with {action = "GetUserProfile", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetUserProfile(System.String, System.String) on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-20 01:16:05.629 +08:00 [INF] Executing ObjectResult, writing value of type '<>f__AnonymousType0`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-20 01:16:05.630 +08:00 [INF] Executed action Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone) in 2.1928ms
+2026-04-20 01:16:05.630 +08:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone)'
+2026-04-20 01:16:05.631 +08:00 [ERR] HTTP GET /api/Auth/user-profile responded 500 in 4.6172 ms
+2026-04-20 01:16:05.631 +08:00 [INF] Request finished HTTP/1.0 GET http://client_app_backend/api/Auth/user-profile?email=registrar%40plv.edu.ph&role=registrar - 500 null application/json; charset=utf-8 5.8147ms
+2026-04-20 01:17:13.466 +08:00 [INF] Request starting HTTP/1.0 POST http://client_app_backend/api/Auth/send-verification - application/json 39
+2026-04-20 01:17:13.467 +08:00 [INF] CORS policy execution successful.
+2026-04-20 01:17:13.468 +08:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.SendVerificationCode (For_Testing_Only_Capstone)'
+2026-04-20 01:17:13.468 +08:00 [INF] Route matched with {action = "SendVerificationCode", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] SendVerificationCode(Client_app.Models.VerificationRequest) on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-20 01:17:13.471 +08:00 [INF] Executing ObjectResult, writing value of type '<>f__AnonymousType0`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-20 01:17:13.472 +08:00 [INF] Executed action Client_app.Controllers.AuthController.SendVerificationCode (For_Testing_Only_Capstone) in 2.4603ms
+2026-04-20 01:17:13.472 +08:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.SendVerificationCode (For_Testing_Only_Capstone)'
+2026-04-20 01:17:13.473 +08:00 [ERR] HTTP POST /api/Auth/send-verification responded 500 in 5.7650 ms
+2026-04-20 01:17:13.473 +08:00 [INF] Request finished HTTP/1.0 POST http://client_app_backend/api/Auth/send-verification - 500 null application/json; charset=utf-8 6.9802ms
+2026-04-20 01:17:22.992 +08:00 [INF] Request starting HTTP/1.0 POST http://client_app_backend/api/Auth/send-verification - application/json 39
+2026-04-20 01:17:22.993 +08:00 [INF] CORS policy execution successful.
+2026-04-20 01:17:22.994 +08:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.SendVerificationCode (For_Testing_Only_Capstone)'
+2026-04-20 01:17:22.994 +08:00 [INF] Route matched with {action = "SendVerificationCode", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] SendVerificationCode(Client_app.Models.VerificationRequest) on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-20 01:17:22.997 +08:00 [INF] Executing ObjectResult, writing value of type '<>f__AnonymousType0`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-20 01:17:22.998 +08:00 [INF] Executed action Client_app.Controllers.AuthController.SendVerificationCode (For_Testing_Only_Capstone) in 2.9406ms
+2026-04-20 01:17:22.999 +08:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.SendVerificationCode (For_Testing_Only_Capstone)'
+2026-04-20 01:17:22.999 +08:00 [ERR] HTTP POST /api/Auth/send-verification responded 500 in 6.1247 ms
+2026-04-20 01:17:23.000 +08:00 [INF] Request finished HTTP/1.0 POST http://client_app_backend/api/Auth/send-verification - 500 null application/json; charset=utf-8 7.4241ms
+2026-04-20 01:17:32.088 +08:00 [INF] Request starting HTTP/1.0 GET http://client_app_backend/api/Auth/user-profile?email=registrar%40plv.edu.ph&role=registrar - application/json null
+2026-04-20 01:17:32.090 +08:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone)'
+2026-04-20 01:17:32.091 +08:00 [INF] Route matched with {action = "GetUserProfile", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetUserProfile(System.String, System.String) on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-20 01:17:32.094 +08:00 [INF] Executing ObjectResult, writing value of type '<>f__AnonymousType0`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-20 01:17:32.095 +08:00 [INF] Executed action Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone) in 2.3834ms
+2026-04-20 01:17:32.095 +08:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone)'
+2026-04-20 01:17:32.096 +08:00 [ERR] HTTP GET /api/Auth/user-profile responded 500 in 5.8526 ms
+2026-04-20 01:17:32.097 +08:00 [INF] Request finished HTTP/1.0 GET http://client_app_backend/api/Auth/user-profile?email=registrar%40plv.edu.ph&role=registrar - 500 null application/json; charset=utf-8 8.2919ms
+2026-04-20 01:17:34.730 +08:00 [INF] Request starting HTTP/1.0 GET http://client_app_backend/api/Auth/user-profile?email=registrar%40plv.edu.ph&role=registrar - application/json null
+2026-04-20 01:17:34.731 +08:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone)'
+2026-04-20 01:17:34.731 +08:00 [INF] Route matched with {action = "GetUserProfile", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetUserProfile(System.String, System.String) on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-20 01:17:34.733 +08:00 [INF] Executing ObjectResult, writing value of type '<>f__AnonymousType0`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-20 01:17:34.734 +08:00 [INF] Executed action Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone) in 1.9941ms
+2026-04-20 01:17:34.734 +08:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone)'
+2026-04-20 01:17:34.735 +08:00 [ERR] HTTP GET /api/Auth/user-profile responded 500 in 4.5049 ms
+2026-04-20 01:17:34.735 +08:00 [INF] Request finished HTTP/1.0 GET http://client_app_backend/api/Auth/user-profile?email=registrar%40plv.edu.ph&role=registrar - 500 null application/json; charset=utf-8 5.7578ms
+2026-04-20 01:17:35.782 +08:00 [INF] Request starting HTTP/1.0 GET http://client_app_backend/api/Auth/user-profile?email=registrar%40plv.edu.ph&role=registrar - application/json null
+2026-04-20 01:17:35.783 +08:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone)'
+2026-04-20 01:17:35.784 +08:00 [INF] Route matched with {action = "GetUserProfile", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetUserProfile(System.String, System.String) on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-20 01:17:35.786 +08:00 [INF] Executing ObjectResult, writing value of type '<>f__AnonymousType0`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-20 01:17:35.787 +08:00 [INF] Executed action Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone) in 3.0173ms
+2026-04-20 01:17:35.788 +08:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone)'
+2026-04-20 01:17:35.789 +08:00 [ERR] HTTP GET /api/Auth/user-profile responded 500 in 5.7453 ms
+2026-04-20 01:17:35.789 +08:00 [INF] Request finished HTTP/1.0 GET http://client_app_backend/api/Auth/user-profile?email=registrar%40plv.edu.ph&role=registrar - 500 null application/json; charset=utf-8 7.0529ms
+2026-04-20 01:19:57.899 +08:00 [INF] Request starting HTTP/1.0 GET http://client_app_backend/api/Auth/user-profile?email=registrar%40plv.edu.ph&role=registrar - application/json null
+2026-04-20 01:19:57.900 +08:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone)'
+2026-04-20 01:19:57.901 +08:00 [INF] Route matched with {action = "GetUserProfile", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetUserProfile(System.String, System.String) on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-20 01:19:57.903 +08:00 [INF] Executing ObjectResult, writing value of type '<>f__AnonymousType0`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-20 01:19:57.904 +08:00 [INF] Executed action Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone) in 2.5209ms
+2026-04-20 01:19:57.905 +08:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone)'
+2026-04-20 01:19:57.905 +08:00 [ERR] HTTP GET /api/Auth/user-profile responded 500 in 5.3916 ms
+2026-04-20 01:19:57.906 +08:00 [INF] Request finished HTTP/1.0 GET http://client_app_backend/api/Auth/user-profile?email=registrar%40plv.edu.ph&role=registrar - 500 null application/json; charset=utf-8 7.1501ms
+2026-04-20 01:20:00.211 +08:00 [INF] Request starting HTTP/1.0 GET http://client_app_backend/api/Auth/user-profile?email=registrar%40plv.edu.ph&role=registrar - application/json null
+2026-04-20 01:20:00.212 +08:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone)'
+2026-04-20 01:20:00.212 +08:00 [INF] Route matched with {action = "GetUserProfile", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetUserProfile(System.String, System.String) on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-20 01:20:00.214 +08:00 [INF] Executing ObjectResult, writing value of type '<>f__AnonymousType0`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-20 01:20:00.215 +08:00 [INF] Executed action Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone) in 1.944ms
+2026-04-20 01:20:00.216 +08:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone)'
+2026-04-20 01:20:00.216 +08:00 [ERR] HTTP GET /api/Auth/user-profile responded 500 in 4.3789 ms
+2026-04-20 01:20:00.216 +08:00 [INF] Request finished HTTP/1.0 GET http://client_app_backend/api/Auth/user-profile?email=registrar%40plv.edu.ph&role=registrar - 500 null application/json; charset=utf-8 5.6313ms
+2026-04-20 01:21:36.970 +08:00 [INF] Request starting HTTP/1.0 GET http://client_app_backend/api/Auth/user-profile?email=registrar%40plv.edu.ph&role=registrar - application/json null
+2026-04-20 01:21:36.976 +08:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone)'
+2026-04-20 01:21:36.979 +08:00 [INF] Route matched with {action = "GetUserProfile", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetUserProfile(System.String, System.String) on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-20 01:21:36.981 +08:00 [INF] Executing ObjectResult, writing value of type '<>f__AnonymousType0`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-20 01:21:36.984 +08:00 [INF] Executed action Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone) in 4.1058ms
+2026-04-20 01:21:36.985 +08:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone)'
+2026-04-20 01:21:36.992 +08:00 [ERR] HTTP GET /api/Auth/user-profile responded 500 in 15.4984 ms
+2026-04-20 01:21:36.993 +08:00 [INF] Request finished HTTP/1.0 GET http://client_app_backend/api/Auth/user-profile?email=registrar%40plv.edu.ph&role=registrar - 500 null application/json; charset=utf-8 23.8689ms
+2026-04-20 01:21:39.681 +08:00 [INF] Request starting HTTP/1.0 GET http://client_app_backend/api/Auth/user-profile?email=registrar%40plv.edu.ph&role=registrar - application/json null
+2026-04-20 01:21:39.682 +08:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone)'
+2026-04-20 01:21:39.683 +08:00 [INF] Route matched with {action = "GetUserProfile", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetUserProfile(System.String, System.String) on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-20 01:21:39.684 +08:00 [INF] Executing ObjectResult, writing value of type '<>f__AnonymousType0`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-20 01:21:39.685 +08:00 [INF] Executed action Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone) in 1.7452ms
+2026-04-20 01:21:39.686 +08:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone)'
+2026-04-20 01:21:39.686 +08:00 [ERR] HTTP GET /api/Auth/user-profile responded 500 in 4.2542 ms
+2026-04-20 01:21:39.687 +08:00 [INF] Request finished HTTP/1.0 GET http://client_app_backend/api/Auth/user-profile?email=registrar%40plv.edu.ph&role=registrar - 500 null application/json; charset=utf-8 5.3334ms
+2026-04-20 01:22:48.534 +08:00 [INF] Request starting HTTP/1.0 GET http://client_app_backend/api/Auth/user-profile?email=registrar%40plv.edu.ph&role=registrar - application/json null
+2026-04-20 01:22:48.535 +08:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone)'
+2026-04-20 01:22:48.536 +08:00 [INF] Route matched with {action = "GetUserProfile", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetUserProfile(System.String, System.String) on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-20 01:22:48.538 +08:00 [INF] Executing ObjectResult, writing value of type '<>f__AnonymousType0`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-20 01:22:48.539 +08:00 [INF] Executed action Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone) in 2.1035ms
+2026-04-20 01:22:48.540 +08:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone)'
+2026-04-20 01:22:48.540 +08:00 [ERR] HTTP GET /api/Auth/user-profile responded 500 in 4.9483 ms
+2026-04-20 01:22:48.541 +08:00 [INF] Request finished HTTP/1.0 GET http://client_app_backend/api/Auth/user-profile?email=registrar%40plv.edu.ph&role=registrar - 500 null application/json; charset=utf-8 6.4267ms
+2026-04-20 01:22:50.875 +08:00 [INF] Request starting HTTP/1.0 GET http://client_app_backend/api/Auth/user-profile?email=registrar%40plv.edu.ph&role=registrar - application/json null
+2026-04-20 01:22:50.875 +08:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone)'
+2026-04-20 01:22:50.876 +08:00 [INF] Route matched with {action = "GetUserProfile", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetUserProfile(System.String, System.String) on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-20 01:22:50.877 +08:00 [INF] Executing ObjectResult, writing value of type '<>f__AnonymousType0`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-20 01:22:50.878 +08:00 [INF] Executed action Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone) in 1.7104ms
+2026-04-20 01:22:50.879 +08:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone)'
+2026-04-20 01:22:50.879 +08:00 [ERR] HTTP GET /api/Auth/user-profile responded 500 in 3.9914 ms
+2026-04-20 01:22:50.880 +08:00 [INF] Request finished HTTP/1.0 GET http://client_app_backend/api/Auth/user-profile?email=registrar%40plv.edu.ph&role=registrar - 500 null application/json; charset=utf-8 5.196ms
+2026-04-20 01:25:27.975 +08:00 [INF] Request starting HTTP/1.0 GET http://client_app_backend/api/Auth/user-profile?email=registrar%40plv.edu.ph&role=registrar - application/json null
+2026-04-20 01:25:27.977 +08:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone)'
+2026-04-20 01:25:27.978 +08:00 [INF] Route matched with {action = "GetUserProfile", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetUserProfile(System.String, System.String) on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-20 01:25:27.980 +08:00 [INF] Executing ObjectResult, writing value of type '<>f__AnonymousType0`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-20 01:25:27.982 +08:00 [INF] Executed action Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone) in 2.9532ms
+2026-04-20 01:25:27.982 +08:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone)'
+2026-04-20 01:25:27.983 +08:00 [ERR] HTTP GET /api/Auth/user-profile responded 500 in 6.0949 ms
+2026-04-20 01:25:27.983 +08:00 [INF] Request finished HTTP/1.0 GET http://client_app_backend/api/Auth/user-profile?email=registrar%40plv.edu.ph&role=registrar - 500 null application/json; charset=utf-8 8.1428ms
+2026-04-20 01:25:31.166 +08:00 [INF] Request starting HTTP/1.0 GET http://client_app_backend/api/Auth/user-profile?email=registrar%40plv.edu.ph&role=registrar - application/json null
+2026-04-20 01:25:31.167 +08:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone)'
+2026-04-20 01:25:31.168 +08:00 [INF] Route matched with {action = "GetUserProfile", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetUserProfile(System.String, System.String) on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-20 01:25:31.169 +08:00 [INF] Executing ObjectResult, writing value of type '<>f__AnonymousType0`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-20 01:25:31.170 +08:00 [INF] Executed action Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone) in 1.4987ms
+2026-04-20 01:25:31.170 +08:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone)'
+2026-04-20 01:25:31.171 +08:00 [ERR] HTTP GET /api/Auth/user-profile responded 500 in 3.7735 ms
+2026-04-20 01:25:31.171 +08:00 [INF] Request finished HTTP/1.0 GET http://client_app_backend/api/Auth/user-profile?email=registrar%40plv.edu.ph&role=registrar - 500 null application/json; charset=utf-8 5.0078ms
+2026-04-20 01:25:32.359 +08:00 [INF] Request starting HTTP/1.0 GET http://client_app_backend/api/Auth/user-profile?email=registrar%40plv.edu.ph&role=registrar - application/json null
+2026-04-20 01:25:32.360 +08:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone)'
+2026-04-20 01:25:32.360 +08:00 [INF] Route matched with {action = "GetUserProfile", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetUserProfile(System.String, System.String) on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-20 01:25:32.362 +08:00 [INF] Executing ObjectResult, writing value of type '<>f__AnonymousType0`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-20 01:25:32.363 +08:00 [INF] Executed action Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone) in 2.0395ms
+2026-04-20 01:25:32.363 +08:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone)'
+2026-04-20 01:25:32.364 +08:00 [ERR] HTTP GET /api/Auth/user-profile responded 500 in 4.2225 ms
+2026-04-20 01:25:32.364 +08:00 [INF] Request finished HTTP/1.0 GET http://client_app_backend/api/Auth/user-profile?email=registrar%40plv.edu.ph&role=registrar - 500 null application/json; charset=utf-8 5.3304ms
+2026-04-20 01:25:33.044 +08:00 [INF] Request starting HTTP/1.0 GET http://client_app_backend/api/Auth/user-profile?email=registrar%40plv.edu.ph&role=registrar - application/json null
+2026-04-20 01:25:33.045 +08:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone)'
+2026-04-20 01:25:33.046 +08:00 [INF] Route matched with {action = "GetUserProfile", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetUserProfile(System.String, System.String) on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-20 01:25:33.048 +08:00 [INF] Executing ObjectResult, writing value of type '<>f__AnonymousType0`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-20 01:25:33.048 +08:00 [INF] Executed action Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone) in 1.8413ms
+2026-04-20 01:25:33.049 +08:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone)'
+2026-04-20 01:25:33.050 +08:00 [ERR] HTTP GET /api/Auth/user-profile responded 500 in 4.5093 ms
+2026-04-20 01:25:33.050 +08:00 [INF] Request finished HTTP/1.0 GET http://client_app_backend/api/Auth/user-profile?email=registrar%40plv.edu.ph&role=registrar - 500 null application/json; charset=utf-8 5.8929ms
+2026-04-20 01:25:33.218 +08:00 [INF] Request starting HTTP/1.0 GET http://client_app_backend/api/Auth/user-profile?email=registrar%40plv.edu.ph&role=registrar - application/json null
+2026-04-20 01:25:33.219 +08:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone)'
+2026-04-20 01:25:33.220 +08:00 [INF] Route matched with {action = "GetUserProfile", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetUserProfile(System.String, System.String) on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-20 01:25:33.221 +08:00 [INF] Executing ObjectResult, writing value of type '<>f__AnonymousType0`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-20 01:25:33.222 +08:00 [INF] Executed action Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone) in 1.7302ms
+2026-04-20 01:25:33.222 +08:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone)'
+2026-04-20 01:25:33.223 +08:00 [ERR] HTTP GET /api/Auth/user-profile responded 500 in 4.0768 ms
+2026-04-20 01:25:33.223 +08:00 [INF] Request finished HTTP/1.0 GET http://client_app_backend/api/Auth/user-profile?email=registrar%40plv.edu.ph&role=registrar - 500 null application/json; charset=utf-8 5.3213ms
+2026-04-20 01:28:40.027 +08:00 [INF] Request starting HTTP/1.0 GET http://client_app_backend/api/Auth/user-profile?email=registrar%40plv.edu.ph&role=registrar - application/json null
+2026-04-20 01:28:40.028 +08:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone)'
+2026-04-20 01:28:40.029 +08:00 [INF] Route matched with {action = "GetUserProfile", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetUserProfile(System.String, System.String) on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-20 01:28:40.032 +08:00 [INF] Executing ObjectResult, writing value of type '<>f__AnonymousType0`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-20 01:28:40.034 +08:00 [INF] Executed action Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone) in 3.8779ms
+2026-04-20 01:28:40.034 +08:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone)'
+2026-04-20 01:28:40.035 +08:00 [ERR] HTTP GET /api/Auth/user-profile responded 500 in 7.3569 ms
+2026-04-20 01:28:40.036 +08:00 [INF] Request finished HTTP/1.0 GET http://client_app_backend/api/Auth/user-profile?email=registrar%40plv.edu.ph&role=registrar - 500 null application/json; charset=utf-8 9.2672ms
+2026-04-20 01:28:45.124 +08:00 [INF] Request starting HTTP/1.0 GET http://client_app_backend/api/Auth/user-profile?email=registrar%40plv.edu.ph&role=registrar - null null
+2026-04-20 01:28:45.126 +08:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone)'
+2026-04-20 01:28:45.127 +08:00 [INF] Route matched with {action = "GetUserProfile", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetUserProfile(System.String, System.String) on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-20 01:28:45.128 +08:00 [INF] Executing ObjectResult, writing value of type '<>f__AnonymousType0`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-20 01:28:45.129 +08:00 [INF] Executed action Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone) in 2.0345ms
+2026-04-20 01:28:45.130 +08:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone)'
+2026-04-20 01:28:45.130 +08:00 [ERR] HTTP GET /api/Auth/user-profile responded 500 in 4.3076 ms
+2026-04-20 01:28:45.131 +08:00 [INF] Request finished HTTP/1.0 GET http://client_app_backend/api/Auth/user-profile?email=registrar%40plv.edu.ph&role=registrar - 500 null application/json; charset=utf-8 6.9281ms
+2026-04-20 01:31:27.900 +08:00 [INF] Request starting HTTP/1.0 GET http://client_app_backend/api/Auth/user-profile?email=registrar%40plv.edu.ph&role=registrar - application/json null
+2026-04-20 01:31:27.902 +08:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone)'
+2026-04-20 01:31:27.903 +08:00 [INF] Route matched with {action = "GetUserProfile", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetUserProfile(System.String, System.String) on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-20 01:31:27.905 +08:00 [INF] Executing ObjectResult, writing value of type '<>f__AnonymousType0`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-20 01:31:27.906 +08:00 [INF] Executed action Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone) in 2.1942ms
+2026-04-20 01:31:27.907 +08:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone)'
+2026-04-20 01:31:27.908 +08:00 [ERR] HTTP GET /api/Auth/user-profile responded 500 in 6.0676 ms
+2026-04-20 01:31:27.908 +08:00 [INF] Request finished HTTP/1.0 GET http://client_app_backend/api/Auth/user-profile?email=registrar%40plv.edu.ph&role=registrar - 500 null application/json; charset=utf-8 7.9511ms
+2026-04-20 01:31:31.095 +08:00 [INF] Request starting HTTP/1.0 GET http://client_app_backend/api/Auth/user-profile?email=registrar%40plv.edu.ph&role=registrar - application/json null
+2026-04-20 01:31:31.096 +08:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone)'
+2026-04-20 01:31:31.097 +08:00 [INF] Route matched with {action = "GetUserProfile", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetUserProfile(System.String, System.String) on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-20 01:31:31.099 +08:00 [INF] Executing ObjectResult, writing value of type '<>f__AnonymousType0`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-20 01:31:31.099 +08:00 [INF] Executed action Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone) in 1.6928ms
+2026-04-20 01:31:31.100 +08:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone)'
+2026-04-20 01:31:31.101 +08:00 [ERR] HTTP GET /api/Auth/user-profile responded 500 in 4.4845 ms
+2026-04-20 01:31:31.101 +08:00 [INF] Request finished HTTP/1.0 GET http://client_app_backend/api/Auth/user-profile?email=registrar%40plv.edu.ph&role=registrar - 500 null application/json; charset=utf-8 5.7305ms
+2026-04-20 01:34:54.995 +08:00 [INF] Request starting HTTP/1.0 GET http://client_app_backend/api/Auth/user-profile?email=registrar%40plv.edu.ph&role=registrar - application/json null
+2026-04-20 01:34:54.996 +08:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone)'
+2026-04-20 01:34:54.997 +08:00 [INF] Route matched with {action = "GetUserProfile", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetUserProfile(System.String, System.String) on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-20 01:34:55.000 +08:00 [INF] Executing ObjectResult, writing value of type '<>f__AnonymousType0`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-20 01:34:55.001 +08:00 [INF] Executed action Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone) in 2.2837ms
+2026-04-20 01:34:55.001 +08:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone)'
+2026-04-20 01:34:55.002 +08:00 [ERR] HTTP GET /api/Auth/user-profile responded 500 in 5.8802 ms
+2026-04-20 01:34:55.002 +08:00 [INF] Request finished HTTP/1.0 GET http://client_app_backend/api/Auth/user-profile?email=registrar%40plv.edu.ph&role=registrar - 500 null application/json; charset=utf-8 7.7443ms
+2026-04-20 01:34:58.497 +08:00 [INF] Request starting HTTP/1.0 GET http://client_app_backend/api/Auth/user-profile?email=registrar%40plv.edu.ph&role=registrar - application/json null
+2026-04-20 01:34:58.498 +08:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone)'
+2026-04-20 01:34:58.498 +08:00 [INF] Route matched with {action = "GetUserProfile", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetUserProfile(System.String, System.String) on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-20 01:34:58.500 +08:00 [INF] Executing ObjectResult, writing value of type '<>f__AnonymousType0`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-20 01:34:58.501 +08:00 [INF] Executed action Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone) in 1.8026ms
+2026-04-20 01:34:58.501 +08:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone)'
+2026-04-20 01:34:58.502 +08:00 [ERR] HTTP GET /api/Auth/user-profile responded 500 in 4.2905 ms
+2026-04-20 01:34:58.502 +08:00 [INF] Request finished HTTP/1.0 GET http://client_app_backend/api/Auth/user-profile?email=registrar%40plv.edu.ph&role=registrar - 500 null application/json; charset=utf-8 5.7429ms
+2026-04-20 01:39:49.734 +08:00 [INF] Request starting HTTP/1.0 GET http://client_app_backend/api/Auth/user-profile?email=registrar%40plv.edu.ph&role=registrar - application/json null
+2026-04-20 01:39:49.736 +08:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone)'
+2026-04-20 01:39:49.737 +08:00 [INF] Route matched with {action = "GetUserProfile", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetUserProfile(System.String, System.String) on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-20 01:39:49.741 +08:00 [INF] Executing ObjectResult, writing value of type '<>f__AnonymousType0`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-20 01:39:49.743 +08:00 [INF] Executed action Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone) in 5.4425ms
+2026-04-20 01:39:49.744 +08:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone)'
+2026-04-20 01:39:49.744 +08:00 [ERR] HTTP GET /api/Auth/user-profile responded 500 in 8.8789 ms
+2026-04-20 01:39:49.745 +08:00 [INF] Request finished HTTP/1.0 GET http://client_app_backend/api/Auth/user-profile?email=registrar%40plv.edu.ph&role=registrar - 500 null application/json; charset=utf-8 11.2939ms
+2026-04-20 01:39:52.685 +08:00 [INF] Request starting HTTP/1.0 GET http://client_app_backend/api/Auth/user-profile?email=registrar%40plv.edu.ph&role=registrar - application/json null
+2026-04-20 01:39:52.686 +08:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone)'
+2026-04-20 01:39:52.686 +08:00 [INF] Route matched with {action = "GetUserProfile", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetUserProfile(System.String, System.String) on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-20 01:39:52.688 +08:00 [INF] Executing ObjectResult, writing value of type '<>f__AnonymousType0`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-20 01:39:52.689 +08:00 [INF] Executed action Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone) in 1.6717ms
+2026-04-20 01:39:52.689 +08:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone)'
+2026-04-20 01:39:52.690 +08:00 [ERR] HTTP GET /api/Auth/user-profile responded 500 in 4.2517 ms
+2026-04-20 01:39:52.691 +08:00 [INF] Request finished HTTP/1.0 GET http://client_app_backend/api/Auth/user-profile?email=registrar%40plv.edu.ph&role=registrar - 500 null application/json; charset=utf-8 5.769ms
+2026-04-20 01:39:53.878 +08:00 [INF] Request starting HTTP/1.0 GET http://client_app_backend/api/Auth/user-profile?email=registrar%40plv.edu.ph&role=registrar - application/json null
+2026-04-20 01:39:53.879 +08:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone)'
+2026-04-20 01:39:53.880 +08:00 [INF] Route matched with {action = "GetUserProfile", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetUserProfile(System.String, System.String) on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-20 01:39:53.882 +08:00 [INF] Executing ObjectResult, writing value of type '<>f__AnonymousType0`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-20 01:39:53.883 +08:00 [INF] Executed action Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone) in 2.3951ms
+2026-04-20 01:39:53.883 +08:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone)'
+2026-04-20 01:39:53.884 +08:00 [ERR] HTTP GET /api/Auth/user-profile responded 500 in 4.9067 ms
+2026-04-20 01:39:53.884 +08:00 [INF] Request finished HTTP/1.0 GET http://client_app_backend/api/Auth/user-profile?email=registrar%40plv.edu.ph&role=registrar - 500 null application/json; charset=utf-8 6.4826ms
+2026-04-20 01:40:15.563 +08:00 [INF] Application is shutting down...

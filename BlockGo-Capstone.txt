@@ -1,0 +1,23 @@
+BlockGo-Capstone/
+├── backend-api/                - FastAPI / Node.js Middleware for deliberation
+│   ├── app/
+│   │   ├── main.py             - Entry point
+│   │   ├── blockchain.py       - Hashing & Chaining logic 
+│   │   ├── database.py         - Postgres connection & replication logic 
+│   │   ├── security.py         - JWT and PII encryption
+│   │   └── crud.py             - Registrar operations
+│   ├── requirements.txt
+│   └── .env                    - DB_URL, SECRET_KEYS
+├── public-dashboard/           - The "Crypto-style" Ticker (React/Vue) for deliberation muna kung anong language ang best dito yung sinasabi ko na public student and registrar transaction
+│   ├── src/
+│   │   ├── components/         - Ticker, SearchBar, LedgerTable 
+│   │   ├── hooks/              - WebSocket listeners
+│   │   └── App.js
+│   └── tailwind.config.js      - For the dark-mode "Crypto" look  for deliberation kung web or exe/app
+├── registrar-portal/           - Admin/Staff Internal UI  for deliberation muna kung anong language ang gagamitin dito
+│   └── ...
+├── database/                   - Documentation for DB
+│   ├── init.sql                - Schema setup
+│   └── replication_config.conf - Settings for the 3 campuses for example to not totally 3 pero yun muna follow since yun yung hinihingi sa papel
+└── README.md
+								Hindi pa sure kung POSTGRE ang gagamitin

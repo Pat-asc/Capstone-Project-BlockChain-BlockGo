@@ -1,0 +1,248 @@
+2026-04-16 21:57:04.605 +08:00 [INF] Application starting up...
+2026-04-16 21:57:07.185 +08:00 [INF] HSTS enabled (HTTPS Redirection disabled for Nginx)
+2026-04-16 21:57:08.662 +08:00 [INF] Application configured successfully
+2026-04-16 21:57:08.663 +08:00 [INF] Listening on 
+2026-04-16 21:57:08.903 +08:00 [INF] Now listening on: http://0.0.0.0:5000
+2026-04-16 21:57:08.905 +08:00 [INF] Application started. Press Ctrl+C to shut down.
+2026-04-16 21:57:08.906 +08:00 [INF] Hosting environment: Production
+2026-04-16 21:57:08.907 +08:00 [INF] Content root path: /mnt/c/Users/pascu/Documents/GitHub2/GitHub/Capstone-Project-/For_Testing_Only_Capstone/client-app
+2026-04-16 22:25:50.034 +08:00 [INF] Application is shutting down...
+04-16 22:07:36.500 +08:00 [INF] HSTS enabled (HTTPS Redirection disabled for Nginx)
+2026-04-16 22:07:36.595 +08:00 [INF] Application configured successfully
+2026-04-16 22:07:36.596 +08:00 [INF] Listening on 
+2026-04-16 22:07:36.674 +08:00 [ERR] Hosting failed to start
+System.IO.IOException: Failed to bind to address http://0.0.0.0:5000: address already in use.
+ ---> Microsoft.AspNetCore.Connections.AddressInUseException: Address already in use
+ ---> System.Net.Sockets.SocketException (98): Address already in use
+   at System.Net.Sockets.Socket.DoBind(EndPoint endPointSnapshot, SocketAddress socketAddress)
+   at System.Net.Sockets.Socket.Bind(EndPoint localEP)
+   at Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.SocketTransportOptions.CreateDefaultBoundListenSocket(EndPoint endpoint)
+   at Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.SocketConnectionListener.Bind()
+   --- End of inner exception stack trace ---
+   at Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.SocketConnectionListener.Bind()
+   at Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.SocketTransportFactory.BindAsync(EndPoint endpoint, CancellationToken cancellationToken)
+   at Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure.TransportManager.BindAsync(EndPoint endPoint, ConnectionDelegate connectionDelegate, EndpointConfig endpointConfig, CancellationToken cancellationToken)
+   at Microsoft.AspNetCore.Server.Kestrel.Core.KestrelServerImpl.<>c__DisplayClass28_0`1.<<StartAsync>g__OnBind|0>d.MoveNext()
+--- End of stack trace from previous location ---
+   at Microsoft.AspNetCore.Server.Kestrel.Core.Internal.AddressBinder.BindEndpointAsync(ListenOptions endpoint, AddressBindContext context, CancellationToken cancellationToken)
+   --- End of inner exception stack trace ---
+   at Microsoft.AspNetCore.Server.Kestrel.Core.Internal.AddressBinder.BindEndpointAsync(ListenOptions endpoint, AddressBindContext context, CancellationToken cancellationToken)
+   at Microsoft.AspNetCore.Server.Kestrel.Core.ListenOptions.BindAsync(AddressBindContext context, CancellationToken cancellationToken)
+   at Microsoft.AspNetCore.Server.Kestrel.Core.Internal.AddressBinder.AddressesStrategy.BindAsync(AddressBindContext context, CancellationToken cancellationToken)
+   at Microsoft.AspNetCore.Server.Kestrel.Core.Internal.AddressBinder.BindAsync(ListenOptions[] listenOptions, AddressBindContext context, Func`2 useHttps, CancellationToken cancellationToken)
+   at Microsoft.AspNetCore.Server.Kestrel.Core.KestrelServerImpl.BindAsync(CancellationToken cancellationToken)
+   at Microsoft.AspNetCore.Server.Kestrel.Core.KestrelServerImpl.StartAsync[TContext](IHttpApplication`1 application, CancellationToken cancellationToken)
+   at Microsoft.AspNetCore.Hosting.GenericWebHostService.StartAsync(CancellationToken cancellationToken)
+   at Microsoft.Extensions.Hosting.Internal.Host.<StartAsync>b__15_1(IHostedService service, CancellationToken token)
+   at Microsoft.Extensions.Hosting.Internal.Host.ForeachService[T](IEnumerable`1 services, CancellationToken token, Boolean concurrent, Boolean abortOnFirstException, List`1 exceptions, Func`3 operation)
+2026-04-16 22:07:36.718 +08:00 [FTL]  Application terminated unexpectedly
+System.IO.IOException: Failed to bind to address http://0.0.0.0:5000: address already in use.
+ ---> Microsoft.AspNetCore.Connections.AddressInUseException: Address already in use
+ ---> System.Net.Sockets.SocketException (98): Address already in use
+   at System.Net.Sockets.Socket.DoBind(EndPoint endPointSnapshot, SocketAddress socketAddress)
+   at System.Net.Sockets.Socket.Bind(EndPoint localEP)
+   at Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.SocketTransportOptions.CreateDefaultBoundListenSocket(EndPoint endpoint)
+   at Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.SocketConnectionListener.Bind()
+   --- End of inner exception stack trace ---
+   at Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.SocketConnectionListener.Bind()
+   at Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.SocketTransportFactory.BindAsync(EndPoint endpoint, CancellationToken cancellationToken)
+   at Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure.TransportManager.BindAsync(EndPoint endPoint, ConnectionDelegate connectionDelegate, EndpointConfig endpointConfig, CancellationToken cancellationToken)
+   at Microsoft.AspNetCore.Server.Kestrel.Core.KestrelServerImpl.<>c__DisplayClass28_0`1.<<StartAsync>g__OnBind|0>d.MoveNext()
+--- End of stack trace from previous location ---
+   at Microsoft.AspNetCore.Server.Kestrel.Core.Internal.AddressBinder.BindEndpointAsync(ListenOptions endpoint, AddressBindContext context, CancellationToken cancellationToken)
+   --- End of inner exception stack trace ---
+   at Microsoft.AspNetCore.Server.Kestrel.Core.Internal.AddressBinder.BindEndpointAsync(ListenOptions endpoint, AddressBindContext context, CancellationToken cancellationToken)
+   at Microsoft.AspNetCore.Server.Kestrel.Core.ListenOptions.BindAsync(AddressBindContext context, CancellationToken cancellationToken)
+   at Microsoft.AspNetCore.Server.Kestrel.Core.Internal.AddressBinder.AddressesStrategy.BindAsync(AddressBindContext context, CancellationToken cancellationToken)
+   at Microsoft.AspNetCore.Server.Kestrel.Core.Internal.AddressBinder.BindAsync(ListenOptions[] listenOptions, AddressBindContext context, Func`2 useHttps, CancellationToken cancellationToken)
+   at Microsoft.AspNetCore.Server.Kestrel.Core.KestrelServerImpl.BindAsync(CancellationToken cancellationToken)
+   at Microsoft.AspNetCore.Server.Kestrel.Core.KestrelServerImpl.StartAsync[TContext](IHttpApplication`1 application, CancellationToken cancellationToken)
+   at Microsoft.AspNetCore.Hosting.GenericWebHostService.StartAsync(CancellationToken cancellationToken)
+   at Microsoft.Extensions.Hosting.Internal.Host.<StartAsync>b__15_1(IHostedService service, CancellationToken token)
+   at Microsoft.Extensions.Hosting.Internal.Host.ForeachService[T](IEnumerable`1 services, CancellationToken token, Boolean concurrent, Boolean abortOnFirstException, List`1 exceptions, Func`3 operation)
+   at Microsoft.Extensions.Hosting.Internal.Host.StartAsync(CancellationToken cancellationToken)
+   at Microsoft.Extensions.Hosting.HostingAbstractionsHostExtensions.RunAsync(IHost host, CancellationToken token)
+   at Microsoft.Extensions.Hosting.HostingAbstractionsHostExtensions.RunAsync(IHost host, CancellationToken token)
+   at Microsoft.Extensions.Hosting.HostingAbstractionsHostExtensions.Run(IHost host)
+   at Program.<Main>$(String[] args) in /mnt/c/Users/pascu/Documents/GitHub2/GitHub/Capstone-Project-/For_Testing_Only_Capstone/client-app/Program.cs:line 145
+2026-04-16 22:17:59.141 +08:00 [INF] Application starting up...
+2026-04-16 22:17:59.431 +08:00 [INF] HSTS enabled (HTTPS Redirection disabled for Nginx)
+2026-04-16 22:17:59.529 +08:00 [INF] Application configured successfully
+2026-04-16 22:17:59.532 +08:00 [INF] Listening on 
+2026-04-16 22:17:59.599 +08:00 [ERR] Hosting failed to start
+System.IO.IOException: Failed to bind to address http://0.0.0.0:5000: address already in use.
+ ---> Microsoft.AspNetCore.Connections.AddressInUseException: Address already in use
+ ---> System.Net.Sockets.SocketException (98): Address already in use
+   at System.Net.Sockets.Socket.DoBind(EndPoint endPointSnapshot, SocketAddress socketAddress)
+   at System.Net.Sockets.Socket.Bind(EndPoint localEP)
+   at Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.SocketTransportOptions.CreateDefaultBoundListenSocket(EndPoint endpoint)
+   at Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.SocketConnectionListener.Bind()
+   --- End of inner exception stack trace ---
+   at Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.SocketConnectionListener.Bind()
+   at Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.SocketTransportFactory.BindAsync(EndPoint endpoint, CancellationToken cancellationToken)
+   at Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure.TransportManager.BindAsync(EndPoint endPoint, ConnectionDelegate connectionDelegate, EndpointConfig endpointConfig, CancellationToken cancellationToken)
+   at Microsoft.AspNetCore.Server.Kestrel.Core.KestrelServerImpl.<>c__DisplayClass28_0`1.<<StartAsync>g__OnBind|0>d.MoveNext()
+--- End of stack trace from previous location ---
+   at Microsoft.AspNetCore.Server.Kestrel.Core.Internal.AddressBinder.BindEndpointAsync(ListenOptions endpoint, AddressBindContext context, CancellationToken cancellationToken)
+   --- End of inner exception stack trace ---
+   at Microsoft.AspNetCore.Server.Kestrel.Core.Internal.AddressBinder.BindEndpointAsync(ListenOptions endpoint, AddressBindContext context, CancellationToken cancellationToken)
+   at Microsoft.AspNetCore.Server.Kestrel.Core.ListenOptions.BindAsync(AddressBindContext context, CancellationToken cancellationToken)
+   at Microsoft.AspNetCore.Server.Kestrel.Core.Internal.AddressBinder.AddressesStrategy.BindAsync(AddressBindContext context, CancellationToken cancellationToken)
+   at Microsoft.AspNetCore.Server.Kestrel.Core.Internal.AddressBinder.BindAsync(ListenOptions[] listenOptions, AddressBindContext context, Func`2 useHttps, CancellationToken cancellationToken)
+   at Microsoft.AspNetCore.Server.Kestrel.Core.KestrelServerImpl.BindAsync(CancellationToken cancellationToken)
+   at Microsoft.AspNetCore.Server.Kestrel.Core.KestrelServerImpl.StartAsync[TContext](IHttpApplication`1 application, CancellationToken cancellationToken)
+   at Microsoft.AspNetCore.Hosting.GenericWebHostService.StartAsync(CancellationToken cancellationToken)
+   at Microsoft.Extensions.Hosting.Internal.Host.<StartAsync>b__15_1(IHostedService service, CancellationToken token)
+   at Microsoft.Extensions.Hosting.Internal.Host.ForeachService[T](IEnumerable`1 services, CancellationToken token, Boolean concurrent, Boolean abortOnFirstException, List`1 exceptions, Func`3 operation)
+2026-04-16 22:17:59.616 +08:00 [FTL]  Application terminated unexpectedly
+System.IO.IOException: Failed to bind to address http://0.0.0.0:5000: address already in use.
+ ---> Microsoft.AspNetCore.Connections.AddressInUseException: Address already in use
+ ---> System.Net.Sockets.SocketException (98): Address already in use
+   at System.Net.Sockets.Socket.DoBind(EndPoint endPointSnapshot, SocketAddress socketAddress)
+   at System.Net.Sockets.Socket.Bind(EndPoint localEP)
+   at Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.SocketTransportOptions.CreateDefaultBoundListenSocket(EndPoint endpoint)
+   at Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.SocketConnectionListener.Bind()
+   --- End of inner exception stack trace ---
+   at Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.SocketConnectionListener.Bind()
+   at Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.SocketTransportFactory.BindAsync(EndPoint endpoint, CancellationToken cancellationToken)
+   at Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure.TransportManager.BindAsync(EndPoint endPoint, ConnectionDelegate connectionDelegate, EndpointConfig endpointConfig, CancellationToken cancellationToken)
+   at Microsoft.AspNetCore.Server.Kestrel.Core.KestrelServerImpl.<>c__DisplayClass28_0`1.<<StartAsync>g__OnBind|0>d.MoveNext()
+--- End of stack trace from previous location ---
+   at Microsoft.AspNetCore.Server.Kestrel.Core.Internal.AddressBinder.BindEndpointAsync(ListenOptions endpoint, AddressBindContext context, CancellationToken cancellationToken)
+   --- End of inner exception stack trace ---
+   at Microsoft.AspNetCore.Server.Kestrel.Core.Internal.AddressBinder.BindEndpointAsync(ListenOptions endpoint, AddressBindContext context, CancellationToken cancellationToken)
+   at Microsoft.AspNetCore.Server.Kestrel.Core.ListenOptions.BindAsync(AddressBindContext context, CancellationToken cancellationToken)
+   at Microsoft.AspNetCore.Server.Kestrel.Core.Internal.AddressBinder.AddressesStrategy.BindAsync(AddressBindContext context, CancellationToken cancellationToken)
+   at Microsoft.AspNetCore.Server.Kestrel.Core.Internal.AddressBinder.BindAsync(ListenOptions[] listenOptions, AddressBindContext context, Func`2 useHttps, CancellationToken cancellationToken)
+   at Microsoft.AspNetCore.Server.Kestrel.Core.KestrelServerImpl.BindAsync(CancellationToken cancellationToken)
+   at Microsoft.AspNetCore.Server.Kestrel.Core.KestrelServerImpl.StartAsync[TContext](IHttpApplication`1 application, CancellationToken cancellationToken)
+   at Microsoft.AspNetCore.Hosting.GenericWebHostService.StartAsync(CancellationToken cancellationToken)
+   at Microsoft.Extensions.Hosting.Internal.Host.<StartAsync>b__15_1(IHostedService service, CancellationToken token)
+   at Microsoft.Extensions.Hosting.Internal.Host.ForeachService[T](IEnumerable`1 services, CancellationToken token, Boolean concurrent, Boolean abortOnFirstException, List`1 exceptions, Func`3 operation)
+   at Microsoft.Extensions.Hosting.Internal.Host.StartAsync(CancellationToken cancellationToken)
+   at Microsoft.Extensions.Hosting.HostingAbstractionsHostExtensions.RunAsync(IHost host, CancellationToken token)
+   at Microsoft.Extensions.Hosting.HostingAbstractionsHostExtensions.RunAsync(IHost host, CancellationToken token)
+   at Microsoft.Extensions.Hosting.HostingAbstractionsHostExtensions.Run(IHost host)
+   at Program.<Main>$(String[] args) in /mnt/c/Users/pascu/Documents/GitHub2/GitHub/Capstone-Project-/For_Testing_Only_Capstone/client-app/Program.cs:line 145
+2026-04-16 22:31:20.556 +08:00 [INF] Application starting up...
+2026-04-16 22:31:20.959 +08:00 [INF] HSTS enabled (HTTPS Redirection disabled for Nginx)
+2026-04-16 22:31:21.105 +08:00 [INF] Application configured successfully
+2026-04-16 22:31:21.109 +08:00 [INF] Listening on 
+2026-04-16 22:31:21.196 +08:00 [INF] Now listening on: http://0.0.0.0:5000
+2026-04-16 22:31:21.200 +08:00 [INF] Application started. Press Ctrl+C to shut down.
+2026-04-16 22:31:21.201 +08:00 [INF] Hosting environment: Production
+2026-04-16 22:31:21.202 +08:00 [INF] Content root path: /mnt/c/Users/pascu/Documents/GitHub2/GitHub/Capstone-Project-/For_Testing_Only_Capstone/client-app
+2026-04-16 22:58:11.828 +08:00 [INF] Application is shutting down...
+2026-04-16 23:08:57.526 +08:00 [INF] Application starting up...
+2026-04-16 23:08:57.863 +08:00 [INF] HSTS enabled (HTTPS Redirection disabled for Nginx)
+2026-04-16 23:08:58.023 +08:00 [INF] Application configured successfully
+2026-04-16 23:08:58.026 +08:00 [INF] Listening on 
+2026-04-16 23:08:58.122 +08:00 [INF] Now listening on: http://0.0.0.0:5000
+2026-04-16 23:08:58.125 +08:00 [INF] Application started. Press Ctrl+C to shut down.
+2026-04-16 23:08:58.126 +08:00 [INF] Hosting environment: Production
+2026-04-16 23:08:58.127 +08:00 [INF] Content root path: /mnt/c/Users/pascu/Documents/GitHub2/GitHub/Capstone-Project-/For_Testing_Only_Capstone/client-app
+2026-04-16 23:21:45.944 +08:00 [INF] Application is shutting down...
+2026-04-16 23:52:15.883 +08:00 [INF] Application starting up...
+2026-04-16 23:52:16.584 +08:00 [INF] HSTS enabled (HTTPS Redirection disabled for Nginx)
+2026-04-16 23:52:16.919 +08:00 [INF] Application configured successfully
+2026-04-16 23:52:16.920 +08:00 [INF] Listening on 
+2026-04-16 23:52:16.993 +08:00 [INF] Now listening on: http://0.0.0.0:5000
+2026-04-16 23:52:16.995 +08:00 [INF] Application started. Press Ctrl+C to shut down.
+2026-04-16 23:52:16.996 +08:00 [INF] Hosting environment: Production
+2026-04-16 23:52:16.997 +08:00 [INF] Content root path: /mnt/c/Users/pascu/Documents/GitHub2/GitHub/Capstone-Project-/For_Testing_Only_Capstone/client-app
+2026-04-16 23:53:06.422 +08:00 [INF] Application is shutting down...
+2026-04-16 23:57:13.689 +08:00 [INF] Application starting up...
+2026-04-16 23:57:17.481 +08:00 [INF] HSTS enabled (HTTPS Redirection disabled for Nginx)
+2026-04-16 23:57:18.166 +08:00 [INF] Application configured successfully
+2026-04-16 23:57:18.167 +08:00 [INF] Listening on 
+2026-04-16 23:57:19.255 +08:00 [INF] Now listening on: http://0.0.0.0:5000
+2026-04-16 23:57:19.260 +08:00 [INF] Application started. Press Ctrl+C to shut down.
+2026-04-16 23:57:19.263 +08:00 [INF] Hosting environment: Production
+2026-04-16 23:57:19.264 +08:00 [INF] Content root path: C:\Users\pascu\Documents\GitHub2\GitHub\Capstone-Project-\For_Testing_Only_Capstone\client-app
+2026-04-16 23:57:51.033 +08:00 [INF] Request starting HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/user-profile?email=registrar%40plv.edu.ph&role=registrar - null null
+2026-04-16 23:57:51.239 +08:00 [INF] CORS policy execution successful.
+2026-04-16 23:57:51.242 +08:00 [INF] HTTP OPTIONS /api/Auth/user-profile responded 204 in 24.1282 ms
+2026-04-16 23:57:51.723 +08:00 [INF] Request finished HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/user-profile?email=registrar%40plv.edu.ph&role=registrar - 204 null null 703.6341ms
+2026-04-16 23:57:51.774 +08:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/api/Auth/user-profile?email=registrar%40plv.edu.ph&role=registrar - application/json null
+2026-04-16 23:57:51.782 +08:00 [INF] CORS policy execution successful.
+2026-04-16 23:57:51.803 +08:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone)'
+2026-04-16 23:57:51.914 +08:00 [INF] Route matched with {action = "GetUserProfile", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetUserProfile(System.String, System.String) on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-16 23:57:52.436 +08:00 [INF] Executing OkObjectResult, writing value of type '<>f__AnonymousType16`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[Client_app.Models.UserProfileDto, For_Testing_Only_Capstone, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]'.
+2026-04-16 23:57:52.514 +08:00 [INF] Executed action Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone) in 595.6687ms
+2026-04-16 23:57:52.516 +08:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone)'
+2026-04-16 23:57:52.518 +08:00 [INF] HTTP GET /api/Auth/user-profile responded 200 in 739.7134 ms
+2026-04-16 23:57:52.522 +08:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/api/Auth/user-profile?email=registrar%40plv.edu.ph&role=registrar - 200 null application/json; charset=utf-8 747.7726ms
+2026-04-16 23:57:52.526 +08:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/api/Auth/user-profile?email=registrar%40plv.edu.ph&role=registrar - application/json null
+2026-04-16 23:57:52.545 +08:00 [INF] CORS policy execution successful.
+2026-04-16 23:57:52.547 +08:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone)'
+2026-04-16 23:57:52.549 +08:00 [INF] Route matched with {action = "GetUserProfile", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetUserProfile(System.String, System.String) on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-16 23:57:52.580 +08:00 [INF] Executing OkObjectResult, writing value of type '<>f__AnonymousType16`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[Client_app.Models.UserProfileDto, For_Testing_Only_Capstone, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]'.
+2026-04-16 23:57:52.583 +08:00 [INF] Executed action Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone) in 31.7553ms
+2026-04-16 23:57:52.585 +08:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone)'
+2026-04-16 23:57:52.586 +08:00 [INF] HTTP GET /api/Auth/user-profile responded 200 in 41.8319 ms
+2026-04-16 23:57:52.589 +08:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/api/Auth/user-profile?email=registrar%40plv.edu.ph&role=registrar - 200 null application/json; charset=utf-8 62.9403ms
+2026-04-16 23:58:08.138 +08:00 [INF] Request starting HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/requests/pending - null null
+2026-04-16 23:58:08.142 +08:00 [INF] CORS policy execution successful.
+2026-04-16 23:58:08.143 +08:00 [INF] HTTP OPTIONS /api/Auth/requests/pending responded 204 in 1.2576 ms
+2026-04-16 23:58:08.145 +08:00 [INF] Request finished HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/requests/pending - 204 null null 7.0999ms
+2026-04-16 23:58:08.150 +08:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/api/Auth/requests/pending - application/json null
+2026-04-16 23:58:08.154 +08:00 [INF] CORS policy execution successful.
+2026-04-16 23:58:08.155 +08:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.GetPendingRequests (For_Testing_Only_Capstone)'
+2026-04-16 23:58:08.161 +08:00 [INF] Route matched with {action = "GetPendingRequests", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetPendingRequests() on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-16 23:58:08.178 +08:00 [INF] Executing OkObjectResult, writing value of type '<>f__AnonymousType4`3[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.Collections.Generic.List`1[[System.Object, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]], System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.Collections.Generic.List`1[[System.Object, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]], System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-16 23:58:08.184 +08:00 [INF] Executed action Client_app.Controllers.AuthController.GetPendingRequests (For_Testing_Only_Capstone) in 20.2113ms
+2026-04-16 23:58:08.186 +08:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.GetPendingRequests (For_Testing_Only_Capstone)'
+2026-04-16 23:58:08.188 +08:00 [INF] HTTP GET /api/Auth/requests/pending responded 200 in 34.1298 ms
+2026-04-16 23:58:08.190 +08:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/api/Auth/requests/pending - 200 null application/json; charset=utf-8 40.3831ms
+2026-04-16 23:58:08.846 +08:00 [INF] Request starting HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/students/approved - null null
+2026-04-16 23:58:08.849 +08:00 [INF] CORS policy execution successful.
+2026-04-16 23:58:08.850 +08:00 [INF] HTTP OPTIONS /api/Auth/students/approved responded 204 in 0.8481 ms
+2026-04-16 23:58:08.851 +08:00 [INF] Request finished HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/students/approved - 204 null null 5.8546ms
+2026-04-16 23:58:08.855 +08:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/api/Auth/students/approved - application/json null
+2026-04-16 23:58:08.857 +08:00 [INF] CORS policy execution successful.
+2026-04-16 23:58:08.858 +08:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.GetApprovedStudents (For_Testing_Only_Capstone)'
+2026-04-16 23:58:08.861 +08:00 [INF] Route matched with {action = "GetApprovedStudents", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetApprovedStudents() on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-16 23:58:08.866 +08:00 [INF] Executing OkObjectResult, writing value of type '<>f__AnonymousType7`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.Collections.Generic.List`1[[System.Object, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]], System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-16 23:58:08.870 +08:00 [INF] Executed action Client_app.Controllers.AuthController.GetApprovedStudents (For_Testing_Only_Capstone) in 7.254ms
+2026-04-16 23:58:08.871 +08:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.GetApprovedStudents (For_Testing_Only_Capstone)'
+2026-04-16 23:58:08.873 +08:00 [INF] HTTP GET /api/Auth/students/approved responded 200 in 15.6635 ms
+2026-04-16 23:58:08.874 +08:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/api/Auth/students/approved - 200 null application/json; charset=utf-8 19.8284ms
+2026-04-16 23:58:09.436 +08:00 [INF] Request starting HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/admins/department/approved - null null
+2026-04-16 23:58:09.439 +08:00 [INF] CORS policy execution successful.
+2026-04-16 23:58:09.440 +08:00 [INF] HTTP OPTIONS /api/Auth/admins/department/approved responded 204 in 1.3001 ms
+2026-04-16 23:58:09.442 +08:00 [INF] Request finished HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/admins/department/approved - 204 null null 6.2088ms
+2026-04-16 23:58:09.446 +08:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/api/Auth/admins/department/approved - application/json null
+2026-04-16 23:58:09.449 +08:00 [INF] CORS policy execution successful.
+2026-04-16 23:58:09.449 +08:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.GetApprovedDepartmentAdmins (For_Testing_Only_Capstone)'
+2026-04-16 23:58:09.453 +08:00 [INF] Route matched with {action = "GetApprovedDepartmentAdmins", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetApprovedDepartmentAdmins() on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-16 23:58:09.460 +08:00 [INF] Executing OkObjectResult, writing value of type '<>f__AnonymousType9`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.Collections.Generic.List`1[[System.Object, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]], System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-16 23:58:09.463 +08:00 [INF] Executed action Client_app.Controllers.AuthController.GetApprovedDepartmentAdmins (For_Testing_Only_Capstone) in 7.2531ms
+2026-04-16 23:58:09.464 +08:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.GetApprovedDepartmentAdmins (For_Testing_Only_Capstone)'
+2026-04-16 23:58:09.465 +08:00 [INF] HTTP GET /api/Auth/admins/department/approved responded 200 in 16.7249 ms
+2026-04-16 23:58:09.470 +08:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/api/Auth/admins/department/approved - 200 null application/json; charset=utf-8 23.8367ms
+2026-04-16 23:58:09.866 +08:00 [INF] Request starting HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/faculty/approved - null null
+2026-04-16 23:58:09.869 +08:00 [INF] CORS policy execution successful.
+2026-04-16 23:58:09.870 +08:00 [INF] HTTP OPTIONS /api/Auth/faculty/approved responded 204 in 0.6979 ms
+2026-04-16 23:58:09.871 +08:00 [INF] Request finished HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/faculty/approved - 204 null null 4.5626ms
+2026-04-16 23:58:09.874 +08:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/api/Auth/faculty/approved - application/json null
+2026-04-16 23:58:09.876 +08:00 [INF] CORS policy execution successful.
+2026-04-16 23:58:09.877 +08:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.GetApprovedFaculties (For_Testing_Only_Capstone)'
+2026-04-16 23:58:09.881 +08:00 [INF] Route matched with {action = "GetApprovedFaculties", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetApprovedFaculties() on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-16 23:58:09.887 +08:00 [INF] Executing OkObjectResult, writing value of type '<>f__AnonymousType11`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.Collections.Generic.List`1[[System.Object, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]], System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-16 23:58:09.889 +08:00 [INF] Executed action Client_app.Controllers.AuthController.GetApprovedFaculties (For_Testing_Only_Capstone) in 5.7596ms
+2026-04-16 23:58:09.890 +08:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.GetApprovedFaculties (For_Testing_Only_Capstone)'
+2026-04-16 23:58:09.892 +08:00 [INF] HTTP GET /api/Auth/faculty/approved responded 200 in 15.5791 ms
+2026-04-16 23:58:09.894 +08:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/api/Auth/faculty/approved - 200 null application/json; charset=utf-8 19.8302ms
+2026-04-16 23:58:15.773 +08:00 [INF] Request starting HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/user-profile?email=registrar%40plv.edu.ph&role=registrar - null null
+2026-04-16 23:58:15.776 +08:00 [INF] CORS policy execution successful.
+2026-04-16 23:58:15.776 +08:00 [INF] HTTP OPTIONS /api/Auth/user-profile responded 204 in 0.5971 ms
+2026-04-16 23:58:15.778 +08:00 [INF] Request finished HTTP/1.1 OPTIONS http://localhost:5000/api/Auth/user-profile?email=registrar%40plv.edu.ph&role=registrar - 204 null null 4.6479ms
+2026-04-16 23:58:15.781 +08:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/api/Auth/user-profile?email=registrar%40plv.edu.ph&role=registrar - application/json null
+2026-04-16 23:58:15.783 +08:00 [INF] CORS policy execution successful.
+2026-04-16 23:58:15.784 +08:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone)'
+2026-04-16 23:58:15.785 +08:00 [INF] Route matched with {action = "GetUserProfile", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetUserProfile(System.String, System.String) on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-16 23:58:15.789 +08:00 [INF] Executing OkObjectResult, writing value of type '<>f__AnonymousType16`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[Client_app.Models.UserProfileDto, For_Testing_Only_Capstone, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]'.
+2026-04-16 23:58:15.791 +08:00 [INF] Executed action Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone) in 3.7692ms
+2026-04-16 23:58:15.792 +08:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone)'
+2026-04-16 23:58:15.794 +08:00 [INF] HTTP GET /api/Auth/user-profile responded 200 in 10.5464 ms
+2026-04-16 23:58:15.795 +08:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/api/Auth/user-profile?email=registrar%40plv.edu.ph&role=registrar - 200 null application/json; charset=utf-8 14.1144ms

@@ -1,0 +1,417 @@
+# Check if API container is restarting, OOM killed, or throttled
+PS C:\Users\Carmela\Documents\GitHub\Capstone-Project-\For_Testing_Only_Capstone\network> docker stats --no-stream --format "table {{.Container}}\t{{.CPUPerc}}\t{{.MemUsage}}\t{{.MemPerc}}\t{{.NetIO}}"
+CONTAINER                                                          CPU %     MEM USAGE / LIMIT     MEM %     NET I/O
+016b610be8910361a1eca0a1221e43f6d69796ecc770fb0f814d1b3022f166f6   0.00%     3.805MiB / 3.826GiB   0.10%     236kB / 126B
+fc004c1d09137a2c0d1b019a9021f2ab58a6993389899006437cd83c2d9d5f6c   0.79%     32.1MiB / 3.826GiB    0.82%     60.6kB / 126B
+bb9a8b16e38e87742c4ba0d8c1f258960f3f5f7aef0d04b4860371f86e64f8e1   0.92%     33.95MiB / 3.826GiB   0.87%     60.7kB / 126B
+0f1e8f2c56da8dd067731d758578f0176f73171dd905f53a7642763d9b90e486   0.82%     36.43MiB / 3.826GiB   0.93%     60.8kB / 126B
+6ba5668fd7e74c17f485eccea18554936a9d749e06c6be173a6f2c99f87b7b28   0.74%     33.89MiB / 3.826GiB   0.87%     60.5kB / 126B
+f7a0951f447314c63b53cb60cc36d9605d2a2be462b58119638e5318fa1826e0   0.89%     34.59MiB / 3.826GiB   0.88%     66kB / 3.35kB
+4cac3716dd4e284c31462ffc4a38d05d3dca72bdb77453a9c65c5675933c8419   0.70%     34.03MiB / 3.826GiB   0.87%     60.8kB / 126B
+2652ff2286c1e18441719323fbdf550273de1295f7e6504a2854a94f1fa119a0   0.00%     18.52MiB / 3.826GiB   0.47%     258kB / 126B
+b7dcf01e15bcad36220a4c3e33a768ca66f34a2048882707179eeef4bc6a4d4e   1.79%     95.03MiB / 3.826GiB   2.43%     8.02MB / 8.27MB
+6b8ab444d11cb7cb3e5710aabebb9084677fca80278a8fcb843c94e4c0f41934   2.68%     87.01MiB / 3.826GiB   2.22%     11.1MB / 11MB
+641e5539298be1312a50ad32be8301c3c1d553c6c8079b81ada53980e776bb50   5.04%     70.16MiB / 3.826GiB   1.79%     10.5MB / 9.49MB
+ab115d82d4b40a214570827acb86f689c54d6e1718219e8af16f85c0b25b2e54   4.97%     83.39MiB / 3.826GiB   2.13%     12.3MB / 12.2MB
+7acd233c2ee9162e1f10da6cb7a52c6c3da67f35f9815a3eb12dccb801464637   1.26%     93.48MiB / 3.826GiB   2.39%     10.8MB / 10.4MB
+eee1ed4d230f20d18797842da4a0a036b75791aaeb15601aba22da4e900fa500   0.49%     63.01MiB / 3.826GiB   1.61%     6.56MB / 6.8MB
+a7311d11ac64206c10c2d4fc444dbc8cdd1992c2655669129def340553c6b5ff   1.75%     74.51MiB / 3.826GiB   1.90%     11.7MB / 10.5MB
+d26ce70221b45702b4b56275d347d8159fe6fcddc3a078b609f1fbca37774115   0.13%     58.63MiB / 3.826GiB   1.50%     261kB / 126B
+5b76edbf7ea5d72b4303df70efd002258abdc9c7f3c69b5231f363514ca663c9   0.14%     53.28MiB / 3.826GiB   1.36%     260kB / 126B
+1c7da193b81fdb2422ce7b824533007740cad594c43f7ef36c7ed274799dbfb7   0.27%     65.56MiB / 3.826GiB   1.67%     261kB / 126B
+4aa61ef8b658e98ab96d0a103f1a1e96121fa31ffbd920564f37ec54824858b9   0.22%     54.6MiB / 3.826GiB    1.39%     261kB / 126B
+f6f1b26ba7ec0c75060a2ed6c2e4699a7e25ba15bcd9a6f79b079cbb7a72ea58   0.23%     59.19MiB / 3.826GiB   1.51%     263kB / 5.69kB
+a51660fb29a636892baf953e4e81ef22c071953b0e58e5053aa06c76df10efb6   0.22%     56.14MiB / 3.826GiB   1.43%     261kB / 126B
+48813294462f9a752345113e16d4bc40ba70aef5b2a99162e5f2a7e961572f9d   0.00%     4.566MiB / 3.826GiB   0.12%     260kB / 126B
+4e3fe6507cbea6d00daa7893956176b7f9b6ccb68c4d02adc9ab48299d27f08a   0.00%     1.895MiB / 3.826GiB   0.05%     261kB / 126B
+fc1d08bbf999dbc962bda2b41b7f3342a7d83d3e1893f096280e100c90204d2c   0.00%     8.754MiB / 3.826GiB   0.22%     259kB / 126B
+PS C:\Users\Carmela\Documents\GitHub\Capstone-Project-\For_Testing_Only_Capstone\network> 
+PS C:\Users\Carmela\Documents\GitHub\Capstone-Project-\For_Testing_Only_Capstone\network> # Then check restart policy and exit codes
+PS C:\Users\Carmela\Documents\GitHub\Capstone-Project-\For_Testing_Only_Capstone\network> docker inspect cli --format='{{json .State}}' | ConvertFrom-Json | Select-Object Status, ExitCode, OOMKilled, Restarting, RestartCount
+
+
+Status       : running
+ExitCode     : 0
+OOMKilled    : False
+Restarting   : False
+RestartCount :
+
+
+
+PS C:\Users\Carmela\Documents\GitHub\Capstone-Project-\For_Testing_Only_Capstone\network>
+PS C:\Users\Carmela\Documents\GitHub\Capstone-Project-\For_Testing_Only_Capstone\network> # Also get the C# API container status (if different from cli)
+PS C:\Users\Carmela\Documents\GitHub\Capstone-Project-\For_Testing_Only_Capstone\network> docker ps -a --filter "name=api\|name=dotnet\|name=aspnet" --format "table {{.Names}}\t{{.Status}}\t{{.ExitCode}}"
+failed to execute template: template: :1:33: executing "" at <.ExitCode>: can't evaluate field ExitCode in type *formatter.ContainerContext
+PS C:\Users\Carmela\Documents\GitHub\Capstone-Project-\For_Testing_Only_Capstone\network> 
+
+docker logs --tail=100 nginx-shield
+/docker-entrypoint.sh: /docker-entrypoint.d/ is not empty, will attempt to perform configuration
+/docker-entrypoint.sh: Looking for shell scripts in /docker-entrypoint.d/
+/docker-entrypoint.sh: Launching /docker-entrypoint.d/10-listen-on-ipv6-by-default.sh
+10-listen-on-ipv6-by-default.sh: info: can not modify /etc/nginx/conf.d/default.conf (read-only file system?)
+/docker-entrypoint.sh: Sourcing /docker-entrypoint.d/15-local-resolvers.envsh
+/docker-entrypoint.sh: Launching /docker-entrypoint.d/20-envsubst-on-templates.sh
+/docker-entrypoint.sh: Launching /docker-entrypoint.d/30-tune-worker-processes.sh
+/docker-entrypoint.sh: Configuration complete; ready for start up
+2026/03/11 13:43:25 [notice] 1#1: using the "epoll" event method
+2026/03/11 13:43:25 [notice] 1#1: nginx/1.28.2
+2026/03/11 13:43:25 [notice] 1#1: built by gcc 15.2.0 (Alpine 15.2.0)
+2026/03/11 13:43:25 [notice] 1#1: OS: Linux 6.6.87.2-microsoft-standard-WSL2
+2026/03/11 13:43:25 [notice] 1#1: getrlimit(RLIMIT_NOFILE): 1048576:1048576
+2026/03/11 13:43:25 [notice] 1#1: start worker processes
+2026/03/11 13:43:25 [notice] 1#1: start worker process 21
+2026/03/11 13:43:25 [notice] 1#1: start worker process 22
+2026/03/11 13:45:26 [notice] 1#1: signal 3 (SIGQUIT) received, shutting down
+2026/03/11 13:45:26 [notice] 22#22: gracefully shutting down
+2026/03/11 13:45:26 [notice] 21#21: gracefully shutting down
+2026/03/11 13:45:26 [notice] 22#22: exiting
+2026/03/11 13:45:26 [notice] 21#21: exiting
+2026/03/11 13:45:26 [notice] 22#22: exit
+2026/03/11 13:45:26 [notice] 21#21: exit
+/docker-entrypoint.sh: /docker-entrypoint.d/ is not empty, will attempt to perform configuration
+/docker-entrypoint.sh: Looking for shell scripts in /docker-entrypoint.d/
+/docker-entrypoint.sh: Launching /docker-entrypoint.d/10-listen-on-ipv6-by-default.sh
+10-listen-on-ipv6-by-default.sh: info: can not modify /etc/nginx/conf.d/default.conf (read-only file system?)
+/docker-entrypoint.sh: Sourcing /docker-entrypoint.d/15-local-resolvers.envsh
+/docker-entrypoint.sh: Launching /docker-entrypoint.d/20-envsubst-on-templates.sh
+/docker-entrypoint.sh: Launching /docker-entrypoint.d/30-tune-worker-processes.sh
+/docker-entrypoint.sh: Configuration complete; ready for start up
+2026/03/11 13:47:00 [notice] 1#1: using the "epoll" event method
+2026/03/11 13:47:00 [notice] 1#1: nginx/1.28.2
+2026/03/11 13:47:00 [notice] 1#1: built by gcc 15.2.0 (Alpine 15.2.0)
+2026/03/11 13:47:00 [notice] 1#1: OS: Linux 6.6.87.2-microsoft-standard-WSL2
+2026/03/11 13:47:00 [notice] 1#1: getrlimit(RLIMIT_NOFILE): 1048576:1048576
+2026/03/11 13:47:00 [notice] 1#1: start worker processes
+2026/03/11 13:47:00 [notice] 1#1: start worker process 21
+2026/03/11 13:47:00 [notice] 1#1: start worker process 22
+2026/03/11 14:35:01 [notice] 1#1: signal 3 (SIGQUIT) received, shutting down
+2026/03/11 14:35:02 [notice] 21#21: gracefully shutting down
+2026/03/11 14:35:02 [notice] 22#22: gracefully shutting down
+2026/03/11 14:35:02 [notice] 22#22: exiting
+2026/03/11 14:35:02 [notice] 21#21: exiting
+2026/03/11 14:35:02 [notice] 21#21: exit
+2026/03/11 14:35:02 [notice] 22#22: exit
+/docker-entrypoint.sh: /docker-entrypoint.d/ is not empty, will attempt to perform configuration
+/docker-entrypoint.sh: Looking for shell scripts in /docker-entrypoint.d/
+/docker-entrypoint.sh: Launching /docker-entrypoint.d/10-listen-on-ipv6-by-default.sh
+10-listen-on-ipv6-by-default.sh: info: can not modify /etc/nginx/conf.d/default.conf (read-only file system?)
+/docker-entrypoint.sh: Sourcing /docker-entrypoint.d/15-local-resolvers.envsh
+/docker-entrypoint.sh: Launching /docker-entrypoint.d/20-envsubst-on-templates.sh
+/docker-entrypoint.sh: Launching /docker-entrypoint.d/30-tune-worker-processes.sh
+/docker-entrypoint.sh: Configuration complete; ready for start up
+2026/03/13 07:34:49 [notice] 1#1: using the "epoll" event method
+2026/03/13 07:34:49 [notice] 1#1: nginx/1.28.2
+2026/03/13 07:34:49 [notice] 1#1: built by gcc 15.2.0 (Alpine 15.2.0)
+2026/03/13 07:34:49 [notice] 1#1: OS: Linux 6.6.87.2-microsoft-standard-WSL2
+2026/03/13 07:34:49 [notice] 1#1: getrlimit(RLIMIT_NOFILE): 1048576:1048576
+2026/03/13 07:34:49 [notice] 1#1: start worker processes
+2026/03/13 07:34:49 [notice] 1#1: start worker process 21
+2026/03/13 07:34:49 [notice] 1#1: start worker process 22
+docker logs --tail=100 registrar-chaincode
+2026/03/11 13:43:27 [1] ID: registrar-chaincode_1.0:979e1408c21f6d96bc971a7c5e4d59e59545fc53c36253c30be466381d3d8de4 | Address: 0.0.0.0:9999 | TLS Disabled: true
+2026/03/11 13:43:27 [2] FORCING PLAIN TEXT MODE (No TLS)
+2026/03/11 13:43:27 [3] INVOKING START...
+2026/03/13 07:34:37 [1] ID: registrar-chaincode_1.0:979e1408c21f6d96bc971a7c5e4d59e59545fc53c36253c30be466381d3d8de4 | Address: 0.0.0.0:9999 | TLS Disabled: true
+2026/03/13 07:34:37 [2] FORCING PLAIN TEXT MODE (No TLS)
+2026/03/13 07:34:37 [3] INVOKING START...
+
+docker ps -a --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}" | Select-String "Exited"
+
+orderer.capstone.com           Exited (2) 8 minutes ago
+
+# Test if API container can resolve internal service names
+PS C:\Users\Carmela\Documents\GitHub\Capstone-Project-\For_Testing_Only_Capstone\network> docker exec cli sh -c "nslookup registrar-chaincode"
+sh: 1: nslookup: not found
+PS C:\Users\Carmela\Documents\GitHub\Capstone-Project-\For_Testing_Only_Capstone\network> docker exec cli sh -c "nslookup orderer.capstone.com"
+sh: 1: nslookup: not found
+PS C:\Users\Carmela\Documents\GitHub\Capstone-Project-\For_Testing_Only_Capstone\network> docker exec cli sh -c "nslookup peer0.registrar.capstone.com"
+sh: 1: nslookup: not found
+PS C:\Users\Carmela\Documents\GitHub\Capstone-Project-\For_Testing_Only_Capstone\network> 
+PS C:\Users\Carmela\Documents\GitHub\Capstone-Project-\For_Testing_Only_Capstone\network> # If nslookup doesn't exist, use getent (Alpine Linux)
+
+PS C:\Users\Carmela\Documents\GitHub\Capstone-Project-\For_Testing_Only_Capstone\network> docker exec cli sh -c "getent hosts registrar-chaincode"
+172.18.0.4      registrar-chaincode
+PS C:\Users\Carmela\Documents\GitHub\Capstone-Project-\For_Testing_Only_Capstone\network> docker exec cli sh -c "getent hosts orderer.capstone.com"
+127.0.0.1       orderer.capstone.com
+
+# Test if ports are reachable from API container
+PS C:\Users\Carmela\Documents\GitHub\Capstone-Project-\For_Testing_Only_Capstone\network> docker exec cli sh -c "timeout 5 bash -c '</dev/tcp/registrar-chaincode/9999' && echo 'REACHABLE' || echo 'UNREACHABLE'"
+REACHABLE
+PS C:\Users\Carmela\Documents\GitHub\Capstone-Project-\For_Testing_Only_Capstone\network> docker exec cli sh -c "timeout 5 bash -c '</dev/tcp/orderer.capstone.com/7050' && echo 'REACHABLE' || echo 'UNREACHABLE'"
+bash: connect: Connection refused
+bash: /dev/tcp/orderer.capstone.com/7050: Connection refused
+UNREACHABLE
+PS C:\Users\Carmela\Documents\GitHub\Capstone-Project-\For_Testing_Only_Capstone\network> docker exec cli sh -c "timeout 5 bash -c '</dev/tcp/peer0.registrar.capstone.com/7051' && echo 'REACHABLE' || echo 'UNREACHABLE'"
+REACHABLE
+PS C:\Users\Carmela\Documents\GitHub\Capstone-Project-\For_Testing_Only_Capstone\network> 
+PS C:\Users\Carmela\Documents\GitHub\Capstone-Project-\For_Testing_Only_Capstone\network> # If bash TCP sockets don't work, use nc (netcat)
+PS C:\Users\Carmela\Documents\GitHub\Capstone-Project-\For_Testing_Only_Capstone\network> docker exec cli sh -c "timeout 5 nc -zv registrar-chaincode 9999"
+timeout: failed to run command 'nc': No such file or directory
+PS C:\Users\Carmela\Documents\GitHub\Capstone-Project-\For_Testing_Only_Capstone\network> docker exec cli sh -c "timeout 5 nc -zv orderer.capstone.com 7050"
+timeout: failed to run command 'nc': No such file or directory
+
+# List all networks and inspect registrar-net
+PS C:\Users\Carmela\Documents\GitHub\Capstone-Project-\For_Testing_Only_Capstone\network> docker network ls | Select-String "registrar"
+
+881291d6222f   registrar-net   bridge    local
+
+
+PS C:\Users\Carmela\Documents\GitHub\Capstone-Project-\For_Testing_Only_Capstone\network>
+PS C:\Users\Carmela\Documents\GitHub\Capstone-Project-\For_Testing_Only_Capstone\network> # Get detailed network info
+PS C:\Users\Carmela\Documents\GitHub\Capstone-Project-\For_Testing_Only_Capstone\network> docker network inspect registrar-net --format='{{json .Containers}}' | ConvertFrom-Json | ForEach-Object {$_.Name, $_.IPv4Address}
+PS C:\Users\Carmela\Documents\GitHub\Capstone-Project-\For_Testing_Only_Capstone\network> 
+PS C:\Users\Carmela\Documents\GitHub\Capstone-Project-\For_Testing_Only_Capstone\network> # Check if API container is connected to registrar-net
+
+PS C:\Users\Carmela\Documents\GitHub\Capstone-Project-\For_Testing_Only_Capstone\network> docker inspect cli --format='{{range $k, $v := .NetworkSettings.Networks}}{{$k}}: {{$v.IPAddress}}{{end}}'
+registrar-net: 172.18.0.9
+
+# Make a curl request FROM INSIDE the CLI container to middleware
+PS C:\Users\Carmela\Documents\GitHub\Capstone-Project-\For_Testing_Only_Capstone\network> docker exec cli sh -c "curl -v http://localhost:4000/api/all-grades 2>&1"
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0*   Trying ::1:4000...
+* TCP_NODELAY set
+* connect to ::1 port 4000 failed: Connection refused
+*   Trying 127.0.0.1:4000...
+* TCP_NODELAY set
+* connect to 127.0.0.1 port 4000 failed: Connection refused
+* Failed to connect to localhost port 4000: Connection refused
+  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0
+* Closing connection 0
+curl: (7) Failed to connect to localhost port 4000: Connection refused
+PS C:\Users\Carmela\Documents\GitHub\Capstone-Project-\For_Testing_Only_Capstone\network> 
+PS C:\Users\Carmela\Documents\GitHub\Capstone-Project-\For_Testing_Only_Capstone\network> # Also test from middleware container to the chaincode service
+PS C:\Users\Carmela\Documents\GitHub\Capstone-Project-\For_Testing_Only_Capstone\network> docker exec cli sh -c "curl -v http://registrar-chaincode:9999/ 2>&1"
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0*   Trying 172.18.0.4:9999...
+* TCP_NODELAY set
+* Connected to registrar-chaincode (172.18.0.4) port 9999 (#0)
+> GET / HTTP/1.1
+> Host: registrar-chaincode:9999
+> User-Agent: curl/7.68.0
+> Accept: */*
+>
+* Received HTTP/0.9 when not allowed
+
+  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0
+* Closing connection 0
+curl: (1) Received HTTP/0.9 when not allowed
+
+PS C:\Users\Carmela\Documents\GitHub\Capstone-Project-\For_Testing_Only_Capstone\network> 
+PS C:\Users\Carmela\Documents\GitHub\Capstone-Project-\For_Testing_Only_Capstone\network> # Test middleware directly (if it's running)
+PS C:\Users\Carmela\Documents\GitHub\Capstone-Project-\For_Testing_Only_Capstone\network> docker exec cli sh -c "curl -v -H 'Host: localhost' http://localhost:4000/api/all-grades 2>&1 | head -50"
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0*   Trying ::1:4000...
+* TCP_NODELAY set
+* connect to ::1 port 4000 failed: Connection refused
+*   Trying 127.0.0.1:4000...
+* TCP_NODELAY set
+* connect to 127.0.0.1 port 4000 failed: Connection refused
+* Failed to connect to localhost port 4000: Connection refused
+  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0
+* Closing connection 0
+curl: (7) Failed to connect to localhost port 4000: Connection refused
+
+PS C:\Users\Carmela\Documents\GitHub\Capstone-Project-\For_Testing_Only_Capstone\network> # Check if TLS certificates are mounted in API container
+PS C:\Users\Carmela\Documents\GitHub\Capstone-Project-\For_Testing_Only_Capstone\network> docker exec cli sh -c "ls -la /etc/hyperledger/crypto-config/peerOrganizations/registrar.capstone.com/peers/peer0.registrar.capstone.com/tls/"
+total 8
+drwxr-xr-x 1 root root 4096 Mar  3 14:37 .
+drwxr-xr-x 1 root root 4096 Mar  3 14:37 ..
+-rw-r--r-- 1 root root  908 Mar  3 14:37 ca.crt
+-rw-r--r-- 1 root root  928 Mar  3 14:37 server.crt
+-rw------- 1 root root  241 Mar  3 14:37 server.key
+PS C:\Users\Carmela\Documents\GitHub\Capstone-Project-\For_Testing_Only_Capstone\network> 
+PS C:\Users\Carmela\Documents\GitHub\Capstone-Project-\For_Testing_Only_Capstone\network> # Check if they're actual files or empty directories
+PS C:\Users\Carmela\Documents\GitHub\Capstone-Project-\For_Testing_Only_Capstone\network> docker exec cli sh -c "file /etc/hyperledger/crypto-config/peerOrganizations/registrar.capstone.com/peers/peer0.registrar.capstone.com/tls/ca.crt"
+sh: 1: file: not found
+PS C:\Users\Carmela\Documents\GitHub\Capstone-Project-\For_Testing_Only_Capstone\network> 
+PS C:\Users\Carmela\Documents\GitHub\Capstone-Project-\For_Testing_Only_Capstone\network> # Verify file size (empty files = corrupted mount)
+PS C:\Users\Carmela\Documents\GitHub\Capstone-Project-\For_Testing_Only_Capstone\network> docker exec cli sh -c "wc -c /etc/hyperledger/crypto-config/peerOrganizations/registrar.capstone.com/peers/peer0.registrar.capstone.com/tls/ca.crt"
+908 /etc/hyperledger/crypto-config/peerOrganizations/registrar.capstone.com/peers/peer0.registrar.capstone.com/tls/ca.crt
+PS C:\Users\Carmela\Documents\GitHub\Capstone-Project-\For_Testing_Only_Capstone\network> 
+PS C:\Users\Carmela\Documents\GitHub\Capstone-Project-\For_Testing_Only_Capstone\network> # Check orderer CA cert
+PS C:\Users\Carmela\Documents\GitHub\Capstone-Project-\For_Testing_Only_Capstone\network> docker exec cli sh -c "ls -la /etc/hyperledger/fabric/crypto-config/ordererOrganizations/capstone.com/orderers/orderer.capstone.com/tls/"
+ls: cannot access '/etc/hyperledger/fabric/crypto-config/ordererOrganizations/capstone.com/orderers/orderer.capstone.com/tls/': No such file or directory
+
+# Check all environment variables in API container
+PS C:\Users\Carmela\Documents\GitHub\Capstone-Project-\For_Testing_Only_Capstone\network> docker exec cli sh -c "env | grep -E 'FABRIC|CHAINCODE|CORE_PEER|CONNECTION|CHANNEL'"
+FABRIC_VER=v2.5.4
+CORE_PEER_TLS_ROOTCERT_FILE=/etc/hyperledger/fabric/crypto-config/peerOrganizations/registrar.capstone.com/peers/peer0.registrar.capstone.com/tls/ca.crt
+CORE_PEER_ID=cli
+FABRIC_LOGGING_SPEC=INFO
+FABRIC_CFG_PATH=/var/hyperledger/fabric/config
+CORE_PEER_LOCALMSPID=RegistrarMSP
+CORE_PEER_MSPCONFIGPATH=/etc/hyperledger/fabric/crypto-config/peerOrganizations/registrar.capstone.com/users/Admin@registrar.capstone.com/msp
+CORE_PEER_TLS_ENABLED=true
+CORE_PEER_ADDRESS=peer0.registrar.capstone.com:7051
+PS C:\Users\Carmela\Documents\GitHub\Capstone-Project-\For_Testing_Only_Capstone\network> 
+PS C:\Users\Carmela\Documents\GitHub\Capstone-Project-\For_Testing_Only_Capstone\network> # Specifically check critical vars
+PS C:\Users\Carmela\Documents\GitHub\Capstone-Project-\For_Testing_Only_Capstone\network> docker exec cli sh -c "echo CHAINCODE_NAME: $CHAINCODE_NAME"
+CHAINCODE_NAME:
+PS C:\Users\Carmela\Documents\GitHub\Capstone-Project-\For_Testing_Only_Capstone\network> docker exec cli sh -c "echo CHANNEL_NAME: $CHANNEL_NAME"
+CHANNEL_NAME:
+PS C:\Users\Carmela\Documents\GitHub\Capstone-Project-\For_Testing_Only_Capstone\network> docker exec cli sh -c "echo CORE_PEER_ADDRESS: $CORE_PEER_ADDRESS"
+CORE_PEER_ADDRESS:
+
+PS C:\Users\Carmela\Documents\GitHub\Capstone-Project-\For_Testing_Only_Capstone\network> # Check file permissions in mounted volumes
+PS C:\Users\Carmela\Documents\GitHub\Capstone-Project-\For_Testing_Only_Capstone\network> docker exec cli sh -c "stat /etc/hyperledger/crypto-config/peerOrganizations/registrar.capstone.com/peers/peer0.registrar.capstone.com/tls/ca.crt"
+  File: /etc/hyperledger/crypto-config/peerOrganizations/registrar.capstone.com/peers/peer0.registrar.capstone.com/tls/ca.crt
+  Size: 908             Blocks: 8          IO Block: 4096   regular file
+Device: 42h/66d Inode: 6755399442397300  Links: 1
+Access: (0644/-rw-r--r--)  Uid: (    0/    root)   Gid: (    0/    root)
+Access: 2026-03-11 13:25:51.370659700 +0000
+Modify: 2026-03-03 14:37:18.616809100 +0000
+Change: 2026-03-03 14:37:18.616809100 +0000
+ Birth: -
+PS C:\Users\Carmela\Documents\GitHub\Capstone-Project-\For_Testing_Only_Capstone\network> 
+PS C:\Users\Carmela\Documents\GitHub\Capstone-Project-\For_Testing_Only_Capstone\network> # Try to read the file
+PS C:\Users\Carmela\Documents\GitHub\Capstone-Project-\For_Testing_Only_Capstone\network> docker exec cli sh -c "head -1 /etc/hyperledger/crypto-config/peerOrganizations/registrar.capstone.com/peers/peer0.registrar.capstone.com/tls/ca.crt"
+-----BEGIN CERTIFICATE-----
+PS C:\Users\Carmela\Documents\GitHub\Capstone-Project-\For_Testing_Only_Capstone\network> 
+PS C:\Users\Carmela\Documents\GitHub\Capstone-Project-\For_Testing_Only_Capstone\network> # Check if it's readable
+PS C:\Users\Carmela\Documents\GitHub\Capstone-Project-\For_Testing_Only_Capstone\network> docker exec cli sh -c "test -r /etc/hyperledger/crypto-config/peerOrganizations/registrar.capstone.com/peers/peer0.registrar.capstone.com/tls/ca.crt && echo 'READABLE' || echo 'NOT READABLE'"       
+READABLE
+
+PS C:\Users\Carmela\Documents\GitHub\Capstone-Project-\For_Testing_Only_Capstone\network> # Test middleware gateway initialization (this is where errors usually hide)      
+PS C:\Users\Carmela\Documents\GitHub\Capstone-Project-\For_Testing_Only_Capstone\network> docker exec cli sh -c "curl -v http://localhost:4000/api/all-grades 2>&1 | grep -A 20 'Connection\|HTTP\|error'"
+* connect to ::1 port 4000 failed: Connection refused
+*   Trying 127.0.0.1:4000...
+* TCP_NODELAY set
+* connect to 127.0.0.1 port 4000 failed: Connection refused
+* Failed to connect to localhost port 4000: Connection refused
+  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0
+* Closing connection 0
+curl: (7) Failed to connect to localhost port 4000: Connection refused
+PS C:\Users\Carmela\Documents\GitHub\Capstone-Project-\For_Testing_Only_Capstone\network> 
+PS C:\Users\Carmela\Documents\GitHub\Capstone-Project-\For_Testing_Only_Capstone\network> # Check if middleware is even running
+PS C:\Users\Carmela\Documents\GitHub\Capstone-Project-\For_Testing_Only_Capstone\network> docker ps | Select-String "middleware\|node"
+PS C:\Users\Carmela\Documents\GitHub\Capstone-Project-\For_Testing_Only_Capstone\network> 
+PS C:\Users\Carmela\Documents\GitHub\Capstone-Project-\For_Testing_Only_Capstone\network> # Check middleware logs for gateway errors
+PS C:\Users\Carmela\Documents\GitHub\Capstone-Project-\For_Testing_Only_Capstone\network> docker logs middleware --tail=50 2>&1 | Select-String "Gateway|error|failed|FATAL"
+
+Error response from daemon: No such container: middleware
+
+
+PS C:\Users\Carmela\Documents\GitHub\Capstone-Project-\For_Testing_Only_Capstone\network>
+
+# Is chaincode container running?
+PS C:\Users\Carmela\Documents\GitHub\Capstone-Project-\For_Testing_Only_Capstone\network> docker ps | Select-String "registrar-chaincode"
+
+4e3fe6507cbe   capstone-registrar-chaincode     "./registrar_cc"         42 hours ago   Up 12 minutes
+                                                              registrar-chaincode
+
+
+PS C:\Users\Carmela\Documents\GitHub\Capstone-Project-\For_Testing_Only_Capstone\network> 
+PS C:\Users\Carmela\Documents\GitHub\Capstone-Project-\For_Testing_Only_Capstone\network> # What's its CC_ID?
+PS C:\Users\Carmela\Documents\GitHub\Capstone-Project-\For_Testing_Only_Capstone\network> docker logs registrar-chaincode --tail=5
+2026/03/11 13:43:27 [2] FORCING PLAIN TEXT MODE (No TLS)
+2026/03/11 13:43:27 [3] INVOKING START...
+2026/03/13 07:34:37 [1] ID: registrar-chaincode_1.0:979e1408c21f6d96bc971a7c5e4d59e59545fc53c36253c30be466381d3d8de4 | Address: 0.0.0.0:9999 | TLS Disabled: true
+2026/03/13 07:34:37 [2] FORCING PLAIN TEXT MODE (No TLS)
+2026/03/13 07:34:37 [3] INVOKING START...
+PS C:\Users\Carmela\Documents\GitHub\Capstone-Project-\For_Testing_Only_Capstone\network> 
+PS C:\Users\Carmela\Documents\GitHub\Capstone-Project-\For_Testing_Only_Capstone\network> # Can peers reach it?
+PS C:\Users\Carmela\Documents\GitHub\Capstone-Project-\For_Testing_Only_Capstone\network> docker exec peer0.registrar.capstone.com sh -c "timeout 5 bash -c '</dev/tcp/registrar-chaincode/9999' && echo 'OK' || echo 'FAIL'"
+OK
+# Query chaincode directly (bypass middleware)
+PS C:\Users\Carmela\Documents\GitHub\Capstone-Project-\For_Testing_Only_Capstone\network> docker exec cli peer chaincode query -C registrar-channel -n registrar-chaincode -c '{"Args":["GetAllGrades"]}' 2>&1
+docker : 2026-03-13 07:47:25.767 UTC 0001 ERRO [main] InitCmd -> Cannot run peer because cannot init crypto, specified path 
+"/etc/hyperledger/fabric/crypto-config/peerOrganizations/registrar.capstone.com/users/Admin@registrar.capstone.com/msp" does not exist or 
+cannot be accessed: stat 
+/etc/hyperledger/fabric/crypto-config/peerOrganizations/registrar.capstone.com/users/Admin@registrar.capstone.com/msp: no such file or 
+directory
+At line:1 char:1
++ docker exec cli peer chaincode query -C registrar-channel -n registra ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (2026-03-13...le or directory:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+
+PS C:\Users\Carmela\Documents\GitHub\Capstone-Project-\For_Testing_Only_Capstone\network>
+PS C:\Users\Carmela\Documents\GitHub\Capstone-Project-\For_Testing_Only_Capstone\network> # Check if chaincode is even committed
+PS C:\Users\Carmela\Documents\GitHub\Capstone-Project-\For_Testing_Only_Capstone\network> docker exec cli peer lifecycle chaincode querycommitted --channelID registrar-channel --name registrar-chaincode 2>&1
+docker : 2026-03-13 07:47:26.121 UTC 0001 ERRO [main] InitCmd -> Cannot run peer because cannot init crypto, specified path 
+"/etc/hyperledger/fabric/crypto-config/peerOrganizations/registrar.capstone.com/users/Admin@registrar.capstone.com/msp" does not exist or       
+cannot be accessed: stat
+/etc/hyperledger/fabric/crypto-config/peerOrganizations/registrar.capstone.com/users/Admin@registrar.capstone.com/msp: no such file or
+directory
+At line:1 char:1
++ docker exec cli peer lifecycle chaincode querycommitted --channelID r ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (2026-03-13...le or directory:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+
+    PS C:\Users\Carmela\Documents\GitHub\Capstone-Project-\For_Testing_Only_Capstone\network> @"
+>> === PHASE 1: CONTAINER HEALTH ===
+>> $(docker stats --no-stream --format "table {{.Container}}\t{{.CPUPerc}}\t{{.MemUsage}}\t{{.MemPerc}}")
+>> 
+>> $(docker inspect cli --format='{{json .State}}')
+>> 
+>> === PHASE 2: NETWORK ===
+>> $(docker network inspect registrar-net --format='{{json .Containers}}')
+>> 
+>> $(docker inspect cli --format='{{range $k, $v := .NetworkSettings.Networks}}{{$k}}: {{$v.IPAddress}}{{end}}')
+>>
+>> === PHASE 3: VOLUMES ===
+>> $(docker exec cli sh -c "ls -la /etc/hyperledger/crypto-config/peerOrganizations/registrar.capstone.com/peers/peer0.registrar.capstone.com/tls/" 2>&1)
+>>
+>> $(docker exec cli sh -c "wc -c /etc/hyperledger/crypto-config/peerOrganizations/registrar.capstone.com/peers/peer0.registrar.capstone.com/tls/ca.crt" 2>&1)
+>>
+>> === PHASE 4: CHAINCODE ===
+>> $(docker ps | Select-String "registrar-chaincode")
+>>
+>> $(docker logs registrar-chaincode --tail=3)
+>>
+>> $(docker exec cli peer lifecycle chaincode querycommitted --channelID registrar-channel --name registrar-chaincode 2>&1)
+>> "@ | Tee-Object -FilePath "diagnostic_output.txt"
+2026/03/13 07:34:37 [1] ID: registrar-chaincode_1.0:979e1408c21f6d96bc971a7c5e4d59e59545fc53c36253c30be466381d3d8de4 | Address: 0.0.0.0:9999 | TLS Disabled: true
+2026/03/13 07:34:37 [2] FORCING PLAIN TEXT MODE (No TLS)
+2026/03/13 07:34:37 [3] INVOKING START...
+=== PHASE 1: CONTAINER HEALTH ===
+CONTAINER                                                          CPU %     MEM USAGE / LIMIT     MEM % 016b610be8910361a1eca0a1221e43f6d69796ecc770fb0f814d1b3022f166f6   0.00%     3.805MiB / 3.826GiB   0.10% fc004c1d09137a2c0d1b019a9021f2ab58a6993389899006437cd83c2d9d5f6c   1.01%     26.07MiB / 3.826GiB   0.67% bb9a8b16e38e87742c4ba0d8c1f258960f3f5f7aef0d04b4860371f86e64f8e1   0.86%     30.03MiB / 3.826GiB   0.77% 0f1e8f2c56da8dd067731d758578f0176f73171dd905f53a7642763d9b90e486   0.88%     28.43MiB / 3.826GiB   0.73% 6ba5668fd7e74c17f485eccea18554936a9d749e06c6be173a6f2c99f87b7b28   1.01%     29.99MiB / 3.826GiB   0.77% f7a0951f447314c63b53cb60cc36d9605d2a2be462b58119638e5318fa1826e0   0.92%     30.73MiB / 3.826GiB   0.78% 4cac3716dd4e284c31462ffc4a38d05d3dca72bdb77453a9c65c5675933c8419   1.02%     30.21MiB / 3.826GiB   0.77% 2652ff2286c1e18441719323fbdf550273de1295f7e6504a2854a94f1fa119a0   0.00%     18.57MiB / 3.826GiB   0.47% b7dcf01e15bcad36220a4c3e33a768ca66f34a2048882707179eeef4bc6a4d4e   0.27%     73.41MiB / 3.826GiB   1.87% 6b8ab444d11cb7cb3e5710aabebb9084677fca80278a8fcb843c94e4c0f41934   0.49%     78.21MiB / 3.826GiB   2.00% 641e5539298be1312a50ad32be8301c3c1d553c6c8079b81ada53980e776bb50   0.21%     67.22MiB / 3.826GiB   1.72% ab115d82d4b40a214570827acb86f689c54d6e1718219e8af16f85c0b25b2e54   0.19%     70.31MiB / 3.826GiB   1.79% 7acd233c2ee9162e1f10da6cb7a52c6c3da67f35f9815a3eb12dccb801464637   0.23%     86.54MiB / 3.826GiB   2.21% eee1ed4d230f20d18797842da4a0a036b75791aaeb15601aba22da4e900fa500   0.25%     60.32MiB / 3.826GiB   1.54% a7311d11ac64206c10c2d4fc444dbc8cdd1992c2655669129def340553c6b5ff   0.16%     63.52MiB / 3.826GiB   1.62% d26ce70221b45702b4b56275d347d8159fe6fcddc3a078b609f1fbca37774115   0.80%     59.46MiB / 3.826GiB   1.52% 5b76edbf7ea5d72b4303df70efd002258abdc9c7f3c69b5231f363514ca663c9   0.75%     53.49MiB / 3.826GiB   1.37% 1c7da193b81fdb2422ce7b824533007740cad594c43f7ef36c7ed274799dbfb7   0.64%     64.2MiB / 3.826GiB    1.64% 4aa61ef8b658e98ab96d0a103f1a1e96121fa31ffbd920564f37ec54824858b9   0.25%     54.96MiB / 3.826GiB   1.40% f6f1b26ba7ec0c75060a2ed6c2e4699a7e25ba15bcd9a6f79b079cbb7a72ea58   0.96%     59.39MiB / 3.826GiB   1.52% a51660fb29a636892baf953e4e81ef22c071953b0e58e5053aa06c76df10efb6   0.66%     55.7MiB / 3.826GiB    1.42% 48813294462f9a752345113e16d4bc40ba70aef5b2a99162e5f2a7e961572f9d   0.00%     37.55MiB / 3.826GiB   0.96% 4e3fe6507cbea6d00daa7893956176b7f9b6ccb68c4d02adc9ab48299d27f08a   0.00%     1.926MiB / 3.826GiB   0.05% fc1d08bbf999dbc962bda2b41b7f3342a7d83d3e1893f096280e100c90204d2c   0.00%     8.07MiB / 3.826GiB    0.21%
+
+{"Status":"running","Running":true,"Paused":false,"Restarting":false,"OOMKilled":false,"Dead":false,"Pid":681,"ExitCode":0,"Error":"","StartedAt":"2026-03-13T07:34:35.583846142Z","FinishedAt":"2026-03-11T14:35:04.403018848Z"}
+
+=== PHASE 2: NETWORK ===
+{"016b610be8910361a1eca0a1221e43f6d69796ecc770fb0f814d1b3022f166f6":{"Name":"nginx-shield","EndpointID":"dda84dea7f95128da6a79fd8e1dbb313b8e5e4e966f6be1b38c8a0112336573f","MacAddress":"f6:a5:a1:3f:10:6f","IPv4Address":"172.18.0.20/16","IPv6Address":""},"0f1e8f2c56da8dd067731d758578f0176f73171dd905f53a7642763d9b90e486":{"Name":"peer4.registrar.capstone.com","EndpointID":"e672756241ae0e307499a13c7d7b03200d916b981f97781e212dc261e611173b","MacAddress":"ee:24:6f:2c:92:e5","IPv4Address":"172.18.0.22/16","IPv6Address":""},"1c7da193b81fdb2422ce7b824533007740cad594c43f7ef36c7ed274799dbfb7":{"Name":"node4","EndpointID":"90ff1d938cff5b749fc559401dc1d70c0753ebacd4cac639dbff96a3816c530f","MacAddress":"0e:07:a3:dc:5e:24","IPv4Address":"172.18.0.3/16","IPv6Address":""},"2652ff2286c1e18441719323fbdf550273de1295f7e6504a2854a94f1fa119a0":{"Name":"postgres","EndpointID":"9e2623537af85f926e64e788765b3d41d5c4ff92cf865bcb18ede11582a2c6bd","MacAddress":"ae:49:54:d5:0c:df","IPv4Address":"172.18.0.19/16","IPv6Address":""},"48813294462f9a752345113e16d4bc40ba70aef5b2a99162e5f2a7e961572f9d":{"Name":"cli","EndpointID":"879d2e7a898f2a5953779e3f096b8f5d0c47dd6fa51da46614da3abdecdaaa28","MacAddress":"96:5e:32:5f:21:70","IPv4Address":"172.18.0.9/16","IPv6Address":""},"4aa61ef8b658e98ab96d0a103f1a1e96121fa31ffbd920564f37ec54824858b9":{"Name":"node2","EndpointID":"283c4095a6e6bc0f9f16973a6b8b3bf8ce0958b5a3d2be9edaafc99c25a46006","MacAddress":"06:f7:14:6b:75:dd","IPv4Address":"172.18.0.2/16","IPv6Address":""},"4cac3716dd4e284c31462ffc4a38d05d3dca72bdb77453a9c65c5675933c8419":{"Name":"peer2.registrar.capstone.com","EndpointID":"41f3fd35ada3cfb4e054defb05543b135f3fe3e255511ca7473428f8873657c9","MacAddress":"ce:18:87:ac:a6:1a","IPv4Address":"172.18.0.21/16","IPv6Address":""},"4e3fe6507cbea6d00daa7893956176b7f9b6ccb68c4d02adc9ab48299d27f08a":{"Name":"registrar-chaincode","EndpointID":"88b6c44b3230a93afe7fc91e201b0a70214e5be16ca219171d023f375619e291","MacAddress":"c2:36:70:27:4b:80","IPv4Address":"172.18.0.4/16","IPv6Address":""},"5b76edbf7ea5d72b4303df70efd002258abdc9c7f3c69b5231f363514ca663c9":{"Name":"node6","EndpointID":"d30524fbf5ab225c380999e9a8cc8f09e28bc126906917a7ed8687741deff3c3","MacAddress":"a6:de:90:e9:37:71","IPv4Address":"172.18.0.8/16","IPv6Address":""},"641e5539298be1312a50ad32be8301c3c1d553c6c8079b81ada53980e776bb50":{"Name":"ipfs1","EndpointID":"baef494c9f682130a0e81ef0ea32caf179d1b753368596906518e28f6e8947df","MacAddress":"8a:c1:40:15:63:f2","IPv4Address":"172.18.0.15/16","IPv6Address":""},"6b8ab444d11cb7cb3e5710aabebb9084677fca80278a8fcb843c94e4c0f41934":{"Name":"ipfs3","EndpointID":"f2dc9d48918ad86d924c30f3f8579895eab34b4a3509e38747c7151014f9a367","MacAddress":"6e:0c:f6:84:72:4f","IPv4Address":"172.18.0.13/16","IPv6Address":""},"6ba5668fd7e74c17f485eccea18554936a9d749e06c6be173a6f2c99f87b7b28":{"Name":"peer3.registrar.capstone.com","EndpointID":"7125876aa8636bce6161172bdeef6fb893c7d3ee219203276f31aa128b5ac18b","MacAddress":"0a:f1:68:e5:5c:42","IPv4Address":"172.18.0.25/16","IPv6Address":""},"7acd233c2ee9162e1f10da6cb7a52c6c3da67f35f9815a3eb12dccb801464637":{"Name":"capstone-ipfs0-1","EndpointID":"6b7c16799eda415b616090276b48a4786d7386fe0b2487982438954cc8567b45","MacAddress":"9a:3d:6d:fd:9b:2b","IPv4Address":"172.18.0.7/16","IPv6Address":""},"a51660fb29a636892baf953e4e81ef22c071953b0e58e5053aa06c76df10efb6":{"Name":"node3","EndpointID":"afab50bcb702fb0bb9faf0bcaf646466ec681ecd099b707dcc3c7cc37d5be908","MacAddress":"42:9f:3c:42:a7:a5","IPv4Address":"172.18.0.6/16","IPv6Address":""},"a7311d11ac64206c10c2d4fc444dbc8cdd1992c2655669129def340553c6b5ff":{"Name":"ipfs2","EndpointID":"39c4e1980700dd763abca6ab46d0a671435df304753c318ca9bb58cf5f3fc455","MacAddress":"fe:8f:4f:d8:93:63","IPv4Address":"172.18.0.17/16","IPv6Address":""},"ab115d82d4b40a214570827acb86f689c54d6e1718219e8af16f85c0b25b2e54":{"Name":"ipfs0","EndpointID":"198090ea081bfa2f7b96752ca072cecddb15d906edf84775f949578011aed8ad","MacAddress":"ba:92:e3:92:de:7d","IPv4Address":"172.18.0.11/16","IPv6Address":""},"b7dcf01e15bcad36220a4c3e33a768ca66f34a2048882707179eeef4bc6a4d4e":{"Name":"ipfs5","EndpointID":"f27a3100b5b0f80b7ac2197029b34b4913daea2e92de8c61e373886e10871812","MacAddress":"82:3b:73:89:c6:56","IPv4Address":"172.18.0.12/16","IPv6Address":""},"bb9a8b16e38e87742c4ba0d8c1f258960f3f5f7aef0d04b4860371f86e64f8e1":{"Name":"peer1.registrar.capstone.com","EndpointID":"7814e4e378e093fe71222934b158dea66e72a0cda94a7ad75961fb522e5171d7","MacAddress":"aa:5d:a1:1e:ce:b0","IPv4Address":"172.18.0.23/16","IPv6Address":""},"d26ce70221b45702b4b56275d347d8159fe6fcddc3a078b609f1fbca37774115":{"Name":"node5","EndpointID":"f615c77e3fdbad4fe1e47e793307742a20d4f9e4b78689d5f990282fd52e1ffd","MacAddress":"7e:a1:84:38:e6:0f","IPv4Address":"172.18.0.5/16","IPv6Address":""},"eee1ed4d230f20d18797842da4a0a036b75791aaeb15601aba22da4e900fa500":{"Name":"ipfs4","EndpointID":"8e9ac8c8a9530ae73254732bf7aa7ebf0c2e4c4c8e592e7cb7d63894aa6f9f89","MacAddress":"3e:e6:e6:a7:f8:dc","IPv4Address":"172.18.0.16/16","IPv6Address":""},"f6f1b26ba7ec0c75060a2ed6c2e4699a7e25ba15bcd9a6f79b079cbb7a72ea58":{"Name":"capstone-node1-1","EndpointID":"261f5655644d8e7fbd8ad3b63f9117d6512eeee5773d2ec828ecba4ea73a3fea","MacAddress":"fa:a3:c6:cf:d5:a6","IPv4Address":"172.18.0.10/16","IPv6Address":""},"f7a0951f447314c63b53cb60cc36d9605d2a2be462b58119638e5318fa1826e0":{"Name":"peer0.registrar.capstone.com","EndpointID":"3ac8ff544fa7b00c5daf60779eb9e5b261eaaaecc78a65ff7b0fd05dd895e2c1","MacAddress":"92:c0:26:73:2e:6d","IPv4Address":"172.18.0.26/16","IPv6Address":""},"fc004c1d09137a2c0d1b019a9021f2ab58a6993389899006437cd83c2d9d5f6c":{"Name":"peer5.registrar.capstone.com","EndpointID":"4d6e84c1e71b202f4366cac10f9f7c63b1fbfc9acee149aeb4430a34af559f6c","MacAddress":"ea:18:2f:d4:38:14","IPv4Address":"172.18.0.24/16","IPv6Address":""},"fc1d08bbf999dbc962bda2b41b7f3342a7d83d3e1893f096280e100c90204d2c":{"Name":"ca.registrar.capstone.com","EndpointID":"b49065e1d82afbb0829c75b293bb03e3895ebb6bf49e19287fcf0362acb8c64b","MacAddress":"b2:5f:2d:ed:cf:54","IPv4Address":"172.18.0.14/16","IPv6Address":""}}
+
+registrar-net: 172.18.0.9
+
+=== PHASE 3: VOLUMES ===
+total 8 drwxr-xr-x 1 root root 4096 Mar  3 14:37 . drwxr-xr-x 1 root root 4096 Mar  3 14:37 .. -rw-r--r-- 1 root root  908 Mar  3 14:37 ca.crt -rw-r--r-- 1 root root  928 Mar  3 14:37 server.crt -rw------- 1 root root  241 Mar  3 14:37 server.key
+
+908 /etc/hyperledger/crypto-config/peerOrganizations/registrar.capstone.com/peers/peer0.registrar.capstone.com/tls/ca.crt
+
+=== PHASE 4: CHAINCODE ===
+4e3fe6507cbe   capstone-registrar-chaincode     "./registrar_cc"         42 hours ago   Up 13 minutes                                           
+                                                             registrar-chaincode
+
+
+
+2026-03-13 07:47:52.633 UTC 0001 ERRO [main] InitCmd -> Cannot run peer because cannot init crypto, specified path "/etc/hyperledger/fabric/crypto-config/peerOrganizations/registrar.capstone.com/users/Admin@registrar.capstone.com/msp" does not exist or cannot be accessed: stat /etc/hyperledger/fabric/crypto-config/peerOrganizations/registrar.capstone.com/users/Admin@registrar.capstone.com/msp: no such file or directory
+PS C:\Users\Carmela\Documents\GitHub\Capstone-Project-\For_Testing_Only_Capstone\network>
+PS C:\Users\Carmela\Documents\GitHub\Capstone-Project-\For_Testing_Only_Capstone\network> # Share the file
+PS C:\Users\Carmela\Documents\GitHub\Capstone-Project-\For_Testing_Only_Capstone\network> Get-Content diagnostic_output.txt
+=== PHASE 1: CONTAINER HEALTH ===
+CONTAINER                                                          CPU %     MEM USAGE / LIMIT     MEM % 016b610be8910361a1eca0a1221e43f6d69796ecc770fb0f814d1b3022f166f6   0.00%     3.805MiB / 3.826GiB   0.10% fc004c1d09137a2c0d1b019a9021f2ab58a6993389899006437cd83c2d9d5f6c   1.01%     26.07MiB / 3.826GiB   0.67% bb9a8b16e38e87742c4ba0d8c1f258960f3f5f7aef0d04b4860371f86e64f8e1   0.86%     30.03MiB / 3.826GiB   0.77% 0f1e8f2c56da8dd067731d758578f0176f73171dd905f53a7642763d9b90e486   0.88%     28.43MiB / 3.826GiB   0.73% 6ba5668fd7e74c17f485eccea18554936a9d749e06c6be173a6f2c99f87b7b28   1.01%     29.99MiB / 3.826GiB   0.77% f7a0951f447314c63b53cb60cc36d9605d2a2be462b58119638e5318fa1826e0   0.92%     30.73MiB / 3.826GiB   0.78% 4cac3716dd4e284c31462ffc4a38d05d3dca72bdb77453a9c65c5675933c8419   1.02%     30.21MiB / 3.826GiB   0.77% 2652ff2286c1e18441719323fbdf550273de1295f7e6504a2854a94f1fa119a0   0.00%     18.57MiB / 3.826GiB   0.47% b7dcf01e15bcad36220a4c3e33a768ca66f34a2048882707179eeef4bc6a4d4e   0.27%     73.41MiB / 3.826GiB   1.87% 6b8ab444d11cb7cb3e5710aabebb9084677fca80278a8fcb843c94e4c0f41934   0.49%     78.21MiB / 3.826GiB   2.00% 641e5539298be1312a50ad32be8301c3c1d553c6c8079b81ada53980e776bb50   0.21%     67.22MiB / 3.826GiB   1.72% ab115d82d4b40a214570827acb86f689c54d6e1718219e8af16f85c0b25b2e54   0.19%     70.31MiB / 3.826GiB   1.79% 7acd233c2ee9162e1f10da6cb7a52c6c3da67f35f9815a3eb12dccb801464637   0.23%     86.54MiB / 3.826GiB   2.21% eee1ed4d230f20d18797842da4a0a036b75791aaeb15601aba22da4e900fa500   0.25%     60.32MiB / 3.826GiB   1.54% a7311d11ac64206c10c2d4fc444dbc8cdd1992c2655669129def340553c6b5ff   0.16%     63.52MiB / 3.826GiB   1.62% d26ce70221b45702b4b56275d347d8159fe6fcddc3a078b609f1fbca37774115   0.80%     59.46MiB / 3.826GiB   1.52% 5b76edbf7ea5d72b4303df70efd002258abdc9c7f3c69b5231f363514ca663c9   0.75%     53.49MiB / 3.826GiB   1.37% 1c7da193b81fdb2422ce7b824533007740cad594c43f7ef36c7ed274799dbfb7   0.64%     64.2MiB / 3.826GiB    1.64% 4aa61ef8b658e98ab96d0a103f1a1e96121fa31ffbd920564f37ec54824858b9   0.25%     54.96MiB / 3.826GiB   1.40% f6f1b26ba7ec0c75060a2ed6c2e4699a7e25ba15bcd9a6f79b079cbb7a72ea58   0.96%     59.39MiB / 3.826GiB   1.52% a51660fb29a636892baf953e4e81ef22c071953b0e58e5053aa06c76df10efb6   0.66%     55.7MiB / 3.826GiB    1.42% 48813294462f9a752345113e16d4bc40ba70aef5b2a99162e5f2a7e961572f9d   0.00%     37.55MiB / 3.826GiB   0.96% 4e3fe6507cbea6d00daa7893956176b7f9b6ccb68c4d02adc9ab48299d27f08a   0.00%     1.926MiB / 3.826GiB   0.05% fc1d08bbf999dbc962bda2b41b7f3342a7d83d3e1893f096280e100c90204d2c   0.00%     8.07MiB / 3.826GiB    0.21%
+
+{"Status":"running","Running":true,"Paused":false,"Restarting":false,"OOMKilled":false,"Dead":false,"Pid":681,"ExitCode":0,"Error":"","StartedAt":"2026-03-13T07:34:35.583846142Z","FinishedAt":"2026-03-11T14:35:04.403018848Z"}
+
+=== PHASE 2: NETWORK ===
+{"016b610be8910361a1eca0a1221e43f6d69796ecc770fb0f814d1b3022f166f6":{"Name":"nginx-shield","EndpointID":"dda84dea7f95128da6a79fd8e1dbb313b8e5e4e966f6be1b38c8a0112336573f","MacAddress":"f6:a5:a1:3f:10:6f","IPv4Address":"172.18.0.20/16","IPv6Address":""},"0f1e8f2c56da8dd067731d758578f0176f73171dd905f53a7642763d9b90e486":{"Name":"peer4.registrar.capstone.com","EndpointID":"e672756241ae0e307499a13c7d7b03200d916b981f97781e212dc261e611173b","MacAddress":"ee:24:6f:2c:92:e5","IPv4Address":"172.18.0.22/16","IPv6Address":""},"1c7da193b81fdb2422ce7b824533007740cad594c43f7ef36c7ed274799dbfb7":{"Name":"node4","EndpointID":"90ff1d938cff5b749fc559401dc1d70c0753ebacd4cac639dbff96a3816c530f","MacAddress":"0e:07:a3:dc:5e:24","IPv4Address":"172.18.0.3/16","IPv6Address":""},"2652ff2286c1e18441719323fbdf550273de1295f7e6504a2854a94f1fa119a0":{"Name":"postgres","EndpointID":"9e2623537af85f926e64e788765b3d41d5c4ff92cf865bcb18ede11582a2c6bd","MacAddress":"ae:49:54:d5:0c:df","IPv4Address":"172.18.0.19/16","IPv6Address":""},"48813294462f9a752345113e16d4bc40ba70aef5b2a99162e5f2a7e961572f9d":{"Name":"cli","EndpointID":"879d2e7a898f2a5953779e3f096b8f5d0c47dd6fa51da46614da3abdecdaaa28","MacAddress":"96:5e:32:5f:21:70","IPv4Address":"172.18.0.9/16","IPv6Address":""},"4aa61ef8b658e98ab96d0a103f1a1e96121fa31ffbd920564f37ec54824858b9":{"Name":"node2","EndpointID":"283c4095a6e6bc0f9f16973a6b8b3bf8ce0958b5a3d2be9edaafc99c25a46006","MacAddress":"06:f7:14:6b:75:dd","IPv4Address":"172.18.0.2/16","IPv6Address":""},"4cac3716dd4e284c31462ffc4a38d05d3dca72bdb77453a9c65c5675933c8419":{"Name":"peer2.registrar.capstone.com","EndpointID":"41f3fd35ada3cfb4e054defb05543b135f3fe3e255511ca7473428f8873657c9","MacAddress":"ce:18:87:ac:a6:1a","IPv4Address":"172.18.0.21/16","IPv6Address":""},"4e3fe6507cbea6d00daa7893956176b7f9b6ccb68c4d02adc9ab48299d27f08a":{"Name":"registrar-chaincode","EndpointID":"88b6c44b3230a93afe7fc91e201b0a70214e5be16ca219171d023f375619e291","MacAddress":"c2:36:70:27:4b:80","IPv4Address":"172.18.0.4/16","IPv6Address":""},"5b76edbf7ea5d72b4303df70efd002258abdc9c7f3c69b5231f363514ca663c9":{"Name":"node6","EndpointID":"d30524fbf5ab225c380999e9a8cc8f09e28bc126906917a7ed8687741deff3c3","MacAddress":"a6:de:90:e9:37:71","IPv4Address":"172.18.0.8/16","IPv6Address":""},"641e5539298be1312a50ad32be8301c3c1d553c6c8079b81ada53980e776bb50":{"Name":"ipfs1","EndpointID":"baef494c9f682130a0e81ef0ea32caf179d1b753368596906518e28f6e8947df","MacAddress":"8a:c1:40:15:63:f2","IPv4Address":"172.18.0.15/16","IPv6Address":""},"6b8ab444d11cb7cb3e5710aabebb9084677fca80278a8fcb843c94e4c0f41934":{"Name":"ipfs3","EndpointID":"f2dc9d48918ad86d924c30f3f8579895eab34b4a3509e38747c7151014f9a367","MacAddress":"6e:0c:f6:84:72:4f","IPv4Address":"172.18.0.13/16","IPv6Address":""},"6ba5668fd7e74c17f485eccea18554936a9d749e06c6be173a6f2c99f87b7b28":{"Name":"peer3.registrar.capstone.com","EndpointID":"7125876aa8636bce6161172bdeef6fb893c7d3ee219203276f31aa128b5ac18b","MacAddress":"0a:f1:68:e5:5c:42","IPv4Address":"172.18.0.25/16","IPv6Address":""},"7acd233c2ee9162e1f10da6cb7a52c6c3da67f35f9815a3eb12dccb801464637":{"Name":"capstone-ipfs0-1","EndpointID":"6b7c16799eda415b616090276b48a4786d7386fe0b2487982438954cc8567b45","MacAddress":"9a:3d:6d:fd:9b:2b","IPv4Address":"172.18.0.7/16","IPv6Address":""},"a51660fb29a636892baf953e4e81ef22c071953b0e58e5053aa06c76df10efb6":{"Name":"node3","EndpointID":"afab50bcb702fb0bb9faf0bcaf646466ec681ecd099b707dcc3c7cc37d5be908","MacAddress":"42:9f:3c:42:a7:a5","IPv4Address":"172.18.0.6/16","IPv6Address":""},"a7311d11ac64206c10c2d4fc444dbc8cdd1992c2655669129def340553c6b5ff":{"Name":"ipfs2","EndpointID":"39c4e1980700dd763abca6ab46d0a671435df304753c318ca9bb58cf5f3fc455","MacAddress":"fe:8f:4f:d8:93:63","IPv4Address":"172.18.0.17/16","IPv6Address":""},"ab115d82d4b40a214570827acb86f689c54d6e1718219e8af16f85c0b25b2e54":{"Name":"ipfs0","EndpointID":"198090ea081bfa2f7b96752ca072cecddb15d906edf84775f949578011aed8ad","MacAddress":"ba:92:e3:92:de:7d","IPv4Address":"172.18.0.11/16","IPv6Address":""},"b7dcf01e15bcad36220a4c3e33a768ca66f34a2048882707179eeef4bc6a4d4e":{"Name":"ipfs5","EndpointID":"f27a3100b5b0f80b7ac2197029b34b4913daea2e92de8c61e373886e10871812","MacAddress":"82:3b:73:89:c6:56","IPv4Address":"172.18.0.12/16","IPv6Address":""},"bb9a8b16e38e87742c4ba0d8c1f258960f3f5f7aef0d04b4860371f86e64f8e1":{"Name":"peer1.registrar.capstone.com","EndpointID":"7814e4e378e093fe71222934b158dea66e72a0cda94a7ad75961fb522e5171d7","MacAddress":"aa:5d:a1:1e:ce:b0","IPv4Address":"172.18.0.23/16","IPv6Address":""},"d26ce70221b45702b4b56275d347d8159fe6fcddc3a078b609f1fbca37774115":{"Name":"node5","EndpointID":"f615c77e3fdbad4fe1e47e793307742a20d4f9e4b78689d5f990282fd52e1ffd","MacAddress":"7e:a1:84:38:e6:0f","IPv4Address":"172.18.0.5/16","IPv6Address":""},"eee1ed4d230f20d18797842da4a0a036b75791aaeb15601aba22da4e900fa500":{"Name":"ipfs4","EndpointID":"8e9ac8c8a9530ae73254732bf7aa7ebf0c2e4c4c8e592e7cb7d63894aa6f9f89","MacAddress":"3e:e6:e6:a7:f8:dc","IPv4Address":"172.18.0.16/16","IPv6Address":""},"f6f1b26ba7ec0c75060a2ed6c2e4699a7e25ba15bcd9a6f79b079cbb7a72ea58":{"Name":"capstone-node1-1","EndpointID":"261f5655644d8e7fbd8ad3b63f9117d6512eeee5773d2ec828ecba4ea73a3fea","MacAddress":"fa:a3:c6:cf:d5:a6","IPv4Address":"172.18.0.10/16","IPv6Address":""},"f7a0951f447314c63b53cb60cc36d9605d2a2be462b58119638e5318fa1826e0":{"Name":"peer0.registrar.capstone.com","EndpointID":"3ac8ff544fa7b00c5daf60779eb9e5b261eaaaecc78a65ff7b0fd05dd895e2c1","MacAddress":"92:c0:26:73:2e:6d","IPv4Address":"172.18.0.26/16","IPv6Address":""},"fc004c1d09137a2c0d1b019a9021f2ab58a6993389899006437cd83c2d9d5f6c":{"Name":"peer5.registrar.capstone.com","EndpointID":"4d6e84c1e71b202f4366cac10f9f7c63b1fbfc9acee149aeb4430a34af559f6c","MacAddress":"ea:18:2f:d4:38:14","IPv4Address":"172.18.0.24/16","IPv6Address":""},"fc1d08bbf999dbc962bda2b41b7f3342a7d83d3e1893f096280e100c90204d2c":{"Name":"ca.registrar.capstone.com","EndpointID":"b49065e1d82afbb0829c75b293bb03e3895ebb6bf49e19287fcf0362acb8c64b","MacAddress":"b2:5f:2d:ed:cf:54","IPv4Address":"172.18.0.14/16","IPv6Address":""}}
+
+registrar-net: 172.18.0.9
+
+=== PHASE 3: VOLUMES ===
+total 8 drwxr-xr-x 1 root root 4096 Mar  3 14:37 . drwxr-xr-x 1 root root 4096 Mar  3 14:37 .. -rw-r--r-- 1 root root  908 Mar  3 14:37 ca.crt -rw-r--r-- 1 root root  928 Mar  3 14:37 server.crt -rw------- 1 root root  241 Mar  3 14:37 server.key
+
+908 /etc/hyperledger/crypto-config/peerOrganizations/registrar.capstone.com/peers/peer0.registrar.capstone.com/tls/ca.crt
+
+=== PHASE 4: CHAINCODE ===
+4e3fe6507cbe   capstone-registrar-chaincode     "./registrar_cc"         42 hours ago   Up 13 minutes                                           
+                                                             registrar-chaincode
+
+
+
+2026-03-13 07:47:52.633 UTC 0001 ERRO [main] InitCmd -> Cannot run peer because cannot init crypto, specified path "/etc/hyperledger/fabric/crypto-config/peerOrganizations/registrar.capstone.com/users/Admin@registrar.capstone.com/msp" does not exist or cannot be accessed: stat /etc/hyperledger/fabric/crypto-config/peerOrganizations/registrar.capstone.com/users/Admin@registrar.capstone.com/msp: no such file or directory

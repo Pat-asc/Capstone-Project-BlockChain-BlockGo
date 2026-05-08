@@ -1,0 +1,376 @@
+2026-04-17 00:54:07.732 +08:00 [INF] Application starting up...
+2026-04-17 00:54:07.976 +08:00 [INF] HSTS enabled (HTTPS Redirection disabled for Nginx)
+2026-04-17 00:54:08.372 +08:00 [INF] Application configured successfully
+2026-04-17 00:54:08.388 +08:00 [INF] Listening on 
+2026-04-17 00:54:08.930 +08:00 [INF] Now listening on: http://0.0.0.0:5000
+2026-04-17 00:54:08.933 +08:00 [INF] Application started. Press Ctrl+C to shut down.
+2026-04-17 00:54:08.935 +08:00 [INF] Hosting environment: Production
+2026-04-17 00:54:08.935 +08:00 [INF] Content root path: C:\Users\pascu\Documents\GitHub2\GitHub\Capstone-Project-\For_Testing_Only_Capstone\client-app
+2026-04-17 01:17:54.781 +08:00 [INF] Application is shutting down...
+2026-04-17 02:47:11.108 +08:00 [INF] Application starting up...
+2026-04-17 02:47:11.483 +08:00 [INF] HSTS enabled (HTTPS Redirection disabled for Nginx)
+2026-04-17 02:47:12.289 +08:00 [INF] Application configured successfully
+2026-04-17 02:47:12.291 +08:00 [INF] Listening on 
+2026-04-17 02:47:12.412 +08:00 [INF] Now listening on: http://0.0.0.0:5000
+2026-04-17 02:47:12.415 +08:00 [INF] Application started. Press Ctrl+C to shut down.
+2026-04-17 02:47:12.416 +08:00 [INF] Hosting environment: Production
+2026-04-17 02:47:12.416 +08:00 [INF] Content root path: /mnt/c/Users/pascu/Documents/GitHub2/GitHub/Capstone-Project-/For_Testing_Only_Capstone/client-app
+2026-04-17 03:13:35.202 +08:00 [INF] Application is shutting down...
+2026-04-17 03:23:32.042 +08:00 [INF] Application starting up...
+2026-04-17 03:23:32.419 +08:00 [INF] HSTS enabled (HTTPS Redirection disabled for Nginx)
+2026-04-17 03:23:32.885 +08:00 [INF] Application configured successfully
+2026-04-17 03:23:32.887 +08:00 [INF] Listening on 
+2026-04-17 03:23:32.963 +08:00 [INF] Now listening on: http://0.0.0.0:5000
+2026-04-17 03:23:32.966 +08:00 [INF] Application started. Press Ctrl+C to shut down.
+2026-04-17 03:23:32.967 +08:00 [INF] Hosting environment: Production
+2026-04-17 03:23:32.968 +08:00 [INF] Content root path: /mnt/c/Users/pascu/Documents/GitHub2/GitHub/Capstone-Project-/For_Testing_Only_Capstone/client-app
+2026-04-17 03:24:08.952 +08:00 [INF] Application is shutting down...
+2026-04-17 03:38:58.317 +08:00 [INF] Application starting up...
+2026-04-17 03:38:58.615 +08:00 [INF] HSTS enabled (HTTPS Redirection disabled for Nginx)
+2026-04-17 03:38:58.714 +08:00 [INF] Application configured successfully
+2026-04-17 03:38:58.715 +08:00 [INF] Listening on 
+2026-04-17 03:38:58.788 +08:00 [INF] Now listening on: http://0.0.0.0:5000
+2026-04-17 03:38:58.791 +08:00 [INF] Application started. Press Ctrl+C to shut down.
+2026-04-17 03:38:58.792 +08:00 [INF] Hosting environment: Production
+2026-04-17 03:38:58.792 +08:00 [INF] Content root path: /mnt/c/Users/pascu/Documents/GitHub2/GitHub/Capstone-Project-/For_Testing_Only_Capstone/client-app
+2026-04-17 03:43:25.170 +08:00 [INF] Application is shutting down...
+2026-04-17 03:53:00.292 +08:00 [INF] Application starting up...
+2026-04-17 03:53:00.629 +08:00 [INF] HSTS enabled (HTTPS Redirection disabled for Nginx)
+2026-04-17 03:53:00.747 +08:00 [INF] Application configured successfully
+2026-04-17 03:53:00.750 +08:00 [INF] Listening on 
+2026-04-17 03:53:00.832 +08:00 [INF] Now listening on: http://0.0.0.0:5000
+2026-04-17 03:53:00.835 +08:00 [INF] Application started. Press Ctrl+C to shut down.
+2026-04-17 03:53:00.836 +08:00 [INF] Hosting environment: Production
+2026-04-17 03:53:00.836 +08:00 [INF] Content root path: /mnt/c/Users/pascu/Documents/GitHub2/GitHub/Capstone-Project-/For_Testing_Only_Capstone/client-app
+2026-04-17 03:53:02.519 +08:00 [INF] Request starting HTTP/1.0 GET http://localhost/api/Auth/user-profile?email=registrar%40plv.edu.ph&role=registrar - application/json null
+2026-04-17 03:53:02.579 +08:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone)'
+2026-04-17 03:53:02.605 +08:00 [INF] Route matched with {action = "GetUserProfile", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetUserProfile(System.String, System.String) on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-17 03:53:02.950 +08:00 [INF] Executing OkObjectResult, writing value of type '<>f__AnonymousType16`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[Client_app.Models.UserProfileDto, For_Testing_Only_Capstone, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]'.
+2026-04-17 03:53:02.975 +08:00 [INF] Executed action Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone) in 366.9908ms
+2026-04-17 03:53:02.979 +08:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone)'
+2026-04-17 03:53:02.982 +08:00 [INF] HTTP GET /api/Auth/user-profile responded 200 in 423.0879 ms
+2026-04-17 03:53:02.985 +08:00 [INF] Request finished HTTP/1.0 GET http://localhost/api/Auth/user-profile?email=registrar%40plv.edu.ph&role=registrar - 200 null application/json; charset=utf-8 467.2674ms
+2026-04-17 03:53:05.843 +08:00 [INF] Request starting HTTP/1.0 GET http://localhost/api/Auth/requests/pending - application/json null
+2026-04-17 03:53:05.848 +08:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.GetPendingRequests (For_Testing_Only_Capstone)'
+2026-04-17 03:53:05.851 +08:00 [INF] Route matched with {action = "GetPendingRequests", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetPendingRequests() on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-17 03:53:05.863 +08:00 [INF] Executing OkObjectResult, writing value of type '<>f__AnonymousType4`3[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.Collections.Generic.List`1[[System.Object, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]], System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.Collections.Generic.List`1[[System.Object, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]], System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-17 03:53:05.873 +08:00 [INF] Executed action Client_app.Controllers.AuthController.GetPendingRequests (For_Testing_Only_Capstone) in 20.3929ms
+2026-04-17 03:53:05.878 +08:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.GetPendingRequests (For_Testing_Only_Capstone)'
+2026-04-17 03:53:05.879 +08:00 [INF] HTTP GET /api/Auth/requests/pending responded 200 in 32.4915 ms
+2026-04-17 03:53:05.880 +08:00 [INF] Request finished HTTP/1.0 GET http://localhost/api/Auth/requests/pending - 200 null application/json; charset=utf-8 36.4982ms
+2026-04-17 03:53:06.250 +08:00 [INF] Request starting HTTP/1.0 GET http://localhost/api/Auth/students/approved - application/json null
+2026-04-17 03:53:06.252 +08:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.GetApprovedStudents (For_Testing_Only_Capstone)'
+2026-04-17 03:53:06.255 +08:00 [INF] Route matched with {action = "GetApprovedStudents", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetApprovedStudents() on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-17 03:53:06.259 +08:00 [INF] Executing OkObjectResult, writing value of type '<>f__AnonymousType7`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.Collections.Generic.List`1[[System.Object, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]], System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-17 03:53:06.261 +08:00 [INF] Executed action Client_app.Controllers.AuthController.GetApprovedStudents (For_Testing_Only_Capstone) in 4.9335ms
+2026-04-17 03:53:06.262 +08:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.GetApprovedStudents (For_Testing_Only_Capstone)'
+2026-04-17 03:53:06.263 +08:00 [INF] HTTP GET /api/Auth/students/approved responded 200 in 10.9749 ms
+2026-04-17 03:53:06.264 +08:00 [INF] Request finished HTTP/1.0 GET http://localhost/api/Auth/students/approved - 200 null application/json; charset=utf-8 13.5054ms
+2026-04-17 03:53:06.641 +08:00 [INF] Request starting HTTP/1.0 GET http://localhost/api/Auth/admins/department/approved - application/json null
+2026-04-17 03:53:06.642 +08:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.GetApprovedDepartmentAdmins (For_Testing_Only_Capstone)'
+2026-04-17 03:53:06.645 +08:00 [INF] Route matched with {action = "GetApprovedDepartmentAdmins", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetApprovedDepartmentAdmins() on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-17 03:53:06.649 +08:00 [INF] Executing OkObjectResult, writing value of type '<>f__AnonymousType9`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.Collections.Generic.List`1[[System.Object, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]], System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-17 03:53:06.651 +08:00 [INF] Executed action Client_app.Controllers.AuthController.GetApprovedDepartmentAdmins (For_Testing_Only_Capstone) in 4.7186ms
+2026-04-17 03:53:06.651 +08:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.GetApprovedDepartmentAdmins (For_Testing_Only_Capstone)'
+2026-04-17 03:53:06.652 +08:00 [INF] HTTP GET /api/Auth/admins/department/approved responded 200 in 10.4818 ms
+2026-04-17 03:53:06.653 +08:00 [INF] Request finished HTTP/1.0 GET http://localhost/api/Auth/admins/department/approved - 200 null application/json; charset=utf-8 12.1313ms
+2026-04-17 03:53:07.167 +08:00 [INF] Request starting HTTP/1.0 GET http://localhost/api/Auth/faculty/approved - application/json null
+2026-04-17 03:53:07.168 +08:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.GetApprovedFaculties (For_Testing_Only_Capstone)'
+2026-04-17 03:53:07.171 +08:00 [INF] Route matched with {action = "GetApprovedFaculties", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetApprovedFaculties() on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-17 03:53:07.175 +08:00 [INF] Executing OkObjectResult, writing value of type '<>f__AnonymousType11`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.Collections.Generic.List`1[[System.Object, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]], System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-17 03:53:07.177 +08:00 [INF] Executed action Client_app.Controllers.AuthController.GetApprovedFaculties (For_Testing_Only_Capstone) in 4.7993ms
+2026-04-17 03:53:07.177 +08:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.GetApprovedFaculties (For_Testing_Only_Capstone)'
+2026-04-17 03:53:07.178 +08:00 [INF] HTTP GET /api/Auth/faculty/approved responded 200 in 10.0018 ms
+2026-04-17 03:53:07.179 +08:00 [INF] Request finished HTTP/1.0 GET http://localhost/api/Auth/faculty/approved - 200 null application/json; charset=utf-8 11.3646ms
+2026-04-17 03:54:58.290 +08:00 [INF] Application is shutting down...
+2026-04-17 04:00:53.652 +08:00 [INF] Application starting up...
+2026-04-17 04:00:53.961 +08:00 [INF] HSTS enabled (HTTPS Redirection disabled for Nginx)
+2026-04-17 04:00:54.058 +08:00 [INF] Application configured successfully
+2026-04-17 04:00:54.060 +08:00 [INF] Listening on 
+2026-04-17 04:00:54.126 +08:00 [INF] Now listening on: http://0.0.0.0:5000
+2026-04-17 04:00:54.130 +08:00 [INF] Application started. Press Ctrl+C to shut down.
+2026-04-17 04:00:54.130 +08:00 [INF] Hosting environment: Production
+2026-04-17 04:00:54.131 +08:00 [INF] Content root path: /mnt/c/Users/pascu/Documents/GitHub2/GitHub/Capstone-Project-/For_Testing_Only_Capstone/client-app
+2026-04-17 04:05:13.314 +08:00 [INF] Application is shutting down...
+2026-04-17 04:44:37.009 +08:00 [INF] Application starting up...
+2026-04-17 04:44:39.447 +08:00 [INF] HSTS enabled (HTTPS Redirection disabled for Nginx)
+2026-04-17 04:44:39.819 +08:00 [INF] Application configured successfully
+2026-04-17 04:44:39.820 +08:00 [INF] Listening on 
+2026-04-17 04:44:40.371 +08:00 [INF] Now listening on: http://0.0.0.0:5000
+2026-04-17 04:44:40.374 +08:00 [INF] Application started. Press Ctrl+C to shut down.
+2026-04-17 04:44:40.375 +08:00 [INF] Hosting environment: Production
+2026-04-17 04:44:40.375 +08:00 [INF] Content root path: C:\Users\pascu\Documents\GitHub2\GitHub\Capstone-Project-\For_Testing_Only_Capstone\client-app
+2026-04-17 04:44:44.367 +08:00 [INF] Request starting HTTP/1.0 GET http://localhost/api/Auth/user-profile?email=registrar%40plv.edu.ph&role=registrar - application/json null
+2026-04-17 04:44:44.450 +08:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone)'
+2026-04-17 04:44:44.526 +08:00 [INF] Route matched with {action = "GetUserProfile", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetUserProfile(System.String, System.String) on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-17 04:44:45.130 +08:00 [INF] Executing OkObjectResult, writing value of type '<>f__AnonymousType16`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[Client_app.Models.UserProfileDto, For_Testing_Only_Capstone, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]'.
+2026-04-17 04:44:45.181 +08:00 [INF] Executed action Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone) in 650.6298ms
+2026-04-17 04:44:45.185 +08:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone)'
+2026-04-17 04:44:45.187 +08:00 [INF] HTTP GET /api/Auth/user-profile responded 200 in 745.9641 ms
+2026-04-17 04:44:45.190 +08:00 [INF] Request finished HTTP/1.0 GET http://localhost/api/Auth/user-profile?email=registrar%40plv.edu.ph&role=registrar - 200 null application/json; charset=utf-8 837.1073ms
+2026-04-17 04:54:22.851 +08:00 [INF] Application is shutting down...
+2026-04-17 19:35:45.689 +08:00 [INF] Application starting up...
+2026-04-17 19:35:46.666 +08:00 [INF] HSTS enabled (HTTPS Redirection disabled for Nginx)
+2026-04-17 19:35:47.508 +08:00 [INF] Application configured successfully
+2026-04-17 19:35:47.509 +08:00 [INF] Listening on 
+2026-04-17 19:35:47.654 +08:00 [INF] Now listening on: http://0.0.0.0:5000
+2026-04-17 19:35:47.658 +08:00 [INF] Application started. Press Ctrl+C to shut down.
+2026-04-17 19:35:47.659 +08:00 [INF] Hosting environment: Production
+2026-04-17 19:35:47.659 +08:00 [INF] Content root path: /mnt/c/Users/pascu/Documents/GitHub2/GitHub/Capstone-Project-/For_Testing_Only_Capstone/client-app
+2026-04-17 19:44:28.795 +08:00 [INF] Request starting HTTP/1.0 GET http://localhost/api/Auth/user-profile?email=registrar%40plv.edu.ph&role=registrar - application/json null
+2026-04-17 19:44:28.830 +08:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone)'
+2026-04-17 19:44:28.848 +08:00 [INF] Route matched with {action = "GetUserProfile", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetUserProfile(System.String, System.String) on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-17 19:44:29.268 +08:00 [INF] Executing OkObjectResult, writing value of type '<>f__AnonymousType16`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[Client_app.Models.UserProfileDto, For_Testing_Only_Capstone, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]'.
+2026-04-17 19:44:29.290 +08:00 [INF] Executed action Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone) in 438.6793ms
+2026-04-17 19:44:29.294 +08:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone)'
+2026-04-17 19:44:29.296 +08:00 [INF] HTTP GET /api/Auth/user-profile responded 200 in 477.8449 ms
+2026-04-17 19:44:29.299 +08:00 [INF] Request finished HTTP/1.0 GET http://localhost/api/Auth/user-profile?email=registrar%40plv.edu.ph&role=registrar - 200 null application/json; charset=utf-8 504.6213ms
+2026-04-17 19:44:32.325 +08:00 [INF] Request starting HTTP/1.0 GET http://localhost/api/Auth/requests/pending - application/json null
+2026-04-17 19:44:32.328 +08:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.GetPendingRequests (For_Testing_Only_Capstone)'
+2026-04-17 19:44:32.332 +08:00 [INF] Route matched with {action = "GetPendingRequests", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetPendingRequests() on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-17 19:44:32.342 +08:00 [INF] Executing OkObjectResult, writing value of type '<>f__AnonymousType4`3[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.Collections.Generic.List`1[[System.Object, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]], System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.Collections.Generic.List`1[[System.Object, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]], System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-17 19:44:32.349 +08:00 [INF] Executed action Client_app.Controllers.AuthController.GetPendingRequests (For_Testing_Only_Capstone) in 16.2763ms
+2026-04-17 19:44:32.350 +08:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.GetPendingRequests (For_Testing_Only_Capstone)'
+2026-04-17 19:44:32.351 +08:00 [INF] HTTP GET /api/Auth/requests/pending responded 200 in 23.5350 ms
+2026-04-17 19:44:32.351 +08:00 [INF] Request finished HTTP/1.0 GET http://localhost/api/Auth/requests/pending - 200 null application/json; charset=utf-8 26.9311ms
+2026-04-17 19:44:32.735 +08:00 [INF] Request starting HTTP/1.0 GET http://localhost/api/Auth/students/approved - application/json null
+2026-04-17 19:44:32.737 +08:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.GetApprovedStudents (For_Testing_Only_Capstone)'
+2026-04-17 19:44:32.740 +08:00 [INF] Route matched with {action = "GetApprovedStudents", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetApprovedStudents() on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-17 19:44:32.744 +08:00 [INF] Executing OkObjectResult, writing value of type '<>f__AnonymousType7`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.Collections.Generic.List`1[[System.Object, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]], System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-17 19:44:32.746 +08:00 [INF] Executed action Client_app.Controllers.AuthController.GetApprovedStudents (For_Testing_Only_Capstone) in 5.2344ms
+2026-04-17 19:44:32.746 +08:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.GetApprovedStudents (For_Testing_Only_Capstone)'
+2026-04-17 19:44:32.747 +08:00 [INF] HTTP GET /api/Auth/students/approved responded 200 in 10.2530 ms
+2026-04-17 19:44:32.747 +08:00 [INF] Request finished HTTP/1.0 GET http://localhost/api/Auth/students/approved - 200 null application/json; charset=utf-8 12.3338ms
+2026-04-17 19:44:33.684 +08:00 [INF] Request starting HTTP/1.0 GET http://localhost/api/Auth/admins/department/approved - application/json null
+2026-04-17 19:44:33.684 +08:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.GetApprovedDepartmentAdmins (For_Testing_Only_Capstone)'
+2026-04-17 19:44:33.688 +08:00 [INF] Route matched with {action = "GetApprovedDepartmentAdmins", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetApprovedDepartmentAdmins() on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-17 19:44:33.691 +08:00 [INF] Executing OkObjectResult, writing value of type '<>f__AnonymousType9`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.Collections.Generic.List`1[[System.Object, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]], System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-17 19:44:33.692 +08:00 [INF] Executed action Client_app.Controllers.AuthController.GetApprovedDepartmentAdmins (For_Testing_Only_Capstone) in 3.9599ms
+2026-04-17 19:44:33.693 +08:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.GetApprovedDepartmentAdmins (For_Testing_Only_Capstone)'
+2026-04-17 19:44:33.694 +08:00 [INF] HTTP GET /api/Auth/admins/department/approved responded 200 in 9.1283 ms
+2026-04-17 19:44:33.694 +08:00 [INF] Request finished HTTP/1.0 GET http://localhost/api/Auth/admins/department/approved - 200 null application/json; charset=utf-8 10.4078ms
+2026-04-17 19:44:34.492 +08:00 [INF] Request starting HTTP/1.0 GET http://localhost/api/Auth/faculty/approved - application/json null
+2026-04-17 19:44:34.493 +08:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.GetApprovedFaculties (For_Testing_Only_Capstone)'
+2026-04-17 19:44:34.498 +08:00 [INF] Route matched with {action = "GetApprovedFaculties", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetApprovedFaculties() on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-17 19:44:34.502 +08:00 [INF] Executing OkObjectResult, writing value of type '<>f__AnonymousType11`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.Collections.Generic.List`1[[System.Object, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]], System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-17 19:44:34.504 +08:00 [INF] Executed action Client_app.Controllers.AuthController.GetApprovedFaculties (For_Testing_Only_Capstone) in 5.7477ms
+2026-04-17 19:44:34.505 +08:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.GetApprovedFaculties (For_Testing_Only_Capstone)'
+2026-04-17 19:44:34.506 +08:00 [INF] HTTP GET /api/Auth/faculty/approved responded 200 in 12.3879 ms
+2026-04-17 19:44:34.506 +08:00 [INF] Request finished HTTP/1.0 GET http://localhost/api/Auth/faculty/approved - 200 null application/json; charset=utf-8 13.7871ms
+2026-04-17 19:46:57.487 +08:00 [INF] Request starting HTTP/1.0 GET http://localhost/api/Auth/requests/pending - application/json null
+2026-04-17 19:46:57.489 +08:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.GetPendingRequests (For_Testing_Only_Capstone)'
+2026-04-17 19:46:57.490 +08:00 [INF] Route matched with {action = "GetPendingRequests", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetPendingRequests() on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-17 19:46:57.492 +08:00 [INF] Executing OkObjectResult, writing value of type '<>f__AnonymousType4`3[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.Collections.Generic.List`1[[System.Object, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]], System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.Collections.Generic.List`1[[System.Object, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]], System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-17 19:46:57.493 +08:00 [INF] Executed action Client_app.Controllers.AuthController.GetPendingRequests (For_Testing_Only_Capstone) in 2.0325ms
+2026-04-17 19:46:57.493 +08:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.GetPendingRequests (For_Testing_Only_Capstone)'
+2026-04-17 19:46:57.494 +08:00 [INF] HTTP GET /api/Auth/requests/pending responded 200 in 5.4176 ms
+2026-04-17 19:46:57.495 +08:00 [INF] Request finished HTTP/1.0 GET http://localhost/api/Auth/requests/pending - 200 null application/json; charset=utf-8 7.8968ms
+2026-04-17 19:46:58.158 +08:00 [INF] Request starting HTTP/1.0 GET http://localhost/api/Auth/students/approved - application/json null
+2026-04-17 19:46:58.159 +08:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.GetApprovedStudents (For_Testing_Only_Capstone)'
+2026-04-17 19:46:58.160 +08:00 [INF] Route matched with {action = "GetApprovedStudents", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetApprovedStudents() on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-17 19:46:58.161 +08:00 [INF] Executing OkObjectResult, writing value of type '<>f__AnonymousType7`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.Collections.Generic.List`1[[System.Object, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]], System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-17 19:46:58.161 +08:00 [INF] Executed action Client_app.Controllers.AuthController.GetApprovedStudents (For_Testing_Only_Capstone) in 0.8431ms
+2026-04-17 19:46:58.162 +08:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.GetApprovedStudents (For_Testing_Only_Capstone)'
+2026-04-17 19:46:58.162 +08:00 [INF] HTTP GET /api/Auth/students/approved responded 200 in 3.0683 ms
+2026-04-17 19:46:58.163 +08:00 [INF] Request finished HTTP/1.0 GET http://localhost/api/Auth/students/approved - 200 null application/json; charset=utf-8 4.7632ms
+2026-04-17 19:46:58.556 +08:00 [INF] Request starting HTTP/1.0 GET http://localhost/api/Auth/admins/department/approved - application/json null
+2026-04-17 19:46:58.558 +08:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.GetApprovedDepartmentAdmins (For_Testing_Only_Capstone)'
+2026-04-17 19:46:58.558 +08:00 [INF] Route matched with {action = "GetApprovedDepartmentAdmins", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetApprovedDepartmentAdmins() on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-17 19:46:58.559 +08:00 [INF] Executing OkObjectResult, writing value of type '<>f__AnonymousType9`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.Collections.Generic.List`1[[System.Object, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]], System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-17 19:46:58.561 +08:00 [INF] Executed action Client_app.Controllers.AuthController.GetApprovedDepartmentAdmins (For_Testing_Only_Capstone) in 1.9041ms
+2026-04-17 19:46:58.562 +08:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.GetApprovedDepartmentAdmins (For_Testing_Only_Capstone)'
+2026-04-17 19:46:58.563 +08:00 [INF] HTTP GET /api/Auth/admins/department/approved responded 200 in 5.0190 ms
+2026-04-17 19:46:58.563 +08:00 [INF] Request finished HTTP/1.0 GET http://localhost/api/Auth/admins/department/approved - 200 null application/json; charset=utf-8 7.0295ms
+2026-04-17 19:46:58.901 +08:00 [INF] Request starting HTTP/1.0 GET http://localhost/api/Auth/students/approved - application/json null
+2026-04-17 19:46:58.901 +08:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.GetApprovedStudents (For_Testing_Only_Capstone)'
+2026-04-17 19:46:58.902 +08:00 [INF] Route matched with {action = "GetApprovedStudents", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetApprovedStudents() on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-17 19:46:58.903 +08:00 [INF] Executing OkObjectResult, writing value of type '<>f__AnonymousType7`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.Collections.Generic.List`1[[System.Object, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]], System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-17 19:46:58.903 +08:00 [INF] Executed action Client_app.Controllers.AuthController.GetApprovedStudents (For_Testing_Only_Capstone) in 0.9233ms
+2026-04-17 19:46:58.904 +08:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.GetApprovedStudents (For_Testing_Only_Capstone)'
+2026-04-17 19:46:58.904 +08:00 [INF] HTTP GET /api/Auth/students/approved responded 200 in 3.1450 ms
+2026-04-17 19:46:58.905 +08:00 [INF] Request finished HTTP/1.0 GET http://localhost/api/Auth/students/approved - 200 null application/json; charset=utf-8 4.5868ms
+2026-04-17 19:46:59.908 +08:00 [INF] Request starting HTTP/1.0 GET http://localhost/api/Auth/admins/department/approved - application/json null
+2026-04-17 19:46:59.909 +08:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.GetApprovedDepartmentAdmins (For_Testing_Only_Capstone)'
+2026-04-17 19:46:59.909 +08:00 [INF] Route matched with {action = "GetApprovedDepartmentAdmins", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetApprovedDepartmentAdmins() on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-17 19:46:59.910 +08:00 [INF] Executing OkObjectResult, writing value of type '<>f__AnonymousType9`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.Collections.Generic.List`1[[System.Object, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]], System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-17 19:46:59.911 +08:00 [INF] Executed action Client_app.Controllers.AuthController.GetApprovedDepartmentAdmins (For_Testing_Only_Capstone) in 1.1509ms
+2026-04-17 19:46:59.912 +08:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.GetApprovedDepartmentAdmins (For_Testing_Only_Capstone)'
+2026-04-17 19:46:59.912 +08:00 [INF] HTTP GET /api/Auth/admins/department/approved responded 200 in 3.6113 ms
+2026-04-17 19:46:59.913 +08:00 [INF] Request finished HTTP/1.0 GET http://localhost/api/Auth/admins/department/approved - 200 null application/json; charset=utf-8 4.7403ms
+2026-04-17 19:47:00.273 +08:00 [INF] Request starting HTTP/1.0 GET http://localhost/api/Auth/faculty/approved - application/json null
+2026-04-17 19:47:00.274 +08:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.GetApprovedFaculties (For_Testing_Only_Capstone)'
+2026-04-17 19:47:00.275 +08:00 [INF] Route matched with {action = "GetApprovedFaculties", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetApprovedFaculties() on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-17 19:47:00.276 +08:00 [INF] Executing OkObjectResult, writing value of type '<>f__AnonymousType11`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.Collections.Generic.List`1[[System.Object, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]], System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-17 19:47:00.277 +08:00 [INF] Executed action Client_app.Controllers.AuthController.GetApprovedFaculties (For_Testing_Only_Capstone) in 1.0141ms
+2026-04-17 19:47:00.277 +08:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.GetApprovedFaculties (For_Testing_Only_Capstone)'
+2026-04-17 19:47:00.278 +08:00 [INF] HTTP GET /api/Auth/faculty/approved responded 200 in 3.8167 ms
+2026-04-17 19:47:00.279 +08:00 [INF] Request finished HTTP/1.0 GET http://localhost/api/Auth/faculty/approved - 200 null application/json; charset=utf-8 5.2451ms
+2026-04-17 19:47:17.184 +08:00 [INF] Request starting HTTP/1.0 POST http://localhost/api/Auth/send-verification - application/json 39
+2026-04-17 19:47:17.187 +08:00 [INF] CORS policy execution successful.
+2026-04-17 19:47:17.188 +08:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.SendVerificationCode (For_Testing_Only_Capstone)'
+2026-04-17 19:47:17.191 +08:00 [INF] Route matched with {action = "SendVerificationCode", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] SendVerificationCode(Client_app.Models.VerificationRequest) on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-17 19:47:22.813 +08:00 [INF] Executing OkObjectResult, writing value of type '<>f__AnonymousType0`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-17 19:47:22.815 +08:00 [INF] Executed action Client_app.Controllers.AuthController.SendVerificationCode (For_Testing_Only_Capstone) in 5623.2802ms
+2026-04-17 19:47:22.816 +08:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.SendVerificationCode (For_Testing_Only_Capstone)'
+2026-04-17 19:47:22.816 +08:00 [INF] HTTP POST /api/Auth/send-verification responded 200 in 5631.7993 ms
+2026-04-17 19:47:22.817 +08:00 [INF] Request finished HTTP/1.0 POST http://localhost/api/Auth/send-verification - 200 null application/json; charset=utf-8 5633.2526ms
+2026-04-17 19:51:04.819 +08:00 [INF] Request starting HTTP/1.0 POST http://localhost/api/Auth/request - application/json 146
+2026-04-17 19:51:04.820 +08:00 [INF] CORS policy execution successful.
+2026-04-17 19:51:04.821 +08:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.RequestAccess (For_Testing_Only_Capstone)'
+2026-04-17 19:51:04.825 +08:00 [INF] Route matched with {action = "RequestAccess", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] RequestAccess(Client_app.Models.SignupRequest) on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-17 19:51:04.858 +08:00 [INF] Start processing HTTP request POST http://localhost:4000/api/crypto/hash-password
+2026-04-17 19:51:04.859 +08:00 [INF] Sending HTTP request POST http://localhost:4000/api/crypto/hash-password
+2026-04-17 19:51:05.266 +08:00 [INF] Received HTTP response headers after 405.5164ms - 200
+2026-04-17 19:51:05.267 +08:00 [INF] End processing HTTP request after 411.0421ms - 200
+2026-04-17 19:51:05.341 +08:00 [INF] Executing OkObjectResult, writing value of type '<>f__AnonymousType0`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-17 19:51:05.342 +08:00 [INF] Executed action Client_app.Controllers.AuthController.RequestAccess (For_Testing_Only_Capstone) in 516.4975ms
+2026-04-17 19:51:05.343 +08:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.RequestAccess (For_Testing_Only_Capstone)'
+2026-04-17 19:51:05.343 +08:00 [INF] HTTP POST /api/Auth/request responded 200 in 523.2978 ms
+2026-04-17 19:51:05.344 +08:00 [INF] Request finished HTTP/1.0 POST http://localhost/api/Auth/request - 200 null application/json; charset=utf-8 524.8071ms
+2026-04-17 19:51:10.999 +08:00 [INF] Request starting HTTP/1.0 GET http://localhost/api/Auth/user-profile?email=registrar%40plv.edu.ph&role=registrar - application/json null
+2026-04-17 19:51:11.000 +08:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone)'
+2026-04-17 19:51:11.001 +08:00 [INF] Route matched with {action = "GetUserProfile", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetUserProfile(System.String, System.String) on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-17 19:51:11.005 +08:00 [INF] Executing OkObjectResult, writing value of type '<>f__AnonymousType16`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[Client_app.Models.UserProfileDto, For_Testing_Only_Capstone, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]'.
+2026-04-17 19:51:11.006 +08:00 [INF] Executed action Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone) in 4.0161ms
+2026-04-17 19:51:11.006 +08:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone)'
+2026-04-17 19:51:11.007 +08:00 [INF] HTTP GET /api/Auth/user-profile responded 200 in 7.1302 ms
+2026-04-17 19:51:11.007 +08:00 [INF] Request finished HTTP/1.0 GET http://localhost/api/Auth/user-profile?email=registrar%40plv.edu.ph&role=registrar - 200 null application/json; charset=utf-8 8.2538ms
+2026-04-17 19:51:12.090 +08:00 [INF] Request starting HTTP/1.0 GET http://localhost/api/Auth/students/approved - application/json null
+2026-04-17 19:51:12.095 +08:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.GetApprovedStudents (For_Testing_Only_Capstone)'
+2026-04-17 19:51:12.096 +08:00 [INF] Route matched with {action = "GetApprovedStudents", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetApprovedStudents() on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-17 19:51:12.097 +08:00 [INF] Executing OkObjectResult, writing value of type '<>f__AnonymousType7`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.Collections.Generic.List`1[[System.Object, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]], System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-17 19:51:12.097 +08:00 [INF] Executed action Client_app.Controllers.AuthController.GetApprovedStudents (For_Testing_Only_Capstone) in 0.9221ms
+2026-04-17 19:51:12.098 +08:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.GetApprovedStudents (For_Testing_Only_Capstone)'
+2026-04-17 19:51:12.098 +08:00 [INF] HTTP GET /api/Auth/students/approved responded 200 in 3.3936 ms
+2026-04-17 19:51:12.099 +08:00 [INF] Request finished HTTP/1.0 GET http://localhost/api/Auth/students/approved - 200 null application/json; charset=utf-8 8.7487ms
+2026-04-17 19:51:13.456 +08:00 [INF] Request starting HTTP/1.0 GET http://localhost/api/Auth/requests/pending - application/json null
+2026-04-17 19:51:13.457 +08:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.GetPendingRequests (For_Testing_Only_Capstone)'
+2026-04-17 19:51:13.457 +08:00 [INF] Route matched with {action = "GetPendingRequests", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetPendingRequests() on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-17 19:51:13.464 +08:00 [INF] Executing OkObjectResult, writing value of type '<>f__AnonymousType4`3[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.Collections.Generic.List`1[[System.Object, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]], System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.Collections.Generic.List`1[[System.Object, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]], System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-17 19:51:13.467 +08:00 [INF] Executed action Client_app.Controllers.AuthController.GetPendingRequests (For_Testing_Only_Capstone) in 8.8684ms
+2026-04-17 19:51:13.467 +08:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.GetPendingRequests (For_Testing_Only_Capstone)'
+2026-04-17 19:51:13.467 +08:00 [INF] HTTP GET /api/Auth/requests/pending responded 200 in 11.0950 ms
+2026-04-17 19:51:13.468 +08:00 [INF] Request finished HTTP/1.0 GET http://localhost/api/Auth/requests/pending - 200 null application/json; charset=utf-8 12.2806ms
+2026-04-17 19:51:16.317 +08:00 [INF] Request starting HTTP/1.0 PUT http://localhost/api/Auth/requests/approve/faculty/2 - application/json 0
+2026-04-17 19:51:16.318 +08:00 [INF] CORS policy execution successful.
+2026-04-17 19:51:16.319 +08:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.ApproveRequest (For_Testing_Only_Capstone)'
+2026-04-17 19:51:16.322 +08:00 [INF] Route matched with {action = "ApproveRequest", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] ApproveRequest(System.String, Int32) on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-17 19:51:16.327 +08:00 [WRN] internal Fabric CA connection: SSL validation BYPASSED (Development or Config Override)
+2026-04-17 19:51:16.329 +08:00 [INF] Start processing HTTP request POST http://localhost:4000/api/fabric/register-user
+2026-04-17 19:51:16.329 +08:00 [INF] Sending HTTP request POST http://localhost:4000/api/fabric/register-user
+2026-04-17 19:51:16.371 +08:00 [INF] Request starting HTTP/1.0 GET http://localhost/api/Auth/requests/pending - application/json null
+2026-04-17 19:51:16.372 +08:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.GetPendingRequests (For_Testing_Only_Capstone)'
+2026-04-17 19:51:16.373 +08:00 [INF] Route matched with {action = "GetPendingRequests", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetPendingRequests() on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-17 19:51:16.373 +08:00 [INF] Executing OkObjectResult, writing value of type '<>f__AnonymousType4`3[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.Collections.Generic.List`1[[System.Object, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]], System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.Collections.Generic.List`1[[System.Object, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]], System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-17 19:51:16.374 +08:00 [INF] Executed action Client_app.Controllers.AuthController.GetPendingRequests (For_Testing_Only_Capstone) in 1.0954ms
+2026-04-17 19:51:16.375 +08:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.GetPendingRequests (For_Testing_Only_Capstone)'
+2026-04-17 19:51:16.375 +08:00 [INF] HTTP GET /api/Auth/requests/pending responded 200 in 3.2845 ms
+2026-04-17 19:51:16.376 +08:00 [INF] Request finished HTTP/1.0 GET http://localhost/api/Auth/requests/pending - 200 null application/json; charset=utf-8 4.4488ms
+2026-04-17 19:51:17.129 +08:00 [INF] Received HTTP response headers after 798.6137ms - 200
+2026-04-17 19:51:17.129 +08:00 [INF] End processing HTTP request after 800.3122ms - 200
+2026-04-17 19:51:17.164 +08:00 [INF] Executing OkObjectResult, writing value of type '<>f__AnonymousType0`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-17 19:51:17.165 +08:00 [INF] Executed action Client_app.Controllers.AuthController.ApproveRequest (For_Testing_Only_Capstone) in 842.6291ms
+2026-04-17 19:51:17.166 +08:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.ApproveRequest (For_Testing_Only_Capstone)'
+2026-04-17 19:51:17.166 +08:00 [INF] HTTP PUT /api/Auth/requests/approve/faculty/2 responded 200 in 848.1675 ms
+2026-04-17 19:51:17.167 +08:00 [INF] Request finished HTTP/1.0 PUT http://localhost/api/Auth/requests/approve/faculty/2 - 200 null application/json; charset=utf-8 849.591ms
+2026-04-17 19:51:18.795 +08:00 [INF] Request starting HTTP/1.0 GET http://localhost/api/Auth/requests/pending - application/json null
+2026-04-17 19:51:18.796 +08:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.GetPendingRequests (For_Testing_Only_Capstone)'
+2026-04-17 19:51:18.797 +08:00 [INF] Route matched with {action = "GetPendingRequests", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetPendingRequests() on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-17 19:51:18.800 +08:00 [INF] Executing OkObjectResult, writing value of type '<>f__AnonymousType4`3[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.Collections.Generic.List`1[[System.Object, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]], System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.Collections.Generic.List`1[[System.Object, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]], System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-17 19:51:18.801 +08:00 [INF] Executed action Client_app.Controllers.AuthController.GetPendingRequests (For_Testing_Only_Capstone) in 3.5776ms
+2026-04-17 19:51:18.801 +08:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.GetPendingRequests (For_Testing_Only_Capstone)'
+2026-04-17 19:51:18.802 +08:00 [INF] HTTP GET /api/Auth/requests/pending responded 200 in 6.0681 ms
+2026-04-17 19:51:18.802 +08:00 [INF] Request finished HTTP/1.0 GET http://localhost/api/Auth/requests/pending - 200 null application/json; charset=utf-8 7.1801ms
+2026-04-17 19:51:19.287 +08:00 [INF] Request starting HTTP/1.0 GET http://localhost/api/Auth/requests/pending - application/json null
+2026-04-17 19:51:19.289 +08:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.GetPendingRequests (For_Testing_Only_Capstone)'
+2026-04-17 19:51:19.290 +08:00 [INF] Route matched with {action = "GetPendingRequests", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetPendingRequests() on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-17 19:51:19.291 +08:00 [INF] Executing OkObjectResult, writing value of type '<>f__AnonymousType4`3[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.Collections.Generic.List`1[[System.Object, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]], System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.Collections.Generic.List`1[[System.Object, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]], System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-17 19:51:19.293 +08:00 [INF] Executed action Client_app.Controllers.AuthController.GetPendingRequests (For_Testing_Only_Capstone) in 1.6294ms
+2026-04-17 19:51:19.294 +08:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.GetPendingRequests (For_Testing_Only_Capstone)'
+2026-04-17 19:51:19.294 +08:00 [INF] HTTP GET /api/Auth/requests/pending responded 200 in 5.1665 ms
+2026-04-17 19:51:19.295 +08:00 [INF] Request finished HTTP/1.0 GET http://localhost/api/Auth/requests/pending - 200 null application/json; charset=utf-8 7.8374ms
+2026-04-17 19:51:19.494 +08:00 [INF] Request starting HTTP/1.0 GET http://localhost/api/Auth/faculty/approved - application/json null
+2026-04-17 19:51:19.495 +08:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.GetApprovedFaculties (For_Testing_Only_Capstone)'
+2026-04-17 19:51:19.496 +08:00 [INF] Route matched with {action = "GetApprovedFaculties", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetApprovedFaculties() on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-17 19:51:19.498 +08:00 [INF] Executing OkObjectResult, writing value of type '<>f__AnonymousType11`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.Collections.Generic.List`1[[System.Object, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]], System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-17 19:51:19.500 +08:00 [INF] Executed action Client_app.Controllers.AuthController.GetApprovedFaculties (For_Testing_Only_Capstone) in 3.7315ms
+2026-04-17 19:51:19.501 +08:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.GetApprovedFaculties (For_Testing_Only_Capstone)'
+2026-04-17 19:51:19.501 +08:00 [INF] HTTP GET /api/Auth/faculty/approved responded 200 in 6.1448 ms
+2026-04-17 19:51:19.502 +08:00 [INF] Request finished HTTP/1.0 GET http://localhost/api/Auth/faculty/approved - 200 null application/json; charset=utf-8 7.4278ms
+2026-04-17 19:51:36.816 +08:00 [INF] Request starting HTTP/1.0 POST http://localhost/api/Auth/send-verification - application/json 39
+2026-04-17 19:51:36.817 +08:00 [INF] CORS policy execution successful.
+2026-04-17 19:51:36.819 +08:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.SendVerificationCode (For_Testing_Only_Capstone)'
+2026-04-17 19:51:36.820 +08:00 [INF] Route matched with {action = "SendVerificationCode", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] SendVerificationCode(Client_app.Models.VerificationRequest) on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-17 19:51:42.008 +08:00 [INF] Executing OkObjectResult, writing value of type '<>f__AnonymousType0`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-17 19:51:42.009 +08:00 [INF] Executed action Client_app.Controllers.AuthController.SendVerificationCode (For_Testing_Only_Capstone) in 5187.7171ms
+2026-04-17 19:51:42.009 +08:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.SendVerificationCode (For_Testing_Only_Capstone)'
+2026-04-17 19:51:42.010 +08:00 [INF] HTTP POST /api/Auth/send-verification responded 200 in 5192.6711 ms
+2026-04-17 19:51:42.011 +08:00 [INF] Request finished HTTP/1.0 POST http://localhost/api/Auth/send-verification - 200 null application/json; charset=utf-8 5194.7394ms
+2026-04-17 19:53:41.935 +08:00 [INF] Request starting HTTP/1.0 POST http://localhost/api/Auth/request - application/json 155
+2026-04-17 19:53:41.939 +08:00 [INF] CORS policy execution successful.
+2026-04-17 19:53:41.940 +08:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.RequestAccess (For_Testing_Only_Capstone)'
+2026-04-17 19:53:41.941 +08:00 [INF] Route matched with {action = "RequestAccess", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] RequestAccess(Client_app.Models.SignupRequest) on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-17 19:53:41.945 +08:00 [INF] Start processing HTTP request POST http://localhost:4000/api/crypto/hash-password
+2026-04-17 19:53:41.945 +08:00 [INF] Sending HTTP request POST http://localhost:4000/api/crypto/hash-password
+2026-04-17 19:53:41.999 +08:00 [INF] Received HTTP response headers after 53.0951ms - 200
+2026-04-17 19:53:41.999 +08:00 [INF] End processing HTTP request after 54.5857ms - 200
+2026-04-17 19:53:42.032 +08:00 [INF] Executing OkObjectResult, writing value of type '<>f__AnonymousType0`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-17 19:53:42.033 +08:00 [INF] Executed action Client_app.Controllers.AuthController.RequestAccess (For_Testing_Only_Capstone) in 91.0247ms
+2026-04-17 19:53:42.033 +08:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.RequestAccess (For_Testing_Only_Capstone)'
+2026-04-17 19:53:42.034 +08:00 [INF] HTTP POST /api/Auth/request responded 200 in 94.8024 ms
+2026-04-17 19:53:42.034 +08:00 [INF] Request finished HTTP/1.0 POST http://localhost/api/Auth/request - 200 null application/json; charset=utf-8 98.836ms
+2026-04-17 19:53:50.950 +08:00 [INF] Request starting HTTP/1.0 GET http://localhost/api/Auth/user-profile?email=registrar%40plv.edu.ph&role=registrar - application/json null
+2026-04-17 19:53:50.952 +08:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone)'
+2026-04-17 19:53:50.952 +08:00 [INF] Route matched with {action = "GetUserProfile", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetUserProfile(System.String, System.String) on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-17 19:53:50.955 +08:00 [INF] Executing OkObjectResult, writing value of type '<>f__AnonymousType16`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[Client_app.Models.UserProfileDto, For_Testing_Only_Capstone, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]'.
+2026-04-17 19:53:50.956 +08:00 [INF] Executed action Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone) in 2.694ms
+2026-04-17 19:53:50.956 +08:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone)'
+2026-04-17 19:53:50.957 +08:00 [INF] HTTP GET /api/Auth/user-profile responded 200 in 5.1087 ms
+2026-04-17 19:53:50.957 +08:00 [INF] Request finished HTTP/1.0 GET http://localhost/api/Auth/user-profile?email=registrar%40plv.edu.ph&role=registrar - 200 null application/json; charset=utf-8 7.4231ms
+2026-04-17 19:53:52.750 +08:00 [INF] Request starting HTTP/1.0 GET http://localhost/api/Auth/requests/pending - application/json null
+2026-04-17 19:53:52.751 +08:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.GetPendingRequests (For_Testing_Only_Capstone)'
+2026-04-17 19:53:52.751 +08:00 [INF] Route matched with {action = "GetPendingRequests", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetPendingRequests() on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-17 19:53:52.755 +08:00 [INF] Executing OkObjectResult, writing value of type '<>f__AnonymousType4`3[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.Collections.Generic.List`1[[System.Object, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]], System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.Collections.Generic.List`1[[System.Object, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]], System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-17 19:53:52.756 +08:00 [INF] Executed action Client_app.Controllers.AuthController.GetPendingRequests (For_Testing_Only_Capstone) in 4.1419ms
+2026-04-17 19:53:52.757 +08:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.GetPendingRequests (For_Testing_Only_Capstone)'
+2026-04-17 19:53:52.757 +08:00 [INF] HTTP GET /api/Auth/requests/pending responded 200 in 6.3508 ms
+2026-04-17 19:53:52.758 +08:00 [INF] Request finished HTTP/1.0 GET http://localhost/api/Auth/requests/pending - 200 null application/json; charset=utf-8 7.9934ms
+2026-04-17 19:53:54.886 +08:00 [INF] Request starting HTTP/1.0 PUT http://localhost/api/Auth/requests/approve/department_admin/3 - application/json 0
+2026-04-17 19:53:54.887 +08:00 [INF] CORS policy execution successful.
+2026-04-17 19:53:54.888 +08:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.ApproveRequest (For_Testing_Only_Capstone)'
+2026-04-17 19:53:54.889 +08:00 [INF] Route matched with {action = "ApproveRequest", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] ApproveRequest(System.String, Int32) on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-17 19:53:54.891 +08:00 [WRN] internal Fabric CA connection: SSL validation BYPASSED (Development or Config Override)
+2026-04-17 19:53:54.892 +08:00 [INF] Start processing HTTP request POST http://localhost:4000/api/fabric/register-user
+2026-04-17 19:53:54.893 +08:00 [INF] Sending HTTP request POST http://localhost:4000/api/fabric/register-user
+2026-04-17 19:53:55.661 +08:00 [INF] Request starting HTTP/1.0 GET http://localhost/api/Auth/requests/pending - application/json null
+2026-04-17 19:53:55.667 +08:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.GetPendingRequests (For_Testing_Only_Capstone)'
+2026-04-17 19:53:55.668 +08:00 [INF] Route matched with {action = "GetPendingRequests", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetPendingRequests() on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-17 19:53:55.668 +08:00 [INF] Executing OkObjectResult, writing value of type '<>f__AnonymousType4`3[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.Collections.Generic.List`1[[System.Object, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]], System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.Collections.Generic.List`1[[System.Object, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]], System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-17 19:53:55.669 +08:00 [INF] Executed action Client_app.Controllers.AuthController.GetPendingRequests (For_Testing_Only_Capstone) in 1.1415ms
+2026-04-17 19:53:55.670 +08:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.GetPendingRequests (For_Testing_Only_Capstone)'
+2026-04-17 19:53:55.671 +08:00 [INF] HTTP GET /api/Auth/requests/pending responded 200 in 3.4727 ms
+2026-04-17 19:53:55.671 +08:00 [INF] Request finished HTTP/1.0 GET http://localhost/api/Auth/requests/pending - 200 null application/json; charset=utf-8 9.9234ms
+2026-04-17 19:53:55.764 +08:00 [INF] Received HTTP response headers after 871.108ms - 200
+2026-04-17 19:53:55.765 +08:00 [INF] End processing HTTP request after 872.8717ms - 200
+2026-04-17 19:53:55.805 +08:00 [INF] Executing OkObjectResult, writing value of type '<>f__AnonymousType0`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-17 19:53:55.806 +08:00 [INF] Executed action Client_app.Controllers.AuthController.ApproveRequest (For_Testing_Only_Capstone) in 916.1067ms
+2026-04-17 19:53:55.806 +08:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.ApproveRequest (For_Testing_Only_Capstone)'
+2026-04-17 19:53:55.807 +08:00 [INF] HTTP PUT /api/Auth/requests/approve/department_admin/3 responded 200 in 919.8449 ms
+2026-04-17 19:53:55.807 +08:00 [INF] Request finished HTTP/1.0 PUT http://localhost/api/Auth/requests/approve/department_admin/3 - 200 null application/json; charset=utf-8 921.2568ms
+2026-04-17 19:53:56.937 +08:00 [INF] Request starting HTTP/1.0 GET http://localhost/api/Auth/requests/pending - application/json null
+2026-04-17 19:53:56.938 +08:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.GetPendingRequests (For_Testing_Only_Capstone)'
+2026-04-17 19:53:56.939 +08:00 [INF] Route matched with {action = "GetPendingRequests", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetPendingRequests() on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-17 19:53:56.942 +08:00 [INF] Executing OkObjectResult, writing value of type '<>f__AnonymousType4`3[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.Collections.Generic.List`1[[System.Object, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]], System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.Collections.Generic.List`1[[System.Object, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]], System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-04-17 19:53:56.944 +08:00 [INF] Executed action Client_app.Controllers.AuthController.GetPendingRequests (For_Testing_Only_Capstone) in 3.7867ms
+2026-04-17 19:53:56.944 +08:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.GetPendingRequests (For_Testing_Only_Capstone)'
+2026-04-17 19:53:56.945 +08:00 [INF] HTTP GET /api/Auth/requests/pending responded 200 in 6.4015 ms
+2026-04-17 19:53:56.945 +08:00 [INF] Request finished HTTP/1.0 GET http://localhost/api/Auth/requests/pending - 200 null application/json; charset=utf-8 8.3365ms
+2026-04-17 19:54:01.358 +08:00 [INF] Request starting HTTP/1.0 GET http://localhost/api/Auth/user-profile?email=pascualpatrick265%40gmail.com&role=department_admin - application/json null
+2026-04-17 19:54:01.361 +08:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone)'
+2026-04-17 19:54:01.362 +08:00 [INF] Route matched with {action = "GetUserProfile", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetUserProfile(System.String, System.String) on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-04-17 19:54:01.365 +08:00 [INF] Executing OkObjectResult, writing value of type '<>f__AnonymousType16`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[Client_app.Models.UserProfileDto, For_Testing_Only_Capstone, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]'.
+2026-04-17 19:54:01.366 +08:00 [INF] Executed action Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone) in 3.2903ms
+2026-04-17 19:54:01.367 +08:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone)'
+2026-04-17 19:54:01.367 +08:00 [INF] HTTP GET /api/Auth/user-profile responded 200 in 6.8309 ms
+2026-04-17 19:54:01.368 +08:00 [INF] Request finished HTTP/1.0 GET http://localhost/api/Auth/user-profile?email=pascualpatrick265%40gmail.com&role=department_admin - 200 null application/json; charset=utf-8 9.6033ms
+2026-04-17 19:55:01.005 +08:00 [INF] Application is shutting down...

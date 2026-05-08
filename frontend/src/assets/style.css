@@ -1,0 +1,27 @@
+
+/* src/style.css */
+* {
+  box-sizing: border-box; /* Prevents layout breaking */
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  font-family: 'Inter', 'Segoe UI', sans-serif;
+  background-color: #f0f2f5;
+
+}/* src/style.css */
+* {
+  box-sizing: border-box; /* Prevents layout breaking */
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  font-family: 'Inter', 'Segoe UI', sans-serif;
+  background-color: #f0f2f5;
+}

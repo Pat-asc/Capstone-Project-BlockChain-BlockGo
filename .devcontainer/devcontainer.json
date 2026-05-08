@@ -1,0 +1,8 @@
+{
+  "name": "Hyperledger Deployment",
+  "image": "ubuntu:22.04",
+  "features": {
+    "ghcr.io/devcontainers/features/docker-outside-of-docker:1": {}
+  },
+  "postCreateCommand": "apt-get update && apt-get install -y curl wget jq netcat sudo tzdata"
+}	
