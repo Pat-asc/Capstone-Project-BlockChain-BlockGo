@@ -381,9 +381,9 @@ DOCKER_CONFIG=$TMP_DOCKER_CFG docker pull alpine:latest || true
 log_info "Bringing up core database services first..."
 DOCKER_CONFIG=$TMP_DOCKER_CFG docker compose -f docker-compose-main.yaml -f docker-compose-annex.yaml -f docker-compose-pubad.yaml up -d postgres postgres-annex postgres-pubad
 
-wait_for_container_health postgres 120
-wait_for_container_health postgres-annex 120
-wait_for_container_health postgres-pubad 120
+wait_for_container_health postgres 180
+wait_for_container_health postgres-annex 300
+wait_for_container_health postgres-pubad 300
 
 log_info "Creating the network containers (without starting)..."
 DOCKER_CONFIG=$TMP_DOCKER_CFG docker compose -f docker-compose-main.yaml -f docker-compose-annex.yaml -f docker-compose-pubad.yaml up --no-start

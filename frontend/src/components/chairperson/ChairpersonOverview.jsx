@@ -1,12 +1,32 @@
 import React from "react";
 
-function ChairpersonOverview({ metrics = {} }) {
+function ChairpersonOverview({ metrics }) {
   const cards = [
-    { title: "Faculty in Department", value: metrics.totalFaculty || 0, subtitle: "Faculty members under monitoring" },
-    { title: "Sections for Review", value: metrics.totalSections || 0, subtitle: "Assigned sections awaiting review" },
-    { title: "Submitted Sections", value: metrics.submittedSections || 0, subtitle: "Waiting for chairperson review" },
-    { title: "Returned Sections", value: metrics.returnedSections || 0, subtitle: "Sent back for correction" },
-    { title: "Approved Sections", value: metrics.approvedSections || 0, subtitle: "Ready to forward to registrar" },
+    {
+      title: "Faculty in Department",
+      value: metrics.totalFaculty,
+      subtitle: "Faculty members under chairperson monitoring",
+    },
+    {
+      title: "Sections for Review",
+      value: metrics.totalSections,
+      subtitle: "Assigned sections awaiting monitoring or review",
+    },
+    {
+      title: "Submitted Sections",
+      value: metrics.submittedSections,
+      subtitle: "Faculty submissions waiting for chairperson review",
+    },
+    {
+      title: "Returned Sections",
+      value: metrics.returnedSections,
+      subtitle: "Sections sent back to faculty for correction",
+    },
+    {
+      title: "Approved Sections",
+      value: metrics.approvedSections,
+      subtitle: "Sections approved and ready to forward to registrar",
+    },
   ];
 
   return (

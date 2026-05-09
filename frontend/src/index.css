@@ -1,39 +1,4 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
-@media print {
-  .no-print,
-  nav,
-  aside,
-  button,
-  input,
-  .sidebar,
-  .header {
-    display: none !important;
-  }
-  
-  body {
-    background: white !important;
-  }
-
-  .print-only {
-    display: block !important;
-  }
-
-  main {
-    margin: 0 !important;
-    padding: 0 !important;
-    width: 100% !important;
-  }
-
-  .card, .rounded-2xl {
-    border: none !important;
-    box-shadow: none !important;
-  }
-}
-
-.print-only {
-  display: none;
-}
-
+@import "tailwindcss";

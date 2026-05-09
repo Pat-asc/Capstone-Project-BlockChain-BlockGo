@@ -1,8 +1,8 @@
 import React from "react";
-
-// Safe Fallback Helpers
-const getReviewStatusClasses = () => "bg-blue-50 text-blue-800";
-const getReviewStatusLabel = (status) => status || "Pending";
+import {
+  getReviewStatusClasses,
+  getReviewStatusLabel,
+} from "../../utils/chairpersonHelpers";
 
 function ReviewStatusBanner({ reviewStatus, reviewNote }) {
   if (!reviewStatus || reviewStatus === "pending") return null;
@@ -16,4 +16,5 @@ function ReviewStatusBanner({ reviewStatus, reviewNote }) {
     </div>
   );
 }
+
 export default ReviewStatusBanner;

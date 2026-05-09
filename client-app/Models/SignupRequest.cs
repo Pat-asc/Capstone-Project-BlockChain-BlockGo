@@ -16,6 +16,8 @@ namespace Client_app.Models
         public string VerificationCode { get; set; } = string.Empty;
         
         public string Department { get; set; } = string.Empty;
+
+        public string? FacultyType { get; set; }
         
         public string? StudentNo { get; set; }
         

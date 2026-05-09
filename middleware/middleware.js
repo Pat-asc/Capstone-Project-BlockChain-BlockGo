@@ -51,55 +51,119 @@ const caConfigCache = new Map();
 global.userGatewayCache = global.userGatewayCache || new Map();
 const userGatewayCache = global.userGatewayCache;
 
-const IDLE_TIMEOUT_MS = 60 * 60 * 1000;
+const parsePositiveInt = (value, fallback) => {
+    const parsed = Number.parseInt(value, 10);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+};
+
+const IDLE_TIMEOUT_MS = parsePositiveInt(process.env.GATEWAY_IDLE_TIMEOUT_MS, 5 * 60 * 1000);
+const GATEWAY_PRUNE_INTERVAL_MS = parsePositiveInt(process.env.GATEWAY_PRUNE_INTERVAL_MS, 60 * 1000);
+
+const disconnectCachedGateway = (username, reason = 'stale') => {
+    const cached = userGatewayCache.get(username);
+    if (!cached) return;
+
+    try {
+        cached.gateway.disconnect();
+    } catch (e) {
+        console.warn(`[Gateway Cache] Failed to disconnect ${username}: ${e.message}`);
+    }
+
+    userGatewayCache.delete(username);
+    console.log(`[Gateway Cache] Closed ${reason} gateway for ${username}`);
+};
+
+const isGatewayCacheExpired = (cached) => {
+    if (!cached?.lastAccessed) return true;
+    return Date.now() - cached.lastAccessed > IDLE_TIMEOUT_MS;
+};
+
 setInterval(() => {
-    const now = Date.now();
     for (const [username, cached] of userGatewayCache.entries()) {
-        if (now - cached.lastAccessed > IDLE_TIMEOUT_MS) {
-            console.log(`[Cache Pruner] Closing idle connection for ${username}`);
-            cached.gateway.disconnect();
-            userGatewayCache.delete(username);
+        if (isGatewayCacheExpired(cached)) disconnectCachedGateway(username, 'idle');
+    }
+}, GATEWAY_PRUNE_INTERVAL_MS);
+
+const resolveExistingPaths = (...candidates) => {
+    const seen = new Set();
+    const paths = [];
+
+    for (const candidate of candidates.filter(Boolean)) {
+        const resolved = path.resolve(__dirname, candidate);
+        if (fs.existsSync(resolved) && !seen.has(resolved)) {
+            seen.add(resolved);
+            paths.push(resolved);
         }
     }
-}, 15 * 60 * 1000);
+
+    return paths;
+};
+
+const getFileSignature = (filePath) => {
+    const stat = fs.statSync(filePath);
+    return `${filePath}:${stat.mtimeMs}:${stat.size}`;
+};
 
 const getCAConfig = (role) => {
-    if (caConfigCache.has(role)) {
-        return caConfigCache.get(role);
-    }
-
+    const normalizedRole = String(role || 'registrar').toLowerCase();
     const isDocker = fs.existsSync('/.dockerenv');
-    let caURL, caName, adminLabel, mspId, certPath;
+    let caURL, caName, adminLabel, mspId, certPaths, cacheKey;
 
-    if (role === 'faculty') {
+    if (normalizedRole === 'faculty') {
         caURL = isDocker ? 'https://ca.faculty.capstone.com:7054' : 'https://localhost:8054';
         caName = 'ca-faculty';
         adminLabel = 'admin-faculty';
         mspId = 'FacultyMSP';
-        certPath = path.resolve(__dirname, '../network/fabric-ca/faculty/ca-cert.pem');
-    } else if (role === 'department_admin' || role === 'admin' || role === 'deptAdmin') {
+        certPaths = resolveExistingPaths(
+            process.env.FABRIC_CA_FACULTY_CERT,
+            '../network/fabric-ca/faculty/ca-cert.pem',
+            '../network/crypto-config-final-v2/peerOrganizations/faculty.capstone.com/tlsca/tlsca.faculty.capstone.com-cert.pem',
+            '../network/fabric-ca/faculty/tls-cert.pem'
+        );
+    } else if (normalizedRole === 'department_admin' || normalizedRole === 'admin' || normalizedRole === 'deptadmin' || normalizedRole === 'department') {
         caURL = isDocker ? 'https://ca.department.capstone.com:7054' : 'https://localhost:9054';
         caName = 'ca-department';
         adminLabel = 'admin-department';
         mspId = 'DepartmentMSP';
-        certPath = path.resolve(__dirname, '../network/fabric-ca/department/ca-cert.pem');
+        certPaths = resolveExistingPaths(
+            process.env.FABRIC_CA_DEPARTMENT_CERT,
+            '../network/fabric-ca/department/ca-cert.pem',
+            '../network/crypto-config-final-v2/peerOrganizations/department.capstone.com/tlsca/tlsca.department.capstone.com-cert.pem',
+            '../network/fabric-ca/department/tls-cert.pem'
+        );
     } else {
         caURL = isDocker ? 'https://ca.registrar.capstone.com:7054' : 'https://localhost:7054';
         caName = 'ca-registrar';
         adminLabel = 'admin-registrar';
         mspId = 'RegistrarMSP';
-        certPath = path.resolve(__dirname, '../network/fabric-ca/registrar/ca-cert.pem');
+        certPaths = resolveExistingPaths(
+            process.env.FABRIC_CA_REGISTRAR_CERT,
+            '../network/fabric-ca/registrar/ca-cert.pem',
+            '../network/crypto-config-final-v2/peerOrganizations/registrar.capstone.com/tlsca/tlsca.registrar.capstone.com-cert.pem',
+            '../network/fabric-ca/registrar/tls-cert.pem'
+        );
+    }
+
+    if (!certPaths || certPaths.length === 0) {
+        throw new Error(`Fabric CA trust certificate was not found for role "${role}". Run full_deploy.sh so fabric-ca/*/ca-cert.pem and tls-cert.pem are generated.`);
+    }
+
+    cacheKey = `${normalizedRole}:${certPaths.map(getFileSignature).join('|')}`;
+    if (caConfigCache.has(cacheKey)) {
+        return caConfigCache.get(cacheKey);
     }
 
     const tlsOptions = {
-        trustedRoots: [fs.readFileSync(certPath, 'utf8')],
+        trustedRoots: certPaths.map((certPath) => fs.readFileSync(certPath, 'utf8')),
         verify: true
     };
 
     const caClient = new FabricCAServices(caURL, tlsOptions, caName);
 
-    const config = { caURL, caName, adminLabel, mspId, tlsOptions, caClient };
-    caConfigCache.set(role, config);
+    console.log(`[Fabric CA TLS] ${caName} trust roots: ${certPaths.map((certPath) => path.basename(path.dirname(certPath)) + '/' + path.basename(certPath)).join(', ')}`);
+
+    const config = { caURL, caName, adminLabel, mspId, certPaths, tlsOptions, caClient };
+    caConfigCache.set(cacheKey, config);
     return config;
 };
 
@@ -177,21 +241,27 @@ dbWrite.on('error', (err, client) => {
 });
 async function getWallet(role = 'registrar') {
     if (!role) role = 'registrar';
+    const normalizedRole = String(role).toLowerCase();
     let couchUrl;
-    const user = process.env.COUCHDB_USER || 'admin';
-    const pass = process.env.COUCHDB_PASS || 'password';
+    const user = process.env.COUCHDB_USER || 'capstone';
+    const pass = process.env.COUCHDB_PASS || 'pass123';
     const host = fs.existsSync('/.dockerenv') ? 'host.docker.internal' : '127.0.0.1';
 
-    if (role === 'faculty') {
+    if (normalizedRole === 'faculty') {
         couchUrl = process.env.COUCHDB_WALLET_FACULTY_URL || `http://${user}:${pass}@${host}:6990`;
-    } else if (role === 'department_admin' || role === 'deptAdmin' || role === 'department') {
+    } else if (normalizedRole === 'department_admin' || normalizedRole === 'deptadmin' || normalizedRole === 'department' || normalizedRole === 'admin') {
         couchUrl = process.env.COUCHDB_WALLET_DEPARTMENT_URL || `http://${user}:${pass}@${host}:7990`;
     } else {
         couchUrl = process.env.COUCHDB_WALLET_REGISTRAR_URL || process.env.COUCHDB_WALLET_URL || `http://${user}:${pass}@${host}:5990`;
     }
 
     if (couchUrl) {
-        const walletName = `fabric_wallet_${role === 'faculty' ? 'faculty' : (role.includes('dept') ? 'department' : 'registrar')}`;
+        const walletSuffix = normalizedRole === 'faculty'
+            ? 'faculty'
+            : (normalizedRole === 'department_admin' || normalizedRole === 'deptadmin' || normalizedRole === 'department' || normalizedRole === 'admin')
+                ? 'department'
+                : 'registrar';
+        const walletName = `fabric_wallet_${walletSuffix}`;
         const wallet = await Wallets.newCouchDBWallet(couchUrl, walletName);
         const encryptionKey = process.env.WALLET_ENCRYPTION_KEY;
         if (encryptionKey) {
@@ -317,11 +387,21 @@ const requireRegistrarOrInternal = (req, res, next) => {
 
 const clearCacheOnError = async (username, error) => {
     if (!username || !error || !error.message) return;
-    if (error.message.includes('creator is malformed') || error.message.includes('access denied') || error.message.includes('UNAVAILABLE') || error.message.includes('UNKNOWN')) {
+    const message = error.message.toLowerCase();
+    if (
+        message.includes('creator is malformed') ||
+        message.includes('access denied') ||
+        message.includes('unavailable') ||
+        message.includes('unknown') ||
+        message.includes('ssl') ||
+        message.includes('tls') ||
+        message.includes('certificate') ||
+        message.includes('cert') ||
+        message.includes('handshake')
+    ) {
         console.warn(`[Self-Healing] Detected stale or rejected identity for ${username}`);
         if (userGatewayCache.has(username)) {
-            try { userGatewayCache.get(username).gateway.disconnect(); } catch (e) {}
-            userGatewayCache.delete(username);
+            disconnectCachedGateway(username, 'error');
         }
         try {
             const roles = ['registrar', 'faculty', 'department_admin'];
@@ -443,8 +523,12 @@ async function getContractForUser(username, roleHint) {
 
     if (userGatewayCache.has(username)) {
         const cached = userGatewayCache.get(username);
-        cached.lastAccessed = Date.now();
-        return { contract: cached.contract, gateway: cached.gateway };
+        if (isGatewayCacheExpired(cached)) {
+            disconnectCachedGateway(username, 'expired-before-use');
+        } else {
+            cached.lastAccessed = Date.now();
+            return { contract: cached.contract, gateway: cached.gateway };
+        }
     }
 
     const ccpPath = path.resolve(__dirname, '..', 'network', 'connection-profile.json');
@@ -639,6 +723,10 @@ app.post('/api/login', loginLimiter, async (req, res) => {
                             const newAdminIdentity = await wallet.get(adminLabel);
                             adminUser = await provider.getUserContext(newAdminIdentity, 'admin');
                             await ca.register(registerPayload, adminUser);
+                        } else if (regErr.toString().includes('code: 74') || regErr.toString().includes('is already registered')) {
+                            console.log(`[Self-Healing] ${normalizedUsername} already exists in CA. Updating enrollment secret for wallet recovery...`);
+                            const identityService = ca.newIdentityService();
+                            await identityService.update(normalizedUsername, { enrollmentSecret: password }, adminUser);
                         } else {
                             throw regErr;
                         }
@@ -674,7 +762,7 @@ app.post('/api/login', loginLimiter, async (req, res) => {
             "http://schemas.microsoft.com/ws/2008/06/identity/claims/role": userRecord.role
         };
         
-        const jwtOptions = { expiresIn: '2hr' };
+        const jwtOptions = { expiresIn: process.env.JWT_EXPIRES_IN || '12h' };
         if (process.env.JWT_ISSUER) jwtOptions.issuer = process.env.JWT_ISSUER;
         if (process.env.JWT_AUDIENCE) jwtOptions.audience = process.env.JWT_AUDIENCE;
 
@@ -1439,7 +1527,7 @@ async function startServer() {
         console.error("Startup wallet sync failed:", e.message);
     }
 
-    app.listen(PORT, () => {
+    app.listen(PORT, '0.0.0.0', () => {
         console.log(`\nMiddleware online on port ${PORT}`);
         console.log(`Mode: Production Security (OBAC/ABAC ACTIVE)`);
         console.log(` Dynamic Identity Loading: Enabled\n`);

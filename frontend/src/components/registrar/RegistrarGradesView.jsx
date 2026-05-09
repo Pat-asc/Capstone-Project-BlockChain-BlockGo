@@ -8,6 +8,8 @@ import EncodingPeriod from './EncodingPeriod';
 import SystemLogs from './SystemLogs';
 import PdfReportViewer from '../shared/PdfReportViewer';
 import Modal from '../../services/Modal';
+import RegistrarStudentSectioning from './RegistrarStudentSectioning';
+import RegistrarSectionsCreated from './RegistrarSectionsCreated';
 
 const HoverableID = ({ fullId, isAuthorized }) => {
     const [isRevealed, setIsRevealed] = useState(false);
@@ -27,7 +29,13 @@ const HoverableID = ({ fullId, isAuthorized }) => {
     );
 };
 
-const RegistrarGradesView = ({ loggedInEmail = '', loggedInName = '' }) => {
+const RegistrarGradesView = ({
+    loggedInEmail = '',
+    loggedInName = '',
+    chatUnreadCount = 0,
+    latestChatNotice = null,
+    onOpenChat,
+}) => {
     const [grades, setGrades] = useState([]);
     const [loading, setLoading] = useState(true);
     const [errorMsg, setErrorMsg] = useState(null); 
@@ -71,6 +79,7 @@ const RegistrarGradesView = ({ loggedInEmail = '', loggedInName = '' }) => {
         "Master of Arts in Education",
         "Master in Public Administration"
     ];
+    const [sectioningDepartment, setSectioningDepartment] = useState(departments[0]);
 
     const [ipfsModalOpen, setIpfsModalOpen] = useState(false);
     const [ipfsCid, setIpfsCid] = useState("");
@@ -140,17 +149,28 @@ const RegistrarGradesView = ({ loggedInEmail = '', loggedInName = '' }) => {
 
     useEffect(() => { loadGrades(); }, [loadGrades]);
 
-    useEffect(() => { 
-        let interval;
+    useEffect(() => {
         if (mainTab === 'Requests') {
-            loadRequests(); 
-            interval = setInterval(() => loadRequests(), 3000);
+            loadRequests();
         }
         if (mainTab === 'finalization') {
             loadStagedGrades();
         }
-        return () => clearInterval(interval); 
     }, [mainTab, loadRequests, loadStagedGrades]);
+
+    useEffect(() => {
+        const handleAcademicDataChanged = () => {
+            loadGrades(true);
+            if (mainTab === 'Requests') loadRequests();
+            if (mainTab === 'finalization') loadStagedGrades();
+            if (mainTab === 'assignStudents') loadApprovedStudents();
+            if (mainTab === 'assignAdmins') loadApprovedAdmins();
+            if (mainTab === 'assignFaculties') loadApprovedFaculties();
+        };
+
+        window.addEventListener('blockgo:academic-data-changed', handleAcademicDataChanged);
+        return () => window.removeEventListener('blockgo:academic-data-changed', handleAcademicDataChanged);
+    }, [mainTab, loadGrades, loadRequests, loadStagedGrades, loadApprovedStudents, loadApprovedAdmins, loadApprovedFaculties]);
 
     useEffect(() => {
         if (mainTab === 'assignStudents') loadApprovedStudents();
@@ -330,11 +350,39 @@ const RegistrarGradesView = ({ loggedInEmail = '', loggedInName = '' }) => {
         <div className="flex h-screen w-full flex-col bg-slate-50 font-sans fixed inset-0 z-[100] overflow-auto">
             <RegistrarHeader registrarData={{ name: loggedInName }} onLogout={() => { localStorage.removeItem('token'); window.location.reload(); }} />
             <div className="flex flex-col md:flex-row flex-1 overflow-hidden p-4 md:p-6 gap-6">
-                <RegistrarSidebar activeTab={mainTab} setActiveTab={setMainTab} />
+                <RegistrarSidebar
+                    activeTab={mainTab}
+                    setActiveTab={setMainTab}
+                    chatUnreadCount={chatUnreadCount}
+                    latestChatNotice={latestChatNotice}
+                    onOpenChat={onOpenChat}
+                />
                 <main className="flex-1 overflow-y-auto pr-2">
                     {mainTab === 'dashboard' && <RegistrarDashboard grades={grades} />}
                     {mainTab === 'encoding' && <EncodingPeriod />}
                     {mainTab === 'studentlist' && <StudentListImport />}
+                    {mainTab === 'sectioning' && (
+                        <div className="space-y-4">
+                            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                                <label className="block max-w-xl">
+                                    <span className="mb-2 block text-sm font-medium text-slate-700">Department</span>
+                                    <select
+                                        value={sectioningDepartment}
+                                        onChange={(event) => setSectioningDepartment(event.target.value)}
+                                        className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none focus:border-[#003366]"
+                                    >
+                                        {departments.map((department) => (
+                                            <option key={department} value={department}>
+                                                {department}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </label>
+                            </div>
+                            <RegistrarStudentSectioning chairpersonDepartment={sectioningDepartment} />
+                        </div>
+                    )}
+                    {mainTab === 'sectionsCreated' && <RegistrarSectionsCreated />}
                     {mainTab === 'reports' && (
                         <div className="flex flex-col gap-8">
                             <SystemLogs />

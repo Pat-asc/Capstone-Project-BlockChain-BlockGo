@@ -120,7 +120,12 @@ try
     builder.Services.AddMemoryCache();
     builder.Services.AddEndpointsApiExplorer();
     builder.Services.AddSwaggerGen();
-    builder.Services.AddSignalR();
+    builder.Services.AddSignalR(options =>
+    {
+        // Chat attachments are sent through SignalR as base64. 5MB files expand to
+        // roughly 6.7MB, so keep the hub receive limit above that payload size.
+        options.MaximumReceiveMessageSize = 8 * 1024 * 1024;
+    });
 
     builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
     builder.Services.AddProblemDetails();
@@ -151,7 +156,7 @@ try
                 var accessToken = context.Request.Query["access_token"];
                 var path = context.HttpContext.Request.Path;
                 if (!string.IsNullOrEmpty(accessToken) && 
-                    (path.StartsWithSegments("/chatHub") || path.StartsWithSegments("/api/Grades/view-ipfs")))
+                    (path.StartsWithSegments("/chatHub") || path.StartsWithSegments("/api/chatHub") || path.StartsWithSegments("/api/Grades/view-ipfs")))
                 {
                     context.Token = accessToken;
                 }
@@ -189,6 +194,7 @@ try
     builder.Services.AddHttpClient<IBlockchainService, BlockchainService>();
     builder.Services.AddScoped<IFabricCaAuthService, FabricCaAuthService>();
     builder.Services.AddScoped<IEmailService, EmailService>();
+    builder.Services.AddSingleton<IChatMessageEncryption, ChatMessageEncryption>();
 
     builder.Services.AddHttpClient("FabricCAClient")
     .ConfigurePrimaryHttpMessageHandler(() =>
@@ -261,6 +267,7 @@ try
     Log.Information("Application configured successfully");
     Log.Information("Listening on {Urls}", string.Join(", ", app.Urls));
     app.MapHub<ChatHub>("/chatHub");
+    app.MapHub<ChatHub>("/api/chatHub");
 
     app.Run();
 }

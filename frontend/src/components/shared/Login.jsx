@@ -38,6 +38,7 @@ const Login = ({ onLogin }) => {
   const [currentView, setCurrentView] = useState('signIn');
   const [fullName, setFullName] = useState("");
   const [role, setRole] = useState("student");
+  const [facultyType, setFacultyType] = useState("full-time");
   const [department, setDepartment] = useState("Bachelor of Science in Information Technology");
   const [studentNo, setStudentNo] = useState("");
   const [dateOfBirth, setDateOfBirth] = useState("");
@@ -109,7 +110,18 @@ const Login = ({ onLogin }) => {
     setIsLoading(true);
     setError('');
     try {
-        await submitRegistrationRequest({ fullName, email, password, role, department, studentNo: role === 'student' ? studentNo : undefined, verificationCode, dateOfBirth: role === 'student' ? dateOfBirth : undefined });
+        await submitRegistrationRequest({
+          fullName,
+          email,
+          password,
+          role,
+          department,
+          facultyType: role === 'faculty' ? facultyType : undefined,
+          studentNo: role === 'student' ? studentNo : undefined,
+          // Backend expects SignupRequest.VerificationCode
+          verificationCode,
+          dateOfBirth: role === 'student' ? dateOfBirth : undefined
+        });
         setMessage("Registration request submitted successfully! Please wait for registrar approval.");
         setCurrentView('signIn'); // Go back to login screen
         setSignupStep(1);   // Reset signup flow
@@ -276,6 +288,19 @@ const Login = ({ onLogin }) => {
                       required 
                     />
                     <small style={{color: '#666', fontSize: '12px'}}>This will be your default password</small>
+                  </div>
+                )}
+                {role === "faculty" && (
+                  <div className="input-group">
+                    <label>Faculty Type</label>
+                    <select
+                      value={facultyType}
+                      onChange={(e) => setFacultyType(e.target.value)}
+                      style={{ width: '100%', padding: '12px', border: '1px solid #ddd', borderRadius: '8px', boxSizing: 'border-box' }}
+                    >
+                      <option value="full-time">Full-time</option>
+                      <option value="part-time">Part-time</option>
+                    </select>
                   </div>
                 )}
                 <div className="input-group">

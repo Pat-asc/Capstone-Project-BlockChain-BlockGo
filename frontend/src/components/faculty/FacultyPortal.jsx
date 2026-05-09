@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import plvlogo from '../../assets/plvlogo.png';
 import DownloadGradingSheetButton from './DownloadGradingSheetButton';
-import { fetchFacultySections, fetchFacultyStudents, batchUploadGrades, getSystemSetting, issueGrade } from '../../services/api';
+import { fetchFacultySections, fetchFacultyStudents, fetchAllGrades, batchUploadGrades, getSystemSetting, issueGrade, submitSectionGrades } from '../../services/api';
 import FacultyHeader from './FacultyHeader';
 import YearTabs from './YearTabs';
 import ProgramCard from './ProgramCard';
@@ -22,52 +22,95 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
 
   const [sections, setSections] = useState({});
 
-  const [encodingStart, setEncodingStart] = useState(new Date('2026-04-01T00:00:00'));
-  const [encodingEnd, setEncodingEnd] = useState(new Date('2026-04-10T23:59:59'));
+  const [encodingStart, setEncodingStart] = useState(null);
+  const [encodingEnd, setEncodingEnd] = useState(null);
+  const [encodingTerm, setEncodingTerm] = useState("midterm");
 
   useEffect(() => {
+    const applyEncodingPeriod = (value) => {
+      if (!value) return;
+      const parsed = typeof value === 'string' ? JSON.parse(value) : value;
+      if (!parsed.startDate || !parsed.endDate) return;
+      setEncodingStart(new Date(parsed.startDate));
+      setEncodingTerm(parsed.term === "finals" ? "finals" : "midterm");
+      const end = new Date(parsed.endDate);
+      end.setHours(23, 59, 59, 999);
+      setEncodingEnd(end);
+    };
+
     const loadEncodingPeriod = async () => {
         try {
             const res = await getSystemSetting("encoding_period");
             if (res.status === "Success" && res.value) {
-                const parsed = JSON.parse(res.value);
-                setEncodingStart(new Date(parsed.startDate));
-                const end = new Date(parsed.endDate);
-                end.setHours(23, 59, 59, 999);
-                setEncodingEnd(end);
+                applyEncodingPeriod(res.value);
             }
         } catch (e) { console.error(e); }
     };
+
+    const handleSystemSettingChanged = (event) => {
+      const key = event.detail?.key || event.detail?.Key;
+      const value = event.detail?.value || event.detail?.Value;
+      if (key === 'encoding_period') applyEncodingPeriod(value);
+    };
+
     loadEncodingPeriod();
+    window.addEventListener('blockgo:system-setting-changed', handleSystemSettingChanged);
+
+    return () => {
+      window.removeEventListener('blockgo:system-setting-changed', handleSystemSettingChanged);
+    };
   }, []);
 
-  const loadFacultyData = useCallback(async () => {
-    setIsLoadingData(true);
-
-    // --- MOCK DATA FOR TESTING UI ---
-    const mockSectionsList = [
-      { department: 'BSIT', section: '3-1', yearLevel: '3rd' },
-      { department: 'BSCS', section: '1-A', yearLevel: '1st' },
-      { department: 'BSEMC', section: '4-1', yearLevel: '4th' }
-    ];
-
-    const mockStudentsList = [
-      { department: 'BSIT', section: '3-1', assignmentStatus: 'Enrolled', studentno: '2021-0001', fullname: 'Dela Cruz, Juan' },
-      { department: 'BSIT', section: '3-1', assignmentStatus: 'Enrolled', studentno: '2021-0002', fullname: 'Smith, Alice' },
-      { department: 'BSIT', section: '3-1', assignmentStatus: 'Enrolled', studentno: '2021-0003', fullname: 'Garcia, Maria' },
-      { department: 'BSCS', section: '1-A', assignmentStatus: 'Enrolled', studentno: '2024-0101', fullname: 'Johnson, Bob' },
-      { department: 'BSCS', section: '1-A', assignmentStatus: 'Enrolled', studentno: '2024-0102', fullname: 'Williams, Charlie' },
-      { department: 'BSEMC', section: '4-1', assignmentStatus: 'Enrolled', studentno: '2020-0099', fullname: 'Brown, David' }
-    ];
+  const loadFacultyData = useCallback(async (isBackground = false) => {
+    if (!isBackground) setIsLoadingData(true);
 
     try {
       const sectionsData = await fetchFacultySections(facultyData.email).catch(() => null);
       const studentsData = await fetchFacultyStudents(facultyData.email).catch(() => null);
+      const gradesData = await fetchAllGrades(facultyData.email).catch(() => null);
 
-      const actualSections = sectionsData?.sections?.length > 0 ? sectionsData.sections : mockSectionsList;
-      const actualStudents = studentsData?.students?.length > 0 ? studentsData.students : mockStudentsList;
+      const actualSections = Array.isArray(sectionsData?.sections) ? sectionsData.sections : [];
+      const actualStudents = Array.isArray(studentsData?.students) ? studentsData.students : [];
+      const actualGrades = Array.isArray(gradesData) ? gradesData : (gradesData?.data || []);
 
       const newSections = {};
+
+      const parseSavedGrade = (rawGrade) => {
+        if (!rawGrade) return { midterm: 0, finals: 0, finalAverage: 0 };
+        if (typeof rawGrade === 'number') return { midterm: rawGrade, finals: rawGrade, finalAverage: rawGrade };
+        if (typeof rawGrade === 'string' && rawGrade.trim().startsWith('{')) {
+          try {
+            const parsed = JSON.parse(rawGrade);
+            return {
+              midterm: parseFloat(parsed.midterm) || 0,
+              finals: parseFloat(parsed.finals) || 0,
+              finalAverage: parseFloat(parsed.finalAverage || parsed.final || parsed.grade) || 0
+            };
+          } catch (e) {
+            return { midterm: 0, finals: 0, finalAverage: 0 };
+          }
+        }
+        const numericGrade = parseFloat(rawGrade) || 0;
+        return { midterm: numericGrade, finals: numericGrade, finalAverage: numericGrade };
+      };
+
+      const getGradeStudentKey = (grade) => (
+        grade.student_hash ||
+        grade.studentHash ||
+        grade.StudentHash ||
+        grade.studentId ||
+        grade.StudentId ||
+        ''
+      );
+
+      const getGradeSubjectKey = (grade) => (
+        grade.subject_code ||
+        grade.subjectCode ||
+        grade.SubjectCode ||
+        grade.course ||
+        grade.Course ||
+        ''
+      );
 
       actualSections.forEach(sec => {
         const sectionKey = `${sec.department} ${sec.section}${sec.subject ? ` (${sec.subject})` : ''}`; 
@@ -76,15 +119,26 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
           s.department === sec.department && 
           (String(s.section) === String(sec.section) || String(s.sectionNum) === String(sec.section)) && 
           (s.assignmentStatus === 'Enrolled' || s.enrollmentStatus === 'Enrolled')
-        ).map(s => ({
-          id: s.studentno || 'N/A',
-          name: s.fullname,
-          email: s.email,
-          midterm: 0,
-          finals: 0,
-          remarks: 'Incomplete',
-          customGrades: {}
-        }));
+        ).map(s => {
+          const savedGrade = actualGrades.find(g => {
+            const gradeStudentKey = getGradeStudentKey(g);
+            const gradeSubjectKey = getGradeSubjectKey(g);
+            const sameStudent = gradeStudentKey === s.email || gradeStudentKey === s.studentno;
+            const sameSubject = gradeSubjectKey === sec.subject || gradeSubjectKey === sec.department || gradeSubjectKey === `${sec.department}-${sec.section}`;
+            return sameStudent && sameSubject;
+          });
+          const savedValues = parseSavedGrade(savedGrade?.grade || savedGrade?.Grade);
+
+          return {
+            id: s.studentno || 'N/A',
+            name: s.fullname,
+            email: s.email,
+            midterm: savedValues.midterm,
+            finals: savedValues.finals,
+            remarks: savedValues.finalAverage ? getRemarks(savedValues.finalAverage, savedValues.midterm, savedValues.finals) : 'Incomplete',
+            customGrades: {}
+          };
+        });
 
         newSections[sectionKey] = {
           year: sec.yearLevel ? `${sec.yearLevel} Year` : "N/A",
@@ -99,24 +153,29 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
     } catch (error) {
       console.error("Failed to load faculty sections:", error);
     } finally {
-      setIsLoadingData(false);
+      if (!isBackground) setIsLoadingData(false);
     }
   }, [facultyData.email]);
 
   useEffect(() => {
     loadFacultyData();
+    const handleAcademicDataChanged = () => loadFacultyData(true);
+    window.addEventListener('blockgo:academic-data-changed', handleAcademicDataChanged);
+
+    return () => window.removeEventListener('blockgo:academic-data-changed', handleAcademicDataChanged);
   }, [loadFacultyData]);
 
   const totalSections = Object.keys(sections).length;
 
   const now            = new Date();
-  const msLeft         = encodingEnd - now;
+  const msLeft         = encodingEnd ? encodingEnd - now : 0;
   const daysLeft       = Math.ceil(msLeft / (1000 * 60 * 60 * 24));
-  const isClosed       = now < encodingStart || now > encodingEnd;
+  const isClosed       = !encodingStart || !encodingEnd || now < encodingStart || now > encodingEnd;
   const isUrgent       = !isClosed && daysLeft <= 3;
   const isOpen         = !isClosed && !isUrgent;
 
   const getBannerState = () => {
+    if (!encodingStart || !encodingEnd) return 'not_set';
     if (now > encodingEnd)   return 'closed_after';
     if (now < encodingStart) return 'closed_before';
     if (isUrgent)             return 'urgent';
@@ -125,7 +184,7 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
   const bannerState = getBannerState();
 
   const formatDate = (date) =>
-    date.toLocaleDateString('en-US', { month: 'long', day: '2-digit', year: 'numeric' });
+    date ? date.toLocaleDateString('en-US', { month: 'long', day: '2-digit', year: 'numeric' }) : 'not set';
 
   const tabData = ["All Sections", "1st Year", "2nd Year", "3rd Year", "4th Year"].map(label => {
     const count = label === "All Sections"
@@ -148,6 +207,10 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
     let avg = 0;
     if (customAvg > 0) {
         avg = (customAvg * 0.40) + (mid * 0.30) + (fin * 0.30);
+    } else if (encodingTerm === "midterm") {
+        avg = mid;
+    } else if (encodingTerm === "finals") {
+        avg = mid > 0 ? (mid + fin) / 2 : fin;
     } else {
         avg = (mid + fin) / 2;
     }
@@ -182,6 +245,8 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
 
   const handleGradeChange = useCallback((sectionName, index, field, value) => {
     if (sectionStatus[sectionName] === 'finalized') return;
+    if (field === 'midterm' && encodingTerm !== 'midterm') return;
+    if (field === 'finals' && encodingTerm !== 'finals') return;
     const error = validateGrade(value);
     setValidationErrors(prev => ({
       ...prev,
@@ -197,7 +262,7 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
     
     setSections(updated);
     setRowSaveState(prev => ({ ...prev, [sectionName]: { ...(prev[sectionName] || {}), [index]: 'idle' } }));
-  }, [sections, sectionStatus]);
+  }, [sections, sectionStatus, encodingTerm]);
 
   const handleCustomGradeChange = useCallback((sectionName, index, colId, value) => {
     if (sectionStatus[sectionName] === 'finalized') return;
@@ -286,7 +351,7 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
     setUploadingSection(sectionName);
 
     try {
-      const res = await batchUploadGrades(file, semester, schoolYear, course, facultyData.email);
+      const res = await batchUploadGrades(file, semester, schoolYear, course, facultyData.email, encodingTerm);
       if (res.status === 'Success' || res.status === 'Partial Success') {
         setUploadResult({ 
           type: 'success', 
@@ -382,25 +447,22 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
 
   const handleSubmit = async (sectionName) => {
     const students = sections[sectionName].students;
-    const hasIncomplete = students.some(s => (parseFloat(s.midterm) || 0) === 0 || (parseFloat(s.finals) || 0) === 0);
+    const hasIncomplete = students.some(s =>
+      encodingTerm === 'midterm'
+        ? (parseFloat(s.midterm) || 0) === 0
+        : (parseFloat(s.finals) || 0) === 0
+    );
     
     if (hasIncomplete) {
-      alert("Submission Blocked: All students in the section must have both Midterm and Final grades encoded before submitting to the Chairperson.");
+      alert(`Submission Blocked: All students in the section must have ${encodingTerm === 'midterm' ? 'Midterm' : 'Finals'} grades encoded before submitting to the Chairperson.`);
       return;
     }
 
     try {
       await handleSaveAll(sectionName);
       
-      const token = localStorage.getItem('token');
-      const res = await fetch(`/api/Grades/submit-section?department=${encodeURIComponent(sections[sectionName].sectionCourse)}&section=${encodeURIComponent(sectionName)}`, {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      const data = await res.json();
-      
-      if (res.ok) setSectionStatus(prev => ({ ...prev, [sectionName]: 'submitted' }));
-      else alert(data.message || "Failed to submit section.");
+      await submitSectionGrades(sections[sectionName].sectionCourse, sectionName);
+      setSectionStatus(prev => ({ ...prev, [sectionName]: 'submitted' }));
     } catch (e) { alert("Error submitting section: " + e.message); }
   };
 
@@ -417,12 +479,23 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
 
   const currentStatus = activeSection ? sectionStatus[activeSection] : null;
   const isFinalized = currentStatus === 'finalized';
+  const isMidtermLocked = encodingTerm !== 'midterm';
+  const isFinalsLocked = encodingTerm !== 'finals';
 
   return (
     <div className="min-h-screen bg-slate-50 pb-10 font-sans">
       <FacultyHeader facultyData={facultyData} totalSections={totalSections} onLogout={onLogout} />
 
       <div className="mx-auto max-w-7xl">
+        {bannerState === 'not_set' && (
+          <div className="mx-6 mt-5 flex items-center gap-4 rounded-xl border-l-4 border-slate-400 bg-white p-4 text-slate-800 shadow-sm">
+            <div>
+              <strong className="block text-lg">Grade Encoding Period is not set</strong>
+              <p className="mt-1 text-sm">The registrar has not opened an encoding schedule yet.</p>
+            </div>
+          </div>
+        )}
+
         {bannerState === 'closed_after' && (
           <div className="mx-6 mt-5 flex items-center gap-4 rounded-xl border-l-4 border-red-500 bg-red-50 p-4 text-red-900 shadow-sm">
             <div className="text-2xl">LOCKED</div>
@@ -600,7 +673,7 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
                           <div className="relative inline-block">
                             <input
                               className={`w-20 rounded-lg border p-2 text-center outline-none focus:ring-2 focus:ring-[#003366]/20 disabled:bg-slate-100 disabled:text-slate-500 ${errors.midterm ? 'border-red-500 bg-red-50' : 'border-slate-300'}`}
-                              type="number" min="60" max="100" value={stu.midterm || ''} disabled={isFinalized || isClosed}
+                              type="number" min="60" max="100" value={stu.midterm || ''} disabled={isFinalized || isClosed || isMidtermLocked}
                               onChange={e => handleGradeChange(activeSection, i, 'midterm', e.target.value)} placeholder="60-100"
                             />
                             {errors.midterm && <div className="absolute left-1/2 -translate-x-1/2 -bottom-5 whitespace-nowrap text-[10px] font-bold text-red-600">{errors.midterm}</div>}
@@ -610,7 +683,7 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
                           <div className="relative inline-block">
                             <input
                               className={`w-20 rounded-lg border p-2 text-center outline-none focus:ring-2 focus:ring-[#003366]/20 disabled:bg-slate-100 disabled:text-slate-500 ${errors.finals ? 'border-red-500 bg-red-50' : 'border-slate-300'}`}
-                              type="number" min="60" max="100" value={stu.finals || ''} disabled={isFinalized || isClosed}
+                              type="number" min="60" max="100" value={stu.finals || ''} disabled={isFinalized || isClosed || isFinalsLocked}
                               onChange={e => handleGradeChange(activeSection, i, 'finals', e.target.value)} placeholder="60-100"
                             />
                             {errors.finals && <div className="absolute left-1/2 -translate-x-1/2 -bottom-5 whitespace-nowrap text-[10px] font-bold text-red-600">{errors.finals}</div>}

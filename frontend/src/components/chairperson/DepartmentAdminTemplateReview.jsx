@@ -11,48 +11,6 @@ const DepartmentAdminTemplateReview = ({ adminData, onLogout }) => {
 
   const fetchTemplates = useCallback(async () => {
     setLoading(true);
-    const mockTemplates = [
-      {
-        id: 101,
-        templateName: "Standard IT Midterm Grading",
-        status: "Pending",
-        createdAt: new Date().toISOString(),
-        formulaConfig: {
-          columns: [
-            { id: "C", header: "Quiz 1", type: "input", value: "" },
-            { id: "D", header: "Quiz 2", type: "input", value: "" },
-            { id: "E", header: "Exam", type: "input", value: "" },
-            { id: "F", header: "Total Grade", type: "formula", value: "=(C{row}*0.2) + (D{row}*0.2) + (E{row}*0.6)" }
-          ]
-        }
-      },
-      {
-        id: 102,
-        templateName: "CS Programming Fundamentals",
-        status: "Approved",
-        createdAt: new Date(Date.now() - 86400000).toISOString(),
-        formulaConfig: {
-          columns: [
-            { id: "C", header: "Machine Problem", type: "input", value: "" },
-            { id: "D", header: "Final Project", type: "input", value: "" },
-            { id: "E", header: "Final Grade", type: "formula", value: "=(C{row}*0.4) + (D{row}*0.6)" }
-          ]
-        }
-      },
-      {
-        id: 103,
-        templateName: "Rejected Legacy Template",
-        status: "Rejected",
-        createdAt: new Date(Date.now() - 172800000).toISOString(),
-        formulaConfig: {
-          columns: [
-            { id: "C", header: "Attendance", type: "input", value: "" },
-            { id: "D", header: "Finals", type: "input", value: "" },
-            { id: "E", header: "Total", type: "formula", value: "=(C{row}*0.1) + (D{row}*0.9)" }
-          ]
-        }
-      }
-    ];
     try {
       // Fallback to empty string if department is undefined to avoid 404s
       const dept = adminData?.department || '';
@@ -64,11 +22,11 @@ const DepartmentAdminTemplateReview = ({ adminData, onLogout }) => {
       const data = await fetchDepartmentTemplates(dept);
       
       if (data.status === "Success") {
-        setTemplates(data.templates?.length > 0 ? data.templates : mockTemplates);
+        setTemplates(Array.isArray(data.templates) ? data.templates : []);
       }
     } catch (error) {
       console.error("Error fetching templates:", error);
-      setTemplates(mockTemplates);
+      setTemplates([]);
     }
     setLoading(false);
   }, [adminData]);

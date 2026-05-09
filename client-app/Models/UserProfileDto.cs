@@ -14,6 +14,7 @@ namespace Client_app.Models
         public string? Section { get; set; }
         public string? DateOfBirth { get; set; } // mm/dd/yyyy format
         public string? YearLevel { get; set; }
+        public string? FacultyType { get; set; }
         public List<string>? EnrolledSubjects { get; set; }
         // Add other profile-specific fields as needed
     }

@@ -5,6 +5,7 @@ using Npgsql;
 using System;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
+using Microsoft.AspNetCore.SignalR;
 
 namespace Client_app.Controllers
 {
@@ -15,11 +16,13 @@ namespace Client_app.Controllers
     {
         private readonly string _connectionString;
         private readonly ILogger<SystemSettingsController> _logger;
+        private readonly IHubContext<ChatHub> _chatHubContext;
 
-        public SystemSettingsController(IConfiguration configuration, ILogger<SystemSettingsController> logger)
+        public SystemSettingsController(IConfiguration configuration, ILogger<SystemSettingsController> logger, IHubContext<ChatHub> chatHubContext)
         {
             _connectionString = configuration.GetConnectionString("PostgresConnection") ?? configuration.GetConnectionString("MasterConnection") ?? throw new InvalidOperationException("PostgreSQL connection string not found.");
             _logger = logger;
+            _chatHubContext = chatHubContext;
             EnsureTableExists();
         }
 
@@ -81,6 +84,12 @@ namespace Client_app.Controllers
                 cmd.Parameters.AddWithValue("k", req.Key);
                 cmd.Parameters.AddWithValue("v", req.Value);
                 await cmd.ExecuteNonQueryAsync();
+                await _chatHubContext.Clients.All.SendAsync("SystemSettingChanged", new
+                {
+                    Key = req.Key,
+                    Value = req.Value,
+                    UpdatedAt = DateTime.UtcNow
+                });
                 return Ok(new { status = "Success" });
             }
             catch (Exception ex)

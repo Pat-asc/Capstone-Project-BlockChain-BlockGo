@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { fetchAllGrades } from '../../services/api';
 import StudentNavbar from './StudentNavbar';
 import StudentInfoCard from './StudentInfoCard';
@@ -9,9 +9,34 @@ const StudentPortal = ({ studentData, onLogout }) => {
   const [grades, setGrades] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const loadGrades = async () => {
-      setLoading(true);
+  const getStudentKey = useCallback((grade) => (
+    grade.student_hash ||
+    grade.studentHash ||
+    grade.StudentHash ||
+    grade.studentId ||
+    grade.StudentId ||
+    ''
+  ), []);
+
+  const getGradeValue = useCallback((grade) => {
+    const rawGrade = grade.grade || grade.Grade || '';
+    if (typeof rawGrade === 'number') return rawGrade;
+    if (typeof rawGrade !== 'string') return '';
+
+    if (rawGrade.trim().startsWith('{')) {
+      try {
+        const parsed = JSON.parse(rawGrade);
+        return parsed.finalAverage || parsed.final || parsed.grade || '';
+      } catch (e) {
+        return rawGrade;
+      }
+    }
+
+    return rawGrade;
+  }, []);
+
+  const loadGrades = useCallback(async (isBackground = false) => {
+      if (!isBackground) setLoading(true);
       try {
         const response = await fetchAllGrades(studentData.email);
         let allGrades = [];
@@ -24,41 +49,48 @@ const StudentPortal = ({ studentData, onLogout }) => {
         }
 
         // Filter strictly to only show the logged-in student's records
-        const myGrades = allGrades.filter(g => 
-            g.student_hash === studentData.email || 
-            g.studentId === studentData.email ||
-            g.studentId === studentData.email.split('@')[0]
-        );
+        const myGrades = allGrades.filter(g => {
+            const studentKey = getStudentKey(g);
+            return studentKey === studentData.email || studentKey === studentData.email.split('@')[0];
+        });
         
         setGrades(myGrades);
       } catch (error) {
         console.error('Error fetching grades from blockchain:', error);
       }
-      setLoading(false);
-    };
+      if (!isBackground) setLoading(false);
+  }, [getStudentKey, studentData.email]);
 
+  useEffect(() => {
     loadGrades();
-  }, [studentData.email]);
+    const handleAcademicDataChanged = () => loadGrades(true);
+    window.addEventListener('blockgo:academic-data-changed', handleAcademicDataChanged);
+
+    return () => window.removeEventListener('blockgo:academic-data-changed', handleAcademicDataChanged);
+  }, [loadGrades]);
 
   // 2. Calculate Semester Totals
   const totalUnits = grades.length * 3; // Assuming 3 units per subject block for now
   
-  const totalWeight = grades.reduce((sum, sub) => sum + ((parseFloat(sub.grade) || 0) * 3), 0);
+  const totalWeight = grades.reduce((sum, sub) => sum + ((parseFloat(getGradeValue(sub)) || 0) * 3), 0);
 
   const calculatedGWA = totalUnits > 0 ? (totalWeight / totalUnits).toFixed(2) : "0.00";
 
   // 3. Status logic: Dean's List eligibility check
-  const isDeansLister = grades.length > 0 && Number(calculatedGWA) <= 1.75 && grades.every(s => parseFloat(s.grade) <= 2.25);
-  const failedSubjectsCount = grades.filter(s => parseFloat(s.grade) > 3.0 || parseFloat(s.grade) === 5.0).length;
+  const isDeansLister = grades.length > 0 && Number(calculatedGWA) <= 1.75 && grades.every(s => parseFloat(getGradeValue(s)) <= 2.25);
+  const failedSubjectsCount = grades.filter(s => parseFloat(getGradeValue(s)) > 3.0 || parseFloat(getGradeValue(s)) === 5.0).length;
 
   // Map the raw blockchain array to the structure expected by the new StudentGradesTable
-  let mappedSubjects = grades.map(g => ({
-      code: g.subject_code || 'N/A',
-      name: g.course || 'N/A',
+  let mappedSubjects = grades.map(g => {
+    const finalGrade = getGradeValue(g);
+    return {
+      code: g.subject_code || g.subjectCode || g.SubjectCode || 'N/A',
+      name: g.subject_name || g.subjectName || g.SubjectName || g.course || g.Course || 'N/A',
       units: 3, // Assuming 3 units per subject block for now
-      midterm: g.grade, // Since the blockchain currently only stores the final average, we map it directly
-      finals: g.grade,
-  }));
+      midterm: finalGrade,
+      finals: finalGrade,
+    };
+  });
 
   // If no grades on blockchain but the student is enrolled in subjects, show them as 'PENDING'
   if (mappedSubjects.length === 0 && studentData.enrolledSubjects && studentData.enrolledSubjects.length > 0) {
@@ -82,13 +114,13 @@ const StudentPortal = ({ studentData, onLogout }) => {
             lastName: studentData.name?.split(' ').slice(1).join(' ') || '',
             middleName: '', // Optional, parse if needed
             studentId: studentData.studentNo || 'N/A',
-            dateOfBirth: 'On File',
-            sex: 'Not Specified',
-            phone: 'On File',
+            dateOfBirth: studentData.dateOfBirth || 'Not provided',
+            sex: studentData.sex || 'Not provided',
+            phone: studentData.phone || 'Not provided',
             email: studentData.email,
             department: studentData.department,
             section: studentData.section,
-            address: 'Valenzuela City, Philippines' // Default or fetch from profile if added later
+            address: studentData.address || 'Not provided'
           }} 
         />
 

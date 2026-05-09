@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using Microsoft.AspNetCore.SignalR;
 using Client_app.Services;
 using Npgsql;
 using Client_app.Models;
@@ -26,14 +27,16 @@ namespace Client_app.Controllers
     [Route("api/[controller]")]
     public class AuthController : ControllerBase
     {
+        private const string EmailLogoContentId = "plv-logo";
         private readonly string _connectionString;
         private readonly IMemoryCache _cache;
         private readonly IConfiguration _configuration;
         private readonly IEmailService _emailService;
         private readonly IHttpClientFactory _httpClientFactory;
         private readonly ILogger<AuthController> _logger;
+        private readonly IHubContext<ChatHub> _chatHubContext;
 
-        public AuthController(IConfiguration configuration, IMemoryCache memoryCache, IEmailService emailService, IHttpClientFactory httpClientFactory, ILogger<AuthController> logger)
+        public AuthController(IConfiguration configuration, IMemoryCache memoryCache, IEmailService emailService, IHttpClientFactory httpClientFactory, ILogger<AuthController> logger, IHubContext<ChatHub> chatHubContext)
         {
             _connectionString = configuration.GetConnectionString("PostgresConnection") ?? throw new InvalidOperationException("PostgreSQL connection string 'PostgresConnection' not found.");
             _cache = memoryCache;
@@ -41,6 +44,7 @@ namespace Client_app.Controllers
             _emailService = emailService;
             _httpClientFactory = httpClientFactory;
             _logger = logger;
+            _chatHubContext = chatHubContext;
 
             EnsureTableExists();
         }
@@ -65,6 +69,9 @@ namespace Client_app.Controllers
                         IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='facultysections' AND column_name='subject') THEN
                             ALTER TABLE facultysections ADD COLUMN subject VARCHAR(100);
                         END IF;
+                        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='facultyprofiles' AND column_name='faculty_type') THEN
+                            ALTER TABLE facultyprofiles ADD COLUMN faculty_type VARCHAR(20);
+                        END IF;
                     END $$;
 
                     CREATE UNIQUE INDEX IF NOT EXISTS idx_unique_faculty_section ON facultysections(user_id, department, section, subject);
@@ -72,6 +79,29 @@ namespace Client_app.Controllers
                 cmd.ExecuteNonQuery();
             }
             catch { /* Ignore */ }
+        }
+
+        private Task NotifyAcademicDataChangedAsync(string reason, string? department = null, string? actor = null)
+        {
+            return _chatHubContext.Clients.All.SendAsync("AcademicDataChanged", new
+            {
+                Reason = reason,
+                Department = department,
+                Actor = actor,
+                ChangedAt = DateTime.UtcNow
+            });
+        }
+
+        private static string NormalizeSystemRole(string? role)
+        {
+            var normalized = (role ?? "student").Trim().ToLowerInvariant().Replace(" ", "_").Replace("-", "_");
+            return normalized switch
+            {
+                "dept_admin" or "deptadmin" or "departmentadmin" or "department" or "admin" or "departmentmsp" => "department_admin",
+                "facultymsp" => "faculty",
+                "registrarmsp" => "registrar",
+                _ => normalized
+            };
         }
 
         [HttpPost("send-verification")]
@@ -105,9 +135,10 @@ namespace Client_app.Controllers
 
                 var subject = "Your PLV Account Verification Code";
                 var content = $"<p>Hello,</p><p>Thank you for registering. Please use the following verification code to complete your signup process. The code is valid for 10 minutes.</p><p style='font-size: 24px; font-weight: bold; text-align: center; letter-spacing: 5px; margin: 20px 0;'>{verificationCode}</p><p>If you did not request this, please ignore this email.</p>";
-                var htmlBody = CreateHtmlEmail(subject, content);
+                var logoPath = ResolveEmailLogoPath();
+                var htmlBody = CreateHtmlEmail(subject, content, useInlineLogo: logoPath != null);
 
-                await _emailService.SendEmailAsync(normalizedEmail, subject, htmlBody, true);
+                await _emailService.SendEmailAsync(normalizedEmail, subject, htmlBody, true, logoPath, EmailLogoContentId);
 
                 return Ok(new { status = "Success", message = "Verification code sent to your email." });
             }
@@ -126,6 +157,7 @@ namespace Client_app.Controllers
             }
 
             var normalizedEmail = request.Email.Trim().ToLower();
+            request.Role = NormalizeSystemRole(request.Role);
             var inputCode = request.VerificationCode?.Trim();
 
             // 1. Verify Code
@@ -202,7 +234,7 @@ namespace Client_app.Controllers
                 }
                 else if (request.Role?.ToLower() == "faculty")
                 {
-                    profileQuery = "INSERT INTO FacultyProfiles (user_id, full_name, department) VALUES (@uid, @name, @dept)";
+                    profileQuery = "INSERT INTO FacultyProfiles (user_id, full_name, department, faculty_type) VALUES (@uid, @name, @dept, @facultyType)";
                 }
                 else 
                 {
@@ -214,6 +246,7 @@ namespace Client_app.Controllers
                 cmdProfile.Parameters.AddWithValue("name", request.FullName);
                 cmdProfile.Parameters.AddWithValue("dept", (object?)request.Department ?? DBNull.Value);
                 cmdProfile.Parameters.AddWithValue("role", request.Role ?? "");
+                cmdProfile.Parameters.AddWithValue("facultyType", request.Role?.ToLower() == "faculty" ? (object?)(request.FacultyType ?? "full-time") : DBNull.Value);
                 
                 if (request.Role?.ToLower() == "student") 
                 {
@@ -238,7 +271,17 @@ namespace Client_app.Controllers
                 }
 
                 _cache.Remove("pending_requests");
+                await _chatHubContext.Clients.Group("role_registrar").SendAsync("NewRegistrationRequest", new
+                {
+                    RequestId = userId,
+                    FullName = request.FullName,
+                    Email = normalizedEmail,
+                    Role = request.Role?.ToLower() ?? "student",
+                    Department = request.Department,
+                    CreatedAt = DateTime.UtcNow
+                });
 
+                await NotifyAcademicDataChangedAsync("registration_requested", request.Department, normalizedEmail);
                 return Ok(new { status = "Success", message = $"Registration request added. {(request.Role?.ToLower() == "student" ? $"Default password: {finalPassword} (will be emailed)" : "Password secured.")}" });
             }
             catch (Exception ex)
@@ -289,7 +332,10 @@ namespace Client_app.Controllers
                     UNION
                     SELECT u.id, ap.full_name, u.email, u.role, ap.department, u.status 
                     FROM Users u JOIN AdminProfiles ap ON u.id = ap.user_id 
-                    WHERE u.role IN ('registrar', 'department_admin') AND u.status = 'pending'", conn))
+                    WHERE (
+                        u.role = 'registrar'
+                        OR LOWER(REPLACE(REPLACE(u.role, ' ', '_'), '-', '_')) IN ('department_admin', 'dept_admin', 'deptadmin', 'department', 'admin')
+                    ) AND u.status = 'pending'", conn))
             using (var reader = await cmd.ExecuteReaderAsync())
             {
                 while (await reader.ReadAsync())
@@ -331,8 +377,15 @@ namespace Client_app.Controllers
             }
             
             string userEmail = reader.GetString(0) ?? "";
-            string userRole = reader.GetString(1) ?? "";
+            string userRole = NormalizeSystemRole(reader.GetString(1));
             await reader.CloseAsync(); 
+
+            using (var normalizeRoleCmd = new NpgsqlCommand("UPDATE Users SET role = @role WHERE id = @id", conn, transaction))
+            {
+                normalizeRoleCmd.Parameters.AddWithValue("role", userRole);
+                normalizeRoleCmd.Parameters.AddWithValue("id", id);
+                await normalizeRoleCmd.ExecuteNonQueryAsync();
+            }
 
             using var client = _httpClientFactory.CreateClient("FabricCAClient");
             var apiKey = Environment.GetEnvironmentVariable("INTERNAL_API_KEY") ?? _configuration["InternalApiKey"] ?? throw new InvalidOperationException("Internal API Key not configured.");
@@ -361,6 +414,7 @@ namespace Client_app.Controllers
             else if (userRole == "faculty") _cache.Remove("approved_faculties");
             else if (userRole == "department_admin") _cache.Remove("approved_department_admins");
 
+            await NotifyAcademicDataChangedAsync("registration_approved", null, userEmail);
             return Ok(new { status = "Success", message = "Request approved and Fabric Wallet created successfully." });
         }
 
@@ -391,6 +445,7 @@ namespace Client_app.Controllers
             _ = _emailService.SendEmailAsync(userEmail, emailSubject, CreateHtmlEmail(emailSubject, emailContent), true);
 
             _cache.Remove("pending_requests");
+            await NotifyAcademicDataChangedAsync("registration_denied", null, userEmail);
             return Ok(new { status = "Success", message = "Request denied and removed." });
         }
 
@@ -505,6 +560,7 @@ namespace Client_app.Controllers
 
                 _cache.Remove("approved_students");
 
+                await NotifyAcademicDataChangedAsync("student_assigned", request.Department, userEmail);
                 return Ok(new { status = "Success", message = "Student assigned. Awaiting department/faculty approval." });
             }
             catch (Exception ex)
@@ -563,6 +619,7 @@ namespace Client_app.Controllers
                 await auditCmd.ExecuteNonQueryAsync();
 
                 _cache.Remove("approved_students");
+                await NotifyAcademicDataChangedAsync("student_dropped", null, userEmail);
                 return Ok(new { status = "Success", message = "Student dropped and access revoked." });
             }
             catch (Exception ex) { return StatusCode(500, new { status = "Error", message = ex.Message }); }
@@ -587,7 +644,8 @@ namespace Client_app.Controllers
                 using (var cmd = new NpgsqlCommand(@"
                     SELECT u.id, ap.full_name, u.email, ap.department, u.role 
                     FROM Users u JOIN AdminProfiles ap ON u.id = ap.user_id 
-                    WHERE u.role = 'department_admin' AND u.status = 'APPROVED'", conn))
+                    WHERE LOWER(REPLACE(REPLACE(u.role, ' ', '_'), '-', '_')) IN ('department_admin', 'dept_admin', 'deptadmin', 'department', 'admin')
+                      AND u.status = 'APPROVED'", conn))
                 using (var reader = await cmd.ExecuteReaderAsync())
                 {
                     while (await reader.ReadAsync())
@@ -597,7 +655,7 @@ namespace Client_app.Controllers
                             fullname = reader.GetString(1),
                             email = reader.GetString(2),
                             department = reader.IsDBNull(3) ? "Unassigned" : reader.GetString(3),
-                            role = reader.GetString(4)
+                            role = NormalizeSystemRole(reader.GetString(4))
                         });
                     }
                 }
@@ -649,6 +707,7 @@ namespace Client_app.Controllers
 
                 _cache.Remove("approved_department_admins");
 
+                await NotifyAcademicDataChangedAsync("department_admin_assigned", request.Department, userEmail);
                 return Ok(new { status = "Success", message = "Department assigned successfully." });
             }
             catch (Exception ex)
@@ -754,6 +813,7 @@ namespace Client_app.Controllers
                 _ = _emailService.SendEmailAsync(userEmail, emailSubject, CreateHtmlEmail(emailSubject, emailContent), true);
 
                _cache.Remove("approved_faculties");
+                await NotifyAcademicDataChangedAsync("faculty_assigned", request.Department, userEmail);
                 return Ok(new { status = "Success", message = "Faculty assigned successfully." });
             }
             catch (Exception ex)
@@ -811,6 +871,7 @@ namespace Client_app.Controllers
                 await auditCmd.ExecuteNonQueryAsync();
 
                 _cache.Remove("approved_faculties");
+                await NotifyAcademicDataChangedAsync("faculty_revoked", null, userEmail);
                 return Ok(new { status = "Success", message = "Faculty access revoked." });
             }
             catch (Exception ex) { return StatusCode(500, new { status = "Error", message = ex.Message }); }
@@ -945,6 +1006,7 @@ namespace Client_app.Controllers
 
                 await cmd.ExecuteNonQueryAsync();
 
+                await NotifyAcademicDataChangedAsync("faculty_section_unassigned", department, email);
                 return Ok(new { status = "Success", message = "Class unassigned successfully." });
             }
             catch (Exception ex)
@@ -1043,6 +1105,7 @@ namespace Client_app.Controllers
 
                 _cache.Remove("approved_students");
 
+                await NotifyAcademicDataChangedAsync("student_enrollment_approved", dept, userEmail);
                 return Ok(new { status = "Success", message = "Student officially enrolled in the department!" });
             }
             catch (Exception ex)
@@ -1265,6 +1328,7 @@ namespace Client_app.Controllers
                 _cache.Remove("approved_students");
                 _cache.Remove("pending_requests");
 
+                await NotifyAcademicDataChangedAsync("students_bulk_uploaded", defaultDepartment, User.Identity?.Name);
                 return Ok(new
                 {
                     status = failureCount == 0 ? "Success" : "Partial Success",
@@ -1282,13 +1346,58 @@ namespace Client_app.Controllers
             }
         }
 
-        private string CreateHtmlEmail(string subject, string content)
+        private string? ResolveEmailLogoPath()
+        {
+            var configuredPath =
+                _configuration["Email:LogoPath"] ??
+                _configuration["Smtp:LogoPath"] ??
+                _configuration["PlvLogoPath"];
+
+            var candidates = new[]
+            {
+                configuredPath,
+                Path.Combine(Directory.GetCurrentDirectory(), "plvlogo.png"),
+                Path.Combine(Directory.GetCurrentDirectory(), "assets", "plvlogo.png"),
+                Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "plvlogo.png"),
+                Path.Combine(Directory.GetCurrentDirectory(), "frontend", "plvlogo.png"),
+                Path.Combine(Directory.GetCurrentDirectory(), "frontend", "public", "plvlogo.png"),
+                Path.Combine(Directory.GetCurrentDirectory(), "frontend", "src", "assets", "plvlogo.png"),
+                Path.Combine(Directory.GetCurrentDirectory(), "..", "frontend", "src", "assets", "plvlogo.png"),
+                Path.Combine(AppContext.BaseDirectory, "assets", "plvlogo.png"),
+                Path.Combine(AppContext.BaseDirectory, "plvlogo.png"),
+                Path.Combine(AppContext.BaseDirectory, "..", "assets", "plvlogo.png"),
+                Path.Combine(AppContext.BaseDirectory, "..", "frontend", "src", "assets", "plvlogo.png"),
+                Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "frontend", "src", "assets", "plvlogo.png"),
+                Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "client-app", "assets", "plvlogo.png")
+            };
+
+            foreach (var candidate in candidates.Where(c => !string.IsNullOrWhiteSpace(c)))
+            {
+                try
+                {
+                    var fullPath = Path.GetFullPath(candidate!);
+                    if (System.IO.File.Exists(fullPath)) return fullPath;
+                }
+                catch
+                {
+                    // Ignore malformed configured paths and continue through the known locations.
+                }
+            }
+
+            return null;
+        }
+
+        private string CreateHtmlEmail(string subject, string content, bool useInlineLogo = false)
         {
             var year = DateTime.UtcNow.Year;
-            var imagePath = Path.Combine(Directory.GetCurrentDirectory(), "..", "frontend", "src", "assets", "plvlogo.png");
+            var imagePath = ResolveEmailLogoPath();
             string logoSrc;
             
-            if (System.IO.File.Exists(imagePath))
+            if (useInlineLogo && imagePath != null)
+            {
+                logoSrc = $"cid:{EmailLogoContentId}";
+            }
+            else if (imagePath != null)
             {
                 byte[] imageBytes = System.IO.File.ReadAllBytes(imagePath);
                 logoSrc = $"data:image/png;base64,{Convert.ToBase64String(imageBytes)}";
@@ -1327,6 +1436,7 @@ namespace Client_app.Controllers
             {
                 using var conn = new NpgsqlConnection(_connectionString);
                 await conn.OpenAsync();
+                var normalizedRole = NormalizeSystemRole(role);
 
                 string query = "";
                 NpgsqlCommand cmd;
@@ -1335,7 +1445,7 @@ namespace Client_app.Controllers
                 // Base query to get user info
                 string baseQuery = "SELECT u.id, u.email, u.role, u.status, ";
 
-                if (role?.ToLower() == "student")
+                if (normalizedRole == "student")
                 {
                     query = baseQuery + "sp.full_name, sp.department, sp.student_no, sp.section FROM Users u JOIN StudentProfiles sp ON u.id = sp.user_id WHERE u.email = @email";
                     cmd = new NpgsqlCommand(query, conn);
@@ -1347,7 +1457,7 @@ namespace Client_app.Controllers
                         {
                             Id = reader.GetInt32(0),
                             Email = reader.GetString(1),
-                            Role = reader.GetString(2),
+                            Role = NormalizeSystemRole(reader.GetString(2)),
                             Status = reader.GetString(3),
                             FullName = reader.GetString(4),
                             Department = reader.IsDBNull(5) ? null : reader.GetString(5),
@@ -1356,9 +1466,9 @@ namespace Client_app.Controllers
                         };
                     }
                 }
-                else if (role?.ToLower() == "faculty")
+                else if (normalizedRole == "faculty")
                 {
-                    query = baseQuery + "fp.full_name, fp.department, fp.section, fp.year_level FROM Users u JOIN FacultyProfiles fp ON u.id = fp.user_id WHERE u.email = @email";
+                    query = baseQuery + "fp.full_name, fp.department, fp.section, fp.year_level, fp.faculty_type FROM Users u JOIN FacultyProfiles fp ON u.id = fp.user_id WHERE u.email = @email";
                     cmd = new NpgsqlCommand(query, conn);
                     cmd.Parameters.AddWithValue("email", email);
                     using var reader = await cmd.ExecuteReaderAsync();
@@ -1368,16 +1478,17 @@ namespace Client_app.Controllers
                         {
                             Id = reader.GetInt32(0),
                             Email = reader.GetString(1),
-                            Role = reader.GetString(2),
+                            Role = NormalizeSystemRole(reader.GetString(2)),
                             Status = reader.GetString(3),
                             FullName = reader.GetString(4),
                             Department = reader.IsDBNull(5) ? null : reader.GetString(5),
                             Section = reader.IsDBNull(6) ? null : reader.GetString(6),
-                            YearLevel = reader.IsDBNull(7) ? null : reader.GetString(7)
+                            YearLevel = reader.IsDBNull(7) ? null : reader.GetString(7),
+                            FacultyType = reader.IsDBNull(8) ? null : reader.GetString(8)
                         };
                     }
                 }
-                else if (role?.ToLower() == "registrar" || role?.ToLower() == "department_admin" || role?.ToLower() == "department admin") 
+                else if (normalizedRole == "registrar" || normalizedRole == "department_admin") 
                 {
                     query = baseQuery + "ap.full_name, ap.department FROM Users u JOIN AdminProfiles ap ON u.id = ap.user_id WHERE u.email = @email";
                     cmd = new NpgsqlCommand(query, conn);
@@ -1389,7 +1500,7 @@ namespace Client_app.Controllers
                         {
                             Id = reader.GetInt32(0),
                             Email = reader.GetString(1),
-                            Role = reader.GetString(2),
+                            Role = NormalizeSystemRole(reader.GetString(2)),
                             Status = reader.GetString(3),
                             FullName = reader.GetString(4),
                             Department = reader.IsDBNull(5) ? null : reader.GetString(5)
@@ -1407,7 +1518,7 @@ namespace Client_app.Controllers
                 }
 
                 // NEW: If student, fetch their enrolled subjects from FacultySections
-                if (role?.ToLower() == "student" && !string.IsNullOrEmpty(userProfile.Section))
+                if (normalizedRole == "student" && !string.IsNullOrEmpty(userProfile.Section))
                 {
                     try
                     {
@@ -1692,7 +1803,7 @@ namespace Client_app.Controllers
                 }
 
                 try {
-                    using var cmdChair = new NpgsqlCommand("SELECT u.email FROM Users u JOIN AdminProfiles ap ON u.id = ap.user_id WHERE ap.department = @dept AND u.role IN ('department_admin', 'deptAdmin') AND u.status = 'APPROVED' LIMIT 1", conn);
+                    using var cmdChair = new NpgsqlCommand("SELECT u.email FROM Users u JOIN AdminProfiles ap ON u.id = ap.user_id WHERE ap.department = @dept AND LOWER(REPLACE(REPLACE(u.role, ' ', '_'), '-', '_')) IN ('department_admin', 'dept_admin', 'deptadmin', 'department', 'admin') AND u.status = 'APPROVED' LIMIT 1", conn);
                     cmdChair.Parameters.AddWithValue("dept", department);
                     var chairEmail = (await cmdChair.ExecuteScalarAsync()) as string;
                     
@@ -1703,6 +1814,7 @@ namespace Client_app.Controllers
                     }
                 } catch (Exception notifyEx) { _logger.LogWarning(notifyEx, "Could not notify chairperson of masterlist upload"); }
 
+                await NotifyAcademicDataChangedAsync("masterlist_uploaded", department, User.Identity?.Name);
                 return Ok(new { 
                     status = (successCount > 0 && failureCount == 0) ? "Success" : (successCount > 0 ? "Partial Success" : "Error"), 
                     totalProcessed = parsedRecords.Count,
@@ -1773,6 +1885,7 @@ namespace Client_app.Controllers
 
                 await transaction.CommitAsync();
 
+                await NotifyAcademicDataChangedAsync("section_created", request.Department, User.Identity?.Name);
                 return Ok(new { status = "Success", message = "Section created successfully", id = id });
             }
             catch (PostgresException ex) when (ex.SqlState == "23505")
@@ -1983,6 +2096,7 @@ namespace Client_app.Controllers
                     }
                 }
                 finally { if (System.IO.File.Exists(tempFile)) System.IO.File.Delete(tempFile); }
+                await NotifyAcademicDataChangedAsync("students_enrolled", department, User.Identity?.Name);
                 return Ok(new { status = "Success", message = $"Successfully enrolled {successCount} students into {department} {yearLevel}-{sectionNum}!" });
             }
             catch (Exception ex) { return StatusCode(500, new { status = "Error", message = ex.Message }); }
@@ -2026,6 +2140,7 @@ namespace Client_app.Controllers
                 await cmdSec.ExecuteNonQueryAsync();
 
                 await tx.CommitAsync();
+                await NotifyAcademicDataChangedAsync("section_deleted", dept, User.Identity?.Name);
                 return Ok(new { status = "Success", message = "Section deleted successfully." });
             }
             catch (Exception ex) { return StatusCode(500, new { status = "Error", message = ex.Message }); }
@@ -2050,6 +2165,7 @@ namespace Client_app.Controllers
                 await cmdSec.ExecuteNonQueryAsync();
 
                 await tx.CommitAsync();
+                await NotifyAcademicDataChangedAsync("department_sections_deleted", department, User.Identity?.Name);
                 return Ok(new { status = "Success", message = $"All academic sections for {department} have been removed." });
             }
             catch (Exception ex) { return StatusCode(500, new { status = "Error", message = ex.Message }); }

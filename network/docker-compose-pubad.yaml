@@ -202,10 +202,11 @@ services:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB} -h 127.0.0.1"]
       interval: 10s
       timeout: 5s
-      retries: 5
-      start_period: 30s
-    extra_hosts:
-      - "postgres:${MAIN_CAMPUS_IP}"
+      retries: 30
+      start_period: 90s
+    depends_on:
+      postgres:
+        condition: service_healthy
 
   nginx-shield-pubad:
     image: nginx:stable-alpine

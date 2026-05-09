@@ -1,5 +1,6 @@
 using System;
 using System.Net.Mail;
+using System.Net.Mime;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
 
@@ -14,7 +15,13 @@ namespace Client_app.Services
             _configuration = configuration;
         }
 
-        public async Task SendEmailAsync(string toEmail, string subject, string body, bool isHtml = false)
+        public async Task SendEmailAsync(
+            string toEmail,
+            string subject,
+            string body,
+            bool isHtml = false,
+            string? inlineImagePath = null,
+            string? inlineImageContentId = null)
         {
             try
             {
@@ -41,9 +48,27 @@ namespace Client_app.Services
                     EnableSsl = true
                 };
 
-                var mailMessage = new MailMessage { Subject = subject, Body = body, IsBodyHtml = isHtml };
+                using var mailMessage = new MailMessage { Subject = subject, Body = body, IsBodyHtml = isHtml };
                 mailMessage.From = new MailAddress(smtpUser, "PLV BlockGo");
                 mailMessage.To.Add(toEmail);
+
+                if (isHtml && !string.IsNullOrWhiteSpace(inlineImagePath) && System.IO.File.Exists(inlineImagePath))
+                {
+                    var contentId = (inlineImageContentId ?? "plv-logo").Trim('<', '>');
+                    var htmlView = AlternateView.CreateAlternateViewFromString(body, null, MediaTypeNames.Text.Html);
+                    var logo = new LinkedResource(inlineImagePath, MediaTypeNames.Image.Png)
+                    {
+                        ContentId = contentId,
+                        TransferEncoding = TransferEncoding.Base64
+                    };
+                    logo.ContentType.Name = System.IO.Path.GetFileName(inlineImagePath);
+                    logo.ContentLink = new Uri($"cid:{contentId}");
+                    htmlView.LinkedResources.Add(logo);
+                    mailMessage.Body = string.Empty;
+                    mailMessage.IsBodyHtml = false;
+                    mailMessage.AlternateViews.Add(htmlView);
+                }
+
                 await client.SendMailAsync(mailMessage);
                 Console.WriteLine($"[EMAIL SENT] Successfully sent email to {toEmail} with subject '{subject}'");
             }

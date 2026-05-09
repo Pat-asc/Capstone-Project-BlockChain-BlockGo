@@ -1,4 +1,3 @@
-import React from "react";
 import plvlogo from "../../assets/plvlogo.png";
 
 const StudentNavbar = ({ onLogout }) => {
@@ -17,7 +16,9 @@ const StudentNavbar = ({ onLogout }) => {
 
           <div className="leading-tight">
             <p className="text-sm text-white/80">Student Portal</p>
-            <h1 className="text-xl font-bold text-white">Welcome, PLVian!</h1>
+            <h1 className="text-xl font-bold text-white">
+            Welcome, PLVian!
+            </h1>
           </div>
         </div>
 
@@ -34,4 +35,5 @@ const StudentNavbar = ({ onLogout }) => {
     </header>
   );
 };
+
 export default StudentNavbar;

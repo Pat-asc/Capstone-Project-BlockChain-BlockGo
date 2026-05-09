@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { fetchAllGrades, approveGrade, finalizeGrade, fetchDepartmentPendingStudents, approveStudentEnrollment, batchUploadGrades, fetchFacultySections, fetchFacultyStudents, createSection, fetchDepartmentSections, batchEnrollStudentsToSection, dropStudent, fetchApprovedFaculties, unassignFacultySection, getDecryptedIpfsUrl } from '../../services/api';
+import { fetchAllGrades, approveGrade, finalizeGrade, fetchDepartmentPendingStudents, approveStudentEnrollment, batchUploadGrades, fetchFacultySections, fetchFacultyStudents, createSection, fetchDepartmentSections, batchEnrollStudentsToSection, dropStudent, fetchApprovedFaculties, unassignFacultySection, getDecryptedIpfsUrl, getSystemSetting, issueGrade, bulkUploadMasterlist, deleteAcademicSection, deleteDepartmentAcademicSections } from '../../services/api';
 import { useNotification } from '../../services/NotificationContext';
 import ChairpersonHeader from './ChairpersonHeader';
 import ChairpersonSidebar from './ChairpersonSidebar';
@@ -21,6 +21,44 @@ const getGradeEquivalent = (grade) => {
     if (n >= 79) return '2.50';
     if (n >= 75) return '3.00';
     return '5.00';
+};
+
+const getRecordGrade = (record) => record?.grade || record?.Grade || '';
+
+const getRecordStudentKey = (record) => (
+    record?.studentId ||
+    record?.StudentId ||
+    record?.student_hash ||
+    record?.studentHash ||
+    record?.StudentHash ||
+    ''
+);
+
+const getRecordSubjectKey = (record) => (
+    record?.subjectCode ||
+    record?.SubjectCode ||
+    record?.subject_code ||
+    record?.course ||
+    record?.Course ||
+    ''
+);
+
+const parseStoredGrade = (rawGrade) => {
+    if (!rawGrade) return { midterm: '', finals: '', finalAverage: '' };
+    if (typeof rawGrade === 'number') return { midterm: '', finals: '', finalAverage: rawGrade };
+    if (typeof rawGrade === 'string' && rawGrade.trim().startsWith('{')) {
+        try {
+            const parsed = JSON.parse(rawGrade);
+            return {
+                midterm: parsed.midterm || '',
+                finals: parsed.finals || '',
+                finalAverage: parsed.finalAverage || parsed.final || parsed.grade || ''
+            };
+        } catch (e) {
+            return { midterm: '', finals: '', finalAverage: rawGrade };
+        }
+    }
+    return { midterm: '', finals: '', finalAverage: rawGrade };
 };
 
 const HoverableID = ({ fullId, isAuthorized }) => {
@@ -83,11 +121,7 @@ const DeptAdminGradesView = ({ loggedInEmail = '', loggedInName = '', userRole =
     useEffect(() => {
         const fetchThreshold = async () => {
             try {
-                const token = localStorage.getItem("token");
-                const res = await fetch('/api/SystemSettings/pass_fail_threshold', {
-                    headers: { Authorization: `Bearer ${token}` }
-                });
-                const data = await res.json();
+                const data = await getSystemSetting('pass_fail_threshold');
                 if (data.status === "Success" && data.value) {
                     setPassThreshold(parseFloat(data.value));
                 }
@@ -197,10 +231,10 @@ const DeptAdminGradesView = ({ loggedInEmail = '', loggedInName = '', userRole =
             }
             groups[key].totalStudents += 1;
             
-            const gradeVal = g.grade || g.Grade;
-            if (gradeVal && gradeVal.trim() !== '') groups[key].encodedCount += 1;
+            const gradeVal = parseStoredGrade(getRecordGrade(g)).finalAverage;
+            if (String(gradeVal || '').trim() !== '') groups[key].encodedCount += 1;
             
-            const studentKey = g.studentId || g.student_hash || g.StudentId || 'Unknown';
+            const studentKey = getRecordStudentKey(g) || 'Unknown';
             groups[key].students.push({
                 studentId: studentKey,
                 lastName: '',
@@ -245,11 +279,6 @@ const DeptAdminGradesView = ({ loggedInEmail = '', loggedInName = '', userRole =
     }, [loggedInEmail]);
 
     useEffect(() => { loadGrades(); }, [loadGrades]);
-    useEffect(() => {
-        let interval;
-        if (mainTab === 'grades') interval = setInterval(() => loadGrades(true), 3000);
-        return () => clearInterval(interval);
-    }, [loggedInEmail, mainTab]);
 
     useEffect(() => {
         if (mainTab === 'sectioning') loadDeptPendingStudents();
@@ -291,6 +320,21 @@ const DeptAdminGradesView = ({ loggedInEmail = '', loggedInName = '', userRole =
     }, [department, addNotification]);
 
     useEffect(() => {
+        const handleAcademicDataChanged = () => {
+            loadGrades(true);
+            if (mainTab === 'sectioning') loadDeptPendingStudents();
+            if (mainTab === 'myClasses') loadMyClasses();
+            if (mainTab === 'assignment') {
+                loadAcademicSections();
+                loadDepartmentFaculties();
+            }
+        };
+
+        window.addEventListener('blockgo:academic-data-changed', handleAcademicDataChanged);
+        return () => window.removeEventListener('blockgo:academic-data-changed', handleAcademicDataChanged);
+    }, [loadGrades, mainTab, loadDeptPendingStudents, loadMyClasses, loadAcademicSections, loadDepartmentFaculties]);
+
+    useEffect(() => {
         if (mainTab === 'assignment' || mainTab === 'myClasses') {
             loadAcademicSections();
         }
@@ -318,23 +362,13 @@ const DeptAdminGradesView = ({ loggedInEmail = '', loggedInName = '', userRole =
                 String(s.sectionNum || s.section) === String(selectedMySection.sectionNum || selectedMySection.section)
             );
             sectionStudents.forEach(student => {
-                const existing = grades.find(g => 
-                    (g.studentId === student.studentno || g.studentId === student.email) && 
-                    (g.subjectCode === selectedMySection.subject || g.course === selectedMySection.department)
-                );
-                let parsedGrade = { midterm: '', finals: '', finalAverage: '' };
-                if (existing && existing.grade) {
-                    if (!isNaN(existing.grade)) {
-                        parsedGrade.finalAverage = existing.grade;
-                    } else {
-                        try { 
-                            const parsed = JSON.parse(existing.grade);
-                            parsedGrade.midterm = parsed.midterm || '';
-                            parsedGrade.finals = parsed.finals || '';
-                            parsedGrade.finalAverage = parsed.finalAverage || existing.grade;
-                        } catch(e) { parsedGrade.finalAverage = existing.grade; }
-                    }
-                }
+                const existing = grades.find(g => {
+                    const studentKey = getRecordStudentKey(g);
+                    const subjectKey = getRecordSubjectKey(g);
+                    return (studentKey === student.studentno || studentKey === student.email) &&
+                        (subjectKey === selectedMySection.subject || subjectKey === selectedMySection.department);
+                });
+                const parsedGrade = parseStoredGrade(getRecordGrade(existing));
                 initialGrades[student.id] = {
                     ...parsedGrade,
                     standing: student.assignmentStatus || 'Enrolled',
@@ -459,7 +493,6 @@ const DeptAdminGradesView = ({ loggedInEmail = '', loggedInName = '', userRole =
         }
 
         setIsSavingGrades(true);
-        const token = localStorage.getItem('token');
         try {
             const sectionStudents = myStudents.filter(s => 
                 s.department === selectedMySection.department && 
@@ -482,7 +515,7 @@ const DeptAdminGradesView = ({ loggedInEmail = '', loggedInName = '', userRole =
                     SchoolYear: "2024",
                     Grade: gradePayload
                 };
-                await fetch('/api/Grades/record', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify(payload) });
+                await issueGrade(payload);
             }
             addNotification('Grades saved successfully to the ledger!', 'success');
             loadGrades();
@@ -606,29 +639,15 @@ const DeptAdminGradesView = ({ loggedInEmail = '', loggedInName = '', userRole =
         }
         setIsUploadingMasterlist(true);
         try {
-            const formData = new FormData();
-            formData.append('file', masterlistFile);
-            formData.append('department', department);
-
-            const token = localStorage.getItem('token');
-            // Calls the backend to parse the CSV/XLSX, auto-create Postgres records, and mint Fabric Wallets
-            const res = await fetch('/api/Auth/bulk-masterlist', {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                },
-                body: formData
-            });
-
-            const data = await res.json();
-            if (res.ok && (data.status === 'Success' || data.status === 'Partial Success')) {
+            const data = await bulkUploadMasterlist(masterlistFile, department);
+            if (data.status === 'Success' || data.status === 'Partial Success') {
                 addNotification(data.message || 'Masterlist processed successfully. Accounts and sections created.', 'success');
                 setMasterlistFile(null);
                 const fileInput = document.getElementById('masterlist-upload');
                 if (fileInput) fileInput.value = '';
                 loadMyClasses();
                 loadAcademicSections();
-                loadDepartmentFaculties();
+                    loadDepartmentFaculties();
             } else {
                 addNotification(data.message || 'Masterlist upload failed.', 'error');
             }
@@ -701,11 +720,7 @@ const DeptAdminGradesView = ({ loggedInEmail = '', loggedInName = '', userRole =
             message: `Are you sure you want to delete Section ${sectionName}? This will also remove the faculty assignment for this section.`,
             onConfirm: async () => {
                 try {
-                    const token = localStorage.getItem('token');
-                    const res = await fetch(`/api/Auth/sections/${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
-                    const data = await res.json();
-                    if (!res.ok) throw new Error(data.message || 'Failed to delete section');
-                    
+                    await deleteAcademicSection(id);
                     addNotification(`Section ${sectionName} deleted successfully.`, "success");
                     loadAcademicSections();
                     loadMyClasses();
@@ -722,11 +737,7 @@ const DeptAdminGradesView = ({ loggedInEmail = '', loggedInName = '', userRole =
             message: `Are you sure you want to delete ALL academic sections for ${department}? This is typically done at the end of the school year.`,
             onConfirm: async () => {
                 try {
-                    const token = localStorage.getItem('token');
-                    const res = await fetch(`/api/Auth/sections/department/${encodeURIComponent(department)}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
-                    const data = await res.json();
-                    if (!res.ok) throw new Error(data.message || 'Failed to delete sections');
-                    
+                    await deleteDepartmentAcademicSections(department);
                     addNotification(`All sections for ${department} cleared.`, "success");
                     loadAcademicSections();
                     loadMyClasses();

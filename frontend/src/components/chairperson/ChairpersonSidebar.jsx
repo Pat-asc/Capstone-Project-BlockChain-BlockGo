@@ -5,7 +5,6 @@ function ChairpersonSidebar({ activeTab, setActiveTab }) {
     { id: "dashboard", label: "Dashboard" },
     { id: "sectioning", label: "Student Sectioning" },
     { id: "assignment", label: "Academic Assignment" },
-    { id: "myClasses", label: "My Classes / Upload" },
     { id: "forReview", label: "For Review" },
     { id: "returned", label: "Returned" },
     { id: "approved", label: "Approved" },
@@ -13,7 +12,7 @@ function ChairpersonSidebar({ activeTab, setActiveTab }) {
   ];
 
   return (
-    <aside className="w-full max-w-[260px] rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+    <aside className="w-full max-w-[260px] self-start rounded-2xl border border-slate-200 bg-white p-4 shadow-sm lg:sticky lg:top-6">
       <div className="mb-4 border-b border-slate-200 pb-3">
         <h2 className="text-lg font-bold text-[#003366]">Chairperson Panel</h2>
       </div>
@@ -21,8 +20,17 @@ function ChairpersonSidebar({ activeTab, setActiveTab }) {
       <nav className="flex flex-col gap-2">
         {menuItems.map((item) => {
           const isActive = activeTab === item.id;
+
           return (
-            <button key={item.id} onClick={() => setActiveTab(item.id)} className={`w-full rounded-xl px-4 py-3 text-left text-sm font-medium transition ${isActive ? "bg-[#003366] text-white shadow-sm" : "text-slate-700 hover:bg-slate-100"}`}>
+            <button
+              key={item.id}
+              onClick={() => setActiveTab(item.id)}
+              className={`w-full rounded-xl px-4 py-3 text-left text-sm font-medium transition ${
+                isActive
+                  ? "bg-[#003366] text-white shadow-sm"
+                  : "text-slate-700 hover:bg-slate-100"
+              }`}
+            >
               {item.label}
             </button>
           );
@@ -31,4 +39,5 @@ function ChairpersonSidebar({ activeTab, setActiveTab }) {
     </aside>
   );
 }
+
 export default ChairpersonSidebar;
