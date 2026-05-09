@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { fetchAllGrades, finalizeGrade, fetchPendingRequests, approveRegistrationRequest, denyRegistrationRequest, fetchApprovedStudents, assignStudent, fetchApprovedAdmins, assignDepartmentAdmin, fetchApprovedFaculties, assignFaculty, dropStudent, getDecryptedIpfsUrl, fetchStagedGrades, finalizeStagedGrades } from '../../services/api';
+import { fetchAllGrades, finalizeGrade, fetchPendingRequests, approveRegistrationRequest, denyRegistrationRequest, fetchApprovedStudents, assignStudent, fetchApprovedAdmins, assignDepartmentAdmin, fetchApprovedFaculties, assignFaculty, dropStudent, getDecryptedIpfsUrl, fetchStagedGrades, finalizeStagedGrades, getSystemSetting } from '../../services/api';
 import RegistrarHeader from './RegistrarHeader';
 import RegistrarSidebar from './RegistrarSidebar';
 import RegistrarDashboard from './RegistrarDashboard';
@@ -53,31 +53,30 @@ const RegistrarGradesView = ({
 
     const [stagedGrades, setStagedGrades] = useState([]);
     const [stagedLoading, setStagedLoading] = useState(false);
+    const [activeSemester, setActiveSemester] = useState('2nd Semester');
 
     const [filterDept, setFilterDept] = useState('All');
     const [filterYear, setFilterYear] = useState('All');
     const [filterSection, setFilterSection] = useState('All');
 
     const departments = [
-        "Bachelor of Science in Information Technology",
-        "Bachelor of Science in Accountancy",
-        "Bachelor of Science in Business Administration",
-        "Bachelor of Science in Civil Engineering",
-        "Bachelor of Science in Electrical Engineering",    
-        "Bachelor of Science in Psychology",
-        "Bachelor of Early Childhood Education",
-        "Bachelor of Secondary Education major in English",
-        "Bachelor of Secondary Education major in Filipino",
-        "Bachelor of Secondary Education major in Mathematics",
-        "Bachelor of Secondary Education major in Science",
-        "Bachelor of Secondary Education major in Social Studies",
-        "Bachelor of Physical Education",
-        "Bachelor of Arts in Communication",
-        "Bachelor of Arts in Psychology",
-        "Bachelor of Science in Social Work",
-        "Bachelor of Science in Public Administration",
-        "Master of Arts in Education",
-        "Master in Public Administration"
+    "Bachelor of Early Childhood Education",
+    "Bachelor of Secondary Education Major in English",
+    "Bachelor of Secondary Education Major in Filipino",
+    "Bachelor of Secondary Education Major in Mathematics",
+    "Bachelor of Secondary Education Major in Science",
+    "Bachelor of Secondary Education Major in Social Studies",
+    "Bachelor of Science in Civil Engineering",
+    "Bachelor of Science in Electrical Engineering",
+    "Bachelor of Science in Information Technology",
+    "Bachelor of Arts in Communication",
+    "Bachelor of Science in Psychology",
+    "Bachelor of Science in Social Work",
+    "Bachelor of Public Administration",
+    "Bachelor of Science in Accountancy",
+    "Bachelor of Science in Business Administration Major in Financial Management",
+    "Bachelor of Science in Business Administration Major in Human Resource Management",
+    "Bachelor of Science in Business Administration Major in Marketing Management",
     ];
     const [sectioningDepartment, setSectioningDepartment] = useState(departments[0]);
 
@@ -86,6 +85,36 @@ const RegistrarGradesView = ({
     const [vaultPassword, setVaultPassword] = useState("");
     const [showVaultPassword, setShowVaultPassword] = useState(false);
     const [confirmModal, setConfirmModal] = useState({ isOpen: false, title: "", message: "", onConfirm: null, isDestructive: false });
+
+    useEffect(() => {
+        const applyEncodingPeriod = (value) => {
+            if (!value) return;
+            const parsed = typeof value === 'string' ? JSON.parse(value) : value;
+            setActiveSemester(parsed?.semester || '2nd Semester');
+        };
+
+        const loadEncodingPeriod = async () => {
+            try {
+                const res = await getSystemSetting('encoding_period');
+                if (res.status === 'Success' && res.value) {
+                    applyEncodingPeriod(res.value);
+                }
+            } catch (error) {
+                console.error(error);
+            }
+        };
+
+        const handleSystemSettingChanged = (event) => {
+            const key = event.detail?.key || event.detail?.Key;
+            const value = event.detail?.value || event.detail?.Value;
+            if (key === 'encoding_period') applyEncodingPeriod(value);
+        };
+
+        loadEncodingPeriod();
+        window.addEventListener('blockgo:system-setting-changed', handleSystemSettingChanged);
+
+        return () => window.removeEventListener('blockgo:system-setting-changed', handleSystemSettingChanged);
+    }, []);
 
     const loadGrades = useCallback(async (isBackground = false) => {
         if (!isBackground) setLoading(true);
@@ -348,7 +377,7 @@ const RegistrarGradesView = ({
 
     return (
         <div className="flex h-screen w-full flex-col bg-slate-50 font-sans fixed inset-0 z-[100] overflow-auto">
-            <RegistrarHeader registrarData={{ name: loggedInName }} onLogout={() => { localStorage.removeItem('token'); window.location.reload(); }} />
+            <RegistrarHeader registrarData={{ name: loggedInName, semester: activeSemester }} onLogout={() => { localStorage.removeItem('token'); window.location.reload(); }} />
             <div className="flex flex-col md:flex-row flex-1 overflow-hidden p-4 md:p-6 gap-6">
                 <RegistrarSidebar
                     activeTab={mainTab}
@@ -396,34 +425,45 @@ const RegistrarGradesView = ({
                         <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm mb-6">
                             <h3 className="mb-6 text-xl font-bold text-[#003366]">System Administration Tools</h3>
                             <div className="flex flex-wrap gap-3">
-                                <button onClick={() => setMainTab('grades')} className="rounded-lg bg-blue-100 px-4 py-2 font-bold text-blue-800 hover:bg-blue-200 transition">Grades Ledger</button>
-                                <button onClick={() => setMainTab('Requests')} className="rounded-lg bg-blue-100 px-4 py-2 font-bold text-blue-800 hover:bg-blue-200 transition">Pending Requests</button>
-                                <button onClick={() => setMainTab('assignStudents')} className="rounded-lg bg-blue-100 px-4 py-2 font-bold text-blue-800 hover:bg-blue-200 transition">Assign Students</button>
-                                <button onClick={() => setMainTab('assignAdmins')} className="rounded-lg bg-blue-100 px-4 py-2 font-bold text-blue-800 hover:bg-blue-200 transition">Assign Admins</button>
-                                <button onClick={() => setMainTab('assignFaculties')} className="rounded-lg bg-blue-100 px-4 py-2 font-bold text-blue-800 hover:bg-blue-200 transition">Assign Faculty</button>
+                                <button onClick={() => setMainTab('grades')} className="rounded-xl bg-[#003366] px-5 py-3 text-sm font-semibold text-white hover:bg-[#00264d]">Grades Ledger</button>
+                                <button onClick={() => setMainTab('Requests')} className="rounded-xl bg-[#003366] px-5 py-3 text-sm font-semibold text-white hover:bg-[#00264d]">Pending Requests</button>
+                                <button onClick={() => setMainTab('assignStudents')} className="rounded-xl bg-[#003366] px-5 py-3 text-sm font-semibold text-white hover:bg-[#00264d]">Assign Students</button>
+                                <button onClick={() => setMainTab('assignAdmins')} className="rounded-xl bg-[#003366] px-5 py-3 text-sm font-semibold text-white hover:bg-[#00264d]">Assign Admins</button>
+                                <button onClick={() => setMainTab('assignFaculties')} className="rounded-xl bg-[#003366] px-5 py-3 text-sm font-semibold text-white hover:bg-[#00264d]">Assign Faculty</button>
                             </div>
                         </div>
                     )}
                     {mainTab === 'grades' && (
                         <>
-                            <div className="mb-6 flex flex-col md:flex-row items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                                <div className="flex flex-wrap items-center gap-4">
-                                    <select value={filterDept} onChange={(e) => setFilterDept(e.target.value)} className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold outline-none focus:border-[#003366]">
-                                        <option value="All">All Departments</option>
-                                        {departments.map(d => <option key={d} value={d}>{d}</option>)}
-                                    </select>
-                                    <select value={filterYear} onChange={(e) => setFilterYear(e.target.value)} className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold outline-none focus:border-[#003366]">
-                                        <option value="All">All Years</option>
-                                        <option value="1">1st Year</option><option value="2">2nd Year</option><option value="3">3rd Year</option><option value="4">4th Year</option>
-                                    </select>
-                                    <select value={filterSection} onChange={(e) => setFilterSection(e.target.value)} className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold outline-none focus:border-[#003366]">
-                                        <option value="All">All Sections</option>
-                                        {[...Array(15)].map((_, i) => <option key={i+1} value={String(i+1)}>{i+1}</option>)}
-                                    </select>
+                            <div className="mb-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                                <div className="mb-4">
+                                    <button
+                                        type="button"
+                                        onClick={() => setMainTab('monitoring')}
+                                        className="rounded-lg border border-yellow-400 px-4 py-2 text-sm font-semibold text-[#003366] transition hover:bg-yellow-400 hover:text-[#003366]"
+                                    >
+                                        Back to Tools
+                                    </button>
                                 </div>
-                                <div className="flex gap-3">
-                                    <button onClick={handleDownloadLedgerPDF} className="rounded-xl bg-emerald-600 px-5 py-2 text-sm font-bold text-white transition hover:bg-emerald-700">Export PDF</button>
-                                    <button onClick={loadGrades} className="rounded-xl bg-[#003366] px-5 py-2 text-sm font-bold text-white transition hover:bg-[#00264d]">Refresh</button>
+                                <div className="flex flex-col items-center justify-between gap-4 md:flex-row">
+                                    <div className="flex flex-wrap items-center gap-4">
+                                        <select value={filterDept} onChange={(e) => setFilterDept(e.target.value)} className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold outline-none focus:border-[#003366]">
+                                            <option value="All">All Departments</option>
+                                            {departments.map(d => <option key={d} value={d}>{d}</option>)}
+                                        </select>
+                                        <select value={filterYear} onChange={(e) => setFilterYear(e.target.value)} className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold outline-none focus:border-[#003366]">
+                                            <option value="All">All Year Level</option>
+                                            <option value="1">1st Year</option><option value="2">2nd Year</option><option value="3">3rd Year</option><option value="4">4th Year</option>
+                                        </select>
+                                        <select value={filterSection} onChange={(e) => setFilterSection(e.target.value)} className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold outline-none focus:border-[#003366]">
+                                            <option value="All">All Sections</option>
+                                            {[...Array(15)].map((_, i) => <option key={i+1} value={String(i+1)}>{i+1}</option>)}
+                                        </select>
+                                    </div>
+                                    <div className="flex gap-3">
+                                        <button onClick={handleDownloadLedgerPDF} className="rounded-xl bg-emerald-600 px-5 py-2 text-sm font-bold text-white transition hover:bg-emerald-700">Export PDF</button>
+                                        <button onClick={loadGrades} className="rounded-xl bg-[#003366] px-5 py-2 text-sm font-bold text-white transition hover:bg-[#00264d]">Refresh</button>
+                                    </div>
                                 </div>
                             </div>
                             <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm overflow-x-auto">
@@ -489,6 +529,15 @@ const RegistrarGradesView = ({
                     {mainTab === 'Requests' && (
                         <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
                             <div className="border-b border-slate-200 p-4">
+                                <button
+                                    type="button"
+                                    onClick={() => setMainTab('monitoring')}
+                                    className="rounded-lg border border-yellow-400 px-4 py-2 text-sm font-semibold text-[#003366] transition hover:bg-yellow-400 hover:text-[#003366]"
+                                >
+                                    Back to Tools
+                                </button>
+                            </div>
+                            <div className="border-b border-slate-200 p-4">
                                 <input type="text" placeholder="Search..." value={requestSearchTerm} onChange={e => setRequestSearchTerm(e.target.value)} className="w-full rounded-xl border border-slate-300 bg-slate-50 px-4 py-3 outline-none" />
                             </div>
                             <div className="overflow-x-auto"><table className="w-full min-w-[800px] text-left text-sm">
@@ -517,6 +566,15 @@ const RegistrarGradesView = ({
                     )}
                     {mainTab === 'assignStudents' && (
                         <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+                            <div className="border-b border-slate-200 p-4">
+                                <button
+                                    type="button"
+                                    onClick={() => setMainTab('monitoring')}
+                                    className="rounded-lg border border-yellow-400 px-4 py-2 text-sm font-semibold text-[#003366] transition hover:bg-yellow-400 hover:text-[#003366]"
+                                >
+                                    Back to Tools
+                                </button>
+                            </div>
                             <div className="overflow-x-auto"><table className="w-full min-w-[800px] text-left text-sm">
                                 <thead>
                                     <tr className="bg-[#003366] text-white">
@@ -559,6 +617,15 @@ const RegistrarGradesView = ({
                     )}
                     {mainTab === 'assignAdmins' && (
                         <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+                            <div className="border-b border-slate-200 p-4">
+                                <button
+                                    type="button"
+                                    onClick={() => setMainTab('monitoring')}
+                                    className="rounded-lg border border-yellow-400 px-4 py-2 text-sm font-semibold text-[#003366] transition hover:bg-yellow-400 hover:text-[#003366]"
+                                >
+                                    Back to Tools
+                                </button>
+                            </div>
                             <div className="overflow-x-auto"><table className="w-full min-w-[800px] text-left text-sm">
                                 <thead>
                                     <tr className="bg-[#003366] text-white">
@@ -589,6 +656,15 @@ const RegistrarGradesView = ({
                     )}
                     {mainTab === 'assignFaculties' && (
                         <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+                            <div className="border-b border-slate-200 p-4">
+                                <button
+                                    type="button"
+                                    onClick={() => setMainTab('monitoring')}
+                                    className="rounded-lg border border-yellow-400 px-4 py-2 text-sm font-semibold text-[#003366] transition hover:bg-yellow-400 hover:text-[#003366]"
+                                >
+                                    Back to Tools
+                                </button>
+                            </div>
                             <div className="overflow-x-auto"><table className="w-full min-w-[800px] text-left text-sm">
                                 <thead>
                                     <tr className="bg-[#003366] text-white">

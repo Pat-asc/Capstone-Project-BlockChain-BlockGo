@@ -7,28 +7,23 @@ import { login, submitRegistrationRequest, sendVerificationCode, forgotPassword,
 
 
 const programs = [
-  "Bachelor of Science in Accountancy",
-  "Bachelor of Science in Business Administration major in Financial Management",
-  "Bachelor of Science in Business Administration major in Marketing Management",
-  "Bachelor of Science in Business Administration major in Human Resource Management",
-  "Bachelor of Science in Entrepreneurship",
+  "Bachelor of Early Childhood Education",
+  "Bachelor of Secondary Education Major in English",
+  "Bachelor of Secondary Education Major in Filipino",
+  "Bachelor of Secondary Education Major in Mathematics",
+  "Bachelor of Secondary Education Major in Science",
+  "Bachelor of Secondary Education Major in Social Studies",
   "Bachelor of Science in Civil Engineering",
   "Bachelor of Science in Electrical Engineering",
-  "Bachelor of Science in Computer Engineering",
   "Bachelor of Science in Information Technology",
-  "Bachelor of Early Childhood Education",
-  "Bachelor of Secondary Education major in English",
-  "Bachelor of Secondary Education major in Filipino",
-  "Bachelor of Secondary Education major in Mathematics",
-  "Bachelor of Secondary Education major in Science",
-  "Bachelor of Secondary Education major in Social Studies",
-  "Bachelor of Physical Education",
   "Bachelor of Arts in Communication",
-  "Bachelor of Arts in Psychology",
+  "Bachelor of Science in Psychology",
   "Bachelor of Science in Social Work",
-  "Bachelor of Science in Public Administration",
-  "Master of Arts in Education",
-  "Master in Public Administration"
+  "Bachelor of Public Administration",
+  "Bachelor of Science in Accountancy",
+  "Bachelor of Science in Business Administration Major in Financial Management",
+  "Bachelor of Science in Business Administration Major in Human Resource Management",
+  "Bachelor of Science in Business Administration Major in Marketing Management"
 ];
 
 const Login = ({ onLogin }) => {
@@ -377,7 +372,7 @@ const Login = ({ onLogin }) => {
               <button type="submit" className="sign-in-btn" disabled={isLoading}>
                 {isLoading ? (<><span className="spinner"></span> Signing In...</>) : 'Sign In'}
               </button>
-              <p className="forgot-password" onClick={() => { setCurrentView('forgotPassword'); setError(''); setMessage(''); }} style={{ cursor: 'pointer', color: '#003366', fontWeight: 'normal', marginTop: '10px', textAlign: 'right' }}>
+              <p className="forgot-password auth-link" onClick={() => { setCurrentView('forgotPassword'); setError(''); setMessage(''); }} style={{ cursor: 'pointer', fontWeight: 'normal', marginTop: '10px', textAlign: 'center' }}>
                 Forgot Password?
               </p>
             </form>
@@ -416,7 +411,7 @@ const Login = ({ onLogin }) => {
           )}
 
           {currentView !== 'resetPassword' && (
-            <p className="toggle-view" onClick={() => { setCurrentView(currentView === 'signIn' || currentView === 'forgotPassword' ? 'signUp' : 'signIn'); setError(''); setMessage(''); }} style={{ cursor: 'pointer', color: '#003366', fontWeight: 'bold', marginTop: '15px' }}>
+            <p className="toggle-view auth-link" onClick={() => { setCurrentView(currentView === 'signIn' || currentView === 'forgotPassword' ? 'signUp' : 'signIn'); setError(''); setMessage(''); }} style={{ cursor: 'pointer', fontWeight: 'bold', marginTop: '15px' }}>
               {currentView === 'signIn' || currentView === 'forgotPassword' ? "Don't have an account? Request Access" : "Already have an account? Sign In"}
             </p>
           )}

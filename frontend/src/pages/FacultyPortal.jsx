@@ -10,6 +10,7 @@ import {
   buildAssignmentStorageKey,
   buildReviewKey,
 } from "../utils/chairpersonHelpers";
+import { getSystemSetting } from "../services/api";
 
 const buildStudentRosterSignature = (students = []) =>
   students
@@ -43,7 +44,7 @@ const FacultyPortal = ({ onLogout, allGrades, setAllGrades }) => {
   const [selectedProgram, setSelectedProgram] = useState("");
   const [selectedSection, setSelectedSection] = useState(null);
 
-  const [systemSettings] = useState({
+  const [systemSettings, setSystemSettings] = useState({
     semester: "2nd Semester",
   });
 
@@ -66,6 +67,40 @@ const FacultyPortal = ({ onLogout, allGrades, setAllGrades }) => {
   const encodingData = useMemo(() => {
     const saved = localStorage.getItem("encodingPeriod");
     return saved ? JSON.parse(saved) : null;
+  }, []);
+
+  useEffect(() => {
+    const applyEncodingPeriod = (value) => {
+      if (!value) return;
+      const parsed = typeof value === "string" ? JSON.parse(value) : value;
+      setSystemSettings((current) => ({
+        ...current,
+        semester: parsed?.semester || "2nd Semester",
+      }));
+    };
+
+    const loadEncodingPeriod = async () => {
+      try {
+        const res = await getSystemSetting("encoding_period");
+        if (res.status === "Success" && res.value) {
+          applyEncodingPeriod(res.value);
+        }
+      } catch (error) {
+        console.error(error);
+      }
+    };
+
+    const handleSystemSettingChanged = (event) => {
+      const key = event.detail?.key || event.detail?.Key;
+      const value = event.detail?.value || event.detail?.Value;
+      if (key === "encoding_period") applyEncodingPeriod(value);
+    };
+
+    loadEncodingPeriod();
+    window.addEventListener("blockgo:system-setting-changed", handleSystemSettingChanged);
+
+    return () =>
+      window.removeEventListener("blockgo:system-setting-changed", handleSystemSettingChanged);
   }, []);
 
   const systemTerm =
@@ -317,7 +352,7 @@ const FacultyPortal = ({ onLogout, allGrades, setAllGrades }) => {
   return (
     <div className="min-h-screen bg-slate-100">
       <FacultyHeader
-        facultyData={facultyData}
+        facultyData={{ ...facultyData, semester: systemSettings.semester }}
         totalSections={Object.keys(sections).length}
         onLogout={onLogout}
       />

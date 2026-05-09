@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import RegistrarHeader from "../components/registrar/RegistrarHeader";
 import RegistrarSidebar from "../components/registrar/RegistrarSidebar";
 import RegistrarDashboard from "../components/registrar/RegistrarDashboard";
@@ -11,6 +11,7 @@ import GradeFinalization from "../components/registrar/GradeFinalization";
 import RegistrarStudentSectioning from "../components/registrar/RegistrarStudentSectioning";
 import RegistrarSectionsCreated from "../components/registrar/RegistrarSectionsCreated";
 import { programs } from "../data/registrarData";
+import { getSystemSetting } from "../services/api";
 
 function RegistrarPortal({ onLogout, onResetEncodingSeason, allGrades = {} }) {
   const [activeTab, setActiveTab] = useState("dashboard");
@@ -18,11 +19,43 @@ function RegistrarPortal({ onLogout, onResetEncodingSeason, allGrades = {} }) {
     programs[0] || ""
   );
   const [sectioningVersion, setSectioningVersion] = useState(0);
+  const [activeSemester, setActiveSemester] = useState("2nd Semester");
+
+  useEffect(() => {
+    const applyEncodingPeriod = (value) => {
+      if (!value) return;
+      const parsed = typeof value === "string" ? JSON.parse(value) : value;
+      setActiveSemester(parsed?.semester || "2nd Semester");
+    };
+
+    const loadEncodingPeriod = async () => {
+      try {
+        const res = await getSystemSetting("encoding_period");
+        if (res.status === "Success" && res.value) {
+          applyEncodingPeriod(res.value);
+        }
+      } catch (error) {
+        console.error(error);
+      }
+    };
+
+    const handleSystemSettingChanged = (event) => {
+      const key = event.detail?.key || event.detail?.Key;
+      const value = event.detail?.value || event.detail?.Value;
+      if (key === "encoding_period") applyEncodingPeriod(value);
+    };
+
+    loadEncodingPeriod();
+    window.addEventListener("blockgo:system-setting-changed", handleSystemSettingChanged);
+
+    return () =>
+      window.removeEventListener("blockgo:system-setting-changed", handleSystemSettingChanged);
+  }, []);
 
   const registrarData = {
     name: "PLV Registrar",
     schoolYear: "2025-2026",
-    semester: "2nd Semester",
+    semester: activeSemester,
   };
 
   const getSectionTitle = () => {

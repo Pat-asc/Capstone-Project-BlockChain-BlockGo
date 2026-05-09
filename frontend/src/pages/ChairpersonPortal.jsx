@@ -18,6 +18,7 @@ import {
   getSectionReviewRecord,
   getSectionStudents,
 } from "../utils/chairpersonHelpers";
+import { getSystemSetting } from "../services/api";
 
 const DEFAULT_CHAIRPERSON_DEPARTMENT =
   "Bachelor of Science in Information Technology";
@@ -30,10 +31,51 @@ function ChairpersonPortal({ onLogout, allGrades = {} }) {
   });
   const [selectedReviewKey, setSelectedReviewKey] = useState("");
   const [, setStudentDataVersion] = useState(0);
+  const [encodingPeriod, setEncodingPeriod] = useState({
+    semester: "2nd Semester",
+    term: "midterm",
+  });
 
   useEffect(() => {
     localStorage.setItem(CHAIRPERSON_REVIEW_KEY, JSON.stringify(reviewData));
   }, [reviewData]);
+
+  useEffect(() => {
+    const applyEncodingPeriod = (value) => {
+      if (!value) return;
+      const parsed = typeof value === "string" ? JSON.parse(value) : value;
+      setEncodingPeriod({
+        semester: parsed?.semester || "2nd Semester",
+        term:
+          parsed?.term === "finals" || parsed?.term === "midterm"
+            ? parsed.term
+            : "midterm",
+      });
+    };
+
+    const loadEncodingPeriod = async () => {
+      try {
+        const res = await getSystemSetting("encoding_period");
+        if (res.status === "Success" && res.value) {
+          applyEncodingPeriod(res.value);
+        }
+      } catch (error) {
+        console.error(error);
+      }
+    };
+
+    const handleSystemSettingChanged = (event) => {
+      const key = event.detail?.key || event.detail?.Key;
+      const value = event.detail?.value || event.detail?.Value;
+      if (key === "encoding_period") applyEncodingPeriod(value);
+    };
+
+    loadEncodingPeriod();
+    window.addEventListener("blockgo:system-setting-changed", handleSystemSettingChanged);
+
+    return () =>
+      window.removeEventListener("blockgo:system-setting-changed", handleSystemSettingChanged);
+  }, []);
 
   const assignments = useMemo(() => {
     const saved = localStorage.getItem("registrarAssignments");
@@ -78,19 +120,12 @@ function ChairpersonPortal({ onLogout, allGrades = {} }) {
     name: "Elena Marquez",
     department: resolvedSelectedDepartment,
     schoolYear: "2025",
-    semester: "2nd Semester",
+    semester: encodingPeriod.semester,
   };
   const chairpersonDepartment = resolvedSelectedDepartment;
 
   const activeGradeKey = chairpersonData.semester;
-  const encodingData = useMemo(() => {
-    const saved = localStorage.getItem("encodingPeriod");
-    return saved ? JSON.parse(saved) : null;
-  }, []);
-  const activeTerm =
-    encodingData?.term === "finals" || encodingData?.term === "midterm"
-      ? encodingData.term
-      : "midterm";
+  const activeTerm = encodingPeriod.term;
 
   const departmentFaculty = useMemo(() => {
     const facultyDirectory = buildFacultyDirectory({

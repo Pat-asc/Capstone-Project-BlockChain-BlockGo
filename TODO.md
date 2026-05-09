@@ -19,4 +19,29 @@
   - [ ] `client-app/Services/ChatCache.cs`
 - [ ] Frontend integration for #5 (file sending) and #6 (delivered/seen rendering)
 
+# Mordin 
+# WorksDone
+[registerData.js,
+studentSectioningHelpers.js,
+login.jsx,
+formulabuilder.jsx,
+registrargradesview.jsx] 
+- programs/courses fixed
+
+- added back button in the monitoring
+
+- removed the school year
+
+- fixed the search bar
+
+- fixed the headers
+
+- added semester selection in encoding period
+
+# to do:
+# ***fix asap for proper work flow
+
+- fix the academic assignment (chairperson portal)
+
+- fix the for review (chairperson portal)
 

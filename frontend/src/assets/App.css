@@ -77,6 +77,9 @@ body, html {
 
 .plv-logo {
   width: 100px;
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
   margin-bottom: 10px;
 }
 
@@ -84,6 +87,15 @@ body, html {
   color: var(--plv-blue);
   font-size: 1.8rem;
   margin-bottom: 25px;
+}
+
+.auth-link {
+  color: var(--plv-blue);
+  transition: color 0.2s ease;
+}
+
+.auth-link:hover {
+  color: var(--plv-gold);
 }
 
 .input-group {

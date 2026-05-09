@@ -17,21 +17,12 @@ function RegistrarHeader({ registrarData, onLogout }) {
 
           <div className="leading-tight">
             <p className="text-sm text-white/80">Registrar Portal</p>
-            <h1 className="text-xl font-bold text-white">
-              Welcome, {registrarData?.name || "Registrar"}
-            </h1>
+            <h1 className="text-xl font-bold text-white">Welcome, Registrar</h1>
           </div>
         </div>
 
         {/* Right */}
         <div className="flex items-center gap-3">
-          <div className="hidden rounded-xl bg-white/10 px-4 py-2 text-right md:block">
-            <p className="text-xs text-white/70">School Year</p>
-            <p className="text-sm font-semibold text-white">
-              {registrarData?.schoolYear || "2025-2026"}
-            </p>
-          </div>
-
           <div className="hidden rounded-xl bg-white/10 px-4 py-2 text-right md:block">
             <p className="text-xs text-white/70">Semester</p>
             <p className="text-sm font-semibold text-white">

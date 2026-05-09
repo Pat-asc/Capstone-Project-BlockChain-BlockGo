@@ -1,6 +1,11 @@
 import React from "react";
 import plvlogo from "../../assets/plvlogo.png";
 
+const stripRolePrefix = (value = "") =>
+  String(value)
+    .replace(/^(dept\.?\s*admin|department\s*admin|chairperson|prof\.?|mr\.?|ms\.?|mrs\.?|registrar)\s+/i, "")
+    .trim();
+
 function ChairpersonHeader({
   chairpersonData,
   departmentCount,
@@ -9,6 +14,9 @@ function ChairpersonHeader({
   onDepartmentChange,
   onLogout,
 }) {
+  const displayName =
+    stripRolePrefix(chairpersonData?.name) || "Chairperson";
+
   return (
     <header className="w-full border-b border-slate-200 bg-[#003366] shadow-sm">
       <div className="flex w-full items-center justify-between px-6 py-4">
@@ -18,9 +26,9 @@ function ChairpersonHeader({
           </div>
 
           <div className="leading-tight">
-            <p className="text-sm font-medium text-white/80">Chairperson Portal</p>
+            <p className="text-sm text-white/80">Chairperson Portal</p>
             <h1 className="text-xl font-bold text-white">
-              Welcome, {chairpersonData?.name || "Chairperson"}
+              Welcome, {displayName}
             </h1>
           </div>
         </div>
@@ -32,10 +40,14 @@ function ChairpersonHeader({
               <select
                 value={selectedDepartment}
                 onChange={(event) => onDepartmentChange?.(event.target.value)}
-                className="mt-1 min-w-[280px] rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-sm font-semibold text-white outline-none"
+                className="mt-1 min-w-[220px] rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-sm font-semibold text-white outline-none"
               >
                 {availableDepartments.map((department) => (
-                  <option key={department} value={department} className="text-slate-900">
+                  <option
+                    key={department}
+                    value={department}
+                    className="text-slate-900"
+                  >
                     {department}
                   </option>
                 ))}
@@ -48,8 +60,17 @@ function ChairpersonHeader({
           </div>
 
           <div className="hidden rounded-xl bg-white/10 px-4 py-2 text-right md:block">
+            <p className="text-xs text-white/70">Semester</p>
+            <p className="text-sm font-semibold text-white">
+              {chairpersonData?.semester || "2nd Semester"}
+            </p>
+          </div>
+
+          <div className="hidden rounded-xl bg-white/10 px-4 py-2 text-right lg:block">
             <p className="text-xs text-white/70">Faculty Monitored</p>
-            <p className="text-sm font-semibold text-white">{departmentCount}</p>
+            <p className="text-sm font-semibold text-white">
+              {departmentCount ?? 0}
+            </p>
           </div>
 
           <button

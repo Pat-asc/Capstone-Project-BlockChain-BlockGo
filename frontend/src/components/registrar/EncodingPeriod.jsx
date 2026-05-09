@@ -3,6 +3,7 @@ import { getSystemSetting, updateSystemSetting } from "../../services/api";
 
 function EncodingPeriod({ onResetEncodingSeason }) {
   const [period, setPeriod] = useState({
+    semester: "2nd Semester",
     startDate: "",
     endDate: "",
     term: "midterm",
@@ -16,6 +17,7 @@ function EncodingPeriod({ onResetEncodingSeason }) {
         if (res.status === "Success" && res.value) {
           const savedPeriod = JSON.parse(res.value);
           setPeriod({
+            semester: savedPeriod?.semester || "2nd Semester",
             startDate: savedPeriod?.startDate || "",
             endDate: savedPeriod?.endDate || "",
             term: savedPeriod?.term || "midterm",
@@ -29,7 +31,7 @@ function EncodingPeriod({ onResetEncodingSeason }) {
     loadSavedPeriod();
   }, []);
 
-  const { startDate, endDate, term } = period;
+  const { semester, startDate, endDate, term } = period;
 
   const updatePeriod = (field, value) => {
     setPeriod((current) => ({ ...current, [field]: value }));
@@ -63,6 +65,15 @@ function EncodingPeriod({ onResetEncodingSeason }) {
 
     try {
       await updateSystemSetting("encoding_period", JSON.stringify(encodingData));
+      localStorage.setItem("encodingPeriod", JSON.stringify(encodingData));
+      window.dispatchEvent(
+        new CustomEvent("blockgo:system-setting-changed", {
+          detail: {
+            key: "encoding_period",
+            value: JSON.stringify(encodingData),
+          },
+        })
+      );
       setStatusMessage("Encoding period saved successfully.");
     } catch (error) {
       setStatusMessage(error.message || "Failed to save encoding period.");
@@ -112,7 +123,22 @@ function EncodingPeriod({ onResetEncodingSeason }) {
           </p>
         )}
 
-        <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-3">
+        <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-4">
+          <div>
+            <label className="mb-2 block text-sm font-medium text-slate-700">
+              Semester
+            </label>
+            <select
+              value={semester}
+              onChange={(e) => updatePeriod("semester", e.target.value)}
+              className="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-[#003366]"
+            >
+              <option value="1st Semester">1st Semester</option>
+              <option value="2nd Semester">2nd Semester</option>
+              <option value="Summer">Summer</option>
+            </select>
+          </div>
+
           <div>
             <label className="mb-2 block text-sm font-medium text-slate-700">
               Encoding Term
@@ -172,7 +198,12 @@ function EncodingPeriod({ onResetEncodingSeason }) {
       <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
         <h3 className="text-lg font-bold text-[#003366]">Current Schedule</h3>
 
-        <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-4">
+        <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-5">
+          <div className="rounded-xl bg-slate-50 p-4">
+            <p className="text-sm text-slate-500">Semester</p>
+            <p className="mt-1 font-semibold text-slate-800">{semester}</p>
+          </div>
+
           <div className="rounded-xl bg-slate-50 p-4">
             <p className="text-sm text-slate-500">Encoding Term</p>
             <p className="mt-1 font-semibold text-slate-800">

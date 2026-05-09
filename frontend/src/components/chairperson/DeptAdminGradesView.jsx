@@ -117,6 +117,7 @@ const DeptAdminGradesView = ({ loggedInEmail = '', loggedInName = '', userRole =
 
     const [passThreshold, setPassThreshold] = useState(75);
     const [statusFilter, setStatusFilter] = useState("All");
+    const [activeSemester, setActiveSemester] = useState("2nd Semester");
 
     useEffect(() => {
         const fetchThreshold = async () => {
@@ -130,6 +131,35 @@ const DeptAdminGradesView = ({ loggedInEmail = '', loggedInName = '', userRole =
             }
         };
         fetchThreshold();
+    }, []);
+
+    useEffect(() => {
+        const applyEncodingPeriod = (value) => {
+            if (!value) return;
+            const parsed = typeof value === 'string' ? JSON.parse(value) : value;
+            setActiveSemester(parsed?.semester || "2nd Semester");
+        };
+
+        const loadEncodingPeriod = async () => {
+            try {
+                const data = await getSystemSetting('encoding_period');
+                if (data.status === "Success" && data.value) {
+                    applyEncodingPeriod(data.value);
+                }
+            } catch (e) {
+                console.warn("Using default semester");
+            }
+        };
+
+        const handleSystemSettingChanged = (event) => {
+            const key = event.detail?.key || event.detail?.Key;
+            const value = event.detail?.value || event.detail?.Value;
+            if (key === 'encoding_period') applyEncodingPeriod(value);
+        };
+
+        loadEncodingPeriod();
+        window.addEventListener('blockgo:system-setting-changed', handleSystemSettingChanged);
+        return () => window.removeEventListener('blockgo:system-setting-changed', handleSystemSettingChanged);
     }, []);
 
     const deptMetrics = useMemo(() => {
@@ -751,7 +781,7 @@ const DeptAdminGradesView = ({ loggedInEmail = '', loggedInName = '', userRole =
 
     return (
         <div className="flex h-screen w-full flex-col bg-slate-50 font-sans fixed inset-0 z-[100] overflow-auto">
-            <ChairpersonHeader chairpersonData={{ name: loggedInName, department: userRole }} departmentCount={deptMetrics.totalFaculty} onLogout={() => { localStorage.removeItem('token'); window.location.reload(); }} />
+            <ChairpersonHeader chairpersonData={{ name: loggedInName, department: userRole, semester: activeSemester }} departmentCount={deptMetrics.totalFaculty} onLogout={() => { localStorage.removeItem('token'); window.location.reload(); }} />
             <div className="flex flex-col md:flex-row flex-1 overflow-hidden p-4 md:p-6 gap-6">
                 <ChairpersonSidebar activeTab={activeChairTab === 'grades' ? 'dashboard' : activeChairTab} setActiveTab={setMainTab} />
                 <main className="flex-1 overflow-y-auto pr-2">

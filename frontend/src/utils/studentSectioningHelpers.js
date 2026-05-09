@@ -27,20 +27,20 @@ export const YEAR_LEVEL_PREFIXES = {
 };
 
 const PROGRAM_SECTION_PREFIXES = {
-  "Bachelor of Science in Information Technology": "BSIT",
-  "Bachelor of Science in Accountancy": "BSA",
-  "Bachelor of Science in Civil Engineering": "BSCE",
-  "Bachelor of Science in Electrical Engineering": "BSEE",
-  "Bachelor of Arts in Communication": "BAC",
-  "Bachelor of Science in Psychology": "BSP",
-  "Bachelor of Science in Social Work": "BSSW",
-  "Bachelor of Public Administration": "BPA",
   "Bachelor of Early Childhood Education": "BECEd",
   "Bachelor of Secondary Education major in English": "BSEd English",
   "Bachelor of Secondary Education major in Filipino": "BSEd Filipino",
   "Bachelor of Secondary Education major in Mathematics": "BSEd Mathematics",
   "Bachelor of Secondary Education major in Science": "BSEd Science",
   "Bachelor of Secondary Education major in Social Studies": "BSEd Social Studies",
+  "Bachelor of Science in Civil Engineering": "BSCE",
+  "Bachelor of Science in Electrical Engineering": "BSEE",
+  "Bachelor of Science in Information Technology": "BSIT",
+  "Bachelor of Arts in Communication": "BAC",
+  "Bachelor of Science in Psychology": "BSP",
+  "Bachelor of Science in Social Work": "BSSW",
+  "Bachelor of Public Administration": "BPA",
+  "Bachelor of Science in Accountancy": "BSA",
   "Bachelor of Science in Business Administration major in Financial Management":
     "BSBA FM",
   "Bachelor of Science in Business Administration major in Human Resource Management":

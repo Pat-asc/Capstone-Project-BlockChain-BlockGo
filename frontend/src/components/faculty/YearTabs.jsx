@@ -1,6 +1,6 @@
 import React from "react";
 
-const YearTabs = ({ activeTab, setActiveTab, sections }) => {
+const YearTabs = ({ activeTab, setActiveTab, sections, className = "" }) => {
   const totalSections = Object.keys(sections).length;
 
   const tabData = ["All Sections", "1st Year", "2nd Year", "3rd Year", "4th Year"].map(label => {
@@ -17,7 +17,7 @@ const YearTabs = ({ activeTab, setActiveTab, sections }) => {
   });
 
   return (
-    <div className="flex gap-4 overflow-x-auto px-6 py-2 mt-6 overflow-visible">
+    <div className={`mt-6 flex min-w-0 gap-4 overflow-x-auto overflow-visible px-6 py-2 ${className}`}>
       {tabData.map((tab) => (
         <div
           key={tab.label}

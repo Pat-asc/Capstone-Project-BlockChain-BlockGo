@@ -1,79 +1,90 @@
 import React from "react";
 import plvlogo from "../../assets/plvlogo.png";
 
+const stripRolePrefix = (value = "") =>
+  String(value)
+    .replace(
+      /^(prof\.?|mr\.?|ms\.?|mrs\.?|dept\.?\s*admin|department\s*admin|registrar|faculty)\s+/i,
+      ""
+    )
+    .trim();
+
 const FacultyHeader = ({ facultyData, totalSections, onLogout }) => {
   const rawName = (
-    facultyData.fullName ||
-    `${facultyData.firstName || ""} ${facultyData.lastName || ""}`.trim() ||
-    facultyData.name ||
-    facultyData.email ||
+    facultyData?.fullName ||
+    `${facultyData?.firstName || ""} ${facultyData?.lastName || ""}`.trim() ||
+    facultyData?.name ||
+    facultyData?.email ||
     "Faculty"
   ).trim();
 
-  const facultyName = rawName
-    .replace(/^(prof\.?|mr\.?|ms\.?|mrs\.?|dept admin|registrar)\s+/i, "")
-    .trim() || "Faculty";
-
-  const classification = facultyData.Classification || facultyData.facultyType || "Not set";
+  const facultyName = stripRolePrefix(rawName) || "Faculty";
+  const classification =
+    facultyData?.Classification || facultyData?.facultyType || "Not set";
+  const department = facultyData?.department || "No department assigned";
+  const semester = facultyData?.semester || "2nd Semester";
 
   return (
     <div className="w-full">
+      <header className="w-full border-b border-slate-200 bg-[#003366] shadow-sm">
+        <div className="flex w-full items-center justify-between px-6 py-4">
+          <div className="flex items-center gap-3">
+            <div className="flex h-11 w-11 items-center justify-center rounded-full bg-white/10">
+              <img
+                src={plvlogo}
+                alt="PLV Logo"
+                className="h-10 w-10 object-contain"
+              />
+            </div>
 
-      {/* 🔵 TOP NAV BAR */}
-      <div className="bg-[#003366] px-6 py-3 flex items-center justify-between">
+            <div className="leading-tight">
+              <p className="text-sm text-white/80">Faculty Portal</p>
+              <h1 className="text-xl font-bold text-white">
+                Welcome, {facultyName}
+              </h1>
+            </div>
+          </div>
 
-        <div className="flex items-center gap-3">
-          <img
-            src={plvlogo}
-            alt="PLV Logo"
-            className="w-10 h-10 object-contain"
-          />
+          <div className="flex items-center gap-3">
+            <div className="hidden rounded-xl bg-white/10 px-4 py-2 text-right md:block">
+              <p className="text-xs text-white/70">Semester</p>
+              <p className="text-sm font-semibold text-white">{semester}</p>
+            </div>
 
-          <div className="leading-tight">
-            <p className="text-sm font-medium text-white/80">Faculty Portal</p>
-            <h1 className="text-white text-sm font-semibold">
-              Welcome Faculty
-            </h1>
+            <button
+              onClick={onLogout}
+              className="rounded-xl border border-yellow-400 bg-transparent px-5 py-2 text-sm font-semibold text-yellow-400 transition hover:bg-yellow-400 hover:text-[#003366]"
+            >
+              Logout
+            </button>
           </div>
         </div>
+      </header>
 
-        <button
-          onClick={onLogout}
-          className="border border-yellow-400 text-yellow-400 px-4 py-2 rounded-lg font-bold text-sm hover:bg-yellow-400 hover:text-[#003366] transition"
-        >
-          LOGOUT
-        </button>
-      </div>
-
-      {/* 🟦 MAIN HEADER CARD */}
       <div className="mt-5 px-4 md:px-6">
-        <div className="rounded-xl bg-[#003366] p-4 md:p-6 text-white flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-
-          {/* LEFT INFO */}
-          <div className="min-w-0">
-            <h1 className="text-2xl md:text-3xl font-bold leading-tight">
-              Prof. {facultyName}
-            </h1>
-            <p className="mt-2 text-sm opacity-90">{facultyData.department || "No department assigned"}</p>
-          </div>
-
-          {/* RIGHT STATS */}
-          <div className="flex flex-wrap gap-3 md:gap-4">
-
-            <div className="min-w-[110px] bg-white/20 px-4 py-3 rounded-lg text-center">
-              <span className="text-xs block">Sections</span>
-              <div className="text-lg font-bold">{totalSections}</div>
+        <div className="rounded-xl bg-[#003366] p-4 text-white shadow-sm md:p-6">
+          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div className="min-w-0">
+              <h2 className="text-2xl font-bold leading-tight md:text-3xl">
+                Prof. {facultyName}
+              </h2>
+              <p className="mt-2 text-sm opacity-90">{department}</p>
             </div>
 
-            <div className="min-w-[140px] bg-yellow-400 text-[#003366] px-4 py-3 rounded-lg text-center font-bold">
-              <span className="text-xs block">Classification</span>
-              <div className="text-lg">{classification}</div>
-            </div>
+            <div className="flex flex-wrap gap-3 md:gap-4">
+              <div className="min-w-[120px] rounded-lg bg-white/20 px-4 py-3 text-center">
+                <span className="block text-xs">Sections</span>
+                <div className="text-lg font-bold">{totalSections ?? 0}</div>
+              </div>
 
+              <div className="min-w-[140px] rounded-lg bg-yellow-400 px-4 py-3 text-center font-bold text-[#003366]">
+                <span className="block text-xs">Classification</span>
+                <div className="text-lg">{classification}</div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
-
     </div>
   );
 };

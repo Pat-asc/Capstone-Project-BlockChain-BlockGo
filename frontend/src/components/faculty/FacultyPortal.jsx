@@ -25,11 +25,13 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
   const [encodingStart, setEncodingStart] = useState(null);
   const [encodingEnd, setEncodingEnd] = useState(null);
   const [encodingTerm, setEncodingTerm] = useState("midterm");
+  const [encodingSemester, setEncodingSemester] = useState("2nd Semester");
 
   useEffect(() => {
     const applyEncodingPeriod = (value) => {
       if (!value) return;
       const parsed = typeof value === 'string' ? JSON.parse(value) : value;
+      setEncodingSemester(parsed.semester || "2nd Semester");
       if (!parsed.startDate || !parsed.endDate) return;
       setEncodingStart(new Date(parsed.startDate));
       setEncodingTerm(parsed.term === "finals" ? "finals" : "midterm");
@@ -344,7 +346,7 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
     if (!file) return;
 
     const sectionData = sections[sectionName];
-    const semester = "2nd Semester"; 
+    const semester = encodingSemester; 
     const schoolYear = "2024";
     const course = sectionData.subjectCode || sectionName;
 
@@ -387,7 +389,7 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
           Course: sectionData.sectionCourse,
           SubjectCode: sectionData.subjectCode,
           Grade: JSON.stringify({ midterm: student.midterm, finals: student.finals, finalAverage: calculatePLVPoint(student).toFixed(2) }),
-          Semester: "2nd Semester",
+          Semester: encodingSemester,
           SchoolYear: "2024",
           FacultyId: facultyData.email,
           Date: new Date().toISOString().split('T')[0]
@@ -422,7 +424,7 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
               Course: sectionData.sectionCourse,
               SubjectCode: sectionData.subjectCode,
               Grade: JSON.stringify({ midterm: student.midterm, finals: student.finals, finalAverage: calculatePLVPoint(student).toFixed(2) }),
-              Semester: "2nd Semester",
+              Semester: encodingSemester,
               SchoolYear: "2024",
               FacultyId: facultyData.email,
               Date: new Date().toISOString().split('T')[0]
@@ -484,7 +486,11 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
 
   return (
     <div className="min-h-screen bg-slate-50 pb-10 font-sans">
-      <FacultyHeader facultyData={facultyData} totalSections={totalSections} onLogout={onLogout} />
+      <FacultyHeader
+        facultyData={{ ...facultyData, semester: encodingSemester }}
+        totalSections={totalSections}
+        onLogout={onLogout}
+      />
 
       <div className="mx-auto max-w-7xl">
         {bannerState === 'not_set' && (
@@ -535,11 +541,17 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
 
       {!activeSection ? (
         <div className="px-6 py-4">
-          <YearTabs activeTab={activeTab} setActiveTab={setActiveTab} sections={Object.values(sections)} />
+          <div className="mt-6 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <YearTabs
+              activeTab={activeTab}
+              setActiveTab={setActiveTab}
+              sections={Object.values(sections)}
+              className="mt-0 flex-1 px-0 py-0"
+            />
 
-          <div className="relative max-w-md my-6">
-            <input type="text" placeholder="Search for a section..." className="w-full rounded-xl border border-slate-300 py-3 pl-10 pr-4 outline-none focus:border-[#003366] focus:ring-2 focus:ring-[#003366]/20" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">SEARCH</span>
+            <div className="relative w-full lg:w-80 lg:flex-shrink-0">
+              <input type="text" placeholder="Search for a section..." className="w-full rounded-xl border border-slate-300 py-3 pl-10 pr-4 outline-none focus:border-[#003366] focus:ring-2 focus:ring-[#003366]/20" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
+            </div>
           </div>
 
           <h2 className="mb-4 text-2xl font-bold text-[#003366]">{searchQuery ? `Results for "${searchQuery}"` : `${activeTab}`}</h2>

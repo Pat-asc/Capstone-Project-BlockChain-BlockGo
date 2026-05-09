@@ -135,7 +135,6 @@ C:/Users/pascu/Documents/GitHub2/GitHub/Capstone-Project-/For_Testing_Only_Capst
 C:/Users/pascu/Documents/GitHub2/GitHub/Capstone-Project-/For_Testing_Only_Capstone/client-app/obj/Debug/net8.0/For_Testing_Only_Capstone.pdb
 C:/Users/pascu/Documents/GitHub2/GitHub/Capstone-Project-/For_Testing_Only_Capstone/client-app/obj/Debug/net8.0/For_Testing_Only_Capstone.genruntimeconfig.cache
 C:/Users/pascu/Documents/GitHub2/GitHub/Capstone-Project-/For_Testing_Only_Capstone/client-app/obj/Debug/net8.0/ref/For_Testing_Only_Capstone.dll
-/app/bin/Debug/net8.0/appsettings.Development.json
 /app/bin/Debug/net8.0/appsettings.json
 /app/bin/Debug/net8.0/For_Testing_Only_Capstone
 /app/bin/Debug/net8.0/For_Testing_Only_Capstone.deps.json

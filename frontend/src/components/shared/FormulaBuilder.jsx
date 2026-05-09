@@ -1,26 +1,23 @@
 import React, { useState } from 'react';
 
 const programs = [
-  "Bachelor of Science in Accountancy",
-  "Bachelor of Science in Business Administration major in Financial Management",
-  "Bachelor of Science in Business Administration major in Marketing Management",
-  "Bachelor of Science in Business Administration major in Human Resource Management",
+  "Bachelor of Early Childhood Education",
+  "Bachelor of Secondary Education Major in English",
+  "Bachelor of Secondary Education Major in Filipino",
+  "Bachelor of Secondary Education Major in Mathematics",
+  "Bachelor of Secondary Education Major in Science",
+  "Bachelor of Secondary Education Major in Social Studies",
   "Bachelor of Science in Civil Engineering",
   "Bachelor of Science in Electrical Engineering",
   "Bachelor of Science in Information Technology",
-  "Bachelor of Early Childhood Education",
-  "Bachelor of Secondary Education major in English",
-  "Bachelor of Secondary Education major in Filipino",
-  "Bachelor of Secondary Education major in Mathematics",
-  "Bachelor of Secondary Education major in Science",
-  "Bachelor of Secondary Education major in Social Studies",
-  "Bachelor of Physical Education",
   "Bachelor of Arts in Communication",
-  "Bachelor of Arts in Psychology",
+  "Bachelor of Science in Psychology",
   "Bachelor of Science in Social Work",
-  "Bachelor of Science in Public Administration",
-  "Master of Arts in Education",
-  "Master in Public Administration"
+  "Bachelor of Public Administration",
+  "Bachelor of Science in Accountancy",
+  "Bachelor of Science in Business Administration Major in Financial Management",
+  "Bachelor of Science in Business Administration Major in Human Resource Management",
+  "Bachelor of Science in Business Administration Major in Marketing Management"
 ];
 
 const FormulaBuilder = () => {
