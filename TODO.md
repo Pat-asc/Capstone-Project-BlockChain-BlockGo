@@ -42,6 +42,7 @@ registrargradesview.jsx]
 # ***fix asap for proper work flow
 
 - fix the academic assignment (chairperson portal)
-
+** if kaya na igaya yung format ng faculty loading and manual section distribution same sa frontend pakicheck nalang if ano itsura sa repo namin. basta ayusin yung format na hindi nakakalito. 
 - fix the for review (chairperson portal)
+** dito hindi ko pa pala na-check if gumagana na to so wala pa pala aayusin dito di ko pa nakikita magkaroon ng laman.
 
