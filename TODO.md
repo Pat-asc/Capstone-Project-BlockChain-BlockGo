@@ -38,11 +38,17 @@ registrargradesview.jsx]
 
 - added semester selection in encoding period
 
+- implemented academic assignment faculty loading in the chairperson portal
+  - kept the existing Faculty Loading CSV workflow
+  - added manual/automatic load mode tracking
+  - updated distributed faculty loading records with mode badges and counts
+
 # to do:
 # ***fix asap for proper work flow
 
-- fix the academic assignment (chairperson portal)
-** if kaya na igaya yung format ng faculty loading and manual section distribution same sa frontend pakicheck nalang if ano itsura sa repo namin. basta ayusin yung format na hindi nakakalito. 
-- fix the for review (chairperson portal)
-** dito hindi ko pa pala na-check if gumagana na to so wala pa pala aayusin dito di ko pa nakikita magkaroon ng laman.
+- [x] fix the academic assignment (chairperson portal)
+** faculty loading and manual faculty loading implemented; CSV workflow kept unchanged.
+
+- [x] fix the for review (chairperson portal)
+** faculty submissions now sync to the chairperson review queue; For Review auto-selects the first submitted section when available.
 

@@ -200,6 +200,14 @@ export const submitSectionGrades = async (department, section) => {
     });
 };
 
+export const submitFacultySectionToChairperson = async ({ department, section }) => {
+    return await submitSectionGrades(department, section);
+};
+
+export const fetchChairpersonGradeRecords = async (invokerId = 'chairperson') => {
+    return await fetchAllGrades(invokerId);
+};
+
 export const approveGrade = async (recordId, invokerId) => {
     return await fetchWithAuth(`/Grades/approve/${encodeURIComponent(recordId)}?invokerId=${encodeURIComponent(invokerId)}`, {
         method: 'POST'
@@ -270,6 +278,21 @@ export const assignFaculty = async (id, assignmentData) => {
     return await fetchWithAuth(`/Auth/faculty/${encodeURIComponent(id)}/assign`, {
         method: 'PUT',
         body: JSON.stringify(assignmentData)
+    });
+};
+
+export const assignFacultyLoadToBackend = async (assignmentData) => {
+    const facultyId = assignmentData.facultyId;
+
+    if (!facultyId) {
+        throw new Error('Faculty ID is required to assign faculty load.');
+    }
+
+    return await assignFaculty(facultyId, {
+        Department: assignmentData.program || assignmentData.department || '',
+        Section: assignmentData.sectionName || assignmentData.section || '',
+        YearLevel: assignmentData.yearLevel || '',
+        Subject: assignmentData.subjectCode || assignmentData.subject || '',
     });
 };
 

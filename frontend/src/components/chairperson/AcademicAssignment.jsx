@@ -7,6 +7,7 @@ import {
   getDefaultSectionName,
   parseStudentIdSpreadsheet,
 } from "../../utils/studentSectioningHelpers";
+import { assignFacultyLoadToBackend } from "../../services/api";
 
 const SEMESTER_OPTIONS = ["1st Semester", "2nd Semester", "Summer"];
 const DAY_OPTIONS = [
@@ -40,6 +41,17 @@ const parseCsvRows = (csvText = "") => {
       return record;
     }, {})
   );
+};
+
+const normalizeText = (value = "") => String(value).trim().toLowerCase();
+
+const syncFacultyLoadToBackend = (assignment) => {
+  assignFacultyLoadToBackend(assignment).catch((error) => {
+    console.warn(
+      "Backend faculty load assignment failed; local assignment was still saved.",
+      error
+    );
+  });
 };
 
 function AcademicAssignment({ chairpersonDepartment = "" }) {
@@ -213,8 +225,8 @@ function AcademicAssignment({ chairpersonDepartment = "" }) {
           item.facultyId === Number(selectedFacultyId) &&
           item.sectionName === selectedSectionName &&
           item.schoolYear === selectedSection.schoolYear &&
-          item.semester.toLowerCase() === semester.trim().toLowerCase() &&
-          item.subjectCode.toLowerCase() === subjectCode.trim().toLowerCase()
+          normalizeText(item.semester) === normalizeText(semester) &&
+          normalizeText(item.subjectCode) === normalizeText(subjectCode)
       );
 
       if (alreadyExists) {
@@ -237,6 +249,7 @@ function AcademicAssignment({ chairpersonDepartment = "" }) {
         day: selectedDaysText,
         schoolYear: selectedSection.schoolYear,
         semester: semester.trim(),
+        loadMode: "Manual",
         rosterFileName,
         rosterStudents,
         uploadedAt: new Date().toISOString(),
@@ -248,6 +261,7 @@ function AcademicAssignment({ chairpersonDepartment = "" }) {
         "registrarAssignments",
         JSON.stringify(updatedAssignments)
       );
+      syncFacultyLoadToBackend(newAssignment);
 
       alert("Section distributed to faculty successfully.");
       resetForm();
@@ -337,8 +351,8 @@ function AcademicAssignment({ chairpersonDepartment = "" }) {
           item.facultyId === Number(faculty.id) &&
           item.sectionName === section.section &&
           item.schoolYear === section.schoolYear &&
-          item.semester.toLowerCase() === rowSemester.trim().toLowerCase() &&
-          item.subjectCode.toLowerCase() === rowSubjectCode.trim().toLowerCase()
+          normalizeText(item.semester) === normalizeText(rowSemester) &&
+          normalizeText(item.subjectCode) === normalizeText(rowSubjectCode)
       );
 
       if (alreadyExists) {
@@ -361,6 +375,7 @@ function AcademicAssignment({ chairpersonDepartment = "" }) {
         day: rowDay.trim(),
         schoolYear: section.schoolYear,
         semester: rowSemester.trim(),
+        loadMode: "Automatic",
         rosterFileName: "Created section roster",
         rosterStudents: section.students || [],
       });
@@ -439,6 +454,7 @@ function AcademicAssignment({ chairpersonDepartment = "" }) {
 
     setSavedAssignments(updatedAssignments);
     localStorage.setItem("registrarAssignments", JSON.stringify(updatedAssignments));
+    importedAssignments.forEach(syncFacultyLoadToBackend);
     setFacultyLoadingFile(null);
     setFacultyLoadingPreview([]);
     setFacultyLoadingErrors([]);
@@ -458,7 +474,20 @@ function AcademicAssignment({ chairpersonDepartment = "" }) {
     );
   };
 
-  const assignmentRows = useMemo(() => savedAssignments, [savedAssignments]);
+  const assignmentRows = useMemo(
+    () =>
+      savedAssignments.filter(
+        (assignment) =>
+          !selectedProgram || assignment.program === selectedProgram
+      ),
+    [savedAssignments, selectedProgram]
+  );
+  const automaticLoadCount = assignmentRows.filter(
+    (assignment) => assignment.loadMode === "Automatic"
+  ).length;
+  const manualLoadCount = assignmentRows.filter(
+    (assignment) => assignment.loadMode !== "Automatic"
+  ).length;
 
   return (
     <div className="space-y-6">
@@ -600,7 +629,7 @@ function AcademicAssignment({ chairpersonDepartment = "" }) {
 
       <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
         <h3 className="text-xl font-bold text-[#003366]">
-          Manual Faculty Section Distribution
+          Manual Faculty Loading
         </h3>
         <p className="mt-1 text-sm text-slate-500">
           After sectioning students, distribute each created section to the
@@ -899,23 +928,36 @@ function AcademicAssignment({ chairpersonDepartment = "" }) {
           onClick={handleAssign}
           className="mt-6 rounded-xl bg-[#003366] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#00264d]"
         >
-          Distribute Section to Faculty
+          Distribute Manual Faculty Load
         </button>
       </div>
 
       <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-        <h3 className="text-lg font-bold text-[#003366]">
-          Distributed Faculty Sections
-        </h3>
-        <p className="mt-1 text-sm text-slate-500">
-          One faculty member can receive multiple section assignments, each with
-          its own subject and schedule details.
-        </p>
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+          <div>
+            <h3 className="text-lg font-bold text-[#003366]">
+              Distributed Faculty Loading Records
+            </h3>
+            <p className="mt-1 text-sm text-slate-500">
+              Automatic and manual faculty loads appear here with their subject,
+              section, and schedule details.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2 text-sm font-semibold">
+            <span className="rounded-full bg-blue-50 px-3 py-1 text-[#003366]">
+              Automatic: {automaticLoadCount}
+            </span>
+            <span className="rounded-full bg-slate-100 px-3 py-1 text-slate-700">
+              Manual: {manualLoadCount}
+            </span>
+          </div>
+        </div>
 
         <div className="mt-4 overflow-x-auto">
           <table className="min-w-full">
             <thead>
               <tr className="bg-[#003366] text-white">
+                <th className="px-4 py-3 text-left text-sm">Mode</th>
                 <th className="px-4 py-3 text-left text-sm">Faculty</th>
                 <th className="px-4 py-3 text-left text-sm">Section</th>
                 <th className="px-4 py-3 text-left text-sm">Students</th>
@@ -934,6 +976,17 @@ function AcademicAssignment({ chairpersonDepartment = "" }) {
               {assignmentRows.length > 0 ? (
                 assignmentRows.map((item) => (
                   <tr key={item.id} className="border-b">
+                    <td className="px-4 py-3">
+                      <span
+                        className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                          item.loadMode === "Automatic"
+                            ? "bg-blue-50 text-[#003366]"
+                            : "bg-slate-100 text-slate-700"
+                        }`}
+                      >
+                        {item.loadMode === "Automatic" ? "Automatic" : "Manual"}
+                      </span>
+                    </td>
                     <td className="px-4 py-3">{item.facultyName}</td>
                     <td className="px-4 py-3">{item.sectionName}</td>
                     <td className="px-4 py-3">
@@ -960,8 +1013,8 @@ function AcademicAssignment({ chairpersonDepartment = "" }) {
                 ))
               ) : (
                 <tr>
-                  <td colSpan="11" className="py-6 text-center text-slate-500">
-                    No uploaded section CSVs yet.
+                  <td colSpan="12" className="py-6 text-center text-slate-500">
+                    No faculty loading records yet.
                   </td>
                 </tr>
               )}

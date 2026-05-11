@@ -23,12 +23,19 @@ import { getSystemSetting } from "../services/api";
 const DEFAULT_CHAIRPERSON_DEPARTMENT =
   "Bachelor of Science in Information Technology";
 
-function ChairpersonPortal({ onLogout, allGrades = {} }) {
-  const [activeTab, setActiveTab] = useState("sectioning");
-  const [reviewData, setReviewData] = useState(() => {
+const loadSavedReviewData = () => {
+  try {
     const saved = localStorage.getItem(CHAIRPERSON_REVIEW_KEY);
     return saved ? JSON.parse(saved) : {};
-  });
+  } catch (error) {
+    console.error("Failed to load chairperson review data:", error);
+    return {};
+  }
+};
+
+function ChairpersonPortal({ onLogout, allGrades = {} }) {
+  const [activeTab, setActiveTab] = useState("sectioning");
+  const [reviewData, setReviewData] = useState(loadSavedReviewData);
   const [selectedReviewKey, setSelectedReviewKey] = useState("");
   const [, setStudentDataVersion] = useState(0);
   const [encodingPeriod, setEncodingPeriod] = useState({
@@ -39,6 +46,31 @@ function ChairpersonPortal({ onLogout, allGrades = {} }) {
   useEffect(() => {
     localStorage.setItem(CHAIRPERSON_REVIEW_KEY, JSON.stringify(reviewData));
   }, [reviewData]);
+
+  useEffect(() => {
+    const refreshReviewData = (event) => {
+      if (event?.detail?.reviewData) {
+        setReviewData(event.detail.reviewData);
+        return;
+      }
+
+      setReviewData(loadSavedReviewData());
+    };
+
+    const handleStorage = (event) => {
+      if (event.key === CHAIRPERSON_REVIEW_KEY) {
+        refreshReviewData();
+      }
+    };
+
+    window.addEventListener("blockgo:chairperson-review-changed", refreshReviewData);
+    window.addEventListener("storage", handleStorage);
+
+    return () => {
+      window.removeEventListener("blockgo:chairperson-review-changed", refreshReviewData);
+      window.removeEventListener("storage", handleStorage);
+    };
+  }, []);
 
   useEffect(() => {
     const applyEncodingPeriod = (value) => {
@@ -301,6 +333,25 @@ function ChairpersonPortal({ onLogout, allGrades = {} }) {
 
     return monitoredRows;
   }, [activeTab, monitoredRows]);
+
+  useEffect(() => {
+    const reviewQueueTabs = ["forReview", "returned", "approved", "forwarded"];
+
+    if (!reviewQueueTabs.includes(activeTab)) return;
+
+    if (!filteredRows.length) {
+      if (selectedReviewKey) setSelectedReviewKey("");
+      return;
+    }
+
+    const selectedRowStillVisible = filteredRows.some(
+      (row) => row.reviewKey === selectedReviewKey
+    );
+
+    if (!selectedRowStillVisible) {
+      setSelectedReviewKey(filteredRows[0].reviewKey);
+    }
+  }, [activeTab, filteredRows, selectedReviewKey]);
 
   return (
     <div className="min-h-screen bg-[#f3f4f6]">

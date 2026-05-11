@@ -10,7 +10,18 @@ import {
   buildAssignmentStorageKey,
   buildReviewKey,
 } from "../utils/chairpersonHelpers";
-import { getSystemSetting } from "../services/api";
+import {
+  getSystemSetting,
+  submitFacultySectionToChairperson,
+} from "../services/api";
+
+const notifyChairpersonReviewChanged = (reviewData) => {
+  window.dispatchEvent(
+    new CustomEvent("blockgo:chairperson-review-changed", {
+      detail: { reviewData },
+    })
+  );
+};
 
 const buildStudentRosterSignature = (students = []) =>
   students
@@ -241,6 +252,7 @@ const FacultyPortal = ({ onLogout, allGrades, setAllGrades }) => {
       CHAIRPERSON_REVIEW_KEY,
       JSON.stringify(normalizedReviewData)
     );
+    notifyChairpersonReviewChanged(normalizedReviewData);
   }, [normalizedReviewData]);
 
   const getSectionProgress = (assignmentKey, sectionData) => {
@@ -261,18 +273,27 @@ const FacultyPortal = ({ onLogout, allGrades, setAllGrades }) => {
     return Math.round((encodedCount / sectionData.students.length) * 100);
   };
 
-  const submitSectionToChairperson = (assignmentKey, sectionData) => {
+  const submitSectionToChairperson = async (assignmentKey, sectionData) => {
     const reviewKey = getReviewKey(assignmentKey, sectionData);
+    const submittedAt = new Date().toISOString();
+
+    try {
+      await submitFacultySectionToChairperson({
+        department: sectionData.sectionCourse,
+        section: sectionData.sectionName,
+      });
+    } catch (error) {
+      console.warn("Backend section submission failed; keeping local review queue in sync.", error);
+    }
 
     setReviewData((prev) => {
       const previousRecord = prev[reviewKey] || {};
-
-      return {
+      const nextReviewData = {
         ...prev,
         [reviewKey]: {
           ...previousRecord,
           status: "submitted",
-          lastUpdated: new Date().toISOString(),
+          lastUpdated: submittedAt,
           facultyId: 1,
           facultyName: facultyFullName,
           assignmentKey,
@@ -285,6 +306,11 @@ const FacultyPortal = ({ onLogout, allGrades, setAllGrades }) => {
           studentRosterSignature: buildStudentRosterSignature(sectionData.students),
         },
       };
+
+      localStorage.setItem(CHAIRPERSON_REVIEW_KEY, JSON.stringify(nextReviewData));
+      notifyChairpersonReviewChanged(nextReviewData);
+
+      return nextReviewData;
     });
   };
 
