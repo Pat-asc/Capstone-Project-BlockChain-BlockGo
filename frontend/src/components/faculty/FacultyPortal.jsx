@@ -28,16 +28,23 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
   const [encodingSemester, setEncodingSemester] = useState("2nd Semester");
 
   useEffect(() => {
+    const parseLocalDate = (value, endOfDay = false) => {
+      if (!value) return null;
+      const [year, month, day] = String(value).split("-").map(Number);
+      if (!year || !month || !day) return null;
+      const date = new Date(year, month - 1, day);
+      if (endOfDay) date.setHours(23, 59, 59, 999);
+      else date.setHours(0, 0, 0, 0);
+      return date;
+    };
+
     const applyEncodingPeriod = (value) => {
       if (!value) return;
       const parsed = typeof value === 'string' ? JSON.parse(value) : value;
       setEncodingSemester(parsed.semester || "2nd Semester");
-      if (!parsed.startDate || !parsed.endDate) return;
-      setEncodingStart(new Date(parsed.startDate));
       setEncodingTerm(parsed.term === "finals" ? "finals" : "midterm");
-      const end = new Date(parsed.endDate);
-      end.setHours(23, 59, 59, 999);
-      setEncodingEnd(end);
+      setEncodingStart(parseLocalDate(parsed.startDate));
+      setEncodingEnd(parseLocalDate(parsed.endDate, true));
     };
 
     const loadEncodingPeriod = async () => {
@@ -56,10 +63,14 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
     };
 
     loadEncodingPeriod();
+    const refreshTimer = window.setInterval(loadEncodingPeriod, 10000);
     window.addEventListener('blockgo:system-setting-changed', handleSystemSettingChanged);
+    window.addEventListener('focus', loadEncodingPeriod);
 
     return () => {
+      window.clearInterval(refreshTimer);
       window.removeEventListener('blockgo:system-setting-changed', handleSystemSettingChanged);
+      window.removeEventListener('focus', loadEncodingPeriod);
     };
   }, []);
 
@@ -594,8 +605,13 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
         </div>
       ) : (
         <div className="animate-in fade-in duration-300 px-6 py-6">
-          <button className="mb-6 flex items-center gap-2 text-sm font-bold text-[#003366] hover:underline" onClick={() => setActiveSection(null)}>
-            Back to Sections
+          <button
+            className="mb-6 flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-2xl font-bold leading-none text-[#003366] shadow-sm transition hover:bg-slate-50"
+            onClick={() => setActiveSection(null)}
+            aria-label="Back to sections"
+            title="Back to sections"
+          >
+            {"<"}
           </button>
 
           <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">

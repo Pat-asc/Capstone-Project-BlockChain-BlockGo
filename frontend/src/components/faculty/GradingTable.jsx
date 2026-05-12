@@ -134,9 +134,11 @@ const GradingTable = ({
     <div className="px-4 pb-10 pt-6 md:px-6">
       <button
         onClick={onBack}
-        className="mb-4 w-full rounded-xl border border-red-200 bg-white px-4 py-2 font-semibold text-red-500 hover:bg-red-500 hover:text-white sm:w-auto"
+        className="mb-4 flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-2xl font-bold leading-none text-[#003366] shadow-sm transition hover:bg-slate-50"
+        aria-label="Back to sections"
+        title="Back to sections"
       >
-        Back to Sections
+        {"<"}
       </button>
 
       <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-md">

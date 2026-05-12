@@ -134,7 +134,11 @@ services:
     environment: 
       - IPFS_PROFILE=server
       - LIBP2P_FORCE_PNET=1
-    networks: [faculty-net, registrar-net]
+    networks:
+      faculty-net:
+        aliases:
+          - ipfs
+      registrar-net:
     ports: ["5003:5001","8083:8080"]
     volumes: 
       - "./ipfs_data/peer2:/data/ipfs"
@@ -211,6 +215,7 @@ services:
   nginx-shield-annex:
     image: nginx:stable-alpine
     container_name: nginx-shield-annex
+    restart: unless-stopped
     ports: ["8090:80"]
     volumes:
       - "../middleware/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro"
@@ -221,6 +226,12 @@ services:
       - "annex.capstone.com:${ANNEX_CAMPUS_IP}"
       - "pubad.capstone.com:${PUBAD_CAMPUS_IP}"
     networks: [faculty-net]
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1/nginx-health || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
 
   faculty-chaincode:
     container_name: faculty-chaincode

@@ -75,15 +75,17 @@ const FacultyPortal = ({ onLogout, allGrades, setAllGrades }) => {
     return saved ? JSON.parse(saved) : {};
   });
 
-  const encodingData = useMemo(() => {
+  const [encodingData, setEncodingData] = useState(() => {
     const saved = localStorage.getItem("encodingPeriod");
     return saved ? JSON.parse(saved) : null;
-  }, []);
+  });
 
   useEffect(() => {
     const applyEncodingPeriod = (value) => {
       if (!value) return;
       const parsed = typeof value === "string" ? JSON.parse(value) : value;
+      localStorage.setItem("encodingPeriod", JSON.stringify(parsed));
+      setEncodingData(parsed);
       setSystemSettings((current) => ({
         ...current,
         semester: parsed?.semester || "2nd Semester",
@@ -108,10 +110,15 @@ const FacultyPortal = ({ onLogout, allGrades, setAllGrades }) => {
     };
 
     loadEncodingPeriod();
+    const refreshTimer = window.setInterval(loadEncodingPeriod, 10000);
     window.addEventListener("blockgo:system-setting-changed", handleSystemSettingChanged);
+    window.addEventListener("focus", loadEncodingPeriod);
 
-    return () =>
+    return () => {
+      window.clearInterval(refreshTimer);
       window.removeEventListener("blockgo:system-setting-changed", handleSystemSettingChanged);
+      window.removeEventListener("focus", loadEncodingPeriod);
+    };
   }, []);
 
   const systemTerm =
@@ -332,13 +339,18 @@ const FacultyPortal = ({ onLogout, allGrades, setAllGrades }) => {
     }
   );
 
-  const ENCODING_START = encodingData?.startDate
-    ? new Date(`${encodingData.startDate}T00:00:00`)
-    : null;
+  const parseLocalDate = (value, endOfDay = false) => {
+    if (!value) return null;
+    const [year, month, day] = String(value).split("-").map(Number);
+    if (!year || !month || !day) return null;
+    const date = new Date(year, month - 1, day);
+    if (endOfDay) date.setHours(23, 59, 59, 999);
+    else date.setHours(0, 0, 0, 0);
+    return date;
+  };
 
-  const ENCODING_END = encodingData?.endDate
-    ? new Date(`${encodingData.endDate}T23:59:59`)
-    : null;
+  const ENCODING_START = parseLocalDate(encodingData?.startDate);
+  const ENCODING_END = parseLocalDate(encodingData?.endDate, true);
 
   const now = new Date();
 

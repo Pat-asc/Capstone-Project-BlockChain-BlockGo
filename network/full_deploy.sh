@@ -31,7 +31,7 @@ cleanup_processes() {
     done
     pkill -f dotnet || true
     docker compose -f docker-compose-main.yaml -f docker-compose-annex.yaml -f docker-compose-pubad.yaml down -v --remove-orphans 2>/dev/null || true
-    docker rm -f -v couchdb_wallet couchdb_wallet_faculty couchdb_wallet_department blockgo-middleware 2>/dev/null || true
+    docker rm -f -v couchdb_wallet couchdb_wallet_faculty couchdb_wallet_department blockgo-middleware nginx-shield-main-failover nginx-shield-annex-failover nginx-shield-pubad-failover 2>/dev/null || true
     log_info "All processes stopped and volumes wiped."
 }
 
@@ -115,7 +115,7 @@ log_warn "Wiping previous CA databases and crypto material..."
 pkill -f dotnet || true
 
 docker compose -f docker-compose-main.yaml -f docker-compose-annex.yaml -f docker-compose-pubad.yaml down -v --remove-orphans 2>/dev/null || true
-docker rm -f -v couchdb_wallet couchdb_wallet_faculty couchdb_wallet_department blockgo-middleware 2>/dev/null || true
+docker rm -f -v couchdb_wallet couchdb_wallet_faculty couchdb_wallet_department blockgo-middleware nginx-shield-main-failover nginx-shield-annex-failover nginx-shield-pubad-failover 2>/dev/null || true
 rm -rf ./fabric-ca/registrar/* ./fabric-ca/faculty/* ./fabric-ca/department/* 2>/dev/null || true
 rm -rf "$CRYPTO_DIR" "$ARTIFACTS_DIR" 2>/dev/null || true
 rm -rf ../middleware/wallet 2>/dev/null || true
@@ -412,6 +412,14 @@ wait_for_service 127.0.0.1 7051 "Peer0 Registrar" 60
 wait_for_service 127.0.0.1 5990 "CouchDB Wallet Registrar" 60
 wait_for_service 127.0.0.1 6990 "CouchDB Wallet Faculty" 60
 wait_for_service 127.0.0.1 7990 "CouchDB Wallet Department" 60
+wait_for_service 127.0.0.1 8080 "Nginx Shield Main" 60
+wait_for_service 127.0.0.1 8090 "Nginx Shield Annex" 60
+wait_for_service 127.0.0.1 8100 "Nginx Shield Pubad" 60
+
+chmod +x ./nginx_failover_watchdog.sh
+./nginx_failover_watchdog.sh &
+PIDS+=($!)
+log_info "Nginx failover watchdog started. If 8080, 8090, or 8100 goes down, refreshes on that port will redirect to a live shield."
 
 log_info "Waiting 15 seconds for Raft leader election..."
 sleep 15
