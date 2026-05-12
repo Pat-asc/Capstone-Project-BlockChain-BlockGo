@@ -488,7 +488,7 @@ namespace BlockGo.Controllers
                                 line = line.Trim();
                                 if (string.IsNullOrEmpty(line)) continue;
 
-                                var fields = line.Split(',');
+                                var fields = ParseCsvLine(line);
                                 if (lineNum == 1)
                                 {
                                     headerMap = new Dictionary<string, int>();
@@ -722,6 +722,42 @@ namespace BlockGo.Controllers
                 _logger.LogError(ex, "CSV upload failed");
                 return StatusCode(500, new { status = "Error", message = ex.Message });
             }
+        }
+
+        private static string[] ParseCsvLine(string line)
+        {
+            var fields = new List<string>();
+            var current = new StringBuilder();
+            var inQuotes = false;
+
+            for (int i = 0; i < line.Length; i++)
+            {
+                var c = line[i];
+                if (c == '"')
+                {
+                    if (inQuotes && i + 1 < line.Length && line[i + 1] == '"')
+                    {
+                        current.Append('"');
+                        i++;
+                    }
+                    else
+                    {
+                        inQuotes = !inQuotes;
+                    }
+                }
+                else if (c == ',' && !inQuotes)
+                {
+                    fields.Add(current.ToString());
+                    current.Clear();
+                }
+                else
+                {
+                    current.Append(c);
+                }
+            }
+
+            fields.Add(current.ToString());
+            return fields.ToArray();
         }
 
         private string? GetCsvField(string[] fields, Dictionary<string, int>? headerMap, string fieldName)

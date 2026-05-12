@@ -56,6 +56,42 @@ namespace BlockGo.Controllers
             return hash.Substring(0, 8) + "..." + hash.Substring(hash.Length - 4);
         }
 
+        private static string[] ParseCsvLine(string line)
+        {
+            var fields = new List<string>();
+            var current = new StringBuilder();
+            var inQuotes = false;
+
+            for (int i = 0; i < line.Length; i++)
+            {
+                var c = line[i];
+                if (c == '"')
+                {
+                    if (inQuotes && i + 1 < line.Length && line[i + 1] == '"')
+                    {
+                        current.Append('"');
+                        i++;
+                    }
+                    else
+                    {
+                        inQuotes = !inQuotes;
+                    }
+                }
+                else if (c == ',' && !inQuotes)
+                {
+                    fields.Add(current.ToString());
+                    current.Clear();
+                }
+                else
+                {
+                    current.Append(c);
+                }
+            }
+
+            fields.Add(current.ToString());
+            return fields.ToArray();
+        }
+
         [HttpPost("bulk-upload")]
         [Consumes("multipart/form-data")]
         public async Task<IActionResult> BulkUploadGrades([FromForm] IFormFile file, [FromForm] string? semester, [FromForm] string? schoolYear, [FromForm] string? yearLevel, [FromForm] string? section)
@@ -90,12 +126,14 @@ namespace BlockGo.Controllers
                     if (ext == ".csv") {
                         using var reader = new StreamReader(tempFile);
                         var header = await reader.ReadLineAsync();
-                        var headerFields = header?.Split(',').Select(f => f?.Trim().ToLower().Replace(" ", "_") ?? "").ToList();
+                        var headerFields = header == null
+                            ? new List<string>()
+                            : ParseCsvLine(header).Select(f => f?.Trim().ToLower().Replace(" ", "_") ?? "").ToList();
                         
                         while (!reader.EndOfStream) {
                             var line = await reader.ReadLineAsync();
                             if (string.IsNullOrEmpty(line)) continue;
-                            var parts = line.Split(',');
+                            var parts = ParseCsvLine(line);
                             if (parts.Length < 2) continue;
 
                             var getVal = (string col) => {
