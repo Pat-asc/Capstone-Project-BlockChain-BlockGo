@@ -403,12 +403,20 @@ export const fetchDepartmentTemplates = async (department) => {
     return await fetchWithAuth(`/GradeTemplate/department/${encodeURIComponent(department)}`);
 };
 
+export const createGradeTemplate = async (payload) => {
+    return await fetchWithAuth(`/GradeTemplate/create`, {
+        method: 'POST',
+        body: JSON.stringify(payload),
+    });
+};
+
 export const reviewTemplate = async (id, status) => {
     return await fetchWithAuth(`/GradeTemplate/${encodeURIComponent(id)}/review`, {
         method: 'PUT',
         body: JSON.stringify({ status })
     });
 };
+
 
 export const getSystemSetting = async (key) => {
     return await fetchWithAuth(`/SystemSettings/${encodeURIComponent(key)}`);
