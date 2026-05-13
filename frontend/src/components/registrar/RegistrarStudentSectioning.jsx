@@ -4,6 +4,7 @@ import {
   STUDENT_BATCHES_KEY,
   YEAR_LEVEL_PREFIXES,
   buildStudentCsvContent,
+  downloadCsvFile,
   downloadStudentCsvFile,
   getDefaultSectionName,
   parseStudentIdSpreadsheet,
@@ -957,18 +958,9 @@ function RegistrarStudentSectioning({
         yearLevel: selectedYearLevel,
       },
     ];
-    const csvContent = buildStudentCsvContent(templateRows);
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
     const fileName = `${chairpersonDepartment || "student"}-${selectedYearLevel.replace(/\s+/g, "-").toLowerCase()}-section-template.csv`;
 
-    link.href = url;
-    link.setAttribute("download", fileName);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+    downloadCsvFile(buildStudentCsvContent(templateRows), fileName);
   };
 
   const handleImportSectionCsv = (sectionCode) => {

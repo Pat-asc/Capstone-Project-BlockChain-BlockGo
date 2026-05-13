@@ -5082,3 +5082,56 @@ DenyAnonymousAuthorizationRequirement: Requires an authenticated user.
 2026-05-13 12:43:55.942 +00:00 [INF] Executed endpoint '/chatHub'
 2026-05-13 12:43:55.944 +00:00 [INF] HTTP GET /chatHub responded 101 in 76562.4465 ms
 2026-05-13 12:43:55.949 +00:00 [INF] Request finished HTTP/1.1 GET http://host.docker.internal:5000/chatHub?id=7-VTN8zyMAbmju2ZSf83yw&access_token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6Imp1bG1hcm1vcmRpbjMxMUBnbWFpbC5jb20iLCJyb2xlIjoiRGVwYXJ0bWVudE1TUCIsImRiUm9sZSI6ImRlcGFydG1lbnRfYWRtaW4iLCJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1laWRlbnRpZmllciI6Imp1bG1hcm1vcmRpbjMxMUBnbWFpbC5jb20iLCJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1lIjoianVsbWFybW9yZGluMzExQGdtYWlsLmNvbSIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL2VtYWlsYWRkcmVzcyI6Imp1bG1hcm1vcmRpbjMxMUBnbWFpbC5jb20iLCJodHRwOi8vc2NoZW1hcy5taWNyb3NvZnQuY29tL3dzLzIwMDgvMDYvaWRlbnRpdHkvY2xhaW1zL3JvbGUiOiJkZXBhcnRtZW50X2FkbWluIiwiaWF0IjoxNzc4Njc2MTU5LCJleHAiOjE3Nzg3MTkzNTl9.OYrrESDSGUfvsCnhrq1S-fvLuU5mto1j6uK9OsqJcec - 101 null null 76571.8227ms
+2026-05-13 14:39:35.176 +00:00 [INF] Application starting up...
+2026-05-13 14:39:36.259 +00:00 [INF] HSTS enabled (HTTPS Redirection disabled for Nginx)
+2026-05-13 14:39:38.539 +00:00 [INF] Application configured successfully
+2026-05-13 14:39:38.543 +00:00 [INF] Listening on 
+2026-05-13 14:39:38.814 +00:00 [WRN] Storing keys in a directory '/root/.aspnet/DataProtection-Keys' that may not be persisted outside of the container. Protected data will be unavailable when container is destroyed. For more information go to https://aka.ms/aspnet/dataprotectionwarning
+2026-05-13 14:39:38.819 +00:00 [INF] User profile is available. Using '/root/.aspnet/DataProtection-Keys' as key repository; keys will not be encrypted at rest.
+2026-05-13 14:39:38.870 +00:00 [INF] Creating key {e3a8e0df-5aac-4277-8522-4ae2b9d03b7e} with creation date 2026-05-13 14:39:38Z, activation date 2026-05-13 14:39:38Z, and expiration date 2026-08-11 14:39:38Z.
+2026-05-13 14:39:38.909 +00:00 [WRN] No XML encryptor configured. Key {e3a8e0df-5aac-4277-8522-4ae2b9d03b7e} may be persisted to storage in unencrypted form.
+2026-05-13 14:39:38.922 +00:00 [INF] Writing data to file '/root/.aspnet/DataProtection-Keys/key-e3a8e0df-5aac-4277-8522-4ae2b9d03b7e.xml'.
+2026-05-13 14:39:38.964 +00:00 [WRN] Overriding HTTP_PORTS '8080' and HTTPS_PORTS ''. Binding to values defined by URLS instead 'http://0.0.0.0:5000'.
+2026-05-13 14:39:39.133 +00:00 [INF] Now listening on: http://0.0.0.0:5000
+2026-05-13 14:39:39.134 +00:00 [INF] Application started. Press Ctrl+C to shut down.
+2026-05-13 14:39:39.135 +00:00 [INF] Hosting environment: Production
+2026-05-13 14:39:39.136 +00:00 [INF] Content root path: /app
+2026-05-13 15:05:06.253 +00:00 [INF] Request starting HTTP/1.1 GET http://localhost/api/Auth/user-profile?email=registrar%40plv.edu.ph&role=registrar - application/json null
+2026-05-13 15:05:06.585 +00:00 [INF] Failed to validate the token.
+Microsoft.IdentityModel.Tokens.SecurityTokenExpiredException: IDX10223: Lifetime validation failed. The token is expired. ValidTo (UTC): '05/12/2026 16:38:08', Current time (UTC): '05/13/2026 15:05:06'.
+   at Microsoft.IdentityModel.Tokens.Validators.ValidateLifetime(Nullable`1 notBefore, Nullable`1 expires, SecurityToken securityToken, TokenValidationParameters validationParameters)
+   at Microsoft.IdentityModel.JsonWebTokens.JsonWebTokenHandler.ValidateTokenPayloadAsync(JsonWebToken jsonWebToken, TokenValidationParameters validationParameters, BaseConfiguration configuration)
+   at Microsoft.IdentityModel.JsonWebTokens.JsonWebTokenHandler.ValidateJWSAsync(JsonWebToken jsonWebToken, TokenValidationParameters validationParameters, BaseConfiguration configuration)
+2026-05-13 15:05:06.626 +00:00 [INF] Bearer was not authenticated. Failure message: IDX10223: Lifetime validation failed. The token is expired. ValidTo (UTC): '05/12/2026 16:38:08', Current time (UTC): '05/13/2026 15:05:06'.
+2026-05-13 15:05:06.637 +00:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone)'
+2026-05-13 15:05:06.677 +00:00 [INF] Route matched with {action = "GetUserProfile", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetUserProfile(System.String, System.String) on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-05-13 15:05:07.509 +00:00 [INF] Executing OkObjectResult, writing value of type '<>f__AnonymousType21`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[Client_app.Models.UserProfileDto, For_Testing_Only_Capstone, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]'.
+2026-05-13 15:05:07.603 +00:00 [INF] Executed action Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone) in 914.9232ms
+2026-05-13 15:05:07.612 +00:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone)'
+2026-05-13 15:05:07.617 +00:00 [INF] HTTP GET /api/Auth/user-profile responded 200 in 1285.3231 ms
+2026-05-13 15:05:07.626 +00:00 [INF] Request finished HTTP/1.1 GET http://localhost/api/Auth/user-profile?email=registrar%40plv.edu.ph&role=registrar - 200 null application/json; charset=utf-8 1378.8415ms
+2026-05-13 15:05:07.809 +00:00 [INF] Request starting HTTP/1.1 GET http://localhost/api/Grades/all?invokerId=registrar%40plv.edu.ph - application/json null
+2026-05-13 15:05:07.810 +00:00 [INF] Request starting HTTP/1.1 POST http://host.docker.internal:5000/chatHub/negotiate?negotiateVersion=1 - null 0
+2026-05-13 15:05:07.818 +00:00 [INF] CORS policy execution successful.
+2026-05-13 15:05:07.825 +00:00 [INF] Failed to validate the token.
+Microsoft.IdentityModel.Tokens.SecurityTokenExpiredException: IDX10223: Lifetime validation failed. The token is expired. ValidTo (UTC): '05/12/2026 16:38:08', Current time (UTC): '05/13/2026 15:05:07'.
+   at Microsoft.IdentityModel.Tokens.Validators.ValidateLifetime(Nullable`1 notBefore, Nullable`1 expires, SecurityToken securityToken, TokenValidationParameters validationParameters)
+   at Microsoft.IdentityModel.JsonWebTokens.JsonWebTokenHandler.ValidateTokenPayloadAsync(JsonWebToken jsonWebToken, TokenValidationParameters validationParameters, BaseConfiguration configuration)
+   at Microsoft.IdentityModel.JsonWebTokens.JsonWebTokenHandler.ValidateJWSAsync(JsonWebToken jsonWebToken, TokenValidationParameters validationParameters, BaseConfiguration configuration)
+2026-05-13 15:05:07.828 +00:00 [INF] Bearer was not authenticated. Failure message: IDX10223: Lifetime validation failed. The token is expired. ValidTo (UTC): '05/12/2026 16:38:08', Current time (UTC): '05/13/2026 15:05:07'.
+2026-05-13 15:05:07.830 +00:00 [INF] Failed to validate the token.
+Microsoft.IdentityModel.Tokens.SecurityTokenExpiredException: IDX10223: Lifetime validation failed. The token is expired. ValidTo (UTC): '05/12/2026 16:38:08', Current time (UTC): '05/13/2026 15:05:07'.
+   at Microsoft.IdentityModel.Tokens.Validators.ValidateLifetime(Nullable`1 notBefore, Nullable`1 expires, SecurityToken securityToken, TokenValidationParameters validationParameters)
+   at Microsoft.IdentityModel.JsonWebTokens.JsonWebTokenHandler.ValidateTokenPayloadAsync(JsonWebToken jsonWebToken, TokenValidationParameters validationParameters, BaseConfiguration configuration)
+   at Microsoft.IdentityModel.JsonWebTokens.JsonWebTokenHandler.ValidateJWSAsync(JsonWebToken jsonWebToken, TokenValidationParameters validationParameters, BaseConfiguration configuration)
+2026-05-13 15:05:07.832 +00:00 [INF] Bearer was not authenticated. Failure message: IDX10223: Lifetime validation failed. The token is expired. ValidTo (UTC): '05/12/2026 16:38:08', Current time (UTC): '05/13/2026 15:05:07'.
+2026-05-13 15:05:07.842 +00:00 [INF] Authorization failed. These requirements were not met:
+DenyAnonymousAuthorizationRequirement: Requires an authenticated user.
+2026-05-13 15:05:07.842 +00:00 [INF] Authorization failed. These requirements were not met:
+DenyAnonymousAuthorizationRequirement: Requires an authenticated user.
+2026-05-13 15:05:07.857 +00:00 [INF] AuthenticationScheme: Bearer was challenged.
+2026-05-13 15:05:07.857 +00:00 [INF] AuthenticationScheme: Bearer was challenged.
+2026-05-13 15:05:07.858 +00:00 [INF] HTTP GET /api/Grades/all responded 401 in 43.3851 ms
+2026-05-13 15:05:07.858 +00:00 [INF] HTTP POST /chatHub/negotiate responded 401 in 45.8556 ms
+2026-05-13 15:05:07.860 +00:00 [INF] Request finished HTTP/1.1 GET http://localhost/api/Grades/all?invokerId=registrar%40plv.edu.ph - 401 0 null 50.9678ms
+2026-05-13 15:05:07.862 +00:00 [INF] Request finished HTTP/1.1 POST http://host.docker.internal:5000/chatHub/negotiate?negotiateVersion=1 - 401 0 null 52.9175ms

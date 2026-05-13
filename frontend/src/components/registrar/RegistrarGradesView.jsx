@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { fetchAllGrades, finalizeGrade, fetchPendingRequests, approveRegistrationRequest, denyRegistrationRequest, fetchApprovedStudents, assignStudent, fetchApprovedAdmins, assignDepartmentAdmin, fetchApprovedFaculties, assignFaculty, dropStudent, getDecryptedIpfsUrl, fetchStagedGrades, finalizeStagedGrades, getSystemSetting } from '../../services/api';
+import { fetchAllGrades, finalizeGrade, fetchPendingRequests, approveRegistrationRequest, denyRegistrationRequest, fetchApprovedStudents, assignStudent, fetchApprovedAdmins, assignDepartmentAdmin, fetchApprovedFaculties, assignFaculty, dropStudent, getDecryptedIpfsUrl, fetchStagedGrades, finalizeStagedGrades, getSystemSetting, registrarBulkEnrollStudents } from '../../services/api';
 import RegistrarHeader from './RegistrarHeader';
 import RegistrarSidebar from './RegistrarSidebar';
 import RegistrarDashboard from './RegistrarDashboard';
@@ -11,6 +11,7 @@ import Modal from '../../services/Modal';
 import RegistrarStudentSectioning from './RegistrarStudentSectioning';
 import RegistrarSectionsCreated from './RegistrarSectionsCreated';
 import { downloadTemplateButtonClass } from '../shared/downloadButtonStyles';
+import { buildCsvContent, downloadCsvFile } from '../../utils/studentSectioningHelpers';
 
 const HoverableID = ({ fullId, isAuthorized }) => {
     const [isRevealed, setIsRevealed] = useState(false);
@@ -55,6 +56,8 @@ const RegistrarGradesView = ({
     const [stagedGrades, setStagedGrades] = useState([]);
     const [stagedLoading, setStagedLoading] = useState(false);
     const [activeSemester, setActiveSemester] = useState('2nd Semester');
+    const [bulkEnrollLoading, setBulkEnrollLoading] = useState(false);
+    const [bulkEnrollResult, setBulkEnrollResult] = useState(null);
 
     const [filterDept, setFilterDept] = useState('All');
     const [filterYear, setFilterYear] = useState('All');
@@ -376,6 +379,49 @@ const RegistrarGradesView = ({
         } catch (error) { alert("Failed to export PDF."); }
     };
 
+    const handleDownloadBulkEnrollmentTemplate = () => {
+        const rows = [
+            ['student_no', 'full_name', 'email', 'date_of_birth', 'department', 'section'],
+            ['26-0001', 'Juan Dela Cruz', '26-0001@plv.edu.ph', '2005-05-15', sectioningDepartment, '1-1'],
+            ['26-0002', 'Maria Santos', '26-0002@plv.edu.ph', '2005-08-20', sectioningDepartment, '1-1'],
+        ];
+
+        downloadCsvFile(
+            buildCsvContent(rows),
+            `${sectioningDepartment || 'students'}-bulk-enrollment-template.csv`
+        );
+    };
+
+    const handleBulkEnroll = () => {
+        if (bulkEnrollLoading) return;
+
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = '.csv,.xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel';
+
+        input.onchange = async (event) => {
+            const file = event.target.files?.[0];
+            if (!file) return;
+
+            setBulkEnrollLoading(true);
+            setBulkEnrollResult(null);
+
+            try {
+                const result = await registrarBulkEnrollStudents(file, sectioningDepartment);
+                setBulkEnrollResult(result);
+                alert(result.message || 'Bulk enrollment completed.');
+            } catch (error) {
+                const message = error.message || 'Bulk enrollment failed.';
+                setBulkEnrollResult({ status: 'Error', message, failed: 1, successful: 0 });
+                alert(message);
+            } finally {
+                setBulkEnrollLoading(false);
+            }
+        };
+
+        input.click();
+    };
+
     return (
         <div className="flex h-screen w-full flex-col bg-slate-50 font-sans fixed inset-0 z-[100] overflow-auto">
             <RegistrarHeader registrarData={{ name: loggedInName, semester: activeSemester }} onLogout={() => { localStorage.removeItem('token'); window.location.reload(); }} />
@@ -417,18 +463,30 @@ const RegistrarGradesView = ({
                                     <div className="flex flex-wrap gap-3">
                                         <button
                                             type="button"
+                                            onClick={handleBulkEnroll}
+                                            disabled={bulkEnrollLoading}
                                             className="inline-flex items-center justify-center rounded-xl bg-[#003366] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#00264d]"
                                         >
-                                            Bulk Enroll
+                                            {bulkEnrollLoading ? 'Uploading...' : 'Bulk Enroll'}
                                         </button>
                                         <button
                                             type="button"
+                                            onClick={handleDownloadBulkEnrollmentTemplate}
                                             className={downloadTemplateButtonClass}
                                         >
                                             Download Template
                                         </button>
                                     </div>
                                 </div>
+                                {bulkEnrollResult ? (
+                                    <div className={`mt-4 rounded-xl border p-4 text-sm ${bulkEnrollResult.status === 'Error' || bulkEnrollResult.failed > 0 ? 'border-yellow-300 bg-yellow-50 text-yellow-800' : 'border-emerald-200 bg-emerald-50 text-emerald-800'}`}>
+                                        <p className="font-semibold">{bulkEnrollResult.status}</p>
+                                        <p>{bulkEnrollResult.message}</p>
+                                        {typeof bulkEnrollResult.successful !== 'undefined' ? (
+                                            <p className="mt-1">Successful: {bulkEnrollResult.successful} | Failed: {bulkEnrollResult.failed || 0}</p>
+                                        ) : null}
+                                    </div>
+                                ) : null}
                             </div>
                             <RegistrarStudentSectioning chairpersonDepartment={sectioningDepartment} />
                         </div>

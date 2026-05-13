@@ -184,6 +184,13 @@ export const getHealthStatus = async () => {
     return await fetchPublic('/health');
 };
 
+export const registerFabricUser = async ({ email, role, password }) => {
+    return await fetchWithAuth('/fabric/register-user', {
+        method: 'POST',
+        body: JSON.stringify({ email, role, password })
+    });
+};
+
 // ==================== C# BACKEND API - REGISTRATION & PROFILES ====================
 // These endpoints route to C# backend through Nginx
 
@@ -368,6 +375,14 @@ export const batchUploadStudents = async (file, defaultDepartment = '') => {
         method: 'POST',
         body: formData 
     });
+};
+
+export const bulkEnrollStudents = async (file, defaultDepartment = '') => {
+    return await batchUploadStudents(file, defaultDepartment);
+};
+
+export const registrarBulkEnrollStudents = async (file, department = '') => {
+    return await bulkEnrollStudents(file, department);
 };
 
 export const bulkUploadMasterlist = async (file, department = '') => {

@@ -3,6 +3,7 @@ import {
   STUDENT_BATCHES_KEY,
   STUDENT_SUBMISSION_LOGS_KEY,
   buildStudentCsvContent,
+  downloadCsvFile,
   parseStudentIdSpreadsheet,
   syncSectionedStudentsToStorage,
 } from "../../utils/studentSectioningHelpers";
@@ -168,23 +169,27 @@ function StudentListImport({ selectedProgram = "", onImportComplete }) {
       return;
     }
 
-    const csvContent =
-      "Student ID,Sex,Last Name,First Name,Middle Initial\n" +
-      "26-0001,Male,Dela Cruz,Juan,A\n" +
-      "26-0002,Female,Santos,Maria,L\n";
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
+    const templateRows = [
+      {
+        studentId: "26-0001",
+        sex: "Male",
+        lastName: "Dela Cruz",
+        firstName: "Juan",
+        middleInitial: "A",
+      },
+      {
+        studentId: "26-0002",
+        sex: "Female",
+        lastName: "Santos",
+        firstName: "Maria",
+        middleInitial: "L",
+      },
+    ];
 
-    link.href = url;
-    link.setAttribute(
-      "download",
+    downloadCsvFile(
+      buildStudentCsvContent(templateRows, { includeYearLevel: false }),
       `${selectedProgram}-${selectedBatchYear}-student-list.csv`
     );
-
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
   };
 
   const handleImport = () => {
