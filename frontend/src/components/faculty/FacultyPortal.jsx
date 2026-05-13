@@ -6,6 +6,27 @@ import FacultyHeader from './FacultyHeader';
 import YearTabs from './YearTabs';
 import ProgramCard from './ProgramCard';
 
+const normalizeYearLabel = (value) => {
+  const raw = String(value || '').trim();
+  if (!raw) return "N/A";
+
+  const normalized = raw.toLowerCase();
+  if (normalized === "1" || normalized === "1st" || normalized === "1st year") {
+    return "1st Year";
+  }
+  if (normalized === "2" || normalized === "2nd" || normalized === "2nd year") {
+    return "2nd Year";
+  }
+  if (normalized === "3" || normalized === "3rd" || normalized === "3rd year") {
+    return "3rd Year";
+  }
+  if (normalized === "4" || normalized === "4th" || normalized === "4th year") {
+    return "4th Year";
+  }
+
+  return raw;
+};
+
 const FacultyPortal = ({ facultyData, onLogout }) => {
   const [activeSection, setActiveSection] = useState(null);
   const [activeTab, setActiveTab] = useState("All Sections");
@@ -154,7 +175,7 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
         });
 
         newSections[sectionKey] = {
-          year: sec.yearLevel ? `${sec.yearLevel} Year` : "N/A",
+          year: normalizeYearLabel(sec.yearLevel),
           subjectCode: sec.subject || `${sec.department}-${sec.section}`, 
           subjectTitle: sec.subject || `Assigned Subject (${sec.department})`, 
           sectionCourse: sec.department,
@@ -503,9 +524,9 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
         onLogout={onLogout}
       />
 
-      <div className="mx-auto max-w-7xl">
+      <div className="w-full px-4 md:px-6">
         {bannerState === 'not_set' && (
-          <div className="mx-6 mt-5 flex items-center gap-4 rounded-xl border-l-4 border-slate-400 bg-white p-4 text-slate-800 shadow-sm">
+          <div className="mt-5 flex items-center gap-4 rounded-xl border-l-4 border-slate-400 bg-white p-4 text-slate-800 shadow-sm">
             <div>
               <strong className="block text-lg">Grade Encoding Period is not set</strong>
               <p className="mt-1 text-sm">The registrar has not opened an encoding schedule yet.</p>
@@ -514,7 +535,7 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
         )}
 
         {bannerState === 'closed_after' && (
-          <div className="mx-6 mt-5 flex items-center gap-4 rounded-xl border-l-4 border-red-500 bg-red-50 p-4 text-red-900 shadow-sm">
+          <div className="mt-5 flex items-center gap-4 rounded-xl border-l-4 border-red-500 bg-red-50 p-4 text-red-900 shadow-sm">
             <div className="text-2xl">LOCKED</div>
             <div>
               <strong className="block text-lg">Grade Encoding Period is currently Closed</strong>
@@ -524,7 +545,7 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
         )}
 
         {bannerState === 'closed_before' && (
-          <div className="mx-6 mt-5 flex items-center gap-4 rounded-xl border-l-4 border-slate-500 bg-slate-50 p-4 text-slate-800 shadow-sm">
+          <div className="mt-5 flex items-center gap-4 rounded-xl border-l-4 border-slate-500 bg-slate-50 p-4 text-slate-800 shadow-sm">
             <div>
               <strong className="block text-lg">Grade Encoding Period has not started yet</strong>
               <p className="mt-1 text-sm">Encoding opens on <strong>{formatDate(encodingStart)}</strong>. Please check back then.</p>
@@ -533,7 +554,7 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
         )}
 
         {bannerState === 'open' && (
-          <div className="mx-6 mt-5 flex items-center gap-4 rounded-xl border-l-4 border-green-500 bg-green-50 p-4 text-green-900 shadow-sm">
+          <div className="mt-5 flex items-center gap-4 rounded-xl border-l-4 border-green-500 bg-green-50 p-4 text-green-900 shadow-sm">
             <div>
               <strong className="block text-lg">Grade Encoding Period is Open!</strong>
               <p className="mt-1 text-sm">Finalize your section grades and upload to the Registrar by <strong>{formatDate(encodingEnd)}</strong></p>
@@ -542,7 +563,7 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
         )}
 
         {bannerState === 'urgent' && (
-          <div className="mx-6 mt-5 flex items-center gap-4 rounded-xl border-l-4 border-yellow-500 bg-yellow-50 p-4 text-yellow-900 shadow-sm">
+          <div className="mt-5 flex items-center gap-4 rounded-xl border-l-4 border-yellow-500 bg-yellow-50 p-4 text-yellow-900 shadow-sm">
             <div>
               <strong className="block text-lg">Encoding Deadline in {daysLeft} {daysLeft === 1 ? 'Day' : 'Days'}!</strong>
               <p className="mt-1 text-sm">You have <strong>{daysLeft} {daysLeft === 1 ? 'day' : 'days'}</strong> left to submit grades before the deadline on <strong>{formatDate(encodingEnd)}</strong>. Please upload immediately.</p>
@@ -551,21 +572,19 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
         )}
 
       {!activeSection ? (
-        <div className="px-6 py-4">
-          <div className="mt-6 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+        <div className="py-4">
+          <div className="mt-6 grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_440px] xl:items-center">
             <YearTabs
               activeTab={activeTab}
               setActiveTab={setActiveTab}
               sections={Object.values(sections)}
-              className="mt-0 flex-1 px-0 py-0"
+              className="mt-0 min-w-0 py-0"
             />
 
-            <div className="relative w-full lg:w-80 lg:flex-shrink-0">
+            <div className="relative w-full xl:justify-self-end">
               <input type="text" placeholder="Search for a section..." className="w-full rounded-xl border border-slate-300 py-3 pl-10 pr-4 outline-none focus:border-[#003366] focus:ring-2 focus:ring-[#003366]/20" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
             </div>
           </div>
-
-          <h2 className="mb-4 text-2xl font-bold text-[#003366]">{searchQuery ? `Results for "${searchQuery}"` : `${activeTab}`}</h2>
 
           <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
             {isLoadingData ? (
@@ -604,14 +623,14 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
           </div>
         </div>
       ) : (
-        <div className="animate-in fade-in duration-300 px-6 py-6">
+        <div className="animate-in fade-in duration-300 py-6">
           <button
-            className="mb-6 flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-2xl font-bold leading-none text-[#003366] shadow-sm transition hover:bg-slate-50"
+            className="mb-6 inline-flex items-center rounded-xl bg-yellow-400 px-5 py-3 text-sm font-bold text-[#003366] shadow-sm transition duration-200 hover:-translate-y-0.5 hover:bg-yellow-500 hover:shadow-md"
             onClick={() => setActiveSection(null)}
-            aria-label="Back to sections"
-            title="Back to sections"
+            aria-label="Back to section"
+            title="Back to section"
           >
-            {"<"}
+            Back to Sections
           </button>
 
           <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
@@ -645,23 +664,9 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
                       </button>
                     </div>
 
-                    <button onClick={() => handleExportClassGrades(activeSection)} className="rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm font-bold text-slate-700 transition hover:bg-slate-50">
-                      Export CSV
-                    </button>
                     <button onClick={() => handleExportPDFClassGrades(activeSection)} className="rounded-lg border border-emerald-600 bg-white px-4 py-2.5 text-sm font-bold text-emerald-700 transition hover:bg-emerald-50">
                       Export PDF
-                    </button>
-                    <button className="rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-blue-700 disabled:opacity-50" onClick={() => handleSaveAll(activeSection)} disabled={hasValidationErrors(activeSection) || isClosed}>
-                       Save All (Draft)
-                    </button>
-                    <button className="rounded-lg bg-[#003366] px-5 py-2.5 text-sm font-bold text-white transition hover:bg-[#00264d] disabled:opacity-50" onClick={() => handleSubmit(activeSection)} disabled={hasValidationErrors(activeSection) || isClosed}>
-                       Submit to Chairperson
-                    </button>
-                    {currentStatus === 'submitted' && (
-                      <button className="rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-emerald-700" onClick={() => handleFinalize(activeSection)}>
-                         Finalize & Lock
-                      </button>
-                    )}
+                    </button> 
                   </>
                 )}
               </div>

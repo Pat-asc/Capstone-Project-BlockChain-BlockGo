@@ -66,13 +66,6 @@ function ChairpersonHeader({
             </p>
           </div>
 
-          <div className="hidden rounded-xl bg-white/10 px-4 py-2 text-right lg:block">
-            <p className="text-xs text-white/70">Faculty Monitored</p>
-            <p className="text-sm font-semibold text-white">
-              {departmentCount ?? 0}
-            </p>
-          </div>
-
           <button
             onClick={onLogout}
             className="rounded-xl border border-yellow-400 bg-transparent px-5 py-2 text-sm font-semibold text-yellow-400 transition hover:bg-yellow-400 hover:text-[#003366]"

@@ -435,4 +435,3 @@ C:/Users/pascu/Documents/GitHub2/GitHub/Capstone-Project-/For_Testing_Only_Capst
 /mnt/c/Users/DELL/Documents/Pls let this shi work (V2)/client-app/obj/Debug/net8.0/For_Testing_Only_Capstone.pdb
 /mnt/c/Users/DELL/Documents/Pls let this shi work (V2)/client-app/obj/Debug/net8.0/For_Testing_Only_Capstone.genruntimeconfig.cache
 /mnt/c/Users/DELL/Documents/Pls let this shi work (V2)/client-app/obj/Debug/net8.0/ref/For_Testing_Only_Capstone.dll
-/app/bin/Debug/net8.0/appsettings.Development.json

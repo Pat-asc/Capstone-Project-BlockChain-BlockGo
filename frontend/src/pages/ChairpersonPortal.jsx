@@ -378,16 +378,6 @@ function ChairpersonPortal({ onLogout, allGrades = {} }) {
               />
             ) : activeTab === "assignment" ? (
               <>
-                <div>
-                  <h2 className="text-2xl font-bold text-[#003366]">
-                    Academic Assignment
-                  </h2>
-                  <p className="mt-1 text-sm text-slate-500">
-                    Assign faculty teaching loads and section ownership before
-                    grade encoding begins.
-                  </p>
-                </div>
-
                 <AcademicAssignment chairpersonDepartment={chairpersonDepartment} />
               </>
             ) : activeTab === "dashboard" ? (

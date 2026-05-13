@@ -147,7 +147,7 @@ function StudentSectioning({
   onSectioningSaved,
 }) {
   const isRegistrarMode = false;
-  const canEditRoster = true;
+  const canEditRoster = false;
   const isChairpersonMode = true;
   const rosterRef = useRef(null);
   const [batches, setBatches] = useState(() => {
@@ -1593,25 +1593,6 @@ function StudentSectioning({
 
   return (
     <div className="space-y-6">
-      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-        <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
-          <div>
-            <p className="text-sm font-semibold uppercase tracking-wide text-slate-500">
-              {isRegistrarMode
-                ? "Registrar Section Generator"
-                : "Chairperson Section Preview"}
-            </p>
-            <h3 className="mt-1 text-2xl font-bold text-[#003366]">
-              Year-Level Sectioning
-            </h3>
-            <p className="mt-2 max-w-3xl text-sm text-slate-500">
-              {isRegistrarMode
-                ? "Work from imported enrolled lists, generate sections per year level, automatically distribute students, and save the final sections for chairperson review."
-                : "View registrar-created sections. Use Academic Assignment to distribute sections to faculty."}
-            </p>
-          </div>
-        </div>
-      </div>
 
       {isRegistrarMode ? (
         <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">

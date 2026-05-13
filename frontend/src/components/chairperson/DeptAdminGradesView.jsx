@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { fetchAllGrades, approveGrade, finalizeGrade, fetchDepartmentPendingStudents, approveStudentEnrollment, batchUploadGrades, fetchFacultySections, fetchFacultyStudents, createSection, fetchDepartmentSections, batchEnrollStudentsToSection, dropStudent, fetchApprovedFaculties, unassignFacultySection, getDecryptedIpfsUrl, getSystemSetting, issueGrade, bulkUploadMasterlist, deleteAcademicSection, deleteDepartmentAcademicSections } from '../../services/api';
+import { fetchAllGrades, approveGrade, finalizeGrade, batchUploadGrades, fetchFacultySections, fetchFacultyStudents, createSection, fetchDepartmentSections, batchEnrollStudentsToSection, dropStudent, fetchApprovedFaculties, unassignFacultySection, getDecryptedIpfsUrl, getSystemSetting, issueGrade, bulkUploadMasterlist, deleteAcademicSection, deleteDepartmentAcademicSections } from '../../services/api';
 import { useNotification } from '../../services/NotificationContext';
 import ChairpersonHeader from './ChairpersonHeader';
 import ChairpersonSidebar from './ChairpersonSidebar';
@@ -8,6 +8,7 @@ import FacultyStatusTable from '../faculty/FacultyStatusTable';
 import SectionReviewPanel from './SectionReviewPanel';
 import Modal from '../../services/Modal';
 import StudentSectioning from './StudentSectioning';
+import AcademicAssignment from './AcademicAssignment';
 
 const getGradeEquivalent = (grade) => {
     const n = parseFloat(grade);
@@ -87,7 +88,6 @@ const DeptAdminGradesView = ({ loggedInEmail = '', loggedInName = '', userRole =
     
     const { addNotification } = useNotification();
     const [mainTab, setMainTab] = useState('grades'); 
-    const [deptPendingStudents, setDeptPendingStudents] = useState([]);
     const [selectedReviewSection, setSelectedReviewSection] = useState(null);
     const [uploadFile, setUploadFile] = useState(null);
     const [isUploading, setIsUploading] = useState(false);
@@ -301,18 +301,7 @@ const DeptAdminGradesView = ({ loggedInEmail = '', loggedInName = '', userRole =
         if (!isBackground) setLoading(false);
     }, [loggedInEmail]);
 
-    const loadDeptPendingStudents = useCallback(async () => {
-        try {
-            const response = await fetchDepartmentPendingStudents(loggedInEmail);
-            if (response.status === 'Success') setDeptPendingStudents(response.students || []);
-        } catch (error) { console.error('Error loading students:', error); }
-    }, [loggedInEmail]);
-
     useEffect(() => { loadGrades(); }, [loadGrades]);
-
-    useEffect(() => {
-        if (mainTab === 'sectioning') loadDeptPendingStudents();
-    }, [mainTab, loadDeptPendingStudents]);
 
     const loadMyClasses = useCallback(async () => {
         try {
@@ -352,7 +341,6 @@ const DeptAdminGradesView = ({ loggedInEmail = '', loggedInName = '', userRole =
     useEffect(() => {
         const handleAcademicDataChanged = () => {
             loadGrades(true);
-            if (mainTab === 'sectioning') loadDeptPendingStudents();
             if (mainTab === 'myClasses') loadMyClasses();
             if (mainTab === 'assignment') {
                 loadAcademicSections();
@@ -362,7 +350,7 @@ const DeptAdminGradesView = ({ loggedInEmail = '', loggedInName = '', userRole =
 
         window.addEventListener('blockgo:academic-data-changed', handleAcademicDataChanged);
         return () => window.removeEventListener('blockgo:academic-data-changed', handleAcademicDataChanged);
-    }, [loadGrades, mainTab, loadDeptPendingStudents, loadMyClasses, loadAcademicSections, loadDepartmentFaculties]);
+    }, [loadGrades, mainTab, loadMyClasses, loadAcademicSections, loadDepartmentFaculties]);
 
     useEffect(() => {
         if (mainTab === 'assignment' || mainTab === 'myClasses') {
@@ -716,7 +704,6 @@ const DeptAdminGradesView = ({ loggedInEmail = '', loggedInName = '', userRole =
                 try {
                     await dropStudent(id);
                     addNotification(`${name} has been dropped and access revoked.`, 'success');
-                    loadDeptPendingStudents();
                     loadMyClasses();
                 } catch (e) {
                     addNotification(e.message, 'error');
@@ -781,7 +768,7 @@ const DeptAdminGradesView = ({ loggedInEmail = '', loggedInName = '', userRole =
 
     return (
         <div className="flex h-screen w-full flex-col bg-slate-50 font-sans fixed inset-0 z-[100] overflow-auto">
-            <ChairpersonHeader chairpersonData={{ name: loggedInName, department: userRole, semester: activeSemester }} departmentCount={deptMetrics.totalFaculty} onLogout={() => { localStorage.removeItem('token'); window.location.reload(); }} />
+            <ChairpersonHeader chairpersonData={{ name: loggedInName, department, semester: activeSemester }} departmentCount={deptMetrics.totalFaculty} onLogout={() => { localStorage.removeItem('token'); window.location.reload(); }} />
             <div className="flex flex-col md:flex-row flex-1 overflow-hidden p-4 md:p-6 gap-6">
                 <ChairpersonSidebar activeTab={activeChairTab === 'grades' ? 'dashboard' : activeChairTab} setActiveTab={setMainTab} />
                 <main className="flex-1 overflow-y-auto pr-2">
@@ -828,43 +815,6 @@ const DeptAdminGradesView = ({ loggedInEmail = '', loggedInName = '', userRole =
                     {activeChairTab === 'sectioning' && (
                         <div className="flex flex-col gap-6">
                             <StudentSectioning chairpersonDepartment={department} />
-                            
-                            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-                            <h2 className="text-xl font-bold text-[#003366] mb-4">Pending Student Enrollments</h2>
-                            {deptPendingStudents.length === 0 ? (
-                                <p className="text-slate-500">No pending students awaiting your approval.</p>
-                            ) : (
-                                <div className="overflow-x-auto">
-                                    <table className="w-full text-left border-collapse">
-                                        <thead>
-                                            <tr className="border-b border-slate-200 bg-slate-50 text-sm font-semibold text-[#003366]">
-                                                <th className="p-3">Student Name</th>
-                                                <th className="p-3">Student No.</th>
-                                                <th className="p-3">Section</th>
-                                                <th className="p-3">Action</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {deptPendingStudents.map(student => (
-                                                <tr key={student.id} className="border-b border-slate-100 hover:bg-slate-50">
-                                                    <td className="p-3 font-medium text-slate-800">{student.fullname}</td>
-                                                    <td className="p-3 text-slate-600">{student.studentno || 'N/A'}</td>
-                                                    <td className="p-3 text-slate-600">{student.section || 'N/A'}</td>
-                                                    <td className="p-3">
-                                                        <button onClick={async () => { try { await approveStudentEnrollment(student.id); addNotification(`${student.fullname} approved!`, 'success'); loadDeptPendingStudents(); loadMyClasses(); } catch(e) { addNotification(e.message, 'error'); } }} className="rounded-full bg-green-600 px-4 py-1.5 text-sm font-bold text-white transition hover:bg-green-700 mr-2">
-                                                            Approve
-                                                        </button>
-                                                        <button onClick={() => handleDropStudent(student.id, student.fullname)} className="rounded-full bg-red-500 px-4 py-1.5 text-sm font-bold text-white transition hover:bg-red-600">
-                                                            Drop
-                                                        </button>
-                                                    </td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            )}
-                        </div>
                         </div>
                     )}
                     {activeChairTab === 'myClasses' && (
@@ -1061,149 +1011,7 @@ const DeptAdminGradesView = ({ loggedInEmail = '', loggedInName = '', userRole =
                         </div>
                     )}
                     {activeChairTab === 'assignment' && (
-                        <div className="flex flex-col gap-6">
-                            {/* Masterlist Bulk Import */}
-                            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-                                <h2 className="text-xl font-bold text-[#003366] mb-4">Masterlist Bulk Import (Auto-Create Sections & Accounts)</h2>
-                                <p className="text-slate-500 mb-4">
-                                    Upload a masterlist (CSV or XLSX) to automatically create sections, enroll students, and assign faculties. 
-                                    Missing students will be registered using their <strong>Student No.</strong> as credentials, and faculties via their <strong>Email or Name</strong>.
-                                </p>
-                                <div className="mb-6 rounded-lg bg-blue-50 p-4 border border-blue-200">
-                                    <h4 className="text-sm font-bold text-blue-900 mb-2">Required Columns:</h4>
-                                    <p className="text-xs text-blue-800 font-mono">student_no | last_name | first_name | mi | sex | year_level | section | subject_code | faculty_name | faculty_email</p>
-                                </div>
-                                <div className="flex flex-col gap-4">
-                                    <div>
-                                        <label htmlFor="masterlist-upload" className="block text-sm font-medium text-slate-600 mb-1">Masterlist File (.csv, .xlsx)</label>
-                                        <input id="masterlist-upload" type="file" accept=".csv, .xlsx" onChange={(e) => setMasterlistFile(e.target.files[0])} className="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" />
-                                    </div>
-                                    <div className="flex flex-wrap items-center gap-3 mt-2">
-                                        <button onClick={handleDownloadMasterlistTemplate} className="rounded-lg border border-[#003366] px-5 py-2.5 text-sm font-bold text-[#003366] transition hover:bg-[#003366] hover:text-white">
-                                            Download Template
-                                        </button>
-                                        <button onClick={handleMasterlistUpload} disabled={isUploadingMasterlist || !masterlistFile} className="rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-bold text-white transition hover:bg-blue-700 disabled:opacity-50">
-                                            {isUploadingMasterlist ? 'Processing Masterlist...' : 'Process Masterlist'}
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Section Creation Form */}
-                            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-                                <h2 className="text-xl font-bold text-[#003366] mb-4">Create New Academic Section</h2>
-                                <form onSubmit={handleCreateSection} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                                    <div>
-                                        <label className="block text-sm font-medium text-slate-600 mb-1">Department</label>
-                                        <input type="text" value={department} disabled className="w-full rounded-lg border border-slate-300 bg-slate-100 px-3 py-2 text-slate-500" />
-                                    </div>
-                                    <div>
-                                        <label htmlFor="yearLevel" className="block text-sm font-medium text-slate-600 mb-1">Year Level</label>
-                                        <select id="yearLevel" value={newSectionData.yearLevel} onChange={e => setNewSectionData(p => ({...p, yearLevel: e.target.value}))} required className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 outline-none focus:border-[#003366]">
-                                            <option value="" disabled>Select Year</option>
-                                            <option value="1">1st Year</option>
-                                            <option value="2">2nd Year</option>
-                                            <option value="3">3rd Year</option>
-                                            <option value="4">4th Year</option>
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label htmlFor="sectionNum" className="block text-sm font-medium text-slate-600 mb-1">Section Number</label>
-                                        <input id="sectionNum" type="number" min="1" value={newSectionData.sectionNum} onChange={e => setNewSectionData(p => ({...p, sectionNum: e.target.value}))} required placeholder="e.g., 1" className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 outline-none focus:border-[#003366]" />
-                                    </div>
-                                    <div>
-                                        <label htmlFor="subjectCode" className="block text-sm font-medium text-slate-600 mb-1">Subject Code</label>
-                                        <input id="subjectCode" type="text" value={newSectionData.subjectCode} onChange={e => setNewSectionData(p => ({...p, subjectCode: e.target.value}))} required placeholder="e.g., IT-101" className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 outline-none focus:border-[#003366]" />
-                                    </div>
-                                    <div className="md:col-span-2 lg:col-span-4 flex justify-end mt-2">
-                                        <button type="submit" disabled={isCreatingSection} className="rounded-lg bg-[#003366] px-6 py-2.5 text-sm font-bold text-white transition hover:bg-[#00264d] disabled:opacity-50">
-                                            {isCreatingSection ? 'Creating...' : 'Create Section'}
-                                        </button>
-                                    </div>
-                                </form>
-                                <div className="mt-4">
-                                    <label htmlFor="assignTo" className="block text-sm font-medium text-slate-600 mb-1">Assign Section To Professor</label>
-                                    <select 
-                                        id="assignTo" 
-                                        value={assignToFaculty} 
-                                        onChange={e => setAssignToFaculty(e.target.value)} 
-                                        className="w-full max-w-md rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 outline-none focus:border-[#003366]"
-                                    >
-                                        <option value="none">Do not assign yet</option>
-                                        <option value="self">Myself ({loggedInName})</option>
-                                        {departmentFaculties.map(f => (
-                                            <option key={f.id} value={f.email}>{f.fullname}</option>
-                                        ))}
-                                    </select>
-                                </div>
-                            </div>
-
-                            {/* Bulk Student Enrollment Form */}
-                            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-                                <h2 className="text-xl font-bold text-[#003366] mb-4">Bulk Enroll Students to Section</h2>
-                                <p className="text-slate-500 mb-6">Upload a CSV or Excel file with student details to enroll them into a specific section. The file should contain at least a 'student_no' or 'email' column.</p>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div>
-                                        <label htmlFor="enrollSection" className="block text-sm font-medium text-slate-600 mb-1">Target Section</label>
-                                        <select id="enrollSection" value={enrollSectionId} onChange={e => setEnrollSectionId(e.target.value)} required className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 outline-none focus:border-[#003366]">
-                                            <option value="" disabled>Select a section to enroll students into</option>
-                                            {academicSections.map(sec => (
-                                                <option key={sec.id} value={sec.id}>{sec.department} {sec.yearLevel}-{sec.sectionNum}</option>
-                                            ))}
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label htmlFor="student-enroll-upload" className="block text-sm font-medium text-slate-600 mb-1">Student List File</label>
-                                        <input id="student-enroll-upload" type="file" accept=".csv, .xlsx" onChange={(e) => setEnrollFile(e.target.files[0])} className="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" />
-                                    </div>
-                                    <div className="md:col-span-2 flex justify-end mt-2">
-                                        <button onClick={handleBulkEnroll} disabled={isEnrolling || !enrollFile || !enrollSectionId} className="rounded-lg bg-emerald-600 px-6 py-2.5 text-sm font-bold text-white transition hover:bg-emerald-700 disabled:opacity-50">
-                                            {isEnrolling ? 'Enrolling...' : 'Bulk Enroll Students'}
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Manage Academic Sections */}
-                            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-                                <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-4">
-                                    <div>
-                                        <h2 className="text-xl font-bold text-[#003366]">Manage Academic Sections</h2>
-                                        <p className="text-sm text-slate-500">Remove individual sections or clear all sections at the end of the school year.</p>
-                                    </div>
-                                    <button onClick={handleDeleteAllSections} disabled={academicSections.length === 0} className="rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm font-bold text-red-600 transition hover:bg-red-100 disabled:opacity-50">
-                                        Clear All Sections
-                                    </button>
-                                </div>
-                                
-                                <div className="overflow-x-auto">
-                                    <table className="w-full text-left border-collapse">
-                                        <thead>
-                                            <tr className="border-b border-slate-200 bg-slate-50 text-sm font-semibold text-[#003366]">
-                                                <th className="p-3">Department</th>
-                                                <th className="p-3">Year Level</th>
-                                                <th className="p-3">Section</th>
-                                                <th className="p-3 w-24">Action</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {academicSections.length === 0 ? (
-                                                <tr><td colSpan="4" className="p-4 text-center text-slate-500">No sections found for this department.</td></tr>
-                                            ) : (
-                                                academicSections.map(sec => (
-                                                    <tr key={sec.id} className="border-b border-slate-100 hover:bg-slate-50">
-                                                        <td className="p-3 font-medium text-slate-800">{sec.department}</td>
-                                                        <td className="p-3 text-slate-600">{sec.yearLevel}</td>
-                                                        <td className="p-3 text-slate-600">{sec.sectionNum}</td>
-                                                        <td className="p-3"><button onClick={() => handleDeleteSection(sec.id, `${sec.yearLevel}-${sec.sectionNum}`)} className="rounded-lg bg-red-50 px-3 py-1 text-xs font-bold text-red-600 transition hover:bg-red-100 border border-red-200">Delete</button></td>
-                                                    </tr>
-                                                ))
-                                            )}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                        </div>
+                        <AcademicAssignment chairpersonDepartment={department} />
                     )}
                 </main>
             </div>

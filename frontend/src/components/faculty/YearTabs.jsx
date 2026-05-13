@@ -17,7 +17,7 @@ const YearTabs = ({ activeTab, setActiveTab, sections, className = "" }) => {
   });
 
   return (
-    <div className={`mt-6 flex min-w-0 gap-4 overflow-x-auto overflow-visible px-6 py-2 ${className}`}>
+    <div className={`flex min-w-0 gap-4 overflow-x-auto py-2 ${className}`}>
       {tabData.map((tab) => (
         <div
           key={tab.label}

@@ -1,5 +1,4 @@
-import React, { useMemo, useState } from "react";
-import { facultyList } from "../../data/registrarData";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   AVAILABLE_YEAR_LEVELS,
   STUDENT_BATCHES_KEY,
@@ -7,7 +6,10 @@ import {
   getDefaultSectionName,
   parseStudentIdSpreadsheet,
 } from "../../utils/studentSectioningHelpers";
-import { assignFacultyLoadToBackend } from "../../services/api";
+import {
+  assignFacultyLoadToBackend,
+  fetchApprovedFaculties,
+} from "../../services/api";
 
 const SEMESTER_OPTIONS = ["1st Semester", "2nd Semester", "Summer"];
 const DAY_OPTIONS = [
@@ -44,6 +46,16 @@ const parseCsvRows = (csvText = "") => {
 };
 
 const normalizeText = (value = "") => String(value).trim().toLowerCase();
+const getFacultyDisplayName = (faculty = {}) =>
+  faculty.fullname ||
+  faculty.fullName ||
+  faculty.name ||
+  faculty.email ||
+  "Unnamed Faculty";
+const getFacultyKey = (faculty = {}) =>
+  String(faculty.id || faculty.email || getFacultyDisplayName(faculty));
+const getFacultyDepartment = (faculty = {}) =>
+  faculty.department || faculty.program || "";
 
 const syncFacultyLoadToBackend = (assignment) => {
   assignFacultyLoadToBackend(assignment).catch((error) => {
@@ -69,6 +81,7 @@ function AcademicAssignment({ chairpersonDepartment = "" }) {
   const [facultyLoadingFile, setFacultyLoadingFile] = useState(null);
   const [facultyLoadingPreview, setFacultyLoadingPreview] = useState([]);
   const [facultyLoadingErrors, setFacultyLoadingErrors] = useState([]);
+  const [approvedFaculties, setApprovedFaculties] = useState([]);
 
   const [savedAssignments, setSavedAssignments] = useState(() => {
     const saved = localStorage.getItem("registrarAssignments");
@@ -139,8 +152,23 @@ function AcademicAssignment({ chairpersonDepartment = "" }) {
 
   const selectedProgram = chairpersonDepartment;
 
-  const filteredFaculty = facultyList.filter(
-    (faculty) => faculty.program === selectedProgram
+  useEffect(() => {
+    const loadApprovedFaculty = async () => {
+      try {
+        const response = await fetchApprovedFaculties();
+        if (response.status === "Success") {
+          setApprovedFaculties(response.faculties || []);
+        }
+      } catch (error) {
+        console.error("Failed to load approved faculties:", error);
+      }
+    };
+
+    loadApprovedFaculty();
+  }, []);
+
+  const filteredFaculty = approvedFaculties.filter(
+    (faculty) => getFacultyDepartment(faculty) === selectedProgram
   );
 
   const filteredSections = sectionOptions.filter(
@@ -149,8 +177,8 @@ function AcademicAssignment({ chairpersonDepartment = "" }) {
       section.yearLevel === selectedYearLevel
   );
 
-  const selectedFaculty = facultyList.find(
-    (faculty) => faculty.id === Number(selectedFacultyId)
+  const selectedFaculty = filteredFaculty.find(
+    (faculty) => getFacultyKey(faculty) === selectedFacultyId
   );
 
   const selectedSection = filteredSections.find(
@@ -190,7 +218,7 @@ function AcademicAssignment({ chairpersonDepartment = "" }) {
     );
   };
 
-  const handleAssign = () => {
+  const handleDistributeSectionToFaculty = () => {
     if (
       !selectedProgram ||
       !selectedFacultyId ||
@@ -222,7 +250,7 @@ function AcademicAssignment({ chairpersonDepartment = "" }) {
     const saveAssignment = (rosterStudents, rosterFileName = "Created section roster") => {
       const alreadyExists = savedAssignments.some(
         (item) =>
-          item.facultyId === Number(selectedFacultyId) &&
+          String(item.facultyId) === String(selectedFacultyId) &&
           item.sectionName === selectedSectionName &&
           item.schoolYear === selectedSection.schoolYear &&
           normalizeText(item.semester) === normalizeText(semester) &&
@@ -230,14 +258,14 @@ function AcademicAssignment({ chairpersonDepartment = "" }) {
       );
 
       if (alreadyExists) {
-        alert("This faculty section load already exists.");
+        alert("This faculty section distribution already exists.");
         return;
       }
 
       const newAssignment = {
         id: Date.now(),
-        facultyId: Number(selectedFacultyId),
-        facultyName: selectedFaculty.name,
+        facultyId: selectedFacultyId,
+        facultyName: getFacultyDisplayName(selectedFaculty),
         program: selectedProgram,
         sectionName: selectedSection.section,
         yearLevel: selectedSection.yearLevel,
@@ -249,7 +277,7 @@ function AcademicAssignment({ chairpersonDepartment = "" }) {
         day: selectedDaysText,
         schoolYear: selectedSection.schoolYear,
         semester: semester.trim(),
-        loadMode: "Manual",
+        loadMode: "Manual Section Distribution",
         rosterFileName,
         rosterStudents,
         uploadedAt: new Date().toISOString(),
@@ -332,7 +360,9 @@ function AcademicAssignment({ chairpersonDepartment = "" }) {
       }
 
       const faculty = filteredFaculty.find(
-        (item) => item.name.toLowerCase() === facultyName.trim().toLowerCase()
+        (item) =>
+          getFacultyDisplayName(item).toLowerCase() ===
+          facultyName.trim().toLowerCase()
       );
       const section = findSectionByName(sectionName);
 
@@ -348,7 +378,7 @@ function AcademicAssignment({ chairpersonDepartment = "" }) {
 
       const alreadyExists = savedAssignments.some(
         (item) =>
-          item.facultyId === Number(faculty.id) &&
+          String(item.facultyId) === String(getFacultyKey(faculty)) &&
           item.sectionName === section.section &&
           item.schoolYear === section.schoolYear &&
           normalizeText(item.semester) === normalizeText(rowSemester) &&
@@ -361,9 +391,9 @@ function AcademicAssignment({ chairpersonDepartment = "" }) {
       }
 
       previewRows.push({
-        id: `${rowNumber}-${faculty.id}-${section.section}-${rowSubjectCode}`,
-        facultyId: Number(faculty.id),
-        facultyName: faculty.name,
+        id: `${rowNumber}-${getFacultyKey(faculty)}-${section.section}-${rowSubjectCode}`,
+        facultyId: getFacultyKey(faculty),
+        facultyName: getFacultyDisplayName(faculty),
         program: selectedProgram,
         sectionName: section.section,
         yearLevel: section.yearLevel,
@@ -375,7 +405,7 @@ function AcademicAssignment({ chairpersonDepartment = "" }) {
         day: rowDay.trim(),
         schoolYear: section.schoolYear,
         semester: rowSemester.trim(),
-        loadMode: "Automatic",
+        loadMode: "Faculty Loading",
         rosterFileName: "Created section roster",
         rosterStudents: section.students || [],
       });
@@ -483,16 +513,17 @@ function AcademicAssignment({ chairpersonDepartment = "" }) {
     [savedAssignments, selectedProgram]
   );
   const automaticLoadCount = assignmentRows.filter(
-    (assignment) => assignment.loadMode === "Automatic"
+    (assignment) => assignment.loadMode === "Faculty Loading"
   ).length;
   const manualLoadCount = assignmentRows.filter(
-    (assignment) => assignment.loadMode !== "Automatic"
+    (assignment) => assignment.loadMode !== "Faculty Loading"
   ).length;
 
   return (
     <div className="space-y-6">
+
       <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <h3 className="text-xl font-bold text-[#003366]">Faculty Loading</h3>
             <p className="mt-1 max-w-3xl text-sm text-slate-500">
@@ -509,11 +540,11 @@ function AcademicAssignment({ chairpersonDepartment = "" }) {
           </button>
         </div>
 
-        <div className="mt-5 grid grid-cols-1 gap-4 lg:grid-cols-[1fr_auto] lg:items-end">
+        <div className="mt-8 grid grid-cols-1 gap-4 xl:grid-cols-[1fr_auto] xl:items-end">
           <div>
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-              <label className="shrink-0 text-sm font-medium text-slate-700">
-                Faculty Loading CSV
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+              <label className="shrink-0 text-base font-semibold text-slate-700">
+                Upload Loading CSV
               </label>
               <input
                 type="file"
@@ -536,7 +567,7 @@ function AcademicAssignment({ chairpersonDepartment = "" }) {
           <button
             type="button"
             onClick={handleImportFacultyLoading}
-            className="rounded-xl bg-[#003366] px-5 py-3 text-sm font-semibold text-white hover:bg-[#00264d]"
+            className="rounded-xl bg-[#003366] px-6 py-3 text-sm font-semibold text-white hover:bg-[#00264d]"
           >
             Preview Faculty Loading
           </button>
@@ -570,7 +601,7 @@ function AcademicAssignment({ chairpersonDepartment = "" }) {
                   disabled={!facultyLoadingPreview.length}
                   className="rounded-xl bg-[#003366] px-4 py-2 text-sm font-semibold text-white hover:bg-[#00264d] disabled:cursor-not-allowed disabled:bg-slate-300"
                 >
-                  Confirm Distribution
+                  Assign Previewed Loading
                 </button>
               </div>
             </div>
@@ -629,15 +660,15 @@ function AcademicAssignment({ chairpersonDepartment = "" }) {
 
       <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
         <h3 className="text-xl font-bold text-[#003366]">
-          Manual Faculty Loading
+          Manual Faculty Section Distribution
         </h3>
         <p className="mt-1 text-sm text-slate-500">
           After sectioning students, distribute each created section to the
-          assigned faculty together with the subject and schedule details for
-          grade encoding. Upload a CSV only when you need to override the roster.
+          assigned faculty together with the subject and schedule details for grade
+          encoding. Upload a CSV only when you need to override the roster.
         </p>
 
-        <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <div className="mt-8 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
           <div>
             <label className="mb-2 block text-sm font-medium text-slate-700">
               Faculty
@@ -650,8 +681,8 @@ function AcademicAssignment({ chairpersonDepartment = "" }) {
             >
               <option value="">Choose faculty</option>
               {filteredFaculty.map((faculty) => (
-                <option key={faculty.id} value={faculty.id}>
-                  {faculty.name}
+                <option key={getFacultyKey(faculty)} value={getFacultyKey(faculty)}>
+                  {getFacultyDisplayName(faculty)}
                 </option>
               ))}
             </select>
@@ -724,12 +755,11 @@ function AcademicAssignment({ chairpersonDepartment = "" }) {
               Total Units
             </label>
             <input
-              type="number"
-              min="1"
+              type="text"
               value={units}
               onChange={(e) => setUnits(e.target.value)}
               placeholder="e.g. 3"
-              className="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm xl:max-w-32"
+              className="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm md:max-w-40"
             />
           </div>
 
@@ -785,7 +815,7 @@ function AcademicAssignment({ chairpersonDepartment = "" }) {
               type="date"
               value={scheduleDate}
               onChange={(e) => setScheduleDate(e.target.value)}
-              className="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm"
+              className="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm text-slate-700"
             />
           </div>
 
@@ -806,129 +836,13 @@ function AcademicAssignment({ chairpersonDepartment = "" }) {
               ))}
             </select>
           </div>
-
-          <div className="md:col-span-2 xl:col-span-3">
-            <label className="mb-2 block text-sm font-medium text-slate-700">
-              Optional Section CSV Override
-            </label>
-            <input
-              type="file"
-              accept=".csv"
-              onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
-              className="block w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm"
-            />
-            <div className="mt-2 flex flex-col gap-2 text-sm text-slate-500 md:flex-row md:items-center md:justify-between">
-              <span>
-                {selectedFile
-                  ? `Selected file: ${selectedFile.name}`
-                  : "Leave blank to use the created section roster."}
-              </span>
-
-              <button
-                type="button"
-                onClick={handleDownloadSectionTemplate}
-                className="rounded-xl border border-[#003366] px-4 py-2 font-semibold text-[#003366] transition hover:bg-[#003366] hover:text-white"
-              >
-                Export Current Section CSV
-              </button>
-            </div>
-          </div>
         </div>
 
-        {(selectedFaculty ||
-          selectedSection ||
-          subjectCode ||
-          subjectTitle ||
-          units ||
-          semester ||
-          scheduleTime ||
-          scheduleDate ||
-          selectedDaysText) && (
-          <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-6">
-            <div className="rounded-xl bg-slate-50 p-4">
-              <p className="text-sm text-slate-500">Faculty</p>
-              <p className="mt-1 font-semibold text-slate-800">
-                {selectedFaculty?.name || "--"}
-              </p>
-            </div>
-
-            <div className="rounded-xl bg-slate-50 p-4">
-              <p className="text-sm text-slate-500">Section</p>
-              <p className="mt-1 font-semibold text-slate-800">
-                {selectedSection?.section || "--"}
-              </p>
-            </div>
-
-            <div className="rounded-xl bg-slate-50 p-4">
-              <p className="text-sm text-slate-500">Year Level</p>
-              <p className="mt-1 font-semibold text-slate-800">
-                {selectedSection?.yearLevel || "--"}
-              </p>
-            </div>
-
-            <div className="rounded-xl bg-slate-50 p-4">
-              <p className="text-sm text-slate-500">Units</p>
-              <p className="mt-1 font-semibold text-slate-800">
-                {units || "--"}
-              </p>
-            </div>
-
-            <div className="rounded-xl bg-slate-50 p-4">
-              <p className="text-sm text-slate-500">Time</p>
-              <p className="mt-1 font-semibold text-slate-800">
-                {scheduleTime || "--"}
-              </p>
-            </div>
-
-            <div className="rounded-xl bg-slate-50 p-4">
-              <p className="text-sm text-slate-500">Date</p>
-              <p className="mt-1 font-semibold text-slate-800">
-                {scheduleDate || "--"}
-              </p>
-            </div>
-
-            <div className="rounded-xl bg-slate-50 p-4">
-              <p className="text-sm text-slate-500">Day</p>
-              <p className="mt-1 font-semibold text-slate-800">
-                {selectedDaysText || "--"}
-              </p>
-            </div>
-
-            <div className="rounded-xl bg-slate-50 p-4">
-              <p className="text-sm text-slate-500">Subject Code</p>
-              <p className="mt-1 font-semibold text-slate-800">
-                {subjectCode || "--"}
-              </p>
-            </div>
-
-            <div className="rounded-xl bg-slate-50 p-4 md:col-span-2">
-              <p className="text-sm text-slate-500">Semester</p>
-              <p className="mt-1 font-semibold text-slate-800">
-                {semester || "--"}
-              </p>
-            </div>
-
-            <div className="rounded-xl bg-slate-50 p-4 md:col-span-3">
-              <p className="text-sm text-slate-500">CSV Students Available</p>
-              <p className="mt-1 font-semibold text-slate-800">
-                {selectedSectionStudents.length || 0}
-              </p>
-            </div>
-
-            <div className="rounded-xl bg-slate-50 p-4 md:col-span-2 xl:col-span-6">
-              <p className="text-sm text-slate-500">Subject Title</p>
-              <p className="mt-1 font-semibold text-slate-800">
-                {subjectTitle || "--"}
-              </p>
-            </div>
-          </div>
-        )}
-
         <button
-          onClick={handleAssign}
+          onClick={handleDistributeSectionToFaculty}
           className="mt-6 rounded-xl bg-[#003366] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#00264d]"
         >
-          Distribute Manual Faculty Load
+          Distribute Section to Faculty
         </button>
       </div>
 
@@ -945,10 +859,10 @@ function AcademicAssignment({ chairpersonDepartment = "" }) {
           </div>
           <div className="flex flex-wrap gap-2 text-sm font-semibold">
             <span className="rounded-full bg-blue-50 px-3 py-1 text-[#003366]">
-              Automatic: {automaticLoadCount}
+              Faculty Loading: {automaticLoadCount}
             </span>
             <span className="rounded-full bg-slate-100 px-3 py-1 text-slate-700">
-              Manual: {manualLoadCount}
+              Manual Distribution: {manualLoadCount}
             </span>
           </div>
         </div>
@@ -979,12 +893,14 @@ function AcademicAssignment({ chairpersonDepartment = "" }) {
                     <td className="px-4 py-3">
                       <span
                         className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                          item.loadMode === "Automatic"
+                          item.loadMode === "Faculty Loading"
                             ? "bg-blue-50 text-[#003366]"
                             : "bg-slate-100 text-slate-700"
                         }`}
                       >
-                        {item.loadMode === "Automatic" ? "Automatic" : "Manual"}
+                        {item.loadMode === "Faculty Loading"
+                          ? "Faculty Loading"
+                          : "Manual Distribution"}
                       </span>
                     </td>
                     <td className="px-4 py-3">{item.facultyName}</td>

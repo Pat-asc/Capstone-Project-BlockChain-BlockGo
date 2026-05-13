@@ -3,6 +3,7 @@ import {
   AVAILABLE_YEAR_LEVELS,
   STUDENT_BATCHES_KEY,
   YEAR_LEVEL_PREFIXES,
+  buildStudentCsvContent,
   downloadStudentCsvFile,
   getDefaultSectionName,
   parseStudentIdSpreadsheet,
@@ -200,22 +201,6 @@ function RegistrarStudentSectioning({
     firstName: "",
     middleInitial: "",
   });
-
-  const departmentBatches = useMemo(() => {
-    return batches
-      .filter(
-        (batch) =>
-          batch.program === chairpersonDepartment &&
-          ["Forwarded", "Imported"].includes(batch.status || "Forwarded") &&
-          batch.status !== "Distributed" &&
-          batch.status !== "Promoted"
-      )
-      .sort(
-        (left, right) =>
-          new Date(right.lastSectionedAt || right.submittedAt || 0) -
-          new Date(left.lastSectionedAt || left.submittedAt || 0)
-      );
-  }, [batches, chairpersonDepartment]);
 
   const departmentWorkspaces = useMemo(
     () =>
@@ -593,24 +578,6 @@ function RegistrarStudentSectioning({
     setIsBatchYearPickerOpen(false);
   };
 
-  const handleMarkListDistributed = (batch) => {
-    const nextBatches = batches.map((item) =>
-      item.key === batch.key
-        ? {
-            ...item,
-            status: "Distributed",
-            distributedAt: new Date().toISOString(),
-          }
-        : item
-    );
-
-    if (selectedBatchKey === batch.key) {
-      setSelectedBatchKey("");
-    }
-
-    persistBatches(nextBatches);
-  };
-
   const handleGenerateSections = () => {
     if (!chairpersonDepartment) {
       alert("Please choose a department first.");
@@ -631,8 +598,6 @@ function RegistrarStudentSectioning({
 
     const resolvedBatchYear = selectedBatch?.batchYear || sectioningBatchYear;
     const targetYearLevel = selectedYearLevel;
-    const sourceImportedBatch =
-      departmentBatches.find((batch) => batch.key === activeBatchKey) || null;
     const workspaceKey = selectedBatch
       ? activeBatchKey
       : [chairpersonDepartment, resolvedBatchYear, "sectioning"].join("|");
@@ -658,13 +623,9 @@ function RegistrarStudentSectioning({
         removedStudents: [],
       };
     const existingStudents = baseWorkspace.students || [];
-    const sourceStudents =
-      isRegistrarMode && !sourceImportedBatch
-        ? existingStudents.filter(
-            (student) =>
-              (student.yearLevel || targetYearLevel) !== targetYearLevel
-          )
-        : sourceImportedBatch?.students || existingStudents;
+    const sourceStudents = existingStudents.filter(
+      (student) => (student.yearLevel || targetYearLevel) !== targetYearLevel
+    );
     const workspace = {
       ...baseWorkspace,
       students: sourceStudents,
@@ -982,6 +943,31 @@ function RegistrarStudentSectioning({
       sectionStudents,
       `${section?.sectionName || sectionCode}-${selectedBatch.batchYear}.csv`
     );
+  };
+
+  const handleDownloadSectionTemplate = () => {
+    const templateRows = [
+      {
+        studentId: "2026-0001",
+        sex: "Male",
+        lastName: "Dela Cruz",
+        firstName: "Juan",
+        middleInitial: "S",
+        yearLevel: selectedYearLevel,
+      },
+    ];
+    const csvContent = buildStudentCsvContent(templateRows);
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    const fileName = `${chairpersonDepartment || "student"}-${selectedYearLevel.replace(/\s+/g, "-").toLowerCase()}-section-template.csv`;
+
+    link.href = url;
+    link.setAttribute("download", fileName);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
 
   const handleImportSectionCsv = (sectionCode) => {
@@ -2352,76 +2338,7 @@ function RegistrarStudentSectioning({
         </section>
       ) : null}
 
-      <div className={`grid grid-cols-1 gap-6 ${isRegistrarMode ? "xl:grid-cols-[300px_1fr]" : ""}`}>
-        {isRegistrarMode ? (
-          <aside className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-          <h3 className="text-lg font-bold text-[#003366]">Imported Lists</h3>
-          <p className="mt-1 text-sm text-slate-500">
-            Imported student lists are optional. Mark a list distributed once
-            it has been handled, or generate empty sections and upload CSVs per
-            section.
-          </p>
-
-          <div className="mt-4 space-y-3">
-            {departmentBatches.length > 0 ? (
-              departmentBatches.map((batch) => (
-                <article
-                  key={batch.key}
-                  className="rounded-xl border border-slate-200 bg-white p-4"
-                >
-                  <p className="font-bold text-[#003366]">{batch.program}</p>
-                  <p className="mt-1 text-sm text-slate-600">
-                    Batch {batch.batchYear}
-                  </p>
-                  <p className="mt-2 text-xs text-slate-500">
-                    {new Date(batch.submittedAt).toLocaleString("en-US")}
-                  </p>
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    <span className="inline-flex rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">
-                      {(batch.students || []).length} student
-                      {(batch.students || []).length === 1 ? "" : "s"}
-                    </span>
-                    {(batch.sectionPlans || []).length ? (
-                      <span className="inline-flex rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-700">
-                        {(batch.sectionPlans || []).length} section
-                        {(batch.sectionPlans || []).length === 1 ? "" : "s"} saved
-                      </span>
-                    ) : null}
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => handleMarkListDistributed(batch)}
-                    className="mt-3 w-full rounded-lg border border-[#003366] px-3 py-2 text-sm font-semibold text-[#003366] hover:bg-[#003366] hover:text-white"
-                  >
-                    List Distributed
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSelectedBatchKey(batch.key);
-                      setSectioningBatchYear(batch.batchYear);
-                      alert(
-                        `${batch.program} Batch ${batch.batchYear} list selected for sectioning.`
-                      );
-                    }}
-                    className="mt-2 w-full rounded-lg bg-[#003366] px-3 py-2 text-sm font-semibold text-white hover:bg-[#00264d]"
-                  >
-                    {(batch.sectionPlans || []).length
-                      ? "Open Saved Sections"
-                      : "Use This List"}
-                  </button>
-                </article>
-              ))
-            ) : (
-              <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-5 text-center text-sm text-slate-500">
-                No pending imported list. You can still generate sections and
-                upload a CSV to each section.
-              </div>
-            )}
-          </div>
-          </aside>
-        ) : null}
-
+      <div className="space-y-6">
         <main className="space-y-6">
           {isRegistrarMode ? (
             <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
@@ -2430,13 +2347,12 @@ function RegistrarStudentSectioning({
                   Section Generator
                 </h3>
                 <p className="mt-1 text-sm text-slate-500">
-                  Imported lists are not required. Generate empty sections,
-                  then use each section card's upload option for manual CSV
-                  distribution.
+                  Generate sections for the selected batch year, then manage
+                  each section directly from the cards below.
                 </p>
               </div>
 
-              <div className="mt-5 grid grid-cols-1 gap-4 lg:grid-cols-[170px_170px_170px_auto_auto] lg:items-end">
+              <div className="mt-5 grid grid-cols-1 gap-4 lg:grid-cols-[170px_170px_170px_auto_auto_auto] lg:items-end">
                 <label className="block">
                   <span className="mb-2 block text-sm font-medium text-slate-700">
                     Year level
@@ -2571,6 +2487,13 @@ function RegistrarStudentSectioning({
                   className="rounded-xl bg-[#003366] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#00264d]"
                 >
                   Generate Sections
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDownloadSectionTemplate}
+                  className="rounded-xl border border-emerald-300 px-5 py-3 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-50"
+                >
+                  Download Template
                 </button>
                 <button
                   type="button"

@@ -121,11 +121,6 @@ const ProgramCard = ({
           {isStarted ? "View Grades" : "Encode Now"}
         </button>
 
-        <label className="flex h-12 cursor-pointer items-center justify-center rounded-xl bg-yellow-400 font-bold text-[#003366] transition hover:bg-yellow-500">
-          Upload Grading Sheet
-          <input type="file" className="hidden" />
-        </label>
-
         <button
           type="button"
           onClick={(e) => {

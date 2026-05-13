@@ -8,3 +8,6 @@
 - [ ] Add healthchecks / graceful startup so removing one nginx-shield does not break others
 - [ ] Test: start stack with one nginx-shield stopped/removed and verify backend/middleware endpoints still reachable
 
+##
+- [ ] Fix Bulk Upload Function
+- [ ] Add Revoke Account

@@ -4,7 +4,7 @@ function RegistrarSidebar({ activeTab, setActiveTab, chatUnreadCount = 0, latest
   const menuItems = [
   { id: "dashboard", label: "Dashboard" },
   { id: "encoding", label: "Encoding Period" },
-  { id: "sectioning", label: "Student Sectioning" },
+  { id: "sectioning", label: "Department Sections" },
   { id: "sectionsCreated", label: "Sections Created" },
   { id: "monitoring", label: "Monitoring" },
   { id: "finalization", label: "Grade Finalization" },
