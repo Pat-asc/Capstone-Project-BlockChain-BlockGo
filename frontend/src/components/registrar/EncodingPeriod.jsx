@@ -99,9 +99,6 @@ function EncodingPeriod({ onResetEncodingSeason }) {
             <h3 className="text-xl font-bold text-[#003366]">
               Encoding Period Control
             </h3>
-            <p className="mt-1 text-sm text-slate-500">
-              Set the grade encoding schedule for faculty members.
-            </p>
           </div>
 
           <span

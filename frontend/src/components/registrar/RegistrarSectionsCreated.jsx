@@ -487,12 +487,8 @@ function RegistrarSectionsCreated() {
       return;
     }
 
-    const studentsToPromote = rolloverBatches.reduce(
-      (total, batch) => total + (batch.students || []).length,
-      0
-    );
     const confirmed = window.confirm(
-      `Promote ${studentsToPromote} student${studentsToPromote === 1 ? "" : "s"} across all available departments to the next academic year?`
+      "Advance all sections across departments to the next academic year?"
     );
     if (!confirmed) return;
 
@@ -640,11 +636,8 @@ function RegistrarSectionsCreated() {
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <h3 className="text-xl font-bold text-[#003366]">
-              Promote Sections
+              Year Level Progression
             </h3>
-            <p className="mt-1 text-sm text-slate-500">
-              Promote year level of sections across departments.
-            </p>
           </div>
           <div className="flex flex-wrap gap-2">
             {hasActiveDepartmentChanges ? (
@@ -671,9 +664,6 @@ function RegistrarSectionsCreated() {
         <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
           <div>
             <h3 className="text-xl font-bold text-[#003366]">Sections Created</h3>
-            <p className="mt-1 text-sm text-slate-500">
-              Select a department and year level, then manage the sections and rosters.
-            </p>
           </div>
         </div>
 

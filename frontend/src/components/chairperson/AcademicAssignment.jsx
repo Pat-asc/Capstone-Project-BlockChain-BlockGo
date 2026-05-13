@@ -10,6 +10,7 @@ import {
   assignFacultyLoadToBackend,
   fetchApprovedFaculties,
 } from "../../services/api";
+import { downloadTemplateButtonClass } from "../shared/downloadButtonStyles";
 
 const SEMESTER_OPTIONS = ["1st Semester", "2nd Semester", "Summer"];
 const DAY_OPTIONS = [
@@ -534,7 +535,7 @@ function AcademicAssignment({ chairpersonDepartment = "" }) {
           <button
             type="button"
             onClick={handleDownloadFacultyLoadingTemplate}
-            className="rounded-xl border border-[#003366] px-4 py-2 text-sm font-semibold text-[#003366] hover:bg-[#003366] hover:text-white"
+            className={downloadTemplateButtonClass}
           >
             Download Template
           </button>

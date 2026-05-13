@@ -6,7 +6,7 @@ function RegistrarSidebar({ activeTab, setActiveTab, chatUnreadCount = 0, latest
   { id: "encoding", label: "Encoding Period" },
   { id: "sectioning", label: "Department Sections" },
   { id: "sectionsCreated", label: "Sections Created" },
-  { id: "monitoring", label: "Monitoring" },
+  { id: "monitoring", label: "Management" },
   { id: "finalization", label: "Grade Finalization" },
   { id: "reports", label: "Reports & PDF" },
 ];
@@ -49,7 +49,7 @@ function RegistrarSidebar({ activeTab, setActiveTab, chatUnreadCount = 0, latest
               onClick={() => setActiveTab(item.id)}
               className={`w-full rounded-xl border-b-2 px-4 py-3 text-left text-sm font-medium transition ${
                 isActive
-                  ? "border-yellow-400 bg-[#003366] text-white shadow-sm"
+                  ? "border-yellow-400 bg-[#003366] text-yellow-400 shadow-sm"
                   : "border-transparent text-slate-700 hover:bg-slate-100"
               }`}
             >

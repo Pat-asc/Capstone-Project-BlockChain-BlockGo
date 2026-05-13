@@ -10,6 +10,7 @@ import PdfReportViewer from '../shared/PdfReportViewer';
 import Modal from '../../services/Modal';
 import RegistrarStudentSectioning from './RegistrarStudentSectioning';
 import RegistrarSectionsCreated from './RegistrarSectionsCreated';
+import { downloadTemplateButtonClass } from '../shared/downloadButtonStyles';
 
 const HoverableID = ({ fullId, isAuthorized }) => {
     const [isRevealed, setIsRevealed] = useState(false);
@@ -411,21 +412,18 @@ const RegistrarGradesView = ({
                             <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
                                 <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                                     <div className="max-w-2xl">
-                                        <h3 className="text-lg font-bold text-[#003366]">Bulk Enrollment</h3>
-                                        <p className="mt-1 text-sm text-slate-500">
-                                            Upload a student list so the system can recognize student information before sectioning.
-                                        </p>
+                                        <h3 className="text-xl font-bold text-[#003366]">Bulk Enrollment</h3>
                                     </div>
                                     <div className="flex flex-wrap gap-3">
                                         <button
                                             type="button"
-                                            className="inline-flex items-center justify-center rounded-xl border border-[#003366] px-5 py-3 text-sm font-semibold text-[#003366] transition hover:bg-[#003366] hover:text-white"
+                                            className="inline-flex items-center justify-center rounded-xl bg-[#003366] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#00264d]"
                                         >
                                             Bulk Enroll
                                         </button>
                                         <button
                                             type="button"
-                                            className="inline-flex items-center justify-center rounded-xl border border-emerald-300 px-5 py-3 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-50"
+                                            className={downloadTemplateButtonClass}
                                         >
                                             Download Template
                                         </button>

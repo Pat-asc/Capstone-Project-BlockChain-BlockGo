@@ -6,6 +6,7 @@ import {
   parseStudentIdSpreadsheet,
   syncSectionedStudentsToStorage,
 } from "../../utils/studentSectioningHelpers";
+import { downloadTemplateButtonClass } from "../shared/downloadButtonStyles";
 
 const buildRegistrarSectioningName = () => "Registrar Sectioning Office";
 const CURRENT_YEAR = new Date().getFullYear();
@@ -393,7 +394,7 @@ function StudentListImport({ selectedProgram = "", onImportComplete }) {
 
             <button
               onClick={handleDownloadTemplate}
-              className="rounded-2xl border border-[#003366] px-5 py-3 text-sm font-semibold text-[#003366] transition hover:bg-[#003366] hover:text-white"
+              className={downloadTemplateButtonClass}
             >
               Download Template
             </button>

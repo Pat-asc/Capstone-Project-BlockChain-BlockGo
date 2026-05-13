@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { downloadTemplateButtonClass } from "../shared/downloadButtonStyles";
 
 const BulkUploadModal = ({
   isOpen,
@@ -145,7 +146,7 @@ const BulkUploadModal = ({
                 <button
                   type="button"
                   onClick={handleDownloadTemplate}
-                  className="rounded-lg bg-[#032d63] px-4 py-2 text-sm font-semibold text-white hover:bg-[#02244d]"
+                  className={downloadTemplateButtonClass}
                 >
                   Download CSV Template
                 </button>

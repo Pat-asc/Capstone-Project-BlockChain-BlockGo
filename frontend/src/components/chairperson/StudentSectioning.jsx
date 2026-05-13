@@ -2418,13 +2418,8 @@ function StudentSectioning({
               <div className="mb-5 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                 <div>
                   <h3 className="text-xl font-bold text-[#003366]">
-                    Section Preview
+                    Sections Preview
                   </h3>
-                  <p className="mt-1 text-sm text-slate-500">
-                    {isRegistrarMode
-                      ? "Review each generated section separately and edit section names before saving the final sections."
-                      : "Review registrar-created sections before assigning them to faculty."}
-                  </p>
                 </div>
                 {isChairpersonMode ? (
                   <label className="block w-full md:max-w-xs">
@@ -2577,13 +2572,8 @@ function StudentSectioning({
                           selectedBatch.program,
                           selectedSection.sectionCode
                         )
-                      : "Section Roster"}
+                      : "Section Students"}
                   </h3>
-                  <p className="mt-1 text-sm text-slate-500">
-                    {canEditRoster
-                      ? "Move students between generated sections, add late enrollees, and remove duplicates or wrong entries."
-                      : "Students shown here come from registrar-created sections for faculty assignment reference."}
-                  </p>
                 </div>
 
                 <input
@@ -2816,10 +2806,6 @@ function StudentSectioning({
                 <h3 className="text-xl font-bold text-[#003366]">
                   Removed Students
                 </h3>
-                <p className="mt-1 text-sm text-slate-500">
-                  Students removed from the final rosters stay here for audit
-                  review and can be restored if needed.
-                </p>
               </div>
 
               <div className="overflow-x-auto">

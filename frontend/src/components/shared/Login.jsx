@@ -204,6 +204,7 @@ const Login = ({ onLogin }) => {
     autoComplete,
     isVisible,
     onToggle,
+    helperText,
   }) => (
     <div className="input-group">
       <label>{label}</label>
@@ -253,6 +254,9 @@ const Login = ({ onLogin }) => {
           </button>
         ) : null}
       </div>
+      {helperText ? (
+        <small style={{ color: '#dc2626', fontSize: '12px' }}>{helperText}</small>
+      ) : null}
     </div>
   );
 
@@ -388,6 +392,7 @@ const Login = ({ onLogin }) => {
                     autoComplete: "new-password",
                     isVisible: showPassword,
                     onToggle: () => setShowPassword((current) => !current),
+                    helperText: "Must be at least 8 characters with uppercase, lowercase, number, and special character.",
                   })}
                 {signupStep === 2 && (
                   <div className="input-group">

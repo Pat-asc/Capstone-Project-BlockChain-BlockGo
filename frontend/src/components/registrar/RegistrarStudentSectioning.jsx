@@ -9,6 +9,7 @@ import {
   parseStudentIdSpreadsheet,
   syncSectionedStudentsToStorage,
 } from "../../utils/studentSectioningHelpers";
+import { downloadTemplateButtonClass } from "../shared/downloadButtonStyles";
 
 const buildStudentName = (student) =>
   [student.lastName, student.firstName, student.middleInitial]
@@ -2343,13 +2344,9 @@ function RegistrarStudentSectioning({
           {isRegistrarMode ? (
             <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
               <div>
-                <h3 className="text-lg font-bold text-[#003366]">
+                <h3 className="text-xl font-bold text-[#003366]">
                   Section Generator
                 </h3>
-                <p className="mt-1 text-sm text-slate-500">
-                  Generate sections for the selected batch year, then manage
-                  each section directly from the cards below.
-                </p>
               </div>
 
               <div className="mt-5 grid grid-cols-1 gap-4 lg:grid-cols-[170px_170px_170px_auto_auto_auto] lg:items-end">
@@ -2491,7 +2488,7 @@ function RegistrarStudentSectioning({
                 <button
                   type="button"
                   onClick={handleDownloadSectionTemplate}
-                  className="rounded-xl border border-emerald-300 px-5 py-3 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-50"
+                  className={downloadTemplateButtonClass}
                 >
                   Download Template
                 </button>
@@ -2512,13 +2509,8 @@ function RegistrarStudentSectioning({
               <div className="mb-5 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                 <div>
                   <h3 className="text-xl font-bold text-[#003366]">
-                    Section Preview
+                    Sections Preview
                   </h3>
-                  <p className="mt-1 text-sm text-slate-500">
-                    {isRegistrarMode
-                      ? "Review each generated section separately and edit section names before saving the final sections."
-                      : "Review registrar-created sections and shuffle students across existing sections when needed."}
-                  </p>
                 </div>
                 {isChairpersonMode ? (
                   <label className="block w-full md:max-w-xs">
@@ -2669,13 +2661,8 @@ function RegistrarStudentSectioning({
                           selectedBatch.program,
                           selectedSection.sectionCode
                         )
-                      : "Section Roster"}
+                      : "Section Students"}
                   </h3>
-                  <p className="mt-1 text-sm text-slate-500">
-                    {isRegistrarMode
-                      ? "Move students between generated sections, add students, and remove duplicates or wrong entries."
-                      : "Students shown here come from registrar-created sections. Use Shuffle Sections for a randomized redistribution."}
-                  </p>
                 </div>
 
                 <input
@@ -2897,10 +2884,6 @@ function RegistrarStudentSectioning({
                 <h3 className="text-xl font-bold text-[#003366]">
                   Removed Students
                 </h3>
-                <p className="mt-1 text-sm text-slate-500">
-                  Students removed from the final rosters stay here for audit
-                  review and can be restored if needed.
-                </p>
               </div>
 
               <div className="overflow-x-auto">

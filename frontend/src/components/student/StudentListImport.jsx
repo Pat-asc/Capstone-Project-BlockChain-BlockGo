@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { uploadToIpfs, getDecryptedIpfsUrl } from "../../services/api";
 import Modal from "../../services/Modal";
+import { downloadTemplateButtonClass } from "../shared/downloadButtonStyles";
 const programs = [
   "Bachelor of Science in Accountancy",
   "Bachelor of Science in Business Administration major in Financial Management",
@@ -225,7 +226,7 @@ function StudentListImport() {
               <input type="file" accept=".csv" onChange={(e) => setSelectedFile(e.target.files?.[0] || null)} className="block w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm" />
               <p className="mt-2 text-sm text-slate-500">{selectedFile ? `Selected file: ${selectedFile.name}` : "Template format: student_no, full_name, email, date_of_birth, department..."}</p>
             </div>
-            <button onClick={handleDownloadTemplate} className="rounded-2xl border border-[#003366] px-5 py-3 text-sm font-semibold text-[#003366] transition hover:bg-[#003366] hover:text-white">Download Template</button>
+            <button onClick={handleDownloadTemplate} className={downloadTemplateButtonClass}>Download Template</button>
             <button onClick={handleImport} disabled={isUploading} className="rounded-2xl bg-[#003366] px-6 py-3 text-sm font-semibold text-white transition hover:bg-[#00264d] disabled:opacity-50">
               {isUploading ? "Uploading to IPFS..." : "Forward to Chairperson"}
             </button>
