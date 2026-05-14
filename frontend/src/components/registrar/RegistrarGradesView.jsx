@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { fetchAllGrades, finalizeGrade, fetchPendingRequests, approveRegistrationRequest, denyRegistrationRequest, fetchApprovedStudents, assignStudent, fetchApprovedAdmins, assignDepartmentAdmin, fetchApprovedFaculties, assignFaculty, dropStudent, getDecryptedIpfsUrl, fetchStagedGrades, finalizeStagedGrades, getSystemSetting, registrarBulkEnrollStudents } from '../../services/api';
+import { fetchAllGrades, finalizeGrade, fetchPendingRequests, approveRegistrationRequest, denyRegistrationRequest, fetchApprovedStudents, assignStudent, fetchApprovedAdmins, assignDepartmentAdmin, revokeDepartmentAdmin, fetchApprovedFaculties, assignFaculty, dropStudent, revokeFaculty, getDecryptedIpfsUrl, fetchStagedGrades, finalizeStagedGrades, getSystemSetting, registrarBulkEnrollStudents } from '../../services/api';
 import RegistrarHeader from './RegistrarHeader';
 import RegistrarSidebar from './RegistrarSidebar';
 import RegistrarDashboard from './RegistrarDashboard';
@@ -134,44 +134,52 @@ const RegistrarGradesView = ({
             ],
         },
     ];
+    void revocationPreviewSections;
 
     const chairpersonRevocationAccounts = useMemo(
         () =>
-            [...departments]
-                .sort((a, b) => a.localeCompare(b))
-                .map((department, index) => ({
-                    id: `CH-${String(index + 1).padStart(3, '0')}`,
-                    department,
-                    name: `${department} Chairperson`,
-                    role: 'Department Chairperson',
+            [...approvedAdmins]
+                .sort((a, b) =>
+                    String(a.department || '').localeCompare(String(b.department || '')) ||
+                    String(a.fullname || a.email || '').localeCompare(String(b.fullname || b.email || ''))
+                )
+                .map((admin) => ({
+                    id: admin.id,
+                    department: admin.department || 'Unassigned',
+                    name: admin.fullname || admin.email || `Chairperson ${admin.id}`,
+                    email: admin.email || '',
+                    role: admin.role || 'Department Chairperson',
                     status: 'Active',
                 })),
-        [departments]
+        [approvedAdmins]
     );
 
     const facultyRevocationDepartments = useMemo(
-        () =>
-            [...departments]
-                .sort((a, b) => a.localeCompare(b))
-                .map((department, index) => ({
+        () => {
+            const grouped = approvedFaculties.reduce((acc, faculty) => {
+                const department = faculty.department || 'Unassigned';
+                if (!acc[department]) acc[department] = [];
+
+                acc[department].push({
+                    id: faculty.id,
+                    name: faculty.fullname || faculty.email || `Faculty ${faculty.id}`,
+                    email: faculty.email || '',
+                    role: 'Faculty',
+                    status: 'Active',
+                });
+
+                return acc;
+            }, {});
+
+            return Object.entries(grouped)
+                .sort(([a], [b]) => a.localeCompare(b))
+                .map(([department, accounts]) => ({
                     name: department,
                     chairperson: `${department} Chairperson`,
-                    accounts: [
-                        {
-                            id: `FAC-${String(index * 2 + 1).padStart(3, '0')}`,
-                            name: `${department.split(' ')[0]} Faculty A`,
-                            role: 'Faculty',
-                            status: 'Active',
-                        },
-                        {
-                            id: `FAC-${String(index * 2 + 2).padStart(3, '0')}`,
-                            name: `${department.split(' ')[0]} Faculty B`,
-                            role: 'Faculty',
-                            status: 'Active',
-                        },
-                    ].sort((a, b) => a.name.localeCompare(b.name)),
-                })),
-        [departments]
+                    accounts: accounts.sort((a, b) => a.name.localeCompare(b.name)),
+                }));
+        },
+        [approvedFaculties]
     );
 
     const filteredChairpersonAccounts = useMemo(() => {
@@ -444,6 +452,44 @@ const RegistrarGradesView = ({
                     loadApprovedStudents();
                 } catch (error) {
                     alert(error.message);
+                }
+                setConfirmModal(prev => ({ ...prev, isOpen: false }));
+            }
+        });
+    };
+
+    const handleRevokeFaculty = async (id, name) => {
+        setConfirmModal({
+            isOpen: true,
+            title: "Revoke Faculty Account",
+            message: `Are you sure you want to revoke ${name}? This will remove their system account and Fabric wallet access.`,
+            isDestructive: true,
+            onConfirm: async () => {
+                try {
+                    await revokeFaculty(id);
+                    alert(`${name} has been revoked.`);
+                    await loadApprovedFaculties();
+                } catch (error) {
+                    alert(error.message || 'Failed to revoke faculty account.');
+                }
+                setConfirmModal(prev => ({ ...prev, isOpen: false }));
+            }
+        });
+    };
+
+    const handleRevokeChairperson = async (id, name) => {
+        setConfirmModal({
+            isOpen: true,
+            title: "Revoke Chairperson Account",
+            message: `Are you sure you want to revoke ${name}? This will remove their department admin account and Fabric wallet access.`,
+            isDestructive: true,
+            onConfirm: async () => {
+                try {
+                    await revokeDepartmentAdmin(id);
+                    alert(`${name} has been revoked.`);
+                    await loadApprovedAdmins();
+                } catch (error) {
+                    alert(error.message || 'Failed to revoke chairperson account.');
                 }
                 setConfirmModal(prev => ({ ...prev, isOpen: false }));
             }
@@ -925,7 +971,7 @@ const RegistrarGradesView = ({
                             <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5 shadow-sm">
                                 <h3 className="text-lg font-bold text-[#003366]">Account Revocation</h3>
                                 <p className="mt-2 text-sm text-slate-600">
-                                    UI preview only for now. Registrar accounts cannot be revoked from this screen.
+                                    Registrar accounts cannot be revoked from this screen. Student drops and faculty revocations remove system access and call the Fabric revocation flow.
                                 </p>
                             </div>
 
@@ -991,8 +1037,8 @@ const RegistrarGradesView = ({
                                                     </div>
                                                     <button
                                                         type="button"
-                                                        disabled
-                                                        className="rounded-lg bg-red-200 px-4 py-2 text-sm font-bold text-red-800 opacity-70"
+                                                        onClick={() => handleRevokeChairperson(account.id, account.name)}
+                                                        className="rounded-lg bg-red-600 px-4 py-2 text-sm font-bold text-white hover:bg-red-700"
                                                     >
                                                         Revoke Account
                                                     </button>
@@ -1084,8 +1130,8 @@ const RegistrarGradesView = ({
                                                                     </div>
                                                                     <button
                                                                         type="button"
-                                                                        disabled
-                                                                        className="rounded-lg bg-red-200 px-4 py-2 text-sm font-bold text-red-800 opacity-70"
+                                                                        onClick={() => handleRevokeFaculty(account.id, account.name)}
+                                                                        className="rounded-lg bg-red-600 px-4 py-2 text-sm font-bold text-white hover:bg-red-700"
                                                                     >
                                                                         Revoke Account
                                                                     </button>

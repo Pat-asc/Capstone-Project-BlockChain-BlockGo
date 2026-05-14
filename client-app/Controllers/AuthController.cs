@@ -716,6 +716,76 @@ namespace Client_app.Controllers
             }
         }
 
+        [HttpDelete("admins/department/{id}/revoke")]
+        [Authorize(Roles = "registrar,admin")]
+        public async Task<IActionResult> RevokeDepartmentAdmin(int id)
+        {
+            try
+            {
+                using var conn = new NpgsqlConnection(_connectionString);
+                await conn.OpenAsync();
+
+                using var findCmd = new NpgsqlCommand(@"
+                    SELECT u.email, u.role, ap.full_name, ap.department
+                    FROM Users u
+                    JOIN AdminProfiles ap ON u.id = ap.user_id
+                    WHERE u.id = @id
+                      AND LOWER(REPLACE(REPLACE(u.role, ' ', '_'), '-', '_')) IN ('department_admin', 'dept_admin', 'deptadmin', 'department', 'admin')", conn);
+                findCmd.Parameters.AddWithValue("id", id);
+
+                using var reader = await findCmd.ExecuteReaderAsync();
+                if (!await reader.ReadAsync())
+                {
+                    return NotFound(new { status = "Error", message = "Department admin/chairperson not found." });
+                }
+
+                string userEmail = reader.GetString(0);
+                string userRole = reader.GetString(1);
+                string userName = reader.IsDBNull(2) ? userEmail : reader.GetString(2);
+                string department = reader.IsDBNull(3) ? "Unassigned" : reader.GetString(3);
+                await reader.CloseAsync();
+
+                using var client = _httpClientFactory.CreateClient("FabricCAClient");
+                var apiKey = Environment.GetEnvironmentVariable("INTERNAL_API_KEY") ?? _configuration["InternalApiKey"] ?? throw new InvalidOperationException("Internal API Key not configured.");
+                client.DefaultRequestHeaders.Add("x-api-key", apiKey);
+
+                var payload = new { username = userEmail, role = userRole };
+                var content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
+                var middlewareUrl = _configuration["Middleware:Url"] ?? _configuration["MIDDLEWARE_URL"] ?? "http://127.0.0.1:4000";
+                var response = await client.PostAsync($"{middlewareUrl}/api/revoke", content);
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    var errBody = await response.Content.ReadAsStringAsync();
+                    if (errBody.Contains("already revoked") || errBody.Contains("already inactive") || errBody.Contains("does not exist") || errBody.Contains("not found"))
+                    {
+                        _logger.LogWarning("Chairperson account {Email} is already revoked or missing from the Fabric wallet/CA.", userEmail);
+                    }
+                    else
+                    {
+                        return StatusCode(502, new { status = "Error", message = $"Fabric revocation failed: {errBody}" });
+                    }
+                }
+
+                using var deleteCmd = new NpgsqlCommand("DELETE FROM Users WHERE id = @id", conn);
+                deleteCmd.Parameters.AddWithValue("id", id);
+                await deleteCmd.ExecuteNonQueryAsync();
+
+                using var auditCmd = new NpgsqlCommand(@"
+                    INSERT INTO gradecorrectionlogs (recordid, oldgrade, newgrade, reasontext, approvedby, timestamp)
+                    VALUES ('SYSTEM-AUTH', @email, 'REVOKED', @reason, @admin, CURRENT_TIMESTAMP)", conn);
+                auditCmd.Parameters.AddWithValue("email", userEmail);
+                auditCmd.Parameters.AddWithValue("reason", $"Chairperson Access Revoked ({department})");
+                auditCmd.Parameters.AddWithValue("admin", User.Identity?.Name ?? "Admin");
+                await auditCmd.ExecuteNonQueryAsync();
+
+                _cache.Remove("approved_department_admins");
+                await NotifyAcademicDataChangedAsync("department_admin_revoked", department, userEmail);
+                return Ok(new { status = "Success", message = $"{userName} access revoked." });
+            }
+            catch (Exception ex) { return StatusCode(500, new { status = "Error", message = ex.Message }); }
+        }
+
         [HttpGet("faculty/approved")]
         public async Task<IActionResult> GetApprovedFaculties()
         {

@@ -64,27 +64,13 @@ const FormulaBuilder = () => {
         department,
         formulaConfig: { columns } 
       };
-      
-      const token = localStorage.getItem('token');
-      const response = await fetch('/api/GradeTemplate/create', {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}` 
-        },
-        body: JSON.stringify(payload)
-      });
 
-      const result = await response.json();
-      if (response.ok) {
-        alert(result.message || "Template submitted for approval successfully!");
-        setTemplateName('');
-      } else {
-        alert(`Error: ${result.message}`);
-      }
+      const result = await createGradeTemplate(payload);
+      alert(result.message || "Template submitted for approval successfully!");
+      setTemplateName('');
     } catch (error) {
       console.error("Error saving template:", error);
-      alert("Failed to save the template.");
+      alert(error.message || "Failed to save the template.");
     } finally {
       setIsSubmitting(false);
     }

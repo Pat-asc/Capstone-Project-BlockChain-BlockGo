@@ -96,6 +96,17 @@ export const resetPassword = (token, newPassword) => {
     });
 };
 
+export const hashPassword = async (password) => {
+    return await fetchPublic('/crypto/hash-password', {
+        method: 'POST',
+        body: JSON.stringify({ password })
+    });
+};
+
+export const bootstrapSystem = async () => {
+    return await fetchPublic('/bootstrap');
+};
+
 // ==================== MIDDLEWARE API - STUDENT PROFILE ====================
 export const getStudentProfile = async () => {
     return await fetchWithAuth('/student/profile');
@@ -157,6 +168,64 @@ export const returnGrade = async (id, note, invokerId = '') => {
     return await fetchWithAuth(`/Grades/return/${encodeURIComponent(id)}`, {
         method: 'POST',
         body: JSON.stringify({ note, invokerId })
+    });
+};
+
+export const enrollFabricIdentity = async ({ username, role, password }) => {
+    return await fetchWithAuth('/enroll', {
+        method: 'POST',
+        body: JSON.stringify({ username, role, password })
+    });
+};
+
+export const registerFabricIdentity = async ({ username, role, password }) => {
+    return await fetchWithAuth('/register', {
+        method: 'POST',
+        body: JSON.stringify({ username, role, password })
+    });
+};
+
+export const revokeFabricIdentity = async ({ username, role, reason = '' }) => {
+    return await fetchWithAuth('/revoke', {
+        method: 'POST',
+        body: JSON.stringify({ username, role, reason })
+    });
+};
+
+export const deleteFabricWallet = async (username) => {
+    return await fetchWithAuth(`/wallet/${encodeURIComponent(username)}`, {
+        method: 'DELETE'
+    });
+};
+
+export const fetchBlockchainGrades = async () => {
+    return await fetchWithAuth('/all-grades');
+};
+
+export const middlewareBatchUploadGrades = async (file) => {
+    const formData = new FormData();
+    formData.append('excel', file);
+
+    return await fetchWithAuth('/batch-upload', {
+        method: 'POST',
+        body: formData
+    });
+};
+
+export const middlewareUploadGrades = async (file) => {
+    const formData = new FormData();
+    formData.append('excel', file);
+
+    return await fetchWithAuth('/upload-grades', {
+        method: 'POST',
+        body: formData
+    });
+};
+
+export const batchIssueGradeToBlockchain = async (grades = []) => {
+    return await fetchWithAuth('/batch-issue-grade', {
+        method: 'POST',
+        body: JSON.stringify(grades)
     });
 };
 
@@ -251,6 +320,12 @@ export const denyRegistrationRequest = async (id) => {
     });
 };
 
+export const cleanupPendingRequests = async () => {
+    return await fetchWithAuth('/Auth/requests/cleanup-pending', {
+        method: 'DELETE'
+    });
+};
+
 export const fetchUserProfile = async (email, role) => {
     return await fetchWithAuth(`/Auth/user-profile?email=${encodeURIComponent(email)}&role=${encodeURIComponent(role)}`);
 };
@@ -277,6 +352,12 @@ export const assignDepartmentAdmin = async (id, assignmentData) => {
     });
 };
 
+export const revokeDepartmentAdmin = async (id) => {
+    return await fetchWithAuth(`/Auth/admins/department/${encodeURIComponent(id)}/revoke`, {
+        method: 'DELETE'
+    });
+};
+
 export const fetchApprovedFaculties = async () => {
     return await fetchWithAuth(`/Auth/faculty/approved`);
 };
@@ -285,6 +366,12 @@ export const assignFaculty = async (id, assignmentData) => {
     return await fetchWithAuth(`/Auth/faculty/${encodeURIComponent(id)}/assign`, {
         method: 'PUT',
         body: JSON.stringify(assignmentData)
+    });
+};
+
+export const revokeFaculty = async (id) => {
+    return await fetchWithAuth(`/Auth/faculty/${encodeURIComponent(id)}/revoke`, {
+        method: 'DELETE'
     });
 };
 
@@ -414,6 +501,35 @@ export const uploadToIpfs = async (file) => {
     });
 };
 
+export const fetchGradeRecord = async (recordId) => {
+    return await fetchWithAuth(`/Grades/${encodeURIComponent(recordId)}`);
+};
+
+export const fetchGradeHistory = async (recordId) => {
+    return await fetchWithAuth(`/Grades/history/${encodeURIComponent(recordId)}`);
+};
+
+export const correctGrade = async (payload) => {
+    return await fetchWithAuth('/Grades/correct', {
+        method: 'POST',
+        body: JSON.stringify(payload)
+    });
+};
+
+export const flagGrade = async (recordId, payload = {}) => {
+    return await fetchWithAuth(`/Grades/flag/${encodeURIComponent(recordId)}`, {
+        method: 'POST',
+        body: JSON.stringify(payload)
+    });
+};
+
+export const updateGradeStatus = async (recordId, payload = {}) => {
+    return await fetchWithAuth(`/Grades/status/${encodeURIComponent(recordId)}`, {
+        method: 'POST',
+        body: JSON.stringify(payload)
+    });
+};
+
 export const fetchDepartmentTemplates = async (department) => {
     return await fetchWithAuth(`/GradeTemplate/department/${encodeURIComponent(department)}`);
 };
@@ -474,6 +590,26 @@ export const fetchSystemLogs = async () => {
 
 export const getAuditLogs = async (recordId) => {
     return await fetchWithAuth(`/Grades/audit-logs/${encodeURIComponent(recordId)}`);
+};
+
+export const fetchRegistrarDashboardOverview = async () => {
+    return await fetchWithAuth('/RegistrarDashboard/overview');
+};
+
+export const queryRegistrarLogs = async (params = {}) => {
+    const query = new URLSearchParams(
+        Object.entries(params).filter(([, value]) => value !== undefined && value !== null && value !== '')
+    ).toString();
+
+    return await fetchWithAuth(`/RegistrarDashboard/logs/query${query ? `?${query}` : ''}`);
+};
+
+export const searchRegistrarRecords = async (params = {}) => {
+    const query = new URLSearchParams(
+        Object.entries(params).filter(([, value]) => value !== undefined && value !== null && value !== '')
+    ).toString();
+
+    return await fetchWithAuth(`/registrar/Search${query ? `?${query}` : ''}`);
 };
 
 export const downloadGradingSheet = async (department, section) => {
