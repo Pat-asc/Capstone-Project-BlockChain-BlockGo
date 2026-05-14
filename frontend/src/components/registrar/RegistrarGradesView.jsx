@@ -38,6 +38,15 @@ const RegistrarGradesView = ({
     latestChatNotice = null,
     onOpenChat,
 }) => {
+    const systemAdminTabs = ['grades', 'Requests', 'assignStudents', 'assignAdmins', 'assignFaculties', 'revokeAccounts'];
+    const systemAdminMenuItems = [
+        { id: 'grades', label: 'Grades Ledger' },
+        { id: 'Requests', label: 'Pending Requests' },
+        { id: 'assignStudents', label: 'Assign Students' },
+        { id: 'assignAdmins', label: 'Assign Admins' },
+        { id: 'assignFaculties', label: 'Assign Faculty' },
+        { id: 'revokeAccounts', label: 'Account Revocation' },
+    ];
     const [grades, setGrades] = useState([]);
     const [loading, setLoading] = useState(true);
     const [errorMsg, setErrorMsg] = useState(null); 
@@ -89,6 +98,119 @@ const RegistrarGradesView = ({
     const [vaultPassword, setVaultPassword] = useState("");
     const [showVaultPassword, setShowVaultPassword] = useState(false);
     const [confirmModal, setConfirmModal] = useState({ isOpen: false, title: "", message: "", onConfirm: null, isDestructive: false });
+    const [chairpersonSearchTerm, setChairpersonSearchTerm] = useState('');
+    const [facultySearchTerm, setFacultySearchTerm] = useState('');
+    const [showChairpersonAccounts, setShowChairpersonAccounts] = useState(false);
+    const [showFacultyDepartments, setShowFacultyDepartments] = useState(false);
+    const [selectedFacultyDepartment, setSelectedFacultyDepartment] = useState('');
+
+    const revocationPreviewSections = [
+        {
+            title: 'Registrar',
+            description: 'Registrar-level accounts that can be reviewed for access removal.',
+            accounts: [
+                { id: 'REG-001', name: 'PLV Registrar Office', role: 'Registrar', scope: 'Institution-wide registrar tools', status: 'Active' },
+            ],
+        },
+        {
+            title: 'Department Chairperson',
+            description: 'Department chairperson accounts grouped by their assigned academic unit.',
+            accounts: departments.slice(0, 4).map((department, index) => ({
+                id: `CH-${String(index + 1).padStart(3, '0')}`,
+                name: `Chairperson ${index + 1}`,
+                role: 'Department Chairperson',
+                scope: department,
+                status: 'Active',
+            })),
+        },
+        {
+            title: 'Faculty per Chairperson',
+            description: 'Faculty accounts shown under their chairperson assignment for revocation review.',
+            accounts: [
+                { id: 'FAC-101', name: 'Faculty Member 1', role: 'Faculty', scope: `${departments[0]} • Chairperson 1`, status: 'Active' },
+                { id: 'FAC-102', name: 'Faculty Member 2', role: 'Faculty', scope: `${departments[1]} • Chairperson 2`, status: 'Active' },
+                { id: 'FAC-103', name: 'Faculty Member 3', role: 'Faculty', scope: `${departments[2]} • Chairperson 3`, status: 'Active' },
+                { id: 'FAC-104', name: 'Faculty Member 4', role: 'Faculty', scope: `${departments[3]} • Chairperson 4`, status: 'Active' },
+            ],
+        },
+    ];
+
+    const chairpersonRevocationAccounts = useMemo(
+        () =>
+            [...departments]
+                .sort((a, b) => a.localeCompare(b))
+                .map((department, index) => ({
+                    id: `CH-${String(index + 1).padStart(3, '0')}`,
+                    department,
+                    name: `${department} Chairperson`,
+                    role: 'Department Chairperson',
+                    status: 'Active',
+                })),
+        [departments]
+    );
+
+    const facultyRevocationDepartments = useMemo(
+        () =>
+            [...departments]
+                .sort((a, b) => a.localeCompare(b))
+                .map((department, index) => ({
+                    name: department,
+                    chairperson: `${department} Chairperson`,
+                    accounts: [
+                        {
+                            id: `FAC-${String(index * 2 + 1).padStart(3, '0')}`,
+                            name: `${department.split(' ')[0]} Faculty A`,
+                            role: 'Faculty',
+                            status: 'Active',
+                        },
+                        {
+                            id: `FAC-${String(index * 2 + 2).padStart(3, '0')}`,
+                            name: `${department.split(' ')[0]} Faculty B`,
+                            role: 'Faculty',
+                            status: 'Active',
+                        },
+                    ].sort((a, b) => a.name.localeCompare(b.name)),
+                })),
+        [departments]
+    );
+
+    const filteredChairpersonAccounts = useMemo(() => {
+        const query = chairpersonSearchTerm.trim().toLowerCase();
+        if (!query) return chairpersonRevocationAccounts;
+
+        return chairpersonRevocationAccounts.filter((account) =>
+            [account.name, account.department, account.id].some((value) =>
+                value.toLowerCase().includes(query)
+            )
+        );
+    }, [chairpersonRevocationAccounts, chairpersonSearchTerm]);
+
+    const filteredFacultyDepartments = useMemo(() => {
+        const query = facultySearchTerm.trim().toLowerCase();
+        if (!query) return facultyRevocationDepartments;
+
+        return facultyRevocationDepartments
+            .map((department) => ({
+                ...department,
+                accounts: department.accounts.filter((account) =>
+                    [account.name, account.id, department.name].some((value) =>
+                        value.toLowerCase().includes(query)
+                    )
+                ),
+            }))
+            .filter(
+                (department) =>
+                    department.name.toLowerCase().includes(query) ||
+                    department.accounts.length > 0
+            );
+    }, [facultyRevocationDepartments, facultySearchTerm]);
+
+    const selectedFacultyDepartmentData = useMemo(() => {
+        if (!selectedFacultyDepartment) return null;
+        return filteredFacultyDepartments.find(
+            (department) => department.name === selectedFacultyDepartment
+        ) || null;
+    }, [filteredFacultyDepartments, selectedFacultyDepartment]);
 
     useEffect(() => {
         const applyEncodingPeriod = (value) => {
@@ -422,6 +544,8 @@ const RegistrarGradesView = ({
         input.click();
     };
 
+    const isSystemAdministrationView = systemAdminTabs.includes(mainTab);
+
     return (
         <div className="flex h-screen w-full flex-col bg-slate-50 font-sans fixed inset-0 z-[100] overflow-auto">
             <RegistrarHeader registrarData={{ name: loggedInName, semester: activeSemester }} onLogout={() => { localStorage.removeItem('token'); window.location.reload(); }} />
@@ -433,6 +557,34 @@ const RegistrarGradesView = ({
                     latestChatNotice={latestChatNotice}
                     onOpenChat={onOpenChat}
                 />
+                {isSystemAdministrationView && (
+                    <aside className="w-full max-w-[220px] self-start rounded-2xl border border-slate-200 bg-slate-100 p-4 shadow-sm lg:sticky lg:top-6">
+                        <div className="mb-4 border-b border-slate-200 pb-3">
+                            <h2 className="text-lg font-bold text-[#003366]">System Management</h2>
+                        </div>
+
+                        <nav className="flex flex-col gap-2">
+                            {systemAdminMenuItems.map((item) => {
+                                const isActive = mainTab === item.id;
+
+                                return (
+                                    <button
+                                        key={item.id}
+                                        type="button"
+                                        onClick={() => setMainTab(item.id)}
+                                        className={`w-full rounded-xl border-b-2 px-4 py-3 text-left text-sm font-medium transition ${
+                                            isActive
+                                                ? 'border-yellow-400 bg-[#003366] text-yellow-400 shadow-sm'
+                                                : 'border-transparent text-slate-700 hover:bg-slate-100'
+                                        }`}
+                                    >
+                                        {item.label}
+                                    </button>
+                                );
+                            })}
+                        </nav>
+                    </aside>
+                )}
                 <main className="flex-1 overflow-y-auto pr-2">
                     {mainTab === 'dashboard' && <RegistrarDashboard grades={grades} />}
                     {mainTab === 'encoding' && <EncodingPeriod />}
@@ -501,30 +653,9 @@ const RegistrarGradesView = ({
                             </div>
                         </div>
                     )}
-                    {mainTab === 'monitoring' && (
-                        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm mb-6">
-                            <h3 className="mb-6 text-xl font-bold text-[#003366]">System Administration Tools</h3>
-                            <div className="flex flex-wrap gap-3">
-                                <button onClick={() => setMainTab('grades')} className="rounded-xl bg-[#003366] px-5 py-3 text-sm font-semibold text-white hover:bg-[#00264d]">Grades Ledger</button>
-                                <button onClick={() => setMainTab('Requests')} className="rounded-xl bg-[#003366] px-5 py-3 text-sm font-semibold text-white hover:bg-[#00264d]">Pending Requests</button>
-                                <button onClick={() => setMainTab('assignStudents')} className="rounded-xl bg-[#003366] px-5 py-3 text-sm font-semibold text-white hover:bg-[#00264d]">Assign Students</button>
-                                <button onClick={() => setMainTab('assignAdmins')} className="rounded-xl bg-[#003366] px-5 py-3 text-sm font-semibold text-white hover:bg-[#00264d]">Assign Admins</button>
-                                <button onClick={() => setMainTab('assignFaculties')} className="rounded-xl bg-[#003366] px-5 py-3 text-sm font-semibold text-white hover:bg-[#00264d]">Assign Faculty</button>
-                            </div>
-                        </div>
-                    )}
                     {mainTab === 'grades' && (
                         <>
                             <div className="mb-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                                <div className="mb-4">
-                                    <button
-                                        type="button"
-                                        onClick={() => setMainTab('monitoring')}
-                                        className="rounded-lg border border-yellow-400 px-4 py-2 text-sm font-semibold text-[#003366] transition hover:bg-yellow-400 hover:text-[#003366]"
-                                    >
-                                        Back to Tools
-                                    </button>
-                                </div>
                                 <div className="flex flex-col items-center justify-between gap-4 md:flex-row">
                                     <div className="flex flex-wrap items-center gap-4">
                                         <select value={filterDept} onChange={(e) => setFilterDept(e.target.value)} className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold outline-none focus:border-[#003366]">
@@ -609,15 +740,6 @@ const RegistrarGradesView = ({
                     {mainTab === 'Requests' && (
                         <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
                             <div className="border-b border-slate-200 p-4">
-                                <button
-                                    type="button"
-                                    onClick={() => setMainTab('monitoring')}
-                                    className="rounded-lg border border-yellow-400 px-4 py-2 text-sm font-semibold text-[#003366] transition hover:bg-yellow-400 hover:text-[#003366]"
-                                >
-                                    Back to Tools
-                                </button>
-                            </div>
-                            <div className="border-b border-slate-200 p-4">
                                 <input type="text" placeholder="Search..." value={requestSearchTerm} onChange={e => setRequestSearchTerm(e.target.value)} className="w-full rounded-xl border border-slate-300 bg-slate-50 px-4 py-3 outline-none" />
                             </div>
                             <div className="overflow-x-auto"><table className="w-full min-w-[800px] text-left text-sm">
@@ -646,145 +768,337 @@ const RegistrarGradesView = ({
                     )}
                     {mainTab === 'assignStudents' && (
                         <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-                            <div className="border-b border-slate-200 p-4">
-                                <button
-                                    type="button"
-                                    onClick={() => setMainTab('monitoring')}
-                                    className="rounded-lg border border-yellow-400 px-4 py-2 text-sm font-semibold text-[#003366] transition hover:bg-yellow-400 hover:text-[#003366]"
-                                >
-                                    Back to Tools
-                                </button>
-                            </div>
-                            <div className="overflow-x-auto"><table className="w-full min-w-[800px] text-left text-sm">
-                                <thead>
-                                    <tr className="bg-[#003366] text-white">
-                                        <th className="p-4">Name</th><th className="p-4">Student No.</th><th className="p-4">Status</th><th className="p-4">Assign Dept</th><th className="p-4">Assign Section</th><th className="p-4">Action</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {approvedStudents.length === 0 ? <tr><td colSpan="6" className="p-8 text-center text-slate-500">No approved students waiting for assignment.</td></tr> : approvedStudents.map((student) => (
-                                        <tr key={student.id} className="border-b border-slate-100 hover:bg-slate-50">
-                                            <td className="p-4 font-bold text-slate-800">{student.fullname}</td>
-                                            <td className="p-4">{student.studentno}</td>
-                                            <td className="p-4"><span className={`inline-block rounded-full px-3 py-1 text-xs font-bold ${student.assignmentStatus === 'Unassigned' ? 'bg-yellow-100 text-yellow-800' : 'bg-blue-100 text-blue-800'}`}>{student.assignmentStatus}</span></td>
-                                            <td className="p-4">
-                                                <select defaultValue="" onChange={(e) => setStudentAssignments(prev => ({...prev, [student.id]: {...prev[student.id], department: e.target.value}}))} className="rounded-lg border border-slate-300 bg-white p-2 outline-none">
-                                                    <option value="" disabled>Select Dept</option>
-                                                    {departments.map(d => <option key={d} value={d}>{d}</option>)}
-                                                </select>
-                                            </td>
-                                            <td className="p-4">
-                                                <div className="flex gap-2">
-                                                    <select defaultValue="" onChange={(e) => setStudentAssignments(prev => ({...prev, [student.id]: {...prev[student.id], yearLevel: e.target.value}}))} className="rounded-lg border border-slate-300 bg-white p-2 outline-none">
-                                                        <option value="" disabled>Year</option>
-                                                        <option value="1">1st</option><option value="2">2nd</option><option value="3">3rd</option><option value="4">4th</option>
-                                                    </select>
-                                                    <select defaultValue="" onChange={(e) => setStudentAssignments(prev => ({...prev, [student.id]: {...prev[student.id], sectionNum: e.target.value}}))} className="rounded-lg border border-slate-300 bg-white p-2 outline-none">
-                                                        <option value="" disabled>Sec</option>
-                                                        {[...Array(15)].map((_, i) => <option key={i+1} value={i+1}>{i+1}</option>)}
-                                                    </select>
+                            <div className="space-y-4 p-4">
+                                {approvedStudents.length === 0 ? (
+                                    <div className="rounded-2xl border border-dashed border-slate-200 p-8 text-center text-slate-500">
+                                        No approved students waiting for assignment.
+                                    </div>
+                                ) : approvedStudents.map((student) => (
+                                    <div key={student.id} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                                        <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                                            <div className="space-y-2">
+                                                <div>
+                                                    <p className="text-base font-bold text-slate-800">{student.fullname}</p>
+                                                    <p className="text-sm text-slate-500">Student No. {student.studentno}</p>
                                                 </div>
-                                            </td>
-                                            <td className="p-4">
-                                                <button onClick={() => submitStudentAssignment(student.id)} className="rounded-lg bg-[#003366] px-4 py-2 font-bold text-white hover:bg-[#00264d] mr-2">Assign</button>
-                                                <button onClick={() => handleDropStudent(student.id, student.fullname)} className="rounded-lg bg-red-500 px-4 py-2 font-bold text-white hover:bg-red-600">Drop</button>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table></div>
+                                                <span className={`inline-block rounded-full px-3 py-1 text-xs font-bold ${student.assignmentStatus === 'Unassigned' ? 'bg-yellow-100 text-yellow-800' : 'bg-blue-100 text-blue-800'}`}>{student.assignmentStatus}</span>
+                                            </div>
+
+                                            <div className="grid flex-1 gap-3 lg:max-w-3xl lg:grid-cols-[minmax(0,1.8fr)_minmax(0,1fr)_auto]">
+                                                <label className="block">
+                                                    <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Department</span>
+                                                    <select defaultValue="" onChange={(e) => setStudentAssignments(prev => ({...prev, [student.id]: {...prev[student.id], department: e.target.value}}))} className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-[#003366]">
+                                                        <option value="" disabled>Select department</option>
+                                                        {departments.map(d => <option key={d} value={d}>{d}</option>)}
+                                                    </select>
+                                                </label>
+                                                <div className="grid gap-3 sm:grid-cols-2">
+                                                    <label className="block">
+                                                        <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Year</span>
+                                                        <select defaultValue="" onChange={(e) => setStudentAssignments(prev => ({...prev, [student.id]: {...prev[student.id], yearLevel: e.target.value}}))} className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-[#003366]">
+                                                            <option value="" disabled>Select year</option>
+                                                            <option value="1">1st</option><option value="2">2nd</option><option value="3">3rd</option><option value="4">4th</option>
+                                                        </select>
+                                                    </label>
+                                                    <label className="block">
+                                                        <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Section</span>
+                                                        <select defaultValue="" onChange={(e) => setStudentAssignments(prev => ({...prev, [student.id]: {...prev[student.id], sectionNum: e.target.value}}))} className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-[#003366]">
+                                                            <option value="" disabled>Select section</option>
+                                                            {[...Array(15)].map((_, i) => <option key={i+1} value={i+1}>{i+1}</option>)}
+                                                        </select>
+                                                    </label>
+                                                </div>
+                                                <div className="flex flex-col gap-2 sm:flex-row lg:flex-col">
+                                                    <button onClick={() => submitStudentAssignment(student.id)} className="rounded-lg bg-[#003366] px-4 py-2 text-sm font-bold text-white hover:bg-[#00264d]">Assign</button>
+                                                    <button onClick={() => handleDropStudent(student.id, student.fullname)} className="rounded-lg bg-red-500 px-4 py-2 text-sm font-bold text-white hover:bg-red-600">Drop</button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
                         </div>
                     )}
                     {mainTab === 'assignAdmins' && (
                         <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-                            <div className="border-b border-slate-200 p-4">
-                                <button
-                                    type="button"
-                                    onClick={() => setMainTab('monitoring')}
-                                    className="rounded-lg border border-yellow-400 px-4 py-2 text-sm font-semibold text-[#003366] transition hover:bg-yellow-400 hover:text-[#003366]"
-                                >
-                                    Back to Tools
-                                </button>
+                            <div className="space-y-4 p-4">
+                                {approvedAdmins.length === 0 ? (
+                                    <div className="rounded-2xl border border-dashed border-slate-200 p-8 text-center text-slate-500">
+                                        No approved department admins waiting for assignment.
+                                    </div>
+                                ) : approvedAdmins.map((admin) => (
+                                    <div key={admin.id} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                                        <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                                            <div className="space-y-2 lg:max-w-sm">
+                                                <div>
+                                                    <p className="text-base font-bold text-slate-800">{admin.fullname}</p>
+                                                    <p className="text-sm capitalize text-slate-500">{admin.role}</p>
+                                                    <p className="text-sm text-slate-500 break-all">{admin.email}</p>
+                                                </div>
+                                                <div>
+                                                    <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Current Department</span>
+                                                    <span className={`inline-block rounded-full px-3 py-1 text-xs font-bold ${admin.department === 'Unassigned' ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}`}>{admin.department}</span>
+                                                </div>
+                                            </div>
+
+                                            <div className="grid flex-1 gap-3 lg:max-w-2xl lg:grid-cols-[minmax(0,1fr)_auto]">
+                                                <label className="block">
+                                                    <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Assign New Department</span>
+                                                    <select defaultValue="" onChange={(e) => setAdminAssignments(prev => ({...prev, [admin.id]: {department: e.target.value}}))} className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-[#003366]">
+                                                        <option value="" disabled>Select department</option>
+                                                        {departments.map(d => <option key={d} value={d}>{d}</option>)}
+                                                    </select>
+                                                </label>
+                                                <div className="flex items-end">
+                                                    <button onClick={() => submitAdminAssignment(admin.id)} className="w-full rounded-lg bg-[#003366] px-4 py-2 text-sm font-bold text-white hover:bg-[#00264d] lg:w-auto">Assign</button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
                             </div>
-                            <div className="overflow-x-auto"><table className="w-full min-w-[800px] text-left text-sm">
-                                <thead>
-                                    <tr className="bg-[#003366] text-white">
-                                        <th className="p-4">Name</th><th className="p-4">Role</th><th className="p-4">Email</th><th className="p-4">Current Department</th><th className="p-4">Assign New Dept</th><th className="p-4">Action</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {approvedAdmins.length === 0 ? <tr><td colSpan="6" className="p-8 text-center text-slate-500">No approved department admins waiting for assignment.</td></tr> : approvedAdmins.map((admin) => (
-                                        <tr key={admin.id} className="border-b border-slate-100 hover:bg-slate-50">
-                                            <td className="p-4 font-bold text-slate-800">{admin.fullname}</td>
-                                            <td className="p-4 capitalize">{admin.role}</td>
-                                            <td className="p-4 text-slate-500">{admin.email}</td>
-                                            <td className="p-4"><span className={`inline-block rounded-full px-3 py-1 text-xs font-bold ${admin.department === 'Unassigned' ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}`}>{admin.department}</span></td>
-                                            <td className="p-4">
-                                                <select defaultValue="" onChange={(e) => setAdminAssignments(prev => ({...prev, [admin.id]: {department: e.target.value}}))} className="rounded-lg border border-slate-300 bg-white p-2 outline-none">
-                                                    <option value="" disabled>Select Dept</option>
-                                                    {departments.map(d => <option key={d} value={d}>{d}</option>)}
-                                                </select>
-                                            </td>
-                                            <td className="p-4">
-                                                <button onClick={() => submitAdminAssignment(admin.id)} className="rounded-lg bg-[#003366] px-4 py-2 font-bold text-white hover:bg-[#00264d]">Assign</button>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table></div>
                         </div>
                     )}
                     {mainTab === 'assignFaculties' && (
                         <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-                            <div className="border-b border-slate-200 p-4">
-                                <button
-                                    type="button"
-                                    onClick={() => setMainTab('monitoring')}
-                                    className="rounded-lg border border-yellow-400 px-4 py-2 text-sm font-semibold text-[#003366] transition hover:bg-yellow-400 hover:text-[#003366]"
-                                >
-                                    Back to Tools
-                                </button>
+                            <div className="space-y-4 p-4">
+                                {approvedFaculties.length === 0 ? (
+                                    <div className="rounded-2xl border border-dashed border-slate-200 p-8 text-center text-slate-500">
+                                        No approved faculty members waiting for assignment.
+                                    </div>
+                                ) : approvedFaculties.map((faculty) => (
+                                    <div key={faculty.id} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                                        <div className="flex flex-col gap-4">
+                                            <div className="flex flex-col gap-2 lg:flex-row lg:items-start lg:justify-between">
+                                                <div className="space-y-2">
+                                                    <div>
+                                                        <p className="text-base font-bold text-slate-800">{faculty.fullname}</p>
+                                                        <p className="text-sm text-slate-500 break-all">{faculty.email}</p>
+                                                    </div>
+                                                    <div>
+                                                        <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Current Assignment</span>
+                                                        {(!faculty.department || faculty.department === 'Unassigned')
+                                                            ? <span className="inline-block rounded-full bg-red-100 px-3 py-1 text-xs font-bold text-red-800">Unassigned</span>
+                                                            : <span className="inline-block rounded-lg bg-green-100 px-3 py-1 text-xs font-bold text-green-800">{faculty.department} - {faculty.yearLevel}{faculty.section}</span>}
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div className="grid gap-3 xl:grid-cols-[minmax(0,1.8fr)_minmax(0,0.9fr)_minmax(0,0.9fr)_minmax(0,1fr)_auto]">
+                                                <label className="block">
+                                                    <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Department</span>
+                                                    <select defaultValue="" onChange={(e) => setFacultyAssignments(prev => ({...prev, [faculty.id]: {...prev[faculty.id], department: e.target.value}}))} className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-[#003366]">
+                                                        <option value="" disabled>Select department</option>
+                                                        {departments.map(d => <option key={d} value={d}>{d}</option>)}
+                                                    </select>
+                                                </label>
+                                                <label className="block">
+                                                    <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Section</span>
+                                                    <select defaultValue="" onChange={(e) => setFacultyAssignments(prev => ({...prev, [faculty.id]: {...prev[faculty.id], section: e.target.value}}))} className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-[#003366]">
+                                                        <option value="" disabled>Select section</option>
+                                                        {[...Array(15)].map((_, i) => <option key={i+1} value={i+1}>{i+1}</option>)}
+                                                    </select>
+                                                </label>
+                                                <label className="block">
+                                                    <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Year</span>
+                                                    <select defaultValue="" onChange={(e) => setFacultyAssignments(prev => ({...prev, [faculty.id]: {...prev[faculty.id], yearLevel: e.target.value}}))} className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-[#003366]">
+                                                        <option value="" disabled>Select year</option>
+                                                        <option value="1">1st</option><option value="2">2nd</option><option value="3">3rd</option><option value="4">4th</option>
+                                                    </select>
+                                                </label>
+                                                <label className="block">
+                                                    <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Subject</span>
+                                                    <input type="text" placeholder="Subject Code" onChange={(e) => setFacultyAssignments(prev => ({...prev, [faculty.id]: {...prev[faculty.id], subject: e.target.value}}))} className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-[#003366]" />
+                                                </label>
+                                                <div className="flex items-end">
+                                                    <button onClick={() => submitFacultyAssignment(faculty.id)} className="w-full rounded-lg bg-[#003366] px-4 py-2 text-sm font-bold text-white hover:bg-[#00264d] xl:w-auto">Assign</button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
                             </div>
-                            <div className="overflow-x-auto"><table className="w-full min-w-[800px] text-left text-sm">
-                                <thead>
-                                    <tr className="bg-[#003366] text-white">
-                                        <th className="p-4">Name</th><th className="p-4">Email</th><th className="p-4">Current Assignment</th><th className="p-4">Assign Dept</th><th className="p-4">Assign Section</th><th className="p-4">Assign Year</th><th className="p-4">Subject</th><th className="p-4">Action</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {approvedFaculties.length === 0 ? <tr><td colSpan="8" className="p-8 text-center text-slate-500">No approved faculty members waiting for assignment.</td></tr> : approvedFaculties.map((faculty) => (
-                                        <tr key={faculty.id} className="border-b border-slate-100 hover:bg-slate-50">
-                                            <td className="p-4 font-bold text-slate-800">{faculty.fullname}</td>
-                                            <td className="p-4 text-slate-500">{faculty.email}</td>
-                                            <td className="p-4">{(!faculty.department || faculty.department === 'Unassigned') ? <span className="inline-block rounded-full bg-red-100 px-3 py-1 text-xs font-bold text-red-800">Unassigned</span> : <span className="inline-block rounded-lg bg-green-100 px-3 py-1 text-xs font-bold text-green-800">{faculty.department} - {faculty.yearLevel}{faculty.section}</span>}</td>
-                                            <td className="p-4">
-                                                <select defaultValue="" onChange={(e) => setFacultyAssignments(prev => ({...prev, [faculty.id]: {...prev[faculty.id], department: e.target.value}}))} className="rounded-lg border border-slate-300 bg-white p-2 outline-none">
-                                                    <option value="" disabled>Select</option>
-                                                    {departments.map(d => <option key={d} value={d}>{d}</option>)}
-                                                </select>
-                                            </td>
-                                            <td className="p-4">
-                                                <select defaultValue="" onChange={(e) => setFacultyAssignments(prev => ({...prev, [faculty.id]: {...prev[faculty.id], section: e.target.value}}))} className="rounded-lg border border-slate-300 bg-white p-2 outline-none">
-                                                    <option value="" disabled>Sec</option>
-                                                    {[...Array(15)].map((_, i) => <option key={i+1} value={i+1}>{i+1}</option>)}
-                                                </select>
-                                            </td>
-                                            <td className="p-4">
-                                                <select defaultValue="" onChange={(e) => setFacultyAssignments(prev => ({...prev, [faculty.id]: {...prev[faculty.id], yearLevel: e.target.value}}))} className="rounded-lg border border-slate-300 bg-white p-2 outline-none">
-                                                    <option value="" disabled>Select</option>
-                                                    <option value="1">1st</option><option value="2">2nd</option><option value="3">3rd</option><option value="4">4th</option>
-                                                </select>
-                                            </td>
-                                            <td className="p-4">
-                                                <input type="text" placeholder="Subject Code" onChange={(e) => setFacultyAssignments(prev => ({...prev, [faculty.id]: {...prev[faculty.id], subject: e.target.value}}))} className="rounded-lg border border-slate-300 bg-white p-2 outline-none w-24" />
-                                            </td>
-                                            <td className="p-4">
-                                                <button onClick={() => submitFacultyAssignment(faculty.id)} className="rounded-lg bg-[#003366] px-4 py-2 font-bold text-white hover:bg-[#00264d]">Assign</button>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table></div>
+                        </div>
+                    )}
+                    {mainTab === 'revokeAccounts' && (
+                        <div className="space-y-5">
+                            <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5 shadow-sm">
+                                <h3 className="text-lg font-bold text-[#003366]">Account Revocation</h3>
+                                <p className="mt-2 text-sm text-slate-600">
+                                    UI preview only for now. Registrar accounts cannot be revoked from this screen.
+                                </p>
+                            </div>
+
+                            <div className="rounded-2xl border border-slate-200 bg-white shadow-sm">
+                                <div className="border-b border-slate-200 px-5 py-4">
+                                    <h4 className="text-base font-bold text-[#003366]">Registrar</h4>
+                                    <p className="mt-1 text-sm text-slate-500">Registrar access is protected and cannot be revoked here.</p>
+                                </div>
+                                <div className="p-4">
+                                    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                                        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                                            <div>
+                                                <p className="text-base font-bold text-slate-800">PLV Registrar Office</p>
+                                                <p className="text-sm text-slate-500">Registrar</p>
+                                                <p className="mt-2 text-sm text-slate-600">Institution-wide registrar tools</p>
+                                            </div>
+                                            <span className="inline-flex items-center justify-center rounded-full bg-slate-200 px-3 py-1 text-xs font-bold text-slate-700">
+                                                Non-revocable
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="rounded-2xl border border-slate-200 bg-white shadow-sm">
+                                <div className="border-b border-slate-200 px-5 py-4">
+                                    <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                                        <div>
+                                            <h4 className="text-base font-bold text-[#003366]">Chairperson</h4>
+                                            <p className="mt-1 text-sm text-slate-500">View chairperson accounts in alphabetical order by course or program.</p>
+                                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowChairpersonAccounts((current) => !current)}
+                                            className="rounded-lg bg-[#003366] px-4 py-2 text-sm font-bold text-white hover:bg-[#00264d]"
+                                        >
+                                            {showChairpersonAccounts ? 'Hide Chairperson Accounts' : 'Show Chairperson Accounts'}
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {showChairpersonAccounts && (
+                                    <div className="space-y-4 p-4">
+                                        <input
+                                            type="text"
+                                            value={chairpersonSearchTerm}
+                                            onChange={(event) => setChairpersonSearchTerm(event.target.value)}
+                                            placeholder="Search chairperson account..."
+                                            className="w-full rounded-xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-[#003366]"
+                                        />
+
+                                        {filteredChairpersonAccounts.length === 0 ? (
+                                            <div className="rounded-2xl border border-dashed border-slate-200 p-8 text-center text-slate-500">
+                                                No chairperson account matched your search.
+                                            </div>
+                                        ) : filteredChairpersonAccounts.map((account) => (
+                                            <div key={account.id} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                                                <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                                                    <div>
+                                                        <p className="text-base font-bold text-slate-800">{account.department}</p>
+                                                        <p className="text-sm text-slate-500">{account.name}</p>
+                                                        <p className="mt-2 text-sm text-slate-600">Account ID: {account.id}</p>
+                                                    </div>
+                                                    <button
+                                                        type="button"
+                                                        disabled
+                                                        className="rounded-lg bg-red-200 px-4 py-2 text-sm font-bold text-red-800 opacity-70"
+                                                    >
+                                                        Revoke Account
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="rounded-2xl border border-slate-200 bg-white shadow-sm">
+                                <div className="border-b border-slate-200 px-5 py-4">
+                                    <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                                        <div>
+                                            <h4 className="text-base font-bold text-[#003366]">Faculty</h4>
+                                            <p className="mt-1 text-sm text-slate-500">Open the department list first, then pick a department to view faculty accounts in alphabetical order.</p>
+                                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                setShowFacultyDepartments((current) => !current);
+                                                if (showFacultyDepartments) setSelectedFacultyDepartment('');
+                                            }}
+                                            className="rounded-lg bg-[#003366] px-4 py-2 text-sm font-bold text-white hover:bg-[#00264d]"
+                                        >
+                                            {showFacultyDepartments ? 'Hide Faculty Departments' : 'Show Faculty Departments'}
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {showFacultyDepartments && (
+                                    <div className="space-y-4 p-4">
+                                        <input
+                                            type="text"
+                                            value={facultySearchTerm}
+                                            onChange={(event) => setFacultySearchTerm(event.target.value)}
+                                            placeholder="Search faculty account or department..."
+                                            className="w-full rounded-xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-[#003366]"
+                                        />
+
+                                        <div className="grid gap-3 lg:grid-cols-[minmax(0,320px)_minmax(0,1fr)]">
+                                            <div className="space-y-3">
+                                                {filteredFacultyDepartments.length === 0 ? (
+                                                    <div className="rounded-2xl border border-dashed border-slate-200 p-8 text-center text-slate-500">
+                                                        No department or faculty account matched your search.
+                                                    </div>
+                                                ) : filteredFacultyDepartments.map((department) => (
+                                                    <button
+                                                        key={department.name}
+                                                        type="button"
+                                                        onClick={() => setSelectedFacultyDepartment(department.name)}
+                                                        className={`w-full rounded-2xl border px-4 py-4 text-left transition ${
+                                                            selectedFacultyDepartment === department.name
+                                                                ? 'border-[#003366] bg-[#003366] text-white'
+                                                                : 'border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100'
+                                                        }`}
+                                                    >
+                                                        <p className="font-bold">{department.name}</p>
+                                                        <p className={`mt-1 text-sm ${selectedFacultyDepartment === department.name ? 'text-slate-100' : 'text-slate-500'}`}>
+                                                            {department.accounts.length} faculty account{department.accounts.length === 1 ? '' : 's'}
+                                                        </p>
+                                                    </button>
+                                                ))}
+                                            </div>
+
+                                            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                                                {!selectedFacultyDepartmentData ? (
+                                                    <div className="flex h-full min-h-[220px] items-center justify-center text-center text-slate-500">
+                                                        Select a department to view faculty accounts.
+                                                    </div>
+                                                ) : (
+                                                    <div className="space-y-4">
+                                                        <div className="border-b border-slate-200 pb-3">
+                                                            <h5 className="text-base font-bold text-[#003366]">{selectedFacultyDepartmentData.name}</h5>
+                                                            <p className="mt-1 text-sm text-slate-500">Under {selectedFacultyDepartmentData.chairperson}</p>
+                                                        </div>
+
+                                                        {selectedFacultyDepartmentData.accounts.length === 0 ? (
+                                                            <div className="rounded-2xl border border-dashed border-slate-200 p-8 text-center text-slate-500">
+                                                                No faculty account matched your search in this department.
+                                                            </div>
+                                                        ) : selectedFacultyDepartmentData.accounts.map((account) => (
+                                                            <div key={account.id} className="rounded-2xl border border-slate-200 bg-white p-4">
+                                                                <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                                                                    <div>
+                                                                        <p className="text-base font-bold text-slate-800">{account.name}</p>
+                                                                        <p className="text-sm text-slate-500">{account.role}</p>
+                                                                        <p className="mt-2 text-sm text-slate-600">Account ID: {account.id}</p>
+                                                                    </div>
+                                                                    <button
+                                                                        type="button"
+                                                                        disabled
+                                                                        className="rounded-lg bg-red-200 px-4 py-2 text-sm font-bold text-red-800 opacity-70"
+                                                                    >
+                                                                        Revoke Account
+                                                                    </button>
+                                                                </div>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     )}
                 </main>

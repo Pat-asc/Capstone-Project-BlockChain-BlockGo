@@ -1,0 +1,291 @@
+2026-05-14 00:08:02.698 +00:00 [INF] Application starting up...
+2026-05-14 00:08:03.112 +00:00 [INF] HSTS enabled (HTTPS Redirection disabled for Nginx)
+2026-05-14 00:08:04.019 +00:00 [INF] Application configured successfully
+2026-05-14 00:08:04.021 +00:00 [INF] Listening on 
+2026-05-14 00:08:04.133 +00:00 [WRN] Storing keys in a directory '/root/.aspnet/DataProtection-Keys' that may not be persisted outside of the container. Protected data will be unavailable when container is destroyed. For more information go to https://aka.ms/aspnet/dataprotectionwarning
+2026-05-14 00:08:04.138 +00:00 [INF] User profile is available. Using '/root/.aspnet/DataProtection-Keys' as key repository; keys will not be encrypted at rest.
+2026-05-14 00:08:04.161 +00:00 [INF] Creating key {acd7ba95-db1c-4ddd-ba3c-fde757419f3f} with creation date 2026-05-14 00:08:04Z, activation date 2026-05-14 00:08:04Z, and expiration date 2026-08-12 00:08:04Z.
+2026-05-14 00:08:04.190 +00:00 [WRN] No XML encryptor configured. Key {acd7ba95-db1c-4ddd-ba3c-fde757419f3f} may be persisted to storage in unencrypted form.
+2026-05-14 00:08:04.195 +00:00 [INF] Writing data to file '/root/.aspnet/DataProtection-Keys/key-acd7ba95-db1c-4ddd-ba3c-fde757419f3f.xml'.
+2026-05-14 00:08:04.212 +00:00 [WRN] Overriding HTTP_PORTS '8080' and HTTPS_PORTS ''. Binding to values defined by URLS instead 'http://0.0.0.0:5000'.
+2026-05-14 00:08:04.269 +00:00 [INF] Now listening on: http://0.0.0.0:5000
+2026-05-14 00:08:04.270 +00:00 [INF] Application started. Press Ctrl+C to shut down.
+2026-05-14 00:08:04.271 +00:00 [INF] Hosting environment: Production
+2026-05-14 00:08:04.271 +00:00 [INF] Content root path: /app
+2026-05-14 00:10:28.426 +00:00 [INF] Application starting up...
+2026-05-14 00:10:28.622 +00:00 [INF] HSTS enabled (HTTPS Redirection disabled for Nginx)
+2026-05-14 00:10:28.734 +00:00 [INF] Application configured successfully
+2026-05-14 00:10:28.736 +00:00 [INF] Listening on 
+2026-05-14 00:10:28.859 +00:00 [WRN] Storing keys in a directory '/root/.aspnet/DataProtection-Keys' that may not be persisted outside of the container. Protected data will be unavailable when container is destroyed. For more information go to https://aka.ms/aspnet/dataprotectionwarning
+2026-05-14 00:10:28.862 +00:00 [INF] User profile is available. Using '/root/.aspnet/DataProtection-Keys' as key repository; keys will not be encrypted at rest.
+2026-05-14 00:10:28.895 +00:00 [INF] Creating key {cf3cd929-c3da-4229-b9f3-a5594149d4cb} with creation date 2026-05-14 00:10:28Z, activation date 2026-05-14 00:10:28Z, and expiration date 2026-08-12 00:10:28Z.
+2026-05-14 00:10:28.936 +00:00 [WRN] No XML encryptor configured. Key {cf3cd929-c3da-4229-b9f3-a5594149d4cb} may be persisted to storage in unencrypted form.
+2026-05-14 00:10:28.946 +00:00 [INF] Writing data to file '/root/.aspnet/DataProtection-Keys/key-cf3cd929-c3da-4229-b9f3-a5594149d4cb.xml'.
+2026-05-14 00:10:28.975 +00:00 [WRN] Overriding HTTP_PORTS '8080' and HTTPS_PORTS ''. Binding to values defined by URLS instead 'http://0.0.0.0:5000'.
+2026-05-14 00:10:29.077 +00:00 [INF] Now listening on: http://0.0.0.0:5000
+2026-05-14 00:10:29.078 +00:00 [INF] Application started. Press Ctrl+C to shut down.
+2026-05-14 00:10:29.079 +00:00 [INF] Hosting environment: Production
+2026-05-14 00:10:29.080 +00:00 [INF] Content root path: /app
+2026-05-14 00:14:57.763 +00:00 [INF] Application starting up...
+2026-05-14 00:14:58.001 +00:00 [INF] HSTS enabled (HTTPS Redirection disabled for Nginx)
+2026-05-14 00:14:58.088 +00:00 [INF] Application configured successfully
+2026-05-14 00:14:58.089 +00:00 [INF] Listening on 
+2026-05-14 00:14:58.136 +00:00 [WRN] Storing keys in a directory '/root/.aspnet/DataProtection-Keys' that may not be persisted outside of the container. Protected data will be unavailable when container is destroyed. For more information go to https://aka.ms/aspnet/dataprotectionwarning
+2026-05-14 00:14:58.137 +00:00 [INF] User profile is available. Using '/root/.aspnet/DataProtection-Keys' as key repository; keys will not be encrypted at rest.
+2026-05-14 00:14:58.148 +00:00 [INF] Creating key {34dce99e-9038-464b-b078-bc3e674c9c42} with creation date 2026-05-14 00:14:58Z, activation date 2026-05-14 00:14:58Z, and expiration date 2026-08-12 00:14:58Z.
+2026-05-14 00:14:58.158 +00:00 [WRN] No XML encryptor configured. Key {34dce99e-9038-464b-b078-bc3e674c9c42} may be persisted to storage in unencrypted form.
+2026-05-14 00:14:58.162 +00:00 [INF] Writing data to file '/root/.aspnet/DataProtection-Keys/key-34dce99e-9038-464b-b078-bc3e674c9c42.xml'.
+2026-05-14 00:14:58.173 +00:00 [WRN] Overriding HTTP_PORTS '8080' and HTTPS_PORTS ''. Binding to values defined by URLS instead 'http://0.0.0.0:5000'.
+2026-05-14 00:14:58.209 +00:00 [INF] Now listening on: http://0.0.0.0:5000
+2026-05-14 00:14:58.209 +00:00 [INF] Application started. Press Ctrl+C to shut down.
+2026-05-14 00:14:58.210 +00:00 [INF] Hosting environment: Production
+2026-05-14 00:14:58.210 +00:00 [INF] Content root path: /app
+2026-05-14 00:20:25.426 +00:00 [INF] Request starting HTTP/1.1 GET http://localhost/api/Auth/user-profile?email=julmarmordin311%40gmail.com&role=department_admin - application/json null
+2026-05-14 00:20:25.791 +00:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone)'
+2026-05-14 00:20:25.817 +00:00 [INF] Route matched with {action = "GetUserProfile", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetUserProfile(System.String, System.String) on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-05-14 00:20:26.140 +00:00 [INF] Executing NotFoundObjectResult, writing value of type '<>f__AnonymousType1`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-05-14 00:20:26.159 +00:00 [INF] Executed action Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone) in 337.3073ms
+2026-05-14 00:20:26.163 +00:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone)'
+2026-05-14 00:20:26.166 +00:00 [INF] HTTP GET /api/Auth/user-profile responded 404 in 650.4977 ms
+2026-05-14 00:20:26.168 +00:00 [INF] Request finished HTTP/1.1 GET http://localhost/api/Auth/user-profile?email=julmarmordin311%40gmail.com&role=department_admin - 404 null application/json; charset=utf-8 749.233ms
+2026-05-14 00:20:28.886 +00:00 [INF] Request starting HTTP/1.1 GET http://localhost/api/Auth/user-profile?email=registrar%40plv.edu.ph&role=registrar - application/json null
+2026-05-14 00:20:28.892 +00:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone)'
+2026-05-14 00:20:28.892 +00:00 [INF] Route matched with {action = "GetUserProfile", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetUserProfile(System.String, System.String) on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-05-14 00:20:28.908 +00:00 [INF] Executing OkObjectResult, writing value of type '<>f__AnonymousType21`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[Client_app.Models.UserProfileDto, For_Testing_Only_Capstone, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]'.
+2026-05-14 00:20:28.920 +00:00 [INF] Executed action Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone) in 27.8436ms
+2026-05-14 00:20:28.921 +00:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone)'
+2026-05-14 00:20:28.921 +00:00 [INF] HTTP GET /api/Auth/user-profile responded 200 in 32.1962 ms
+2026-05-14 00:20:28.922 +00:00 [INF] Request finished HTTP/1.1 GET http://localhost/api/Auth/user-profile?email=registrar%40plv.edu.ph&role=registrar - 200 null application/json; charset=utf-8 36.1975ms
+2026-05-14 00:20:28.988 +00:00 [INF] Request starting HTTP/1.1 POST http://host.docker.internal:5000/chatHub/negotiate?negotiateVersion=1 - null 0
+2026-05-14 00:20:28.990 +00:00 [INF] Request starting HTTP/1.1 GET http://localhost/api/Grades/all?invokerId=registrar%40plv.edu.ph - application/json null
+2026-05-14 00:20:28.995 +00:00 [INF] CORS policy execution successful.
+2026-05-14 00:20:29.000 +00:00 [INF] Executing endpoint 'BlockGo.Controllers.GradesController.GetAllGrades (For_Testing_Only_Capstone)'
+2026-05-14 00:20:29.003 +00:00 [INF] Executing endpoint '/chatHub/negotiate'
+2026-05-14 00:20:29.007 +00:00 [INF] Route matched with {action = "GetAllGrades", controller = "Grades"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetAllGrades(System.String) on controller BlockGo.Controllers.GradesController (For_Testing_Only_Capstone).
+2026-05-14 00:20:29.010 +00:00 [INF] Executed endpoint '/chatHub/negotiate'
+2026-05-14 00:20:29.012 +00:00 [INF] HTTP POST /chatHub/negotiate responded 200 in 19.7858 ms
+2026-05-14 00:20:29.015 +00:00 [INF] Request finished HTTP/1.1 POST http://host.docker.internal:5000/chatHub/negotiate?negotiateVersion=1 - 200 316 application/json 26.6972ms
+2026-05-14 00:20:29.028 +00:00 [INF] Request starting HTTP/1.1 GET http://host.docker.internal:5000/chatHub?id=aX70w4J_wImfjChoITBRyw&access_token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6InJlZ2lzdHJhckBwbHYuZWR1LnBoIiwicm9sZSI6IlJlZ2lzdHJhck1TUCIsImRiUm9sZSI6InJlZ2lzdHJhciIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL25hbWVpZGVudGlmaWVyIjoicmVnaXN0cmFyQHBsdi5lZHUucGgiLCJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1lIjoicmVnaXN0cmFyQHBsdi5lZHUucGgiLCJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9lbWFpbGFkZHJlc3MiOiJyZWdpc3RyYXJAcGx2LmVkdS5waCIsImh0dHA6Ly9zY2hlbWFzLm1pY3Jvc29mdC5jb20vd3MvMjAwOC8wNi9pZGVudGl0eS9jbGFpbXMvcm9sZSI6InJlZ2lzdHJhciIsImlhdCI6MTc3ODcxODAyOCwiZXhwIjoxNzc4NzYxMjI4fQ.3nLTNwCo9S0nliCGIZPH3QfmcFFX5XK5K4ehzlWNlSQ - null null
+2026-05-14 00:20:29.029 +00:00 [INF] CORS policy execution successful.
+2026-05-14 00:20:29.032 +00:00 [INF] Executing endpoint '/chatHub'
+2026-05-14 00:20:29.036 +00:00 [INF] Getting all grades from blockchain as registrar@plv.edu.ph
+2026-05-14 00:20:29.043 +00:00 [INF] Start processing HTTP request GET http://host.docker.internal:4000/api/all-grades
+2026-05-14 00:20:29.045 +00:00 [INF] Sending HTTP request GET http://host.docker.internal:4000/api/all-grades
+2026-05-14 00:20:29.779 +00:00 [INF] Received HTTP response headers after 728.8503ms - 200
+2026-05-14 00:20:29.784 +00:00 [INF] End processing HTTP request after 742.8816ms - 200
+2026-05-14 00:20:29.811 +00:00 [INF] Executing OkObjectResult, writing value of type '<>f__AnonymousType38`3[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.Int32, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.Collections.Generic.List`1[[System.Collections.Generic.Dictionary`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.Object, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]], System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]], System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-05-14 00:20:29.822 +00:00 [INF] Executed action BlockGo.Controllers.GradesController.GetAllGrades (For_Testing_Only_Capstone) in 812.1133ms
+2026-05-14 00:20:29.823 +00:00 [INF] Executed endpoint 'BlockGo.Controllers.GradesController.GetAllGrades (For_Testing_Only_Capstone)'
+2026-05-14 00:20:29.823 +00:00 [INF] HTTP GET /api/Grades/all responded 200 in 831.4406 ms
+2026-05-14 00:20:29.824 +00:00 [INF] Request finished HTTP/1.1 GET http://localhost/api/Grades/all?invokerId=registrar%40plv.edu.ph - 200 null application/json; charset=utf-8 833.9788ms
+2026-05-14 00:20:43.568 +00:00 [INF] Executed endpoint '/chatHub'
+2026-05-14 00:20:43.569 +00:00 [INF] HTTP GET /chatHub responded 101 in 14540.5728 ms
+2026-05-14 00:20:43.570 +00:00 [INF] Request finished HTTP/1.1 GET http://host.docker.internal:5000/chatHub?id=aX70w4J_wImfjChoITBRyw&access_token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6InJlZ2lzdHJhckBwbHYuZWR1LnBoIiwicm9sZSI6IlJlZ2lzdHJhck1TUCIsImRiUm9sZSI6InJlZ2lzdHJhciIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL25hbWVpZGVudGlmaWVyIjoicmVnaXN0cmFyQHBsdi5lZHUucGgiLCJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1lIjoicmVnaXN0cmFyQHBsdi5lZHUucGgiLCJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9lbWFpbGFkZHJlc3MiOiJyZWdpc3RyYXJAcGx2LmVkdS5waCIsImh0dHA6Ly9zY2hlbWFzLm1pY3Jvc29mdC5jb20vd3MvMjAwOC8wNi9pZGVudGl0eS9jbGFpbXMvcm9sZSI6InJlZ2lzdHJhciIsImlhdCI6MTc3ODcxODAyOCwiZXhwIjoxNzc4NzYxMjI4fQ.3nLTNwCo9S0nliCGIZPH3QfmcFFX5XK5K4ehzlWNlSQ - 101 null null 14541.7598ms
+2026-05-14 00:20:47.850 +00:00 [INF] Request starting HTTP/1.1 GET http://localhost/api/Auth/user-profile?email=registrar%40plv.edu.ph&role=registrar - application/json null
+2026-05-14 00:20:47.852 +00:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone)'
+2026-05-14 00:20:47.853 +00:00 [INF] Route matched with {action = "GetUserProfile", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetUserProfile(System.String, System.String) on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-05-14 00:20:47.866 +00:00 [INF] Executing OkObjectResult, writing value of type '<>f__AnonymousType21`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[Client_app.Models.UserProfileDto, For_Testing_Only_Capstone, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]'.
+2026-05-14 00:20:47.867 +00:00 [INF] Executed action Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone) in 14.3072ms
+2026-05-14 00:20:47.868 +00:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone)'
+2026-05-14 00:20:47.869 +00:00 [INF] HTTP GET /api/Auth/user-profile responded 200 in 18.2404 ms
+2026-05-14 00:20:47.869 +00:00 [INF] Request finished HTTP/1.1 GET http://localhost/api/Auth/user-profile?email=registrar%40plv.edu.ph&role=registrar - 200 null application/json; charset=utf-8 19.5713ms
+2026-05-14 00:20:47.948 +00:00 [INF] Request starting HTTP/1.1 POST http://host.docker.internal:5000/chatHub/negotiate?negotiateVersion=1 - null 0
+2026-05-14 00:20:47.951 +00:00 [INF] CORS policy execution successful.
+2026-05-14 00:20:47.951 +00:00 [INF] Request starting HTTP/1.1 GET http://localhost/api/Grades/all?invokerId=registrar%40plv.edu.ph - application/json null
+2026-05-14 00:20:47.953 +00:00 [INF] Executing endpoint '/chatHub/negotiate'
+2026-05-14 00:20:47.957 +00:00 [INF] Executed endpoint '/chatHub/negotiate'
+2026-05-14 00:20:47.959 +00:00 [INF] HTTP POST /chatHub/negotiate responded 200 in 8.7906 ms
+2026-05-14 00:20:47.960 +00:00 [INF] Executing endpoint 'BlockGo.Controllers.GradesController.GetAllGrades (For_Testing_Only_Capstone)'
+2026-05-14 00:20:47.961 +00:00 [INF] Request finished HTTP/1.1 POST http://host.docker.internal:5000/chatHub/negotiate?negotiateVersion=1 - 200 316 application/json 13.4245ms
+2026-05-14 00:20:47.962 +00:00 [INF] Route matched with {action = "GetAllGrades", controller = "Grades"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetAllGrades(System.String) on controller BlockGo.Controllers.GradesController (For_Testing_Only_Capstone).
+2026-05-14 00:20:47.964 +00:00 [INF] Getting all grades from blockchain as registrar@plv.edu.ph
+2026-05-14 00:20:47.965 +00:00 [INF] Start processing HTTP request GET http://host.docker.internal:4000/api/all-grades
+2026-05-14 00:20:47.966 +00:00 [INF] Sending HTTP request GET http://host.docker.internal:4000/api/all-grades
+2026-05-14 00:20:47.972 +00:00 [INF] Request starting HTTP/1.1 GET http://host.docker.internal:5000/chatHub?id=JTZO0LkfvfqosweslnG3gQ&access_token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6InJlZ2lzdHJhckBwbHYuZWR1LnBoIiwicm9sZSI6IlJlZ2lzdHJhck1TUCIsImRiUm9sZSI6InJlZ2lzdHJhciIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL25hbWVpZGVudGlmaWVyIjoicmVnaXN0cmFyQHBsdi5lZHUucGgiLCJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1lIjoicmVnaXN0cmFyQHBsdi5lZHUucGgiLCJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9lbWFpbGFkZHJlc3MiOiJyZWdpc3RyYXJAcGx2LmVkdS5waCIsImh0dHA6Ly9zY2hlbWFzLm1pY3Jvc29mdC5jb20vd3MvMjAwOC8wNi9pZGVudGl0eS9jbGFpbXMvcm9sZSI6InJlZ2lzdHJhciIsImlhdCI6MTc3ODcxODAyOCwiZXhwIjoxNzc4NzYxMjI4fQ.3nLTNwCo9S0nliCGIZPH3QfmcFFX5XK5K4ehzlWNlSQ - null null
+2026-05-14 00:20:47.973 +00:00 [INF] CORS policy execution successful.
+2026-05-14 00:20:47.974 +00:00 [INF] Executing endpoint '/chatHub'
+2026-05-14 00:20:47.998 +00:00 [INF] Received HTTP response headers after 31.4927ms - 200
+2026-05-14 00:20:47.998 +00:00 [INF] End processing HTTP request after 33.6636ms - 200
+2026-05-14 00:20:48.003 +00:00 [INF] Executing OkObjectResult, writing value of type '<>f__AnonymousType38`3[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.Int32, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.Collections.Generic.List`1[[System.Collections.Generic.Dictionary`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.Object, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]], System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]], System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-05-14 00:20:48.004 +00:00 [INF] Executed action BlockGo.Controllers.GradesController.GetAllGrades (For_Testing_Only_Capstone) in 41.3028ms
+2026-05-14 00:20:48.005 +00:00 [INF] Executed endpoint 'BlockGo.Controllers.GradesController.GetAllGrades (For_Testing_Only_Capstone)'
+2026-05-14 00:20:48.005 +00:00 [INF] HTTP GET /api/Grades/all responded 200 in 46.3378 ms
+2026-05-14 00:20:48.006 +00:00 [INF] Request finished HTTP/1.1 GET http://localhost/api/Grades/all?invokerId=registrar%40plv.edu.ph - 200 null application/json; charset=utf-8 54.6806ms
+2026-05-14 00:20:54.325 +00:00 [INF] Request starting HTTP/1.1 GET http://localhost/api/Auth/user-profile?email=registrar%40plv.edu.ph&role=registrar - application/json null
+2026-05-14 00:20:54.328 +00:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone)'
+2026-05-14 00:20:54.329 +00:00 [INF] Route matched with {action = "GetUserProfile", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetUserProfile(System.String, System.String) on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-05-14 00:20:54.345 +00:00 [INF] Executing OkObjectResult, writing value of type '<>f__AnonymousType21`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[Client_app.Models.UserProfileDto, For_Testing_Only_Capstone, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]'.
+2026-05-14 00:20:54.346 +00:00 [INF] Executed action Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone) in 15.8598ms
+2026-05-14 00:20:54.347 +00:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone)'
+2026-05-14 00:20:54.347 +00:00 [INF] HTTP GET /api/Auth/user-profile responded 200 in 20.8251 ms
+2026-05-14 00:20:54.349 +00:00 [INF] Request finished HTTP/1.1 GET http://localhost/api/Auth/user-profile?email=registrar%40plv.edu.ph&role=registrar - 200 null application/json; charset=utf-8 23.1597ms
+2026-05-14 00:20:54.360 +00:00 [INF] Request starting HTTP/1.1 GET http://localhost/api/Grades/all?invokerId=registrar%40plv.edu.ph - application/json null
+2026-05-14 00:20:54.360 +00:00 [INF] Request starting HTTP/1.1 POST http://host.docker.internal:5000/chatHub/negotiate?negotiateVersion=1 - null 0
+2026-05-14 00:20:54.362 +00:00 [INF] CORS policy execution successful.
+2026-05-14 00:20:54.362 +00:00 [INF] Executing endpoint 'BlockGo.Controllers.GradesController.GetAllGrades (For_Testing_Only_Capstone)'
+2026-05-14 00:20:54.364 +00:00 [INF] Route matched with {action = "GetAllGrades", controller = "Grades"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetAllGrades(System.String) on controller BlockGo.Controllers.GradesController (For_Testing_Only_Capstone).
+2026-05-14 00:20:54.364 +00:00 [INF] Executing endpoint '/chatHub/negotiate'
+2026-05-14 00:20:54.367 +00:00 [INF] Executed endpoint '/chatHub/negotiate'
+2026-05-14 00:20:54.366 +00:00 [INF] Getting all grades from blockchain as registrar@plv.edu.ph
+2026-05-14 00:20:54.368 +00:00 [INF] HTTP POST /chatHub/negotiate responded 200 in 6.9316 ms
+2026-05-14 00:20:54.369 +00:00 [INF] Start processing HTTP request GET http://host.docker.internal:4000/api/all-grades
+2026-05-14 00:20:54.369 +00:00 [INF] Request finished HTTP/1.1 POST http://host.docker.internal:5000/chatHub/negotiate?negotiateVersion=1 - 200 316 application/json 8.8604ms
+2026-05-14 00:20:54.370 +00:00 [INF] Sending HTTP request GET http://host.docker.internal:4000/api/all-grades
+2026-05-14 00:20:54.398 +00:00 [INF] Received HTTP response headers after 27.49ms - 200
+2026-05-14 00:20:54.399 +00:00 [INF] End processing HTTP request after 30.343ms - 200
+2026-05-14 00:20:54.403 +00:00 [INF] Executing OkObjectResult, writing value of type '<>f__AnonymousType38`3[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.Int32, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.Collections.Generic.List`1[[System.Collections.Generic.Dictionary`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.Object, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]], System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]], System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-05-14 00:20:54.403 +00:00 [INF] Executed action BlockGo.Controllers.GradesController.GetAllGrades (For_Testing_Only_Capstone) in 38.7659ms
+2026-05-14 00:20:54.404 +00:00 [INF] Executed endpoint 'BlockGo.Controllers.GradesController.GetAllGrades (For_Testing_Only_Capstone)'
+2026-05-14 00:20:54.404 +00:00 [INF] HTTP GET /api/Grades/all responded 200 in 43.2733 ms
+2026-05-14 00:20:54.405 +00:00 [INF] Request finished HTTP/1.1 GET http://localhost/api/Grades/all?invokerId=registrar%40plv.edu.ph - 200 null application/json; charset=utf-8 44.4474ms
+2026-05-14 00:20:54.439 +00:00 [INF] Request starting HTTP/1.1 GET http://host.docker.internal:5000/chatHub?id=epOTIVvW9Q4g2x760RtN1Q&access_token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6InJlZ2lzdHJhckBwbHYuZWR1LnBoIiwicm9sZSI6IlJlZ2lzdHJhck1TUCIsImRiUm9sZSI6InJlZ2lzdHJhciIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL25hbWVpZGVudGlmaWVyIjoicmVnaXN0cmFyQHBsdi5lZHUucGgiLCJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1lIjoicmVnaXN0cmFyQHBsdi5lZHUucGgiLCJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9lbWFpbGFkZHJlc3MiOiJyZWdpc3RyYXJAcGx2LmVkdS5waCIsImh0dHA6Ly9zY2hlbWFzLm1pY3Jvc29mdC5jb20vd3MvMjAwOC8wNi9pZGVudGl0eS9jbGFpbXMvcm9sZSI6InJlZ2lzdHJhciIsImlhdCI6MTc3ODcxODAyOCwiZXhwIjoxNzc4NzYxMjI4fQ.3nLTNwCo9S0nliCGIZPH3QfmcFFX5XK5K4ehzlWNlSQ - null null
+2026-05-14 00:20:54.439 +00:00 [INF] CORS policy execution successful.
+2026-05-14 00:20:54.441 +00:00 [INF] Executing endpoint '/chatHub'
+2026-05-14 00:20:55.725 +00:00 [INF] Executed endpoint '/chatHub'
+2026-05-14 00:20:55.726 +00:00 [INF] HTTP GET /chatHub responded 101 in 1286.5921 ms
+2026-05-14 00:20:55.726 +00:00 [INF] Request finished HTTP/1.1 GET http://host.docker.internal:5000/chatHub?id=epOTIVvW9Q4g2x760RtN1Q&access_token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6InJlZ2lzdHJhckBwbHYuZWR1LnBoIiwicm9sZSI6IlJlZ2lzdHJhck1TUCIsImRiUm9sZSI6InJlZ2lzdHJhciIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL25hbWVpZGVudGlmaWVyIjoicmVnaXN0cmFyQHBsdi5lZHUucGgiLCJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1lIjoicmVnaXN0cmFyQHBsdi5lZHUucGgiLCJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9lbWFpbGFkZHJlc3MiOiJyZWdpc3RyYXJAcGx2LmVkdS5waCIsImh0dHA6Ly9zY2hlbWFzLm1pY3Jvc29mdC5jb20vd3MvMjAwOC8wNi9pZGVudGl0eS9jbGFpbXMvcm9sZSI6InJlZ2lzdHJhciIsImlhdCI6MTc3ODcxODAyOCwiZXhwIjoxNzc4NzYxMjI4fQ.3nLTNwCo9S0nliCGIZPH3QfmcFFX5XK5K4ehzlWNlSQ - 101 null null 1287.7701ms
+2026-05-14 00:21:29.228 +00:00 [INF] Request starting HTTP/1.1 POST http://localhost/api/Auth/send-verification - application/json 37
+2026-05-14 00:21:29.229 +00:00 [INF] CORS policy execution successful.
+2026-05-14 00:21:29.230 +00:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.SendVerificationCode (For_Testing_Only_Capstone)'
+2026-05-14 00:21:29.236 +00:00 [INF] Route matched with {action = "SendVerificationCode", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] SendVerificationCode(Client_app.Models.VerificationRequest) on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-05-14 00:21:32.502 +00:00 [INF] Executing OkObjectResult, writing value of type '<>f__AnonymousType1`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-05-14 00:21:32.503 +00:00 [INF] Executed action Client_app.Controllers.AuthController.SendVerificationCode (For_Testing_Only_Capstone) in 3266.1981ms
+2026-05-14 00:21:32.503 +00:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.SendVerificationCode (For_Testing_Only_Capstone)'
+2026-05-14 00:21:32.504 +00:00 [INF] HTTP POST /api/Auth/send-verification responded 200 in 3274.7361 ms
+2026-05-14 00:21:32.504 +00:00 [INF] Request finished HTTP/1.1 POST http://localhost/api/Auth/send-verification - 200 null application/json; charset=utf-8 3275.5471ms
+2026-05-14 00:21:58.124 +00:00 [INF] Request starting HTTP/1.1 POST http://localhost/api/Auth/request - application/json 205
+2026-05-14 00:21:58.124 +00:00 [INF] CORS policy execution successful.
+2026-05-14 00:21:58.125 +00:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.RequestAccess (For_Testing_Only_Capstone)'
+2026-05-14 00:21:58.129 +00:00 [INF] Route matched with {action = "RequestAccess", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] RequestAccess(Client_app.Models.SignupRequest) on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-05-14 00:21:58.379 +00:00 [INF] Executing OkObjectResult, writing value of type '<>f__AnonymousType1`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-05-14 00:21:58.380 +00:00 [INF] Executed action Client_app.Controllers.AuthController.RequestAccess (For_Testing_Only_Capstone) in 250.2145ms
+2026-05-14 00:21:58.380 +00:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.RequestAccess (For_Testing_Only_Capstone)'
+2026-05-14 00:21:58.380 +00:00 [INF] HTTP POST /api/Auth/request responded 200 in 256.1005 ms
+2026-05-14 00:21:58.381 +00:00 [INF] Request finished HTTP/1.1 POST http://localhost/api/Auth/request - 200 null application/json; charset=utf-8 256.881ms
+2026-05-14 00:21:58.386 +00:00 [INF] Request starting HTTP/1.1 GET http://localhost/api/Grades/all?invokerId=registrar%40plv.edu.ph - application/json null
+2026-05-14 00:21:58.387 +00:00 [INF] Authorization failed. These requirements were not met:
+DenyAnonymousAuthorizationRequirement: Requires an authenticated user.
+2026-05-14 00:21:58.390 +00:00 [INF] AuthenticationScheme: Bearer was challenged.
+2026-05-14 00:21:58.390 +00:00 [INF] HTTP GET /api/Grades/all responded 401 in 3.5896 ms
+2026-05-14 00:21:58.390 +00:00 [INF] Request finished HTTP/1.1 GET http://localhost/api/Grades/all?invokerId=registrar%40plv.edu.ph - 401 0 null 4.2299ms
+2026-05-14 00:22:31.657 +00:00 [INF] Request starting HTTP/1.1 GET http://localhost/api/Auth/requests/pending - application/json null
+2026-05-14 00:22:31.658 +00:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.GetPendingRequests (For_Testing_Only_Capstone)'
+2026-05-14 00:22:31.661 +00:00 [INF] Route matched with {action = "GetPendingRequests", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetPendingRequests() on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-05-14 00:22:31.669 +00:00 [INF] Executing OkObjectResult, writing value of type '<>f__AnonymousType5`3[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.Collections.Generic.List`1[[System.Object, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]], System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.Collections.Generic.List`1[[System.Object, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]], System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-05-14 00:22:31.672 +00:00 [INF] Executed action Client_app.Controllers.AuthController.GetPendingRequests (For_Testing_Only_Capstone) in 10.3073ms
+2026-05-14 00:22:31.672 +00:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.GetPendingRequests (For_Testing_Only_Capstone)'
+2026-05-14 00:22:31.673 +00:00 [INF] HTTP GET /api/Auth/requests/pending responded 200 in 15.2330 ms
+2026-05-14 00:22:31.673 +00:00 [INF] Request finished HTTP/1.1 GET http://localhost/api/Auth/requests/pending - 200 null application/json; charset=utf-8 16.6981ms
+2026-05-14 00:22:33.861 +00:00 [INF] Request starting HTTP/1.1 PUT http://localhost/api/Auth/requests/approve/department_admin/64 - application/json 0
+2026-05-14 00:22:33.862 +00:00 [INF] CORS policy execution successful.
+2026-05-14 00:22:33.862 +00:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.ApproveRequest (For_Testing_Only_Capstone)'
+2026-05-14 00:22:33.864 +00:00 [INF] Route matched with {action = "ApproveRequest", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] ApproveRequest(System.String, Int32) on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-05-14 00:22:33.873 +00:00 [INF] internal Fabric CA connection: Strict SSL validation ENABLED (Production Mode)
+2026-05-14 00:22:33.875 +00:00 [INF] Start processing HTTP request POST http://host.docker.internal:4000/api/fabric/register-user
+2026-05-14 00:22:33.875 +00:00 [INF] Sending HTTP request POST http://host.docker.internal:4000/api/fabric/register-user
+2026-05-14 00:22:34.465 +00:00 [INF] Received HTTP response headers after 590.0848ms - 200
+2026-05-14 00:22:34.468 +00:00 [INF] End processing HTTP request after 592.7989ms - 200
+2026-05-14 00:22:34.475 +00:00 [INF] Executing OkObjectResult, writing value of type '<>f__AnonymousType1`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-05-14 00:22:34.476 +00:00 [INF] Executed action Client_app.Controllers.AuthController.ApproveRequest (For_Testing_Only_Capstone) in 611.0006ms
+2026-05-14 00:22:34.476 +00:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.ApproveRequest (For_Testing_Only_Capstone)'
+2026-05-14 00:22:34.476 +00:00 [INF] HTTP PUT /api/Auth/requests/approve/department_admin/64 responded 200 in 614.4807 ms
+2026-05-14 00:22:34.477 +00:00 [INF] Request finished HTTP/1.1 PUT http://localhost/api/Auth/requests/approve/department_admin/64 - 200 null application/json; charset=utf-8 615.88ms
+2026-05-14 00:22:34.485 +00:00 [INF] Request starting HTTP/1.1 GET http://localhost/api/Grades/all?invokerId=registrar%40plv.edu.ph - application/json null
+2026-05-14 00:22:34.485 +00:00 [INF] Authorization failed. These requirements were not met:
+DenyAnonymousAuthorizationRequirement: Requires an authenticated user.
+2026-05-14 00:22:34.486 +00:00 [INF] AuthenticationScheme: Bearer was challenged.
+2026-05-14 00:22:34.486 +00:00 [INF] HTTP GET /api/Grades/all responded 401 in 0.9563 ms
+2026-05-14 00:22:34.486 +00:00 [INF] Request finished HTTP/1.1 GET http://localhost/api/Grades/all?invokerId=registrar%40plv.edu.ph - 401 0 null 1.6714ms
+2026-05-14 00:22:34.489 +00:00 [INF] Request starting HTTP/1.1 GET http://localhost/api/Auth/requests/pending - application/json null
+2026-05-14 00:22:34.489 +00:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.GetPendingRequests (For_Testing_Only_Capstone)'
+2026-05-14 00:22:34.491 +00:00 [INF] Route matched with {action = "GetPendingRequests", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetPendingRequests() on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-05-14 00:22:34.506 +00:00 [INF] Executing OkObjectResult, writing value of type '<>f__AnonymousType5`3[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.Collections.Generic.List`1[[System.Object, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]], System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.Collections.Generic.List`1[[System.Object, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]], System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-05-14 00:22:34.506 +00:00 [INF] Executed action Client_app.Controllers.AuthController.GetPendingRequests (For_Testing_Only_Capstone) in 9.6402ms
+2026-05-14 00:22:34.507 +00:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.GetPendingRequests (For_Testing_Only_Capstone)'
+2026-05-14 00:22:34.507 +00:00 [INF] HTTP GET /api/Auth/requests/pending responded 200 in 17.9125 ms
+2026-05-14 00:22:34.507 +00:00 [INF] Request finished HTTP/1.1 GET http://localhost/api/Auth/requests/pending - 200 null application/json; charset=utf-8 18.737ms
+2026-05-14 00:22:35.523 +00:00 [INF] Request starting HTTP/1.1 GET http://localhost/api/Auth/requests/pending - application/json null
+2026-05-14 00:22:35.524 +00:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.GetPendingRequests (For_Testing_Only_Capstone)'
+2026-05-14 00:22:35.524 +00:00 [INF] Route matched with {action = "GetPendingRequests", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetPendingRequests() on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-05-14 00:22:35.530 +00:00 [INF] Executing OkObjectResult, writing value of type '<>f__AnonymousType5`3[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.Collections.Generic.List`1[[System.Object, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]], System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.Collections.Generic.List`1[[System.Object, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]], System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-05-14 00:22:35.530 +00:00 [INF] Executed action Client_app.Controllers.AuthController.GetPendingRequests (For_Testing_Only_Capstone) in 5.9553ms
+2026-05-14 00:22:35.531 +00:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.GetPendingRequests (For_Testing_Only_Capstone)'
+2026-05-14 00:22:35.531 +00:00 [INF] HTTP GET /api/Auth/requests/pending responded 200 in 7.5551 ms
+2026-05-14 00:22:35.531 +00:00 [INF] Request finished HTTP/1.1 GET http://localhost/api/Auth/requests/pending - 200 null application/json; charset=utf-8 8.3421ms
+2026-05-14 00:38:05.225 +00:00 [INF] Executed endpoint '/chatHub'
+2026-05-14 00:38:05.226 +00:00 [INF] HTTP GET /chatHub responded 101 in 1007478.4084 ms
+2026-05-14 00:38:05.226 +00:00 [INF] Request finished HTTP/1.1 GET http://host.docker.internal:5000/chatHub?id=JTZO0LkfvfqosweslnG3gQ&access_token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6InJlZ2lzdHJhckBwbHYuZWR1LnBoIiwicm9sZSI6IlJlZ2lzdHJhck1TUCIsImRiUm9sZSI6InJlZ2lzdHJhciIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL25hbWVpZGVudGlmaWVyIjoicmVnaXN0cmFyQHBsdi5lZHUucGgiLCJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1lIjoicmVnaXN0cmFyQHBsdi5lZHUucGgiLCJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9lbWFpbGFkZHJlc3MiOiJyZWdpc3RyYXJAcGx2LmVkdS5waCIsImh0dHA6Ly9zY2hlbWFzLm1pY3Jvc29mdC5jb20vd3MvMjAwOC8wNi9pZGVudGl0eS9jbGFpbXMvcm9sZSI6InJlZ2lzdHJhciIsImlhdCI6MTc3ODcxODAyOCwiZXhwIjoxNzc4NzYxMjI4fQ.3nLTNwCo9S0nliCGIZPH3QfmcFFX5XK5K4ehzlWNlSQ - 101 null null 1007479.7125ms
+2026-05-14 00:40:03.261 +00:00 [INF] Request starting HTTP/1.1 POST http://host.docker.internal:5000/chatHub/negotiate?negotiateVersion=1 - null 0
+2026-05-14 00:40:03.263 +00:00 [INF] CORS policy execution successful.
+2026-05-14 00:40:03.267 +00:00 [INF] Executing endpoint '/chatHub/negotiate'
+2026-05-14 00:40:03.272 +00:00 [INF] Executed endpoint '/chatHub/negotiate'
+2026-05-14 00:40:03.277 +00:00 [INF] HTTP POST /chatHub/negotiate responded 200 in 14.5218 ms
+2026-05-14 00:40:03.278 +00:00 [INF] Request finished HTTP/1.1 POST http://host.docker.internal:5000/chatHub/negotiate?negotiateVersion=1 - 200 316 application/json 16.8794ms
+2026-05-14 00:40:03.319 +00:00 [INF] Request starting HTTP/1.1 GET http://host.docker.internal:5000/chatHub?id=hezqSGVOm7VTVnQaWvVHcQ&access_token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6InJlZ2lzdHJhckBwbHYuZWR1LnBoIiwicm9sZSI6IlJlZ2lzdHJhck1TUCIsImRiUm9sZSI6InJlZ2lzdHJhciIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL25hbWVpZGVudGlmaWVyIjoicmVnaXN0cmFyQHBsdi5lZHUucGgiLCJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1lIjoicmVnaXN0cmFyQHBsdi5lZHUucGgiLCJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9lbWFpbGFkZHJlc3MiOiJyZWdpc3RyYXJAcGx2LmVkdS5waCIsImh0dHA6Ly9zY2hlbWFzLm1pY3Jvc29mdC5jb20vd3MvMjAwOC8wNi9pZGVudGl0eS9jbGFpbXMvcm9sZSI6InJlZ2lzdHJhciIsImlhdCI6MTc3ODcxODAyOCwiZXhwIjoxNzc4NzYxMjI4fQ.3nLTNwCo9S0nliCGIZPH3QfmcFFX5XK5K4ehzlWNlSQ - null null
+2026-05-14 00:40:03.325 +00:00 [INF] CORS policy execution successful.
+2026-05-14 00:40:03.328 +00:00 [INF] Executing endpoint '/chatHub'
+2026-05-14 00:41:50.289 +00:00 [INF] Executed endpoint '/chatHub'
+2026-05-14 00:41:50.290 +00:00 [INF] HTTP GET /chatHub responded 101 in 104218.7972 ms
+2026-05-14 00:41:50.291 +00:00 [INF] Request finished HTTP/1.1 GET http://host.docker.internal:5000/chatHub?id=hezqSGVOm7VTVnQaWvVHcQ&access_token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6InJlZ2lzdHJhckBwbHYuZWR1LnBoIiwicm9sZSI6IlJlZ2lzdHJhck1TUCIsImRiUm9sZSI6InJlZ2lzdHJhciIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL25hbWVpZGVudGlmaWVyIjoicmVnaXN0cmFyQHBsdi5lZHUucGgiLCJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1lIjoicmVnaXN0cmFyQHBsdi5lZHUucGgiLCJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9lbWFpbGFkZHJlc3MiOiJyZWdpc3RyYXJAcGx2LmVkdS5waCIsImh0dHA6Ly9zY2hlbWFzLm1pY3Jvc29mdC5jb20vd3MvMjAwOC8wNi9pZGVudGl0eS9jbGFpbXMvcm9sZSI6InJlZ2lzdHJhciIsImlhdCI6MTc3ODcxODAyOCwiZXhwIjoxNzc4NzYxMjI4fQ.3nLTNwCo9S0nliCGIZPH3QfmcFFX5XK5K4ehzlWNlSQ - 101 null null 104224.506ms
+2026-05-14 00:41:53.641 +00:00 [INF] Request starting HTTP/1.1 GET http://localhost/api/Auth/user-profile?email=registrar%40plv.edu.ph&role=registrar - application/json null
+2026-05-14 00:41:53.643 +00:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone)'
+2026-05-14 00:41:53.644 +00:00 [INF] Route matched with {action = "GetUserProfile", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetUserProfile(System.String, System.String) on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-05-14 00:41:53.657 +00:00 [INF] Executing OkObjectResult, writing value of type '<>f__AnonymousType21`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[Client_app.Models.UserProfileDto, For_Testing_Only_Capstone, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]'.
+2026-05-14 00:41:53.658 +00:00 [INF] Executed action Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone) in 14.3389ms
+2026-05-14 00:41:53.659 +00:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone)'
+2026-05-14 00:41:53.659 +00:00 [INF] HTTP GET /api/Auth/user-profile responded 200 in 17.0842 ms
+2026-05-14 00:41:53.659 +00:00 [INF] Request finished HTTP/1.1 GET http://localhost/api/Auth/user-profile?email=registrar%40plv.edu.ph&role=registrar - 200 null application/json; charset=utf-8 18.0651ms
+2026-05-14 00:41:53.675 +00:00 [INF] Request starting HTTP/1.1 POST http://host.docker.internal:5000/chatHub/negotiate?negotiateVersion=1 - null 0
+2026-05-14 00:41:53.676 +00:00 [INF] CORS policy execution successful.
+2026-05-14 00:41:53.677 +00:00 [INF] Request starting HTTP/1.1 GET http://localhost/api/Grades/all?invokerId=registrar%40plv.edu.ph - application/json null
+2026-05-14 00:41:53.678 +00:00 [INF] Executing endpoint '/chatHub/negotiate'
+2026-05-14 00:41:53.678 +00:00 [INF] Executing endpoint 'BlockGo.Controllers.GradesController.GetAllGrades (For_Testing_Only_Capstone)'
+2026-05-14 00:41:53.678 +00:00 [INF] Executed endpoint '/chatHub/negotiate'
+2026-05-14 00:41:53.679 +00:00 [INF] Route matched with {action = "GetAllGrades", controller = "Grades"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetAllGrades(System.String) on controller BlockGo.Controllers.GradesController (For_Testing_Only_Capstone).
+2026-05-14 00:41:53.679 +00:00 [INF] HTTP POST /chatHub/negotiate responded 200 in 2.9787 ms
+2026-05-14 00:41:53.680 +00:00 [INF] Request finished HTTP/1.1 POST http://host.docker.internal:5000/chatHub/negotiate?negotiateVersion=1 - 200 316 application/json 4.5257ms
+2026-05-14 00:41:53.682 +00:00 [INF] Getting all grades from blockchain as registrar@plv.edu.ph
+2026-05-14 00:41:53.683 +00:00 [INF] Start processing HTTP request GET http://host.docker.internal:4000/api/all-grades
+2026-05-14 00:41:53.684 +00:00 [INF] Sending HTTP request GET http://host.docker.internal:4000/api/all-grades
+2026-05-14 00:41:53.690 +00:00 [INF] Request starting HTTP/1.1 GET http://host.docker.internal:5000/chatHub?id=qMOaM53QuWAf_RjjP2fvYQ&access_token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6InJlZ2lzdHJhckBwbHYuZWR1LnBoIiwicm9sZSI6IlJlZ2lzdHJhck1TUCIsImRiUm9sZSI6InJlZ2lzdHJhciIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL25hbWVpZGVudGlmaWVyIjoicmVnaXN0cmFyQHBsdi5lZHUucGgiLCJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1lIjoicmVnaXN0cmFyQHBsdi5lZHUucGgiLCJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9lbWFpbGFkZHJlc3MiOiJyZWdpc3RyYXJAcGx2LmVkdS5waCIsImh0dHA6Ly9zY2hlbWFzLm1pY3Jvc29mdC5jb20vd3MvMjAwOC8wNi9pZGVudGl0eS9jbGFpbXMvcm9sZSI6InJlZ2lzdHJhciIsImlhdCI6MTc3ODcxOTMxMywiZXhwIjoxNzc4NzYyNTEzfQ.lkpQUrSeMwGLQ8rVfKBorQK5PgjDfsqMnu09T7UKc0I - null null
+2026-05-14 00:41:53.691 +00:00 [INF] CORS policy execution successful.
+2026-05-14 00:41:53.692 +00:00 [INF] Executing endpoint '/chatHub'
+2026-05-14 00:41:54.097 +00:00 [INF] Received HTTP response headers after 413.2311ms - 200
+2026-05-14 00:41:54.098 +00:00 [INF] End processing HTTP request after 414.7012ms - 200
+2026-05-14 00:41:54.101 +00:00 [INF] Executing OkObjectResult, writing value of type '<>f__AnonymousType38`3[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.Int32, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.Collections.Generic.List`1[[System.Collections.Generic.Dictionary`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.Object, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]], System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]], System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-05-14 00:41:54.101 +00:00 [INF] Executed action BlockGo.Controllers.GradesController.GetAllGrades (For_Testing_Only_Capstone) in 421.7778ms
+2026-05-14 00:41:54.102 +00:00 [INF] Executed endpoint 'BlockGo.Controllers.GradesController.GetAllGrades (For_Testing_Only_Capstone)'
+2026-05-14 00:41:54.102 +00:00 [INF] HTTP GET /api/Grades/all responded 200 in 424.0229 ms
+2026-05-14 00:41:54.103 +00:00 [INF] Request finished HTTP/1.1 GET http://localhost/api/Grades/all?invokerId=registrar%40plv.edu.ph - 200 null application/json; charset=utf-8 425.2826ms
+2026-05-14 00:41:57.882 +00:00 [INF] Request starting HTTP/1.1 GET http://localhost/api/Auth/requests/pending - application/json null
+2026-05-14 00:41:57.883 +00:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.GetPendingRequests (For_Testing_Only_Capstone)'
+2026-05-14 00:41:57.883 +00:00 [INF] Route matched with {action = "GetPendingRequests", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetPendingRequests() on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-05-14 00:41:57.895 +00:00 [INF] Executing OkObjectResult, writing value of type '<>f__AnonymousType5`3[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.Collections.Generic.List`1[[System.Object, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]], System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.Collections.Generic.List`1[[System.Object, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]], System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-05-14 00:41:57.896 +00:00 [INF] Executed action Client_app.Controllers.AuthController.GetPendingRequests (For_Testing_Only_Capstone) in 12.5806ms
+2026-05-14 00:41:57.897 +00:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.GetPendingRequests (For_Testing_Only_Capstone)'
+2026-05-14 00:41:57.897 +00:00 [INF] HTTP GET /api/Auth/requests/pending responded 200 in 14.6568 ms
+2026-05-14 00:41:57.897 +00:00 [INF] Request finished HTTP/1.1 GET http://localhost/api/Auth/requests/pending - 200 null application/json; charset=utf-8 15.6298ms
+2026-05-14 00:41:59.423 +00:00 [INF] Request starting HTTP/1.1 GET http://localhost/api/Auth/students/approved - application/json null
+2026-05-14 00:41:59.424 +00:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.GetApprovedStudents (For_Testing_Only_Capstone)'
+2026-05-14 00:41:59.430 +00:00 [INF] Route matched with {action = "GetApprovedStudents", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetApprovedStudents() on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-05-14 00:41:59.439 +00:00 [INF] Executing OkObjectResult, writing value of type '<>f__AnonymousType8`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.Collections.Generic.List`1[[System.Object, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]], System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-05-14 00:41:59.442 +00:00 [INF] Executed action Client_app.Controllers.AuthController.GetApprovedStudents (For_Testing_Only_Capstone) in 11.5887ms
+2026-05-14 00:41:59.442 +00:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.GetApprovedStudents (For_Testing_Only_Capstone)'
+2026-05-14 00:41:59.442 +00:00 [INF] HTTP GET /api/Auth/students/approved responded 200 in 18.7217 ms
+2026-05-14 00:41:59.443 +00:00 [INF] Request finished HTTP/1.1 GET http://localhost/api/Auth/students/approved - 200 null application/json; charset=utf-8 19.8551ms
+2026-05-14 00:42:00.479 +00:00 [INF] Request starting HTTP/1.1 GET http://localhost/api/Auth/admins/department/approved - application/json null
+2026-05-14 00:42:00.481 +00:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.GetApprovedDepartmentAdmins (For_Testing_Only_Capstone)'
+2026-05-14 00:42:00.485 +00:00 [INF] Route matched with {action = "GetApprovedDepartmentAdmins", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetApprovedDepartmentAdmins() on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-05-14 00:42:00.499 +00:00 [INF] Executing OkObjectResult, writing value of type '<>f__AnonymousType11`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.Collections.Generic.List`1[[System.Object, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]], System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-05-14 00:42:00.502 +00:00 [INF] Executed action Client_app.Controllers.AuthController.GetApprovedDepartmentAdmins (For_Testing_Only_Capstone) in 17.031ms
+2026-05-14 00:42:00.503 +00:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.GetApprovedDepartmentAdmins (For_Testing_Only_Capstone)'
+2026-05-14 00:42:00.503 +00:00 [INF] HTTP GET /api/Auth/admins/department/approved responded 200 in 22.9658 ms
+2026-05-14 00:42:00.503 +00:00 [INF] Request finished HTTP/1.1 GET http://localhost/api/Auth/admins/department/approved - 200 null application/json; charset=utf-8 24.2241ms
+2026-05-14 00:42:00.927 +00:00 [INF] Request starting HTTP/1.1 GET http://localhost/api/Auth/faculty/approved - application/json null
+2026-05-14 00:42:00.930 +00:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.GetApprovedFaculties (For_Testing_Only_Capstone)'
+2026-05-14 00:42:00.935 +00:00 [INF] Route matched with {action = "GetApprovedFaculties", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetApprovedFaculties() on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-05-14 00:42:00.959 +00:00 [INF] Executing OkObjectResult, writing value of type '<>f__AnonymousType13`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.Collections.Generic.List`1[[System.Object, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]], System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-05-14 00:42:00.966 +00:00 [INF] Executed action Client_app.Controllers.AuthController.GetApprovedFaculties (For_Testing_Only_Capstone) in 30.372ms
+2026-05-14 00:42:00.969 +00:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.GetApprovedFaculties (For_Testing_Only_Capstone)'
+2026-05-14 00:42:00.973 +00:00 [INF] HTTP GET /api/Auth/faculty/approved responded 200 in 43.9535 ms
+2026-05-14 00:42:00.975 +00:00 [INF] Request finished HTTP/1.1 GET http://localhost/api/Auth/faculty/approved - 200 null application/json; charset=utf-8 47.7579ms
