@@ -7140,3 +7140,5 @@
 14:25:06.181135 table@remove removed @1712
 14:25:06.184746 table@remove removed @1693
 14:25:06.192127 table@remove removed @1692
+14:49:03.011223 db@close closing
+14:49:03.027374 db@close done T·16.146223ms

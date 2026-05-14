@@ -1903,3 +1903,52 @@ DenyAnonymousAuthorizationRequirement: Requires an authenticated user.
 2026-05-14 14:38:02.273 +00:00 [INF] Executed endpoint 'BlockGo.Controllers.GradesController.GetAllGrades (For_Testing_Only_Capstone)'
 2026-05-14 14:38:02.273 +00:00 [INF] HTTP GET /api/Grades/all responded 200 in 22.2842 ms
 2026-05-14 14:38:02.274 +00:00 [INF] Request finished HTTP/1.1 GET http://localhost/api/Grades/all?invokerId=registrar%40plv.edu.ph - 200 null application/json; charset=utf-8 23.2568ms
+2026-05-14 14:45:54.956 +00:00 [INF] Executed endpoint '/chatHub'
+2026-05-14 14:45:54.957 +00:00 [INF] HTTP GET /chatHub responded 101 in 475715.6183 ms
+2026-05-14 14:45:54.957 +00:00 [INF] Request finished HTTP/1.1 GET http://host.docker.internal:5000/chatHub?id=zbpi6ua2STjrlTLXwlsBtw&access_token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6InJlZ2lzdHJhckBwbHYuZWR1LnBoIiwicm9sZSI6IlJlZ2lzdHJhck1TUCIsImRiUm9sZSI6InJlZ2lzdHJhciIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL25hbWVpZGVudGlmaWVyIjoicmVnaXN0cmFyQHBsdi5lZHUucGgiLCJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1lIjoicmVnaXN0cmFyQHBsdi5lZHUucGgiLCJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9lbWFpbGFkZHJlc3MiOiJyZWdpc3RyYXJAcGx2LmVkdS5waCIsImh0dHA6Ly9zY2hlbWFzLm1pY3Jvc29mdC5jb20vd3MvMjAwOC8wNi9pZGVudGl0eS9jbGFpbXMvcm9sZSI6InJlZ2lzdHJhciIsImlhdCI6MTc3ODc2OTA3MSwiZXhwIjoxNzc4ODEyMjcxfQ.BcTsMfiADT_2XcQyTaQs_b41HOIdie3MeFOFpGOZKwM - 101 null null 475716.6805ms
+2026-05-14 14:45:55.218 +00:00 [INF] Request starting HTTP/1.1 GET http://localhost/api/Auth/user-profile?email=registrar%40plv.edu.ph&role=registrar - application/json null
+2026-05-14 14:45:55.220 +00:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone)'
+2026-05-14 14:45:55.221 +00:00 [INF] Route matched with {action = "GetUserProfile", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetUserProfile(System.String, System.String) on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-05-14 14:45:55.268 +00:00 [INF] Executing OkObjectResult, writing value of type '<>f__AnonymousType22`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[Client_app.Models.UserProfileDto, For_Testing_Only_Capstone, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]'.
+2026-05-14 14:45:55.269 +00:00 [INF] Executed action Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone) in 45.6116ms
+2026-05-14 14:45:55.270 +00:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.GetUserProfile (For_Testing_Only_Capstone)'
+2026-05-14 14:45:55.270 +00:00 [INF] HTTP GET /api/Auth/user-profile responded 200 in 51.1817 ms
+2026-05-14 14:45:55.271 +00:00 [INF] Request finished HTTP/1.1 GET http://localhost/api/Auth/user-profile?email=registrar%40plv.edu.ph&role=registrar - 200 null application/json; charset=utf-8 52.8212ms
+2026-05-14 14:45:55.296 +00:00 [INF] Request starting HTTP/1.1 GET http://localhost/api/Grades/all?invokerId=registrar%40plv.edu.ph - application/json null
+2026-05-14 14:45:55.297 +00:00 [INF] Request starting HTTP/1.1 POST http://host.docker.internal:5000/chatHub/negotiate?negotiateVersion=1 - null 0
+2026-05-14 14:45:55.298 +00:00 [INF] CORS policy execution successful.
+2026-05-14 14:45:55.298 +00:00 [INF] Executing endpoint 'BlockGo.Controllers.GradesController.GetAllGrades (For_Testing_Only_Capstone)'
+2026-05-14 14:45:55.299 +00:00 [INF] Route matched with {action = "GetAllGrades", controller = "Grades"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetAllGrades(System.String) on controller BlockGo.Controllers.GradesController (For_Testing_Only_Capstone).
+2026-05-14 14:45:55.299 +00:00 [INF] Executing endpoint '/chatHub/negotiate'
+2026-05-14 14:45:55.300 +00:00 [INF] Getting all grades from blockchain as registrar@plv.edu.ph
+2026-05-14 14:45:55.300 +00:00 [INF] Executed endpoint '/chatHub/negotiate'
+2026-05-14 14:45:55.300 +00:00 [INF] Start processing HTTP request GET http://host.docker.internal:4000/api/all-grades
+2026-05-14 14:45:55.300 +00:00 [INF] HTTP POST /chatHub/negotiate responded 200 in 2.5626 ms
+2026-05-14 14:45:55.301 +00:00 [INF] Sending HTTP request GET http://host.docker.internal:4000/api/all-grades
+2026-05-14 14:45:55.303 +00:00 [INF] Request finished HTTP/1.1 POST http://host.docker.internal:5000/chatHub/negotiate?negotiateVersion=1 - 200 316 application/json 6.1277ms
+2026-05-14 14:45:55.315 +00:00 [INF] Request starting HTTP/1.1 GET http://host.docker.internal:5000/chatHub?id=ouij_0FGOG0Lbokizfdqpg&access_token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6InJlZ2lzdHJhckBwbHYuZWR1LnBoIiwicm9sZSI6IlJlZ2lzdHJhck1TUCIsImRiUm9sZSI6InJlZ2lzdHJhciIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL25hbWVpZGVudGlmaWVyIjoicmVnaXN0cmFyQHBsdi5lZHUucGgiLCJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1lIjoicmVnaXN0cmFyQHBsdi5lZHUucGgiLCJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9lbWFpbGFkZHJlc3MiOiJyZWdpc3RyYXJAcGx2LmVkdS5waCIsImh0dHA6Ly9zY2hlbWFzLm1pY3Jvc29mdC5jb20vd3MvMjAwOC8wNi9pZGVudGl0eS9jbGFpbXMvcm9sZSI6InJlZ2lzdHJhciIsImlhdCI6MTc3ODc2OTA3MSwiZXhwIjoxNzc4ODEyMjcxfQ.BcTsMfiADT_2XcQyTaQs_b41HOIdie3MeFOFpGOZKwM - null null
+2026-05-14 14:45:55.316 +00:00 [INF] CORS policy execution successful.
+2026-05-14 14:45:55.317 +00:00 [INF] Executing endpoint '/chatHub'
+2026-05-14 14:45:55.772 +00:00 [INF] Received HTTP response headers after 470.3744ms - 200
+2026-05-14 14:45:55.773 +00:00 [INF] End processing HTTP request after 472.4841ms - 200
+2026-05-14 14:45:55.775 +00:00 [INF] Executing OkObjectResult, writing value of type '<>f__AnonymousType40`3[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.Int32, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.Collections.Generic.List`1[[System.Collections.Generic.Dictionary`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.Object, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]], System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]], System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-05-14 14:45:55.776 +00:00 [INF] Executed action BlockGo.Controllers.GradesController.GetAllGrades (For_Testing_Only_Capstone) in 476.7127ms
+2026-05-14 14:45:55.776 +00:00 [INF] Executed endpoint 'BlockGo.Controllers.GradesController.GetAllGrades (For_Testing_Only_Capstone)'
+2026-05-14 14:45:55.777 +00:00 [INF] HTTP GET /api/Grades/all responded 200 in 479.3368 ms
+2026-05-14 14:45:55.777 +00:00 [INF] Request finished HTTP/1.1 GET http://localhost/api/Grades/all?invokerId=registrar%40plv.edu.ph - 200 null application/json; charset=utf-8 480.7225ms
+2026-05-14 14:45:57.014 +00:00 [INF] Request starting HTTP/1.1 GET http://localhost/api/Auth/faculty/approved - application/json null
+2026-05-14 14:45:57.014 +00:00 [INF] Request starting HTTP/1.1 GET http://localhost/api/Auth/admins/department/approved - application/json null
+2026-05-14 14:45:57.015 +00:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.GetApprovedFaculties (For_Testing_Only_Capstone)'
+2026-05-14 14:45:57.015 +00:00 [INF] Executing endpoint 'Client_app.Controllers.AuthController.GetApprovedDepartmentAdmins (For_Testing_Only_Capstone)'
+2026-05-14 14:45:57.021 +00:00 [INF] Route matched with {action = "GetApprovedDepartmentAdmins", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetApprovedDepartmentAdmins() on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-05-14 14:45:57.021 +00:00 [INF] Route matched with {action = "GetApprovedFaculties", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetApprovedFaculties() on controller Client_app.Controllers.AuthController (For_Testing_Only_Capstone).
+2026-05-14 14:45:57.038 +00:00 [INF] Executing OkObjectResult, writing value of type '<>f__AnonymousType11`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.Collections.Generic.List`1[[System.Object, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]], System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-05-14 14:45:57.041 +00:00 [INF] Executed action Client_app.Controllers.AuthController.GetApprovedDepartmentAdmins (For_Testing_Only_Capstone) in 18.7431ms
+2026-05-14 14:45:57.041 +00:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.GetApprovedDepartmentAdmins (For_Testing_Only_Capstone)'
+2026-05-14 14:45:57.042 +00:00 [INF] HTTP GET /api/Auth/admins/department/approved responded 200 in 27.0739 ms
+2026-05-14 14:45:57.042 +00:00 [INF] Request finished HTTP/1.1 GET http://localhost/api/Auth/admins/department/approved - 200 null application/json; charset=utf-8 28.182ms
+2026-05-14 14:45:57.050 +00:00 [INF] Executing OkObjectResult, writing value of type '<>f__AnonymousType13`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.Collections.Generic.List`1[[System.Object, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]], System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-05-14 14:45:57.052 +00:00 [INF] Executed action Client_app.Controllers.AuthController.GetApprovedFaculties (For_Testing_Only_Capstone) in 29.8509ms
+2026-05-14 14:45:57.053 +00:00 [INF] Executed endpoint 'Client_app.Controllers.AuthController.GetApprovedFaculties (For_Testing_Only_Capstone)'
+2026-05-14 14:45:57.053 +00:00 [INF] HTTP GET /api/Auth/faculty/approved responded 200 in 39.0761 ms
+2026-05-14 14:45:57.054 +00:00 [INF] Request finished HTTP/1.1 GET http://localhost/api/Auth/faculty/approved - 200 null application/json; charset=utf-8 40.0127ms

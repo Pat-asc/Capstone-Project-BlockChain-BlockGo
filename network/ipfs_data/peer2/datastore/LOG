@@ -7022,3 +7022,5 @@
 14:25:06.328966 version@stat F·[2 1] S·14KiB[2KiB 11KiB] Sc·[0.50 0.00]
 14:25:06.393817 db@janitor F·5 G·0
 14:25:06.394220 db@open done T·105.384038ms
+14:49:03.127373 db@close closing
+14:49:03.135634 db@close done T·8.219653ms
