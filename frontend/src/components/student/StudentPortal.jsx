@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { fetchAllGrades } from '../../services/api';
+import { fetchAllGrades, getSystemSetting } from '../../services/api';
 import StudentNavbar from './StudentNavbar';
 import StudentInfoCard from './StudentInfoCard';
 import StudentSummary from './StudentSummary';
@@ -8,6 +8,16 @@ import StudentGradesTable from './StudentGradesTable';
 const StudentPortal = ({ studentData, onLogout }) => {
   const [grades, setGrades] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [activeSemester, setActiveSemester] = useState('Semester Grades');
+
+  const rawFullName = studentData.name || '';
+  const firstName = rawFullName.split(' ')[0] || '';
+  const storedMiddleName = studentData.middleName || '';
+  const remainingName = rawFullName.split(' ').slice(1).join(' ').trim();
+  const escapedMiddleName = storedMiddleName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const lastName = storedMiddleName && escapedMiddleName
+    ? remainingName.replace(new RegExp(`^${escapedMiddleName}\\s*`, 'i'), '').trim()
+    : remainingName;
 
   const getStudentKey = useCallback((grade) => (
     grade.student_hash ||
@@ -69,6 +79,39 @@ const StudentPortal = ({ studentData, onLogout }) => {
     return () => window.removeEventListener('blockgo:academic-data-changed', handleAcademicDataChanged);
   }, [loadGrades]);
 
+  useEffect(() => {
+    const applyEncodingPeriod = (value) => {
+      if (!value) return;
+      try {
+        const parsed = typeof value === 'string' ? JSON.parse(value) : value;
+        setActiveSemester(parsed?.semester ? `${parsed.semester} Grades` : 'Semester Grades');
+      } catch (error) {
+        console.error('Failed to parse encoding period for student portal:', error);
+      }
+    };
+
+    const loadEncodingPeriod = async () => {
+      try {
+        const res = await getSystemSetting('encoding_period');
+        if (res.status === 'Success' && res.value) {
+          applyEncodingPeriod(res.value);
+        }
+      } catch (error) {
+        console.error('Failed to load encoding period for student portal:', error);
+      }
+    };
+
+    const handleSystemSettingChanged = (event) => {
+      const key = event.detail?.key || event.detail?.Key;
+      const value = event.detail?.value || event.detail?.Value;
+      if (key === 'encoding_period') applyEncodingPeriod(value);
+    };
+
+    loadEncodingPeriod();
+    window.addEventListener('blockgo:system-setting-changed', handleSystemSettingChanged);
+    return () => window.removeEventListener('blockgo:system-setting-changed', handleSystemSettingChanged);
+  }, []);
+
   // 2. Calculate Semester Totals
   const totalUnits = grades.length * 3; // Assuming 3 units per subject block for now
   
@@ -110,14 +153,14 @@ const StudentPortal = ({ studentData, onLogout }) => {
       <div className="mx-auto max-w-7xl">
         <StudentInfoCard 
           studentData={{
-            firstName: studentData.name?.split(' ')[0] || '',
-            lastName: studentData.name?.split(' ').slice(1).join(' ') || '',
-            middleName: '', // Optional, parse if needed
+            firstName,
+            lastName,
+            middleName: storedMiddleName || 'Not provided',
             studentId: studentData.studentNo || 'N/A',
             dateOfBirth: studentData.dateOfBirth || 'Not provided',
             sex: studentData.sex || 'Not provided',
             phone: studentData.phone || 'Not provided',
-            email: studentData.email,
+            email: studentData.studentEmail || studentData.email,
             department: studentData.department,
             section: studentData.section,
             address: studentData.address || 'Not provided'
@@ -129,6 +172,7 @@ const StudentPortal = ({ studentData, onLogout }) => {
           gwa={calculatedGWA} 
           isDeansLister={isDeansLister} 
           failedSubjectsCount={failedSubjectsCount} 
+          semesterLabel={activeSemester}
         />
 
         {failedSubjectsCount >= 2 && (

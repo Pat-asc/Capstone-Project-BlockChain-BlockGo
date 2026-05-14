@@ -120,7 +120,7 @@ const getCAConfig = (role) => {
             '../network/crypto-config-final-v2/peerOrganizations/faculty.capstone.com/tlsca/tlsca.faculty.capstone.com-cert.pem',
             '../network/fabric-ca/faculty/tls-cert.pem'
         );
-    } else if (normalizedRole === 'department_admin' || normalizedRole === 'admin' || normalizedRole === 'deptadmin' || normalizedRole === 'department') {
+    } else if (normalizedRole === 'department_admin' || normalizedRole === 'admin' || normalizedRole === 'deptadmin' || normalizedRole === 'department' || normalizedRole === 'chairperson') {
         caURL = isDocker ? 'https://ca.department.capstone.com:7054' : 'https://localhost:9054';
         caName = 'ca-department';
         adminLabel = 'admin-department';
@@ -249,7 +249,7 @@ async function getWallet(role = 'registrar') {
 
     if (normalizedRole === 'faculty') {
         couchUrl = process.env.COUCHDB_WALLET_FACULTY_URL || `http://${user}:${pass}@${host}:6990`;
-    } else if (normalizedRole === 'department_admin' || normalizedRole === 'deptadmin' || normalizedRole === 'department' || normalizedRole === 'admin') {
+    } else if (normalizedRole === 'department_admin' || normalizedRole === 'deptadmin' || normalizedRole === 'department' || normalizedRole === 'admin' || normalizedRole === 'chairperson') {
         couchUrl = process.env.COUCHDB_WALLET_DEPARTMENT_URL || `http://${user}:${pass}@${host}:7990`;
     } else {
         couchUrl = process.env.COUCHDB_WALLET_REGISTRAR_URL || process.env.COUCHDB_WALLET_URL || `http://${user}:${pass}@${host}:5990`;
@@ -258,7 +258,7 @@ async function getWallet(role = 'registrar') {
     if (couchUrl) {
         const walletSuffix = normalizedRole === 'faculty'
             ? 'faculty'
-            : (normalizedRole === 'department_admin' || normalizedRole === 'deptadmin' || normalizedRole === 'department' || normalizedRole === 'admin')
+            : (normalizedRole === 'department_admin' || normalizedRole === 'deptadmin' || normalizedRole === 'department' || normalizedRole === 'admin' || normalizedRole === 'chairperson')
                 ? 'department'
                 : 'registrar';
         const walletName = `fabric_wallet_${walletSuffix}`;
@@ -705,7 +705,7 @@ app.post('/api/login', loginLimiter, async (req, res) => {
                     const registerPayload = {
                         enrollmentID: normalizedUsername,
                         enrollmentSecret: password,
-                        role: (userRecord.role === 'registrar' || userRecord.role === 'department_admin' || userRecord.role === 'deptAdmin') ? 'admin' : 'client',
+                        role: (userRecord.role === 'registrar' || userRecord.role === 'department_admin' || userRecord.role === 'deptAdmin' || userRecord.role === 'chairperson') ? 'admin' : 'client',
                         attrs: [
                             { name: 'role', value: userRecord.role, ecert: true },
                             { name: 'grade.manage', value: userRecord.role === 'faculty' ? 'true' : 'false', ecert: true }
@@ -810,7 +810,7 @@ app.post('/api/fabric/register-user', authenticateJWT, requireRegistrarOrInterna
             return await ca.register({
                 enrollmentID: email,
                 enrollmentSecret: secret,
-                role: (role === 'registrar' || role === 'department_admin' || role === 'deptAdmin') ? 'admin' : 'client',
+                role: (role === 'registrar' || role === 'department_admin' || role === 'deptAdmin' || role === 'chairperson') ? 'admin' : 'client',
                 attrs: [{ name: 'role', value: role, ecert: true }, { name: 'grade.manage', value: role === 'faculty' ? 'true' : 'false', ecert: true }]
             }, user);
         };
@@ -996,7 +996,7 @@ app.post('/api/register', authenticateJWT, requireRegistrarOrInternal, async (re
             secret = await ca.register({
                 enrollmentID: username,
                 enrollmentSecret: password,
-                role: (role === 'registrar' || role === 'department_admin' || role === 'deptAdmin') ? 'admin' : 'client',
+                role: (role === 'registrar' || role === 'department_admin' || role === 'deptAdmin' || role === 'chairperson') ? 'admin' : 'client',
                 attrs: [
                     { name: 'role', value: role, ecert: true },
                     { name: 'grade.manage', value: role === 'faculty' ? 'true' : 'false', ecert: true }

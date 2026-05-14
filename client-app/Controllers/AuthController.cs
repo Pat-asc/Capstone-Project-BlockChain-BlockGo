@@ -72,6 +72,18 @@ namespace Client_app.Controllers
                         IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='facultyprofiles' AND column_name='faculty_type') THEN
                             ALTER TABLE facultyprofiles ADD COLUMN faculty_type VARCHAR(20);
                         END IF;
+                        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='studentprofiles' AND column_name='middle_name') THEN
+                            ALTER TABLE studentprofiles ADD COLUMN middle_name VARCHAR(100);
+                        END IF;
+                        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='studentprofiles' AND column_name='phone') THEN
+                            ALTER TABLE studentprofiles ADD COLUMN phone VARCHAR(50);
+                        END IF;
+                        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='studentprofiles' AND column_name='address') THEN
+                            ALTER TABLE studentprofiles ADD COLUMN address TEXT;
+                        END IF;
+                        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='studentprofiles' AND column_name='student_email') THEN
+                            ALTER TABLE studentprofiles ADD COLUMN student_email VARCHAR(255);
+                        END IF;
                     END $$;
 
                     CREATE UNIQUE INDEX IF NOT EXISTS idx_unique_faculty_section ON facultysections(user_id, department, section, subject);
@@ -97,7 +109,7 @@ namespace Client_app.Controllers
             var normalized = (role ?? "student").Trim().ToLowerInvariant().Replace(" ", "_").Replace("-", "_");
             return normalized switch
             {
-                "dept_admin" or "deptadmin" or "departmentadmin" or "department" or "admin" or "departmentmsp" => "department_admin",
+                "dept_admin" or "deptadmin" or "departmentadmin" or "department" or "admin" or "departmentmsp" or "chairperson" => "department_admin",
                 "facultymsp" => "faculty",
                 "registrarmsp" => "registrar",
                 _ => normalized
@@ -334,7 +346,7 @@ namespace Client_app.Controllers
                     FROM Users u JOIN AdminProfiles ap ON u.id = ap.user_id 
                     WHERE (
                         u.role = 'registrar'
-                        OR LOWER(REPLACE(REPLACE(u.role, ' ', '_'), '-', '_')) IN ('department_admin', 'dept_admin', 'deptadmin', 'department', 'admin')
+                        OR LOWER(REPLACE(REPLACE(u.role, ' ', '_'), '-', '_')) IN ('department_admin', 'dept_admin', 'deptadmin', 'department', 'admin', 'chairperson')
                     ) AND u.status = 'pending'", conn))
             using (var reader = await cmd.ExecuteReaderAsync())
             {
@@ -644,7 +656,7 @@ namespace Client_app.Controllers
                 using (var cmd = new NpgsqlCommand(@"
                     SELECT u.id, ap.full_name, u.email, ap.department, u.role 
                     FROM Users u JOIN AdminProfiles ap ON u.id = ap.user_id 
-                    WHERE LOWER(REPLACE(REPLACE(u.role, ' ', '_'), '-', '_')) IN ('department_admin', 'dept_admin', 'deptadmin', 'department', 'admin')
+                    WHERE LOWER(REPLACE(REPLACE(u.role, ' ', '_'), '-', '_')) IN ('department_admin', 'dept_admin', 'deptadmin', 'department', 'admin', 'chairperson')
                       AND u.status = 'APPROVED'", conn))
                 using (var reader = await cmd.ExecuteReaderAsync())
                 {
@@ -730,7 +742,7 @@ namespace Client_app.Controllers
                     FROM Users u
                     JOIN AdminProfiles ap ON u.id = ap.user_id
                     WHERE u.id = @id
-                      AND LOWER(REPLACE(REPLACE(u.role, ' ', '_'), '-', '_')) IN ('department_admin', 'dept_admin', 'deptadmin', 'department', 'admin')", conn);
+                      AND LOWER(REPLACE(REPLACE(u.role, ' ', '_'), '-', '_')) IN ('department_admin', 'dept_admin', 'deptadmin', 'department', 'admin', 'chairperson')", conn);
                 findCmd.Parameters.AddWithValue("id", id);
 
                 using var reader = await findCmd.ExecuteReaderAsync();
@@ -1186,10 +1198,12 @@ namespace Client_app.Controllers
 
         [HttpPost("students/bulk-upload")]
         [Consumes("multipart/form-data")]
-        public async Task<IActionResult> BulkUploadStudents([FromForm] IFormFile file, [FromForm] string? defaultDepartment)
+        public async Task<IActionResult> BulkUploadStudents([FromForm] IFormFile file, [FromForm] string? defaultDepartment, [FromForm] string? mode)
         {
             if (file == null || file.Length == 0)
                 return BadRequest(new { status = "Error", message = "A .csv or .xlsx file is required." });
+
+            var normalizedMode = string.Equals(mode, "update", StringComparison.OrdinalIgnoreCase) ? "update" : "enroll";
 
             var ext = Path.GetExtension(file.FileName).ToLower();
             if (ext != ".csv" && ext != ".xlsx")
@@ -1207,6 +1221,7 @@ namespace Client_app.Controllers
                     await file.CopyToAsync(fileStream);
 
                 var parsedRecords = new List<Dictionary<string, string>>();
+                var parsedHeaders = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
                 if (ext == ".xlsx")
                 {
@@ -1217,7 +1232,9 @@ namespace Client_app.Controllers
                     
                     foreach (var cell in headerRow.CellsUsed())
                     {
-                        headerMap[cell.Value.ToString().Trim().ToLower().Replace(" ", "_")] = cell.Address.ColumnNumber;
+                        var normalizedHeader = cell.Value.ToString().Trim().ToLower().Replace(" ", "_");
+                        headerMap[normalizedHeader] = cell.Address.ColumnNumber;
+                        parsedHeaders.Add(normalizedHeader);
                     }
 
                     var rows = ws.RowsUsed().Skip(1);
@@ -1244,12 +1261,20 @@ namespace Client_app.Controllers
                         line = line.Trim();
                         if (string.IsNullOrEmpty(line)) continue;
 
-                        var fields = line.Split(',');
+                        string[] fields;
+                        if (line.Contains('\t')) fields = line.Split('\t');
+                        else if (line.Contains(';')) fields = line.Split(';');
+                        else fields = line.Split(',');
+
                         if (lineNum == 1)
                         {
                             headerMap = new Dictionary<string, int>();
                             for (int i = 0; i < fields.Length; i++)
-                                headerMap[fields[i].Trim().ToLower().Replace(" ", "_")] = i;
+                            {
+                                var normalizedHeader = fields[i].Trim().Trim('"').ToLower().Replace(" ", "_");
+                                headerMap[normalizedHeader] = i;
+                                parsedHeaders.Add(normalizedHeader);
+                            }
                             continue;
                         }
 
@@ -1258,7 +1283,7 @@ namespace Client_app.Controllers
                             foreach (var kvp in headerMap)
                             {
                                 if (kvp.Value < fields.Length)
-                                    dict[kvp.Key] = fields[kvp.Value].Trim();
+                                    dict[kvp.Key] = fields[kvp.Value].Trim().Trim('"');
                             }
                         }
                         parsedRecords.Add(dict);
@@ -1269,6 +1294,18 @@ namespace Client_app.Controllers
                 int failureCount = 0;
                 var errors = new List<object>();
 
+                var requiredHeaders = new[] { "student_id", "first_name", "last_name", "middle_name", "sex", "email", "number", "address", "birthday" };
+                var missingHeaders = requiredHeaders.Where(header => !parsedHeaders.Contains(header)).ToList();
+                if (missingHeaders.Count > 0)
+                {
+                    return BadRequest(new
+                    {
+                        status = "Error",
+                        message = $"Missing required column(s): {string.Join(", ", missingHeaders)}",
+                        missingColumns = missingHeaders
+                    });
+                }
+
                 using var httpClient = _httpClientFactory.CreateClient("FabricCAClient");
                 var apiKey = Environment.GetEnvironmentVariable("INTERNAL_API_KEY") ?? _configuration["InternalApiKey"] ?? throw new InvalidOperationException("Internal API Key not configured.");
                 httpClient.DefaultRequestHeaders.Add("x-api-key", apiKey);
@@ -1277,8 +1314,10 @@ namespace Client_app.Controllers
                 using var conn = new NpgsqlConnection(_connectionString);
                 await conn.OpenAsync();
 
-                foreach (var record in parsedRecords)
+                for (int index = 0; index < parsedRecords.Count; index++)
                 {
+                    var record = parsedRecords[index];
+                    var rowNumber = index + 2;
                     string GetVal(params string[] keys)
                     {
                         foreach (var k in keys)
@@ -1290,12 +1329,18 @@ namespace Client_app.Controllers
 
                     try
                     {
-                        string name = GetVal("full_name", "name", "student_name");
+                        string studentNo = GetVal("student_id", "student_no", "student_number", "id_number");
+                        string firstName = GetVal("first_name", "firstname", "given_name");
+                        string lastName = GetVal("last_name", "lastname", "surname");
+                        string middleName = GetVal("middle_name", "middlename", "middle");
+                        string sex = GetVal("sex", "gender");
                         string email = GetVal("email", "email_address");
-                        string studentNo = GetVal("student_no", "student_number", "id_number");
-                        string dobStr = GetVal("dob", "birthday", "date_of_birth");
+                        string phone = GetVal("number", "phone", "contact_number", "mobile_number");
+                        string address = GetVal("address", "home_address");
+                        string dobStr = GetVal("birthday", "dob", "date_of_birth");
                         string section = GetVal("section", "class_section");
                         string dept = GetVal("department", "course", "program");
+                        string name = $"{firstName} {middleName} {lastName}".Replace("  ", " ").Trim();
 
                         // Smart Fallback: Decide if the filename is a Department or a Section
                         if (isDepartmentFallback) 
@@ -1308,26 +1353,42 @@ namespace Client_app.Controllers
                         }
 
                         if (string.IsNullOrEmpty(dept)) dept = defaultDepartment ?? "Unassigned";
-                        if (string.IsNullOrEmpty(email)) email = studentNo; // Use student no as email if blank
-                        
-                        if (string.IsNullOrEmpty(email)) throw new Exception("Missing Email or Student Number");
-                        // Per requirement: Login must be student-no
+                        var invalidColumns = new List<string>();
+                        if (string.IsNullOrEmpty(studentNo)) invalidColumns.Add("student_id");
+                        if (string.IsNullOrEmpty(firstName)) invalidColumns.Add("first_name");
+                        if (string.IsNullOrEmpty(lastName)) invalidColumns.Add("last_name");
+                        if (string.IsNullOrEmpty(middleName)) invalidColumns.Add("middle_name");
+                        if (string.IsNullOrEmpty(sex)) invalidColumns.Add("sex");
+                        if (string.IsNullOrEmpty(email)) invalidColumns.Add("email");
+                        if (string.IsNullOrEmpty(phone)) invalidColumns.Add("number");
+                        if (string.IsNullOrEmpty(address)) invalidColumns.Add("address");
+                        if (string.IsNullOrEmpty(dobStr)) invalidColumns.Add("birthday");
+                        if (invalidColumns.Count > 0)
+                            throw new Exception($"Missing required value(s) in column(s): {string.Join(", ", invalidColumns)}");
+
                         string loginId = studentNo; 
-                        
-                        if (string.IsNullOrEmpty(loginId)) throw new Exception("Missing Student Number (Required for login)");
-                        if (string.IsNullOrEmpty(name)) throw new Exception("Missing Name");
-                        if (string.IsNullOrEmpty(dobStr)) throw new Exception("Missing Birthday (DOB)");
 
                         email = email.Trim().ToLower();
                         loginId = loginId.Trim().ToLower();
-                        string password = studentNo.Trim();
+                        dobStr = dobStr.Trim();
+                        middleName = middleName.Trim();
+                        sex = sex.Trim();
+                        phone = phone.Trim();
+                        address = address.Trim();
+                        if (!System.Text.RegularExpressions.Regex.IsMatch(loginId, @"^\d{2}-\d{4}$"))
+                            throw new Exception("Invalid value in column 'student_id'. Use xx-xxxx.");
+                        if (!System.Text.RegularExpressions.Regex.IsMatch(dobStr, @"^\d{2}/\d{2}/\d{4}$"))
+                            throw new Exception("Invalid value in column 'birthday'. Use MM/DD/YYYY.");
+
+                        string password = dobStr;
 
                         // Parse Birthday if available
                         DateTime? dobDate = null;
-                        if (!string.IsNullOrEmpty(dobStr) && DateTime.TryParse(dobStr, out DateTime parsedDob))
+                        if (!string.IsNullOrEmpty(dobStr) && DateTime.TryParseExact(dobStr, "MM/dd/yyyy", System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out DateTime parsedDob))
                         {
                             dobDate = parsedDob;
                         }
+                        if (!dobDate.HasValue) throw new Exception("Invalid value in column 'birthday'. Use MM/DD/YYYY.");
 
                         using var checkCmd = new NpgsqlCommand("SELECT COUNT(1) FROM Users WHERE email = @email", conn);
                         checkCmd.Parameters.AddWithValue("email", loginId);
@@ -1337,38 +1398,68 @@ namespace Client_app.Controllers
                         
                         if (exists > 0)
                         {
-                            using var updateStatusCmd = new NpgsqlCommand("UPDATE Users SET status = 'APPROVED' WHERE email = @email RETURNING id", conn, tx);
+                            if (normalizedMode != "update")
+                                throw new Exception("Student already exists. Use Bulk Update Info instead.");
+
+                            using var updateStatusCmd = new NpgsqlCommand("UPDATE Users SET status = 'APPROVED', password_hash = crypt(@password, gen_salt('bf', 12)) WHERE email = @email RETURNING id", conn, tx);
                             updateStatusCmd.Parameters.AddWithValue("email", loginId);
+                            updateStatusCmd.Parameters.AddWithValue("password", password);
                             int userId = (int)(await updateStatusCmd.ExecuteScalarAsync() ?? 0);
 
                             if (userId > 0)
                             {
                                 using var updateProfile = new NpgsqlCommand(@"
                                     UPDATE StudentProfiles 
-                                    SET department = @dept, section = COALESCE(@sec, section), assignment_status = 'Enrolled'
+                                    SET full_name = @name,
+                                        student_no = @studentno,
+                                        department = @dept,
+                                        section = COALESCE(@sec, section),
+                                        date_of_birth = COALESCE(@dob, date_of_birth),
+                                        student_email = @studentEmail,
+                                        middle_name = @middleName,
+                                        sex = @sex,
+                                        phone = @phone,
+                                        address = @address,
+                                        assignment_status = 'Enrolled'
                                     WHERE user_id = @uid", conn, tx);
+                                updateProfile.Parameters.AddWithValue("name", !string.IsNullOrEmpty(name) ? (object)name : DBNull.Value);
+                                updateProfile.Parameters.AddWithValue("studentno", !string.IsNullOrEmpty(studentNo) ? (object)studentNo : DBNull.Value);
                                 updateProfile.Parameters.AddWithValue("dept", (object?)dept ?? DBNull.Value);
                                 updateProfile.Parameters.AddWithValue("sec", string.IsNullOrEmpty(section) ? DBNull.Value : (object)section);
+                                updateProfile.Parameters.AddWithValue("dob", dobDate.HasValue ? (object)dobDate.Value.Date : DBNull.Value);
+                                updateProfile.Parameters.AddWithValue("studentEmail", string.IsNullOrEmpty(email) ? DBNull.Value : (object)email);
+                                updateProfile.Parameters.AddWithValue("middleName", string.IsNullOrEmpty(middleName) ? DBNull.Value : (object)middleName);
+                                updateProfile.Parameters.AddWithValue("sex", string.IsNullOrEmpty(sex) ? DBNull.Value : (object)sex);
+                                updateProfile.Parameters.AddWithValue("phone", string.IsNullOrEmpty(phone) ? DBNull.Value : (object)phone);
+                                updateProfile.Parameters.AddWithValue("address", string.IsNullOrEmpty(address) ? DBNull.Value : (object)address);
                                 updateProfile.Parameters.AddWithValue("uid", userId);
                                 await updateProfile.ExecuteNonQueryAsync();
                             }
                         }
                         else
                         {
+                            if (normalizedMode == "update")
+                                throw new Exception("Student does not exist yet. Use Bulk Enroll first.");
+
                             using var cmdUser = new NpgsqlCommand("INSERT INTO Users (email, password_hash, role, status) VALUES (@email, crypt(@password, gen_salt('bf', 12)), 'student', 'APPROVED') RETURNING id", conn, tx);
                             cmdUser.Parameters.AddWithValue("email", loginId);
                             cmdUser.Parameters.AddWithValue("password", password);
                             int userId = (int)(await cmdUser.ExecuteScalarAsync() ?? throw new Exception("Failed to retrieve new User ID"));
 
                             using var cmdProfile = new NpgsqlCommand(@"
-                                INSERT INTO StudentProfiles (user_id, full_name, student_no, department, section, date_of_birth, assignment_status) 
-                                VALUES (@uid, @name, @studentno, @dept, @sec, @dob, 'Enrolled')", conn, tx);
+                                INSERT INTO StudentProfiles (user_id, full_name, student_no, department, section, date_of_birth, student_email, middle_name, sex, phone, address, assignment_status) 
+                                VALUES (@uid, @name, @studentno, @dept, @sec, @dob, @studentEmail, @middleName, @sex, @phone, @address, 'Enrolled')", conn, tx);
                             cmdProfile.Parameters.AddWithValue("uid", userId);
                             cmdProfile.Parameters.AddWithValue("name", !string.IsNullOrEmpty(name) ? (object)name : DBNull.Value);
                             cmdProfile.Parameters.AddWithValue("studentno", !string.IsNullOrEmpty(studentNo) ? (object)studentNo : DBNull.Value);
                             cmdProfile.Parameters.AddWithValue("dept", !string.IsNullOrEmpty(dept) ? (object)dept : DBNull.Value);
                             cmdProfile.Parameters.AddWithValue("sec", string.IsNullOrEmpty(section) ? DBNull.Value : (object)section);
                             cmdProfile.Parameters.AddWithValue("dob", dobDate.HasValue ? (object)dobDate.Value.Date : DBNull.Value);
+                            cmdProfile.Parameters.AddWithValue("studentEmail", string.IsNullOrEmpty(email) ? DBNull.Value : (object)email);
+                            cmdProfile.Parameters.AddWithValue("middleName", string.IsNullOrEmpty(middleName) ? DBNull.Value : (object)middleName);
+                            cmdProfile.Parameters.AddWithValue("sex", string.IsNullOrEmpty(sex) ? DBNull.Value : (object)sex);
+                            cmdProfile.Parameters.AddWithValue("phone", string.IsNullOrEmpty(phone) ? DBNull.Value : (object)phone);
+                            cmdProfile.Parameters.AddWithValue("address", string.IsNullOrEmpty(address) ? DBNull.Value : (object)address);
                             await cmdProfile.ExecuteNonQueryAsync();
                         }
 
@@ -1390,7 +1481,12 @@ namespace Client_app.Controllers
                     catch (Exception rowEx)
                     {
                         failureCount++;
-                        errors.Add(new { identifier = record.ContainsKey("student_no") ? record["student_no"] : "Unknown", reason = rowEx.Message });
+                        errors.Add(new
+                        {
+                            row = rowNumber,
+                            identifier = record.TryGetValue("student_id", out var studentId) && !string.IsNullOrWhiteSpace(studentId) ? studentId : "Unknown",
+                            reason = rowEx.Message
+                        });
                     }
                 }
 
@@ -1406,7 +1502,13 @@ namespace Client_app.Controllers
                     successful = successCount,
                     failed = failureCount,
                     errors = errors.Any() ? errors : null,
-                    message = $"{successCount} students automatically enrolled and approved."
+                    message = normalizedMode == "update"
+                        ? (failureCount > 0
+                            ? $"{successCount} student record(s) updated successfully. {failureCount} row(s) need attention."
+                            : $"{successCount} student record(s) updated successfully.")
+                        : (failureCount > 0
+                            ? $"{successCount} students automatically enrolled and approved. {failureCount} row(s) need attention."
+                            : $"{successCount} students automatically enrolled and approved.")
                 });
             }
             finally
@@ -1517,7 +1619,7 @@ namespace Client_app.Controllers
 
                 if (normalizedRole == "student")
                 {
-                    query = baseQuery + "sp.full_name, sp.department, sp.student_no, sp.section FROM Users u JOIN StudentProfiles sp ON u.id = sp.user_id WHERE u.email = @email";
+                    query = baseQuery + "sp.full_name, sp.department, sp.student_no, sp.section, sp.date_of_birth, sp.student_email, sp.middle_name, sp.phone, sp.address, sp.sex FROM Users u JOIN StudentProfiles sp ON u.id = sp.user_id WHERE u.email = @email";
                     cmd = new NpgsqlCommand(query, conn);
                     cmd.Parameters.AddWithValue("email", email);
                     using var reader = await cmd.ExecuteReaderAsync();
@@ -1532,7 +1634,13 @@ namespace Client_app.Controllers
                             FullName = reader.GetString(4),
                             Department = reader.IsDBNull(5) ? null : reader.GetString(5),
                             StudentNo = reader.IsDBNull(6) ? null : reader.GetString(6),
-                            Section = reader.IsDBNull(7) ? null : reader.GetString(7)
+                            Section = reader.IsDBNull(7) ? null : reader.GetString(7),
+                            DateOfBirth = reader.IsDBNull(8) ? null : reader.GetDateTime(8).ToString("MM/dd/yyyy"),
+                            StudentEmail = reader.IsDBNull(9) ? null : reader.GetString(9),
+                            MiddleName = reader.IsDBNull(10) ? null : reader.GetString(10),
+                            Phone = reader.IsDBNull(11) ? null : reader.GetString(11),
+                            Address = reader.IsDBNull(12) ? null : reader.GetString(12),
+                            Sex = reader.IsDBNull(13) ? null : reader.GetString(13)
                         };
                     }
                 }
@@ -1873,7 +1981,7 @@ namespace Client_app.Controllers
                 }
 
                 try {
-                    using var cmdChair = new NpgsqlCommand("SELECT u.email FROM Users u JOIN AdminProfiles ap ON u.id = ap.user_id WHERE ap.department = @dept AND LOWER(REPLACE(REPLACE(u.role, ' ', '_'), '-', '_')) IN ('department_admin', 'dept_admin', 'deptadmin', 'department', 'admin') AND u.status = 'APPROVED' LIMIT 1", conn);
+                    using var cmdChair = new NpgsqlCommand("SELECT u.email FROM Users u JOIN AdminProfiles ap ON u.id = ap.user_id WHERE ap.department = @dept AND LOWER(REPLACE(REPLACE(u.role, ' ', '_'), '-', '_')) IN ('department_admin', 'dept_admin', 'deptadmin', 'department', 'admin', 'chairperson') AND u.status = 'APPROVED' LIMIT 1", conn);
                     cmdChair.Parameters.AddWithValue("dept", department);
                     var chairEmail = (await cmdChair.ExecuteScalarAsync()) as string;
                     

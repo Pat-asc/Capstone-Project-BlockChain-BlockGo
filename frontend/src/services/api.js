@@ -453,10 +453,11 @@ export const batchEnrollStudentsToSection = async (file, sectionId) => {
     });
 };
 
-export const batchUploadStudents = async (file, defaultDepartment = '') => {
+export const batchUploadStudents = async (file, defaultDepartment = '', mode = 'enroll') => {
     const formData = new FormData();
     formData.append('file', file);
     if (defaultDepartment) formData.append('defaultDepartment', defaultDepartment);
+    formData.append('mode', mode);
 
     return await fetchWithAuth(`/Auth/students/bulk-upload`, {
         method: 'POST',
@@ -465,11 +466,19 @@ export const batchUploadStudents = async (file, defaultDepartment = '') => {
 };
 
 export const bulkEnrollStudents = async (file, defaultDepartment = '') => {
-    return await batchUploadStudents(file, defaultDepartment);
+    return await batchUploadStudents(file, defaultDepartment, 'enroll');
 };
 
 export const registrarBulkEnrollStudents = async (file, department = '') => {
     return await bulkEnrollStudents(file, department);
+};
+
+export const bulkUpdateStudents = async (file, defaultDepartment = '') => {
+    return await batchUploadStudents(file, defaultDepartment, 'update');
+};
+
+export const registrarBulkUpdateStudents = async (file, department = '') => {
+    return await bulkUpdateStudents(file, department);
 };
 
 export const bulkUploadMasterlist = async (file, department = '') => {

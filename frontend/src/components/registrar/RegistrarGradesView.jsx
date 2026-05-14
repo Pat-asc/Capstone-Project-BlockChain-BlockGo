@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { fetchAllGrades, finalizeGrade, fetchPendingRequests, approveRegistrationRequest, denyRegistrationRequest, fetchApprovedStudents, assignStudent, fetchApprovedAdmins, assignDepartmentAdmin, revokeDepartmentAdmin, fetchApprovedFaculties, assignFaculty, dropStudent, revokeFaculty, getDecryptedIpfsUrl, fetchStagedGrades, finalizeStagedGrades, getSystemSetting, registrarBulkEnrollStudents } from '../../services/api';
+import { fetchAllGrades, finalizeGrade, fetchPendingRequests, approveRegistrationRequest, denyRegistrationRequest, fetchApprovedStudents, assignStudent, fetchApprovedAdmins, assignDepartmentAdmin, revokeDepartmentAdmin, fetchApprovedFaculties, assignFaculty, dropStudent, revokeFaculty, getDecryptedIpfsUrl, fetchStagedGrades, finalizeStagedGrades, getSystemSetting, registrarBulkEnrollStudents, registrarBulkUpdateStudents } from '../../services/api';
 import RegistrarHeader from './RegistrarHeader';
 import RegistrarSidebar from './RegistrarSidebar';
 import RegistrarDashboard from './RegistrarDashboard';
@@ -38,13 +38,14 @@ const RegistrarGradesView = ({
     latestChatNotice = null,
     onOpenChat,
 }) => {
-    const systemAdminTabs = ['grades', 'Requests', 'assignStudents', 'assignAdmins', 'assignFaculties', 'revokeAccounts'];
+    const systemAdminTabs = ['grades', 'Requests', 'assignStudents', 'assignAdmins', 'assignFaculties', 'bulkEnroll', 'revokeAccounts'];
     const systemAdminMenuItems = [
         { id: 'grades', label: 'Grades Ledger' },
         { id: 'Requests', label: 'Pending Requests' },
         { id: 'assignStudents', label: 'Assign Students' },
         { id: 'assignAdmins', label: 'Assign Admins' },
         { id: 'assignFaculties', label: 'Assign Faculty' },
+        { id: 'bulkEnroll', label: 'Register Students' },
         { id: 'revokeAccounts', label: 'Account Revocation' },
     ];
     const [grades, setGrades] = useState([]);
@@ -188,7 +189,7 @@ const RegistrarGradesView = ({
 
         return chairpersonRevocationAccounts.filter((account) =>
             [account.name, account.department, account.id].some((value) =>
-                value.toLowerCase().includes(query)
+                String(value || '').toLowerCase().includes(query)
             )
         );
     }, [chairpersonRevocationAccounts, chairpersonSearchTerm]);
@@ -202,7 +203,7 @@ const RegistrarGradesView = ({
                 ...department,
                 accounts: department.accounts.filter((account) =>
                     [account.name, account.id, department.name].some((value) =>
-                        value.toLowerCase().includes(query)
+                        String(value || '').toLowerCase().includes(query)
                     )
                 ),
             }))
@@ -329,6 +330,10 @@ const RegistrarGradesView = ({
             if (mainTab === 'assignStudents') loadApprovedStudents();
             if (mainTab === 'assignAdmins') loadApprovedAdmins();
             if (mainTab === 'assignFaculties') loadApprovedFaculties();
+            if (mainTab === 'revokeAccounts') {
+                loadApprovedAdmins();
+                loadApprovedFaculties();
+            }
         };
 
         window.addEventListener('blockgo:academic-data-changed', handleAcademicDataChanged);
@@ -339,7 +344,11 @@ const RegistrarGradesView = ({
         if (mainTab === 'assignStudents') loadApprovedStudents();
         if (mainTab === 'assignAdmins') loadApprovedAdmins();
         if (mainTab === 'assignFaculties') loadApprovedFaculties();
-    }, [mainTab]);
+        if (mainTab === 'revokeAccounts') {
+            loadApprovedAdmins();
+            loadApprovedFaculties();
+        }
+    }, [mainTab, loadApprovedStudents, loadApprovedAdmins, loadApprovedFaculties]);
 
     const submitStudentAssignment = async (id) => {
         const assignment = studentAssignments[id];
@@ -549,18 +558,18 @@ const RegistrarGradesView = ({
 
     const handleDownloadBulkEnrollmentTemplate = () => {
         const rows = [
-            ['student_no', 'full_name', 'email', 'date_of_birth', 'department', 'section'],
-            ['26-0001', 'Juan Dela Cruz', '26-0001@plv.edu.ph', '2005-05-15', sectioningDepartment, '1-1'],
-            ['26-0002', 'Maria Santos', '26-0002@plv.edu.ph', '2005-08-20', sectioningDepartment, '1-1'],
+            ['student_id', 'first_name', 'last_name', 'middle_name', 'sex', 'email', 'number', 'address', 'birthday'],
+            ['26-0001', 'Juan', 'Dela Cruz', 'Andres', 'Male', '26-0001@plv.edu.ph', '09123456789', 'Valenzuela City', '05/15/2005'],
+            ['26-0002', 'Maria', 'Santos', 'Lopez', 'Female', '26-0002@plv.edu.ph', '09987654321', 'Valenzuela City', '08/20/2005'],
         ];
 
         downloadCsvFile(
             buildCsvContent(rows),
-            `${sectioningDepartment || 'students'}-bulk-enrollment-template.csv`
+            'bulk-enroll-template.csv'
         );
     };
 
-    const handleBulkEnroll = () => {
+    const handleStudentCsvAction = (mode) => {
         if (bulkEnrollLoading) return;
 
         const input = document.createElement('input');
@@ -575,7 +584,9 @@ const RegistrarGradesView = ({
             setBulkEnrollResult(null);
 
             try {
-                const result = await registrarBulkEnrollStudents(file, sectioningDepartment);
+                const result = mode === 'update'
+                    ? await registrarBulkUpdateStudents(file, sectioningDepartment)
+                    : await registrarBulkEnrollStudents(file, sectioningDepartment);
                 setBulkEnrollResult(result);
                 alert(result.message || 'Bulk enrollment completed.');
             } catch (error) {
@@ -589,6 +600,9 @@ const RegistrarGradesView = ({
 
         input.click();
     };
+
+    const handleBulkEnroll = () => handleStudentCsvAction('enroll');
+    const handleBulkUpdateInfo = () => handleStudentCsvAction('update');
 
     const isSystemAdministrationView = systemAdminTabs.includes(mainTab);
 
@@ -653,10 +667,21 @@ const RegistrarGradesView = ({
                                     </select>
                                 </label>
                             </div>
+                            <RegistrarStudentSectioning chairpersonDepartment={sectioningDepartment} />
+                        </div>
+                    )}
+                    {mainTab === 'bulkEnroll' && (
+                        <div className="space-y-4">
                             <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
                                 <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                                     <div className="max-w-2xl">
-                                        <h3 className="text-xl font-bold text-[#003366]">Bulk Enrollment</h3>
+                                        <h3 className="text-xl font-bold text-[#003366]">Register Students</h3>
+                                        <p className="mt-1 text-sm text-slate-500">
+                                            Required columns: student ID, first name, last name, middle name, sex, email, number, address, and birthday. Student ID must use `xx-xxxx`, and birthday must use `MM/DD/YYYY`.
+                                        </p>
+                                        <p className="mt-2 text-sm text-slate-500">
+                                            Use `Upload Students` for first-time student creation. Use `Update Student Info` if you need to change email, number, address, or other profile data for existing students.
+                                        </p>
                                     </div>
                                     <div className="flex flex-wrap gap-3">
                                         <button
@@ -665,7 +690,15 @@ const RegistrarGradesView = ({
                                             disabled={bulkEnrollLoading}
                                             className="inline-flex items-center justify-center rounded-xl bg-[#003366] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#00264d]"
                                         >
-                                            {bulkEnrollLoading ? 'Uploading...' : 'Bulk Enroll'}
+                                            {bulkEnrollLoading ? 'Uploading...' : 'Upload Students'}
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={handleBulkUpdateInfo}
+                                            disabled={bulkEnrollLoading}
+                                            className="inline-flex items-center justify-center rounded-xl border border-[#003366] bg-white px-5 py-3 text-sm font-semibold text-[#003366] transition hover:bg-slate-50"
+                                        >
+                                            {bulkEnrollLoading ? 'Uploading...' : 'Update Student Info'}
                                         </button>
                                         <button
                                             type="button"
@@ -683,10 +716,21 @@ const RegistrarGradesView = ({
                                         {typeof bulkEnrollResult.successful !== 'undefined' ? (
                                             <p className="mt-1">Successful: {bulkEnrollResult.successful} | Failed: {bulkEnrollResult.failed || 0}</p>
                                         ) : null}
+                                        {Array.isArray(bulkEnrollResult.errors) && bulkEnrollResult.errors.length > 0 ? (
+                                            <div className="mt-3 rounded-lg border border-yellow-200 bg-white/70 p-3">
+                                                <p className="font-semibold text-slate-800">Row Issues</p>
+                                                <ul className="mt-2 space-y-1 text-slate-700">
+                                                    {bulkEnrollResult.errors.slice(0, 10).map((errorItem, index) => (
+                                                        <li key={`${errorItem.row || 'row'}-${index}`}>
+                                                            Row {errorItem.row || '?'} ({errorItem.identifier || 'Unknown'}): {errorItem.reason}
+                                                        </li>
+                                                    ))}
+                                                </ul>
+                                            </div>
+                                        ) : null}
                                     </div>
                                 ) : null}
                             </div>
-                            <RegistrarStudentSectioning chairpersonDepartment={sectioningDepartment} />
                         </div>
                     )}
                     {mainTab === 'sectionsCreated' && <RegistrarSectionsCreated />}
