@@ -210,9 +210,17 @@ app.use((req, res, next) => {
     next();
 });
 
+const isDockerRuntime = fs.existsSync('/.dockerenv');
+const defaultDbHost = isDockerRuntime ? 'postgres' : '127.0.0.1';
+const normalizeContainerHost = (host) => {
+    if (!host) return null;
+    if (host === 'host-gateway') return isDockerRuntime ? 'host.docker.internal' : '127.0.0.1';
+    return host;
+};
+
 const dbRead = new Pool({
     user: process.env.POSTGRES_USER || 'postgres',
-    host: process.env.POSTGRES_HOST === 'postgres' ? '127.0.0.1' : (process.env.POSTGRES_HOST || '127.0.0.1'),
+    host: normalizeContainerHost(process.env.POSTGRES_HOST) || defaultDbHost,
     database: process.env.POSTGRES_DB || 'ActivityLogs',
     password: process.env.POSTGRES_PASS || 'password',
     port: process.env.POSTGRES_PORT || 5432,
@@ -220,12 +228,11 @@ const dbRead = new Pool({
     idleTimeoutMillis: 30000
 });
 
-let mainIp = process.env.MAIN_CAMPUS_IP;
-if (mainIp === 'host-gateway') mainIp = '127.0.0.1';
+let mainIp = normalizeContainerHost(process.env.POSTGRES_WRITE_HOST || process.env.MAIN_CAMPUS_IP);
 
 const dbWrite = new Pool({
     user: process.env.POSTGRES_USER || 'postgres',
-    host: mainIp || process.env.POSTGRES_HOST || '127.0.0.1',
+    host: mainIp || normalizeContainerHost(process.env.POSTGRES_HOST) || defaultDbHost,
     database: process.env.POSTGRES_DB || 'ActivityLogs',
     password: process.env.POSTGRES_PASS || 'password',
     port: process.env.POSTGRES_PORT || 5432,

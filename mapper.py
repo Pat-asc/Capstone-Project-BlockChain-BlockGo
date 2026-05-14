@@ -16,14 +16,14 @@ from cryptography.hazmat.primitives import padding
 load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), 'network', '.env'), override=True)
 
 class GradeMapper:
-    def __init__(self, csharp_api_url='http://localhost:5000', api_key=None, ipfs_api_url='/ip4/127.0.0.1/tcp/5001/http'):
-        self.csharp_url = csharp_api_url
-        self.api_endpoint = f"{csharp_api_url}/api/grades/bulk-upload"
+    def __init__(self, csharp_api_url=None, api_key=None, ipfs_api_url=None):
+        self.csharp_url = csharp_api_url or os.getenv('CSHARP_API_URL', 'http://localhost:5000')
+        self.api_endpoint = f"{self.csharp_url}/api/grades/bulk-upload"
         self.api_key = api_key or os.getenv('INTERNAL_API_KEY')
         if not self.api_key:
             print("FATAL ERROR: INTERNAL_API_KEY environment variable is missing.")
             sys.exit(1)
-        self.ipfs_url = os.getenv('IPFS_API_URL', ipfs_api_url)
+        self.ipfs_url = os.getenv('IPFS_API_URL', ipfs_api_url or '/ip4/127.0.0.1/tcp/5001/http')
         self.ipfs_client = None
         self.detected_metadata = {}
         self.encryption_key = os.getenv('IPFS_ENCRYPTION_KEY', 'default-encryption-key-32chars!!!').ljust(32)[:32].encode()

@@ -119,6 +119,7 @@ try
     builder.Services.AddControllers();
     builder.Services.AddMemoryCache();
     builder.Services.AddEndpointsApiExplorer();
+    builder.Services.AddHealthChecks();
     builder.Services.AddSwaggerGen();
     builder.Services.AddSignalR(options =>
     {
@@ -263,6 +264,7 @@ try
 
     app.UseAuthentication();
     app.UseAuthorization();
+    app.MapHealthChecks("/health");
     app.MapControllers();
     Log.Information("Application configured successfully");
     Log.Information("Listening on {Urls}", string.Join(", ", app.Urls));
@@ -274,6 +276,7 @@ try
 catch (Exception ex)
 {
     Log.Fatal(ex, " Application terminated unexpectedly");
+    Environment.ExitCode = 1;
 }
 finally
 {

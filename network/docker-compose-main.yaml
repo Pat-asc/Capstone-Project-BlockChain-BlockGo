@@ -202,25 +202,84 @@ services:
       retries: 5
       start_period: 30s
 
+  middleware:
+    build:
+      context: ..
+      dockerfile: middleware/Dockerfile
+    image: blockgo-middleware:latest
+    container_name: blockgo-middleware
+    restart: unless-stopped
+    ports:
+      - "4000:4000"
+    expose:
+      - "4000"
+    environment:
+      - NODE_ENV=production
+      - PORT=4000
+      - POSTGRES_HOST=postgres
+      - POSTGRES_WRITE_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASS=${POSTGRES_PASS}
+      - POSTGRES_DB=${POSTGRES_DB}
+      - COUCHDB_USER=${COUCHDB_USER}
+      - COUCHDB_PASS=${COUCHDB_PASS}
+      - COUCHDB_WALLET_REGISTRAR_URL=http://${COUCHDB_USER}:${COUCHDB_PASS}@couchdb_wallet_registrar:5984
+      - COUCHDB_WALLET_FACULTY_URL=http://${COUCHDB_USER}:${COUCHDB_PASS}@couchdb_wallet_faculty:5984
+      - COUCHDB_WALLET_DEPARTMENT_URL=http://${COUCHDB_USER}:${COUCHDB_PASS}@couchdb_wallet_department:5984
+      - INTERNAL_API_KEY=${INTERNAL_API_KEY}
+      - JWT_SECRET=${JWT_SECRET}
+      - WALLET_ENCRYPTION_KEY=${WALLET_ENCRYPTION_KEY:-}
+      - CHANNEL_NAME=${CHANNEL_NAME:-registrar-channel}
+      - CHAINCODE_NAME=${CHAINCODE_NAME:-registrar}
+      - CSHARP_API_URL=http://blockgo-backend:5000
+      - IPFS_API_URL=/dns/ipfs0/tcp/5001/http
+      - MAIN_CAMPUS_IP=${MAIN_CAMPUS_IP:-host-gateway}
+      - ANNEX_CAMPUS_IP=${ANNEX_CAMPUS_IP:-host-gateway}
+      - PUBAD_CAMPUS_IP=${PUBAD_CAMPUS_IP:-host-gateway}
+      - GATEWAY_IDLE_TIMEOUT_MS=${GATEWAY_IDLE_TIMEOUT_MS:-300000}
+      - GATEWAY_PRUNE_INTERVAL_MS=${GATEWAY_PRUNE_INTERVAL_MS:-60000}
+    volumes:
+      - ./:/network:ro
+      - middleware_uploads:/app/uploads
+    networks: [registrar-net]
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      couchdb_wallet_registrar:
+        condition: service_started
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"require('http').get('http://127.0.0.1:4000/api/health', r => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))\""]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 45s
+
   dotnet-container:
-    image: mcr.microsoft.com/dotnet/sdk:8.0
+    build:
+      context: ../client-app
+      dockerfile: Dockerfile
+    image: blockgo-backend:latest
     container_name: blockgo-backend
+    restart: unless-stopped
     dns:
       - 8.8.8.8
       - 8.8.4.4
-    working_dir: /app
-    command: sh -c "dotnet add package Microsoft.AspNetCore.Authentication.JwtBearer --version 8.0.4 && dotnet restore && dotnet run --no-launch-profile"
     ports:
       - "5000:5000"
-      - "5051:5001"
+    expose:
+      - "5000"
     volumes:
-      - ../client-app:/app
+      - ./crypto-config-final-v2:/network/crypto-config-final-v2:ro
+      - backend_logs:/app/logs
     environment:
-      - ASPNETCORE_URLS=http://+:5000;http://+:5001
+      - ASPNETCORE_URLS=http://0.0.0.0:5000
+      - ASPNETCORE_ENVIRONMENT=Production
       - ConnectionStrings__PostgresConnection=Host=postgres;Port=5432;Database=${POSTGRES_DB};Username=${POSTGRES_USER};Password=${POSTGRES_PASS}
       - ConnectionStrings__MasterConnection=Host=postgres;Port=5432;Database=${POSTGRES_DB};Username=${POSTGRES_USER};Password=${POSTGRES_PASS}
       - ConnectionStrings__ReplicaConnection=Host=postgres-annex;Port=5432;Database=${POSTGRES_DB};Username=${POSTGRES_USER};Password=${POSTGRES_PASS}
-      - NUGET_CERT_REVOCATION_MODE=offline
       - IPFS_HOST=ipfs0
       - Smtp__Host=${EMAIL_HOST:-smtp.gmail.com}
       - Smtp__Port=${EMAIL_PORT:-587}
@@ -230,13 +289,38 @@ services:
       - InternalApiKey=${INTERNAL_API_KEY}
       - JWT_SECRET=${JWT_SECRET}
       - DOTNET_RUNNING_IN_CONTAINER=true
-      - Middleware__Url=http://host.docker.internal:4000
+      - Middleware__Url=http://middleware:4000
     networks: [registrar-net]
     extra_hosts:
       - "host.docker.internal:host-gateway"
     depends_on:
       postgres:
         condition: service_healthy
+      middleware:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:5000/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 45s
+
+  backend-autoheal:
+    image: docker:27-cli
+    container_name: blockgo-backend-autoheal
+    restart: unless-stopped
+    environment:
+      - AUTOHEAL_INTERVAL_SECONDS=15
+      - BACKEND_CONTAINER_NAME=blockgo-backend
+    command:
+      - /bin/sh
+      - /watchdog/backend-autoheal.sh
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./backend-autoheal.sh:/watchdog/backend-autoheal.sh:ro
+    depends_on:
+      - dotnet-container
+
   registrar-chaincode:
     container_name: registrar-chaincode
     build:
@@ -313,3 +397,5 @@ services:
 
 volumes:
   pgdata:
+  backend_logs:
+  middleware_uploads:

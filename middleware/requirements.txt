@@ -1,0 +1,5 @@
+requests
+ipfshttpclient
+python-dotenv
+cryptography
+openpyxl
