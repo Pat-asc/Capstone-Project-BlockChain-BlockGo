@@ -836,10 +836,6 @@ app.post('/api/fabric/register-user', authenticateJWT, requireRegistrarOrInterna
                 const newAdminIdentity = await wallet.get(adminLabel);
                 adminUser = await provider.getUserContext(newAdminIdentity, 'admin');
                 await registerUser(adminUser);
-            } else if (regErr.toString().includes('code: 74') || regErr.toString().includes('is already registered')) {
-                console.log(`[Fabric CA] ${email} is already registered. Updating secret...`);
-                const identityService = ca.newIdentityService();
-                await identityService.update(email, { enrollmentSecret: secret }, adminUser);
             } else {
                 throw regErr;
             }
@@ -1001,30 +997,15 @@ app.post('/api/register', authenticateJWT, requireRegistrarOrInternal, async (re
         const adminUser = await provider.getUserContext(adminIdentity, 'admin');
 
         let secret = password;
-        try {
-            secret = await ca.register({
-                enrollmentID: username,
-                enrollmentSecret: password,
-                role: (role === 'registrar' || role === 'department_admin' || role === 'deptAdmin' || role === 'chairperson') ? 'admin' : 'client',
-                attrs: [
-                    { name: 'role', value: role, ecert: true },
-                    { name: 'grade.manage', value: role === 'faculty' ? 'true' : 'false', ecert: true }
-                ]
-            }, adminUser);
-        } catch (regErr) {
-            if (regErr.toString().includes('code: 74') || regErr.toString().includes('is already registered')) {
-                console.log(`[Fabric CA] ${username} is already registered. Updating secret...`);
-                try {
-                    const identityService = ca.newIdentityService();
-                    await identityService.update(username, { enrollmentSecret: password }, adminUser);
-                    console.log(`[Fabric CA] Force-updated password for ${username} in CA.`);
-                } catch (updateErr) {
-                    console.warn(`[Fabric CA] Could not update password for ${username}: ${updateErr.message}`);
-                }
-            } else {
-                throw regErr;
-            }
-        }
+        secret = await ca.register({
+            enrollmentID: username,
+            enrollmentSecret: password,
+            role: (role === 'registrar' || role === 'department_admin' || role === 'deptAdmin' || role === 'chairperson') ? 'admin' : 'client',
+            attrs: [
+                { name: 'role', value: role, ecert: true },
+                { name: 'grade.manage', value: role === 'faculty' ? 'true' : 'false', ecert: true }
+            ]
+        }, adminUser);
 
         res.status(201).json({ status: "success", secret });
     } catch (error) { 
