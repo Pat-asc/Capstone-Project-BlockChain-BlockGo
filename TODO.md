@@ -13,7 +13,7 @@
 - [x] Add Revoke Account
 
 ##
-- [x] Bulk Upload lang napapasa sa chairperson, pag manual na type not working di na kikita sa for review ng chairperson. 
-- [x] Yung return to faculty function di gumagana.
+- [] Bulk Upload lang napapasa sa chairperson, pag manual na type not working di na kikita sa for review ng chairperson. 
+- [] Yung return to faculty function di gumagana.
 - [x] Pa-check yung revoke account, last check ko na-revoke account, hindi na nakakalogin pero still showing sa system na pwede pa ulit i-revoke.
-- [x] Update Student Info button (Bulk Enroll), may error kapag nag update ng info ng student. Yung csv na gamit dito is same lang sa pag Upload Student (Bulk Enroll)
+- [] Update Student Info button (Bulk Enroll), may error kapag nag update ng info ng student. Yung csv na gamit dito is same lang sa pag Upload Student (Bulk Enroll)

@@ -548,22 +548,24 @@ namespace BlockGo.Controllers
             });
         }
 
-        private static string? GetUploadedTermGrade(Func<string, string?> getter, string? term)
+        private delegate string? GetValDelegate(params string[] cols);
+
+        private static string? GetUploadedTermGrade(GetValDelegate getVal, string? term)
         {
             var activeTerm = string.Equals(term, "finals", StringComparison.OrdinalIgnoreCase) ? "finals" : "midterm";
             return activeTerm == "finals"
-                ? getter("final_grade") ?? getter("finals_grade")
-                : getter("midterm_grade");
+                ? getVal("final_rating", "final_grade", "finals_grade", "grade", "rating")
+                : getVal("midterm_grade", "midterm_rating", "midterm");
         }
 
-        private static string? GetUploadedMidtermGrade(Func<string, string?> getter)
+        private static string? GetUploadedMidtermGrade(GetValDelegate getVal)
         {
-            return getter("midterm_grade");
+            return getVal("midterm_grade", "midterm", "midterm_rating");
         }
 
-        private static string? GetUploadedFinalGrade(Func<string, string?> getter)
+        private static string? GetUploadedFinalGrade(GetValDelegate getVal)
         {
-            return getter("final_grade") ?? getter("finals_grade");
+            return getVal("final_rating", "final_grade", "finals_grade", "final", "finals");
         }
 
         private static string GetGradeLogValue(string? rawPayload, string? term)
@@ -787,6 +789,8 @@ namespace BlockGo.Controllers
                 var parsedRecords = new List<GradeRequest>();
 
                 var ext = Path.GetExtension(file.FileName).ToLower();
+                string NormalizeHeader(string s) => System.Text.RegularExpressions.Regex.Replace(s.Trim().ToLower(), @"[^a-z0-9]+", "_").Trim('_');
+
                 if (ext != ".csv" && ext != ".xlsx")
                     return BadRequest(new { status = "Error", message = "Only .csv and .xlsx files are supported." });
 
@@ -859,32 +863,47 @@ namespace BlockGo.Controllers
                         
                         foreach (var cell in headerRow.CellsUsed())
                         {
-                            var colName = cell.Value.ToString().Trim().ToLower().Replace(" ", "_");
+                            var colName = NormalizeHeader(cell.Value.ToString() ?? "");
                             if (!string.IsNullOrEmpty(colName)) headerMap[colName] = cell.Address.ColumnNumber;
                         }
 
                         var rows = ws.RowsUsed().Skip(1);
                         foreach (var row in rows)
                         {
-                            var getVal = (string col) => headerMap.ContainsKey(col) ? row.Cell(headerMap[col]).Value.ToString().Trim() : null;
-                            var sId = getVal("student_id") ?? getVal("student_no");
+                            string? GetVal(params string[] cols) 
+                            {
+                                foreach (var col in cols) 
+                                {
+                                    if (headerMap.ContainsKey(col)) 
+                                    {
+                                        var cell = row.Cell(headerMap[col]);
+                                        var val = "";
+                                        try { val = cell.HasFormula ? (cell.CachedValue?.ToString() ?? cell.Value.ToString()) : cell.Value.ToString(); }
+                                        catch { val = cell.Value.ToString(); }
+                                        if (!string.IsNullOrWhiteSpace(val)) return val.Trim();
+                                    }
+                                }
+                                return null;
+                            }
+
+                            var sId = GetVal("student_id", "student_no", "id_number", "student_number");
                             if (string.IsNullOrEmpty(sId)) continue;
 
                             parsedRecords.Add(new GradeRequest
                             {
                                 StudentId = sId ?? "",
-                                StudentName = getVal("student_name") ?? getVal("student") ?? "",
-                                Section = !string.IsNullOrWhiteSpace(section) ? section : (getVal("section") ?? getVal("class_section") ?? ""),
+                                StudentName = GetVal("student_name", "student", "full_name", "name") ?? "",
+                                Section = !string.IsNullOrWhiteSpace(section) ? section : (GetVal("section", "class_section", "sec") ?? ""),
                                 Grade = BuildUploadedGradePayload(
-                                    GetUploadedTermGrade(getVal, term),
-                                    GetUploadedMidtermGrade(getVal),
-                                    GetUploadedFinalGrade(getVal),
+                                    GetUploadedTermGrade(GetVal, term),
+                                    GetUploadedMidtermGrade(GetVal),
+                                    GetUploadedFinalGrade(GetVal),
                                     term),
-                                SubjectCode = getVal("subject_code") ?? course ?? "Unknown",
-                                SubjectName = getVal("subject_name") ?? getVal("course") ?? course ?? "Unknown",
-                                Course = getVal("course") ?? course ?? "Unknown",
-                                Semester = !string.IsNullOrEmpty(semester) ? semester : (getVal("semester") ?? "Unknown"),
-                                SchoolYear = !string.IsNullOrEmpty(schoolYear) ? schoolYear : (getVal("school_year") ?? "Unknown"),
+                                SubjectCode = GetVal("subject_code", "course_code", "code", "subject") ?? course ?? "Unknown",
+                                SubjectName = GetVal("subject_name", "descriptive_title", "course") ?? course ?? "Unknown",
+                                Course = GetVal("course", "department", "program") ?? course ?? "Unknown",
+                                Semester = !string.IsNullOrEmpty(semester) ? semester : (GetVal("semester", "term") ?? "Unknown"),
+                                SchoolYear = !string.IsNullOrEmpty(schoolYear) ? schoolYear : (GetVal("school_year", "schoolyear", "year") ?? "Unknown"),
                                 Date = DateTime.Now.ToString("yyyy-MM-dd")
                             });
                         }
@@ -908,28 +927,48 @@ namespace BlockGo.Controllers
                                 {
                                     headerMap = new Dictionary<string, int>();
                                     for (int i = 0; i < fields.Length; i++)
-                                        headerMap[fields[i].Trim().ToLower().Replace(" ", "_")] = i;
+                                    {
+                                        var colName = NormalizeHeader(fields[i]);
+                                        if (!string.IsNullOrEmpty(colName)) headerMap[colName] = i;
+                                    }
                                     continue;
                                 }
 
-                                var sId = GetCsvField(fields, headerMap, "student_id") ?? GetCsvField(fields, headerMap, "student_no");
+                                string? GetVal(params string[] cols) 
+                                {
+                                    if (headerMap != null)
+                                    {
+                                        foreach (var col in cols)
+                                        {
+                                            if (headerMap.ContainsKey(col))
+                                            {
+                                                int idx = headerMap[col];
+                                                if (idx < fields.Length && !string.IsNullOrWhiteSpace(fields[idx]))
+                                                    return fields[idx].Trim().Trim('"');
+                                            }
+                                        }
+                                    }
+                                    return null;
+                                }
+
+                                var sId = GetVal("student_id", "student_no", "id_number", "student_number");
                                 if (string.IsNullOrEmpty(sId)) continue;
 
                                 parsedRecords.Add(new GradeRequest
                                 {
                                     StudentId = sId ?? "",
-                                    StudentName = GetCsvField(fields, headerMap, "student_name") ?? GetCsvField(fields, headerMap, "student") ?? "",
-                                    Section = !string.IsNullOrWhiteSpace(section) ? section : (GetCsvField(fields, headerMap, "section") ?? GetCsvField(fields, headerMap, "class_section") ?? ""),
+                                    StudentName = GetVal("student_name", "student", "full_name", "name") ?? "",
+                                    Section = !string.IsNullOrWhiteSpace(section) ? section : (GetVal("section", "class_section", "sec") ?? ""),
                                     Grade = BuildUploadedGradePayload(
-                                        GetUploadedTermGrade((key) => GetCsvField(fields, headerMap, key), term),
-                                        GetUploadedMidtermGrade((key) => GetCsvField(fields, headerMap, key)),
-                                        GetUploadedFinalGrade((key) => GetCsvField(fields, headerMap, key)),
+                                        GetUploadedTermGrade(GetVal, term),
+                                        GetUploadedMidtermGrade(GetVal),
+                                        GetUploadedFinalGrade(GetVal),
                                         term),
-                                    SubjectCode = GetCsvField(fields, headerMap, "subject_code") ?? course ?? "Unknown",
-                                    SubjectName = GetCsvField(fields, headerMap, "subject_name") ?? GetCsvField(fields, headerMap, "course") ?? course ?? "Unknown",
-                                    Course = GetCsvField(fields, headerMap, "course") ?? course ?? "Unknown",
-                                    Semester = !string.IsNullOrEmpty(semester) ? semester : (GetCsvField(fields, headerMap, "semester") ?? "Unknown"),
-                                    SchoolYear = !string.IsNullOrEmpty(schoolYear) ? schoolYear : (GetCsvField(fields, headerMap, "school_year") ?? "Unknown"),
+                                    SubjectCode = GetVal("subject_code", "course_code", "code", "subject") ?? course ?? "Unknown",
+                                    SubjectName = GetVal("subject_name", "descriptive_title", "course") ?? course ?? "Unknown",
+                                    Course = GetVal("course", "department", "program") ?? course ?? "Unknown",
+                                    Semester = !string.IsNullOrEmpty(semester) ? semester : (GetVal("semester", "term") ?? "Unknown"),
+                                    SchoolYear = !string.IsNullOrEmpty(schoolYear) ? schoolYear : (GetVal("school_year", "schoolyear", "year") ?? "Unknown"),
                                     Date = DateTime.Now.ToString("yyyy-MM-dd")
                                 });
                             }

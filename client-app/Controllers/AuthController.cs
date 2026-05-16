@@ -1526,9 +1526,11 @@ namespace Client_app.Controllers
                         
                         if (normalizedMode != "update" && !dobDate.HasValue) throw new Exception("Invalid value in column 'birthday'. Use MM/DD/YYYY.");
 
-                        using var checkCmd = new NpgsqlCommand("SELECT COUNT(1) FROM Users WHERE email = @email", conn);
-                        checkCmd.Parameters.AddWithValue("email", loginId);
-                        long exists = (long)await checkCmd.ExecuteScalarAsync();
+                        using var checkCmd = new NpgsqlCommand("SELECT id FROM Users WHERE email = @email OR email = @loginId", conn);
+                        checkCmd.Parameters.AddWithValue("email", email);
+                        checkCmd.Parameters.AddWithValue("loginId", loginId);
+                        var existingIdObj = await checkCmd.ExecuteScalarAsync();
+                        long exists = existingIdObj != null ? 1 : 0;
 
                         using var tx = await conn.BeginTransactionAsync();
                         
@@ -1537,8 +1539,8 @@ namespace Client_app.Controllers
                             if (normalizedMode != "update")
                                 throw new Exception("Student already exists. Use Bulk Update Info instead.");
 
-                            using var updateStatusCmd = new NpgsqlCommand("UPDATE Users SET status = 'APPROVED', password_hash = crypt(@password, gen_salt('bf', 12)) WHERE email = @email RETURNING id", conn, tx);
-                            updateStatusCmd.Parameters.AddWithValue("email", loginId);
+                            using var updateStatusCmd = new NpgsqlCommand("UPDATE Users SET status = 'APPROVED', password_hash = crypt(@password, gen_salt('bf', 12)) WHERE id = @id RETURNING id", conn, tx);
+                            updateStatusCmd.Parameters.AddWithValue("id", Convert.ToInt32(existingIdObj));
                             updateStatusCmd.Parameters.AddWithValue("password", password);
                             int userId = (int)(await updateStatusCmd.ExecuteScalarAsync() ?? 0);
 

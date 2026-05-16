@@ -357,12 +357,17 @@ function AcademicAssignment({ chairpersonDepartment = "" }) {
     );
 
   const findFacultyForLoadingRow = (row = {}) => {
-    const facultyId = getCsvRowValue(row, ["faculty id", "id"]);
+    const facultyId = getCsvRowValue(row, ["faculty id", "id", "faculty email", "email", "prof email"]);
     const facultyName = getCsvRowValue(row, [
       "faculty name",
       "faculty",
       "name",
       "full name",
+      "professor",
+      "instructor",
+      "teacher",
+      "prof name",
+      "prof"
     ]);
 
     if (facultyId) {
@@ -390,22 +395,19 @@ function AcademicAssignment({ chairpersonDepartment = "" }) {
     const errors = [];
     const duplicateKeys = new Set();
     const knownSections = filteredSections.map((section) => section.section).sort();
-    const hasFacultyIdentifierColumn =
-      headers.includes("faculty id") ||
-      headers.includes("faculty name") ||
-      headers.includes("faculty") ||
-      headers.includes("name");
+    const hasFacultyIdentifierColumn = headers.some(h => ["faculty id", "id", "faculty email", "email", "prof email", "faculty name", "faculty", "name", "full name", "professor", "instructor", "teacher", "prof name", "prof"].includes(h));
+    const hasSubjectCodeColumn = headers.some(h => ["subject code", "course code", "code", "course", "subj code", "subj"].includes(h));
+    const hasSectionColumn = headers.some(h => ["section", "section name", "class section", "sec", "section num"].includes(h));
 
     if (
       !hasFacultyIdentifierColumn ||
-      !headers.includes("subject title") ||
-      !headers.includes("subject code") ||
-      !headers.includes("section")
+      !hasSubjectCodeColumn ||
+      !hasSectionColumn
     ) {
       return {
         previewRows,
         errors: [
-          "Missing required CSV headers. Use Faculty ID or Faculty Name, plus Subject Title, Subject Code, and Section.",
+          "Missing required CSV headers. Please ensure columns exist for: Faculty (ID, Email, or Name), Subject Code, and Section.",
         ],
         summary: {
           totalRows: rows.length,
@@ -422,23 +424,23 @@ function AcademicAssignment({ chairpersonDepartment = "" }) {
         "faculty",
         "name",
         "full name",
+        "professor",
+        "instructor",
+        "teacher",
+        "prof name",
+        "prof"
       ]);
-      const facultyId = getCsvRowValue(row, ["faculty id", "id"]);
-      const rowSubjectTitle = getCsvRowValue(row, [
-        "subject title",
-        "subject name",
-        "subject",
-      ]);
-      const rowSubjectCode = getCsvRowValue(row, ["subject code", "code"]);
-      const sectionName = getCsvRowValue(row, ["section", "section name"]);
-      const rowSemester = getCsvRowValue(row, ["semester"]) || semester || "2nd Semester";
-      const rowUnits = getCsvRowValue(row, ["units"]) || "3";
-      const rowDay = getCsvRowValue(row, ["day"]);
-      const rowTime = getCsvRowValue(row, ["time", "schedule"]);
+      const facultyId = getCsvRowValue(row, ["faculty id", "id", "faculty email", "email", "prof email"]);
+      const rowSubjectCode = getCsvRowValue(row, ["subject code", "course code", "code", "course", "subj code", "subj"]);
+      const rowSubjectTitle = getCsvRowValue(row, ["subject title", "subject name", "subject", "descriptive title", "description"]) || rowSubjectCode;
+      const sectionName = getCsvRowValue(row, ["section", "section name", "class section", "sec", "section num"]);
+      const rowSemester = getCsvRowValue(row, ["semester", "term"]) || semester || "2nd Semester";
+      const rowUnits = getCsvRowValue(row, ["units", "credit", "credits"]) || "3";
+      const rowDay = getCsvRowValue(row, ["day", "days"]);
+      const rowTime = getCsvRowValue(row, ["time", "schedule", "sched"]);
 
       if (
         !(facultyId || facultyName) ||
-        !rowSubjectTitle ||
         !rowSubjectCode ||
         !sectionName
       ) {
