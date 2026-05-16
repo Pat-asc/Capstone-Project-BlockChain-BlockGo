@@ -827,9 +827,7 @@ app.post('/api/fabric/register-user', authenticateJWT, requireRegistrarOrInterna
 
         try {
             await registerUser(adminUser);
-        } catch (regErr) {
-            // Self-Healing: If authentication failed (code 20), the admin cert might be stale (CA reset).
-            // Delete the admin from wallet, re-enroll, and retry once.
+        } catch (regErr) {        
             if (regErr.toString().includes('code: 20') || regErr.toString().includes('Authentication failure')) {
                 console.warn(`[Self-Healing] Admin authentication failed for ${adminLabel}. Stale cert suspected. Re-enrolling...`);
                 await wallet.remove(adminLabel);
