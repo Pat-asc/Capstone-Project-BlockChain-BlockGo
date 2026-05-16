@@ -86,6 +86,15 @@ namespace Client_app.Controllers
                         END IF;
                     END $$;
 
+                    DO $$
+                    BEGIN
+                        IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name='gradecorrectionlogs') THEN
+                            ALTER TABLE gradecorrectionlogs
+                                ALTER COLUMN oldgrade TYPE TEXT,
+                                ALTER COLUMN newgrade TYPE TEXT;
+                        END IF;
+                    END $$;
+
                     CREATE UNIQUE INDEX IF NOT EXISTS idx_unique_faculty_section ON facultysections(user_id, department, section, subject);
                 ", conn);
                 cmd.ExecuteNonQuery();
@@ -102,6 +111,55 @@ namespace Client_app.Controllers
                 Actor = actor,
                 ChangedAt = DateTime.UtcNow
             });
+        }
+
+        private async Task SafeNotifyAcademicDataChangedAsync(string reason, string? department = null, string? actor = null)
+        {
+            try
+            {
+                await NotifyAcademicDataChangedAsync(reason, department, actor);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Academic data change notification failed for reason {Reason}.", reason);
+            }
+        }
+
+        private async Task SafeInsertAuthAuditLogAsync(
+            NpgsqlConnection conn,
+            string recordId,
+            string? oldValue,
+            string? newValue,
+            string reason,
+            string? approvedBy)
+        {
+            try
+            {
+                using var cmdEnsureColumns = new NpgsqlCommand(@"
+                    DO $$
+                    BEGIN
+                        IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name='gradecorrectionlogs') THEN
+                            ALTER TABLE gradecorrectionlogs
+                                ALTER COLUMN oldgrade TYPE TEXT,
+                                ALTER COLUMN newgrade TYPE TEXT;
+                        END IF;
+                    END $$;", conn);
+                await cmdEnsureColumns.ExecuteNonQueryAsync();
+
+                using var auditCmd = new NpgsqlCommand(@"
+                    INSERT INTO gradecorrectionlogs (recordid, oldgrade, newgrade, reasontext, approvedby, timestamp)
+                    VALUES (@recordId, @oldValue, @newValue, @reason, @approvedBy, CURRENT_TIMESTAMP)", conn);
+                auditCmd.Parameters.AddWithValue("recordId", recordId);
+                auditCmd.Parameters.AddWithValue("oldValue", (object?)oldValue ?? DBNull.Value);
+                auditCmd.Parameters.AddWithValue("newValue", (object?)newValue ?? DBNull.Value);
+                auditCmd.Parameters.AddWithValue("reason", reason);
+                auditCmd.Parameters.AddWithValue("approvedBy", (object?)(approvedBy ?? "Admin") ?? DBNull.Value);
+                await auditCmd.ExecuteNonQueryAsync();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Auth revoke audit log insert failed for record {RecordId}.", recordId);
+            }
         }
 
         private static string NormalizeSystemRole(string? role)
@@ -623,15 +681,17 @@ namespace Client_app.Controllers
                 deleteCmd.Parameters.AddWithValue("id", id);
                 await deleteCmd.ExecuteNonQueryAsync();
 
-                using var auditCmd = new NpgsqlCommand(@"
-                    INSERT INTO gradecorrectionlogs (recordid, oldgrade, newgrade, reasontext, approvedby, timestamp)
-                    VALUES ('SYSTEM-AUTH', @email, 'DROPPED', 'Student Access Revoked', @admin, CURRENT_TIMESTAMP)", conn);
-                auditCmd.Parameters.AddWithValue("email", userEmail);
-                auditCmd.Parameters.AddWithValue("admin", User.Identity?.Name ?? "Admin");
-                await auditCmd.ExecuteNonQueryAsync();
+                await SafeInsertAuthAuditLogAsync(
+                    conn,
+                    "SYSTEM-AUTH",
+                    userEmail,
+                    "DROPPED",
+                    "Student Access Revoked",
+                    User.Identity?.Name ?? "Admin"
+                );
 
                 _cache.Remove("approved_students");
-                await NotifyAcademicDataChangedAsync("student_dropped", null, userEmail);
+                await SafeNotifyAcademicDataChangedAsync("student_dropped", null, userEmail);
                 return Ok(new { status = "Success", message = "Student dropped and access revoked." });
             }
             catch (Exception ex) { return StatusCode(500, new { status = "Error", message = ex.Message }); }
@@ -783,16 +843,17 @@ namespace Client_app.Controllers
                 deleteCmd.Parameters.AddWithValue("id", id);
                 await deleteCmd.ExecuteNonQueryAsync();
 
-                using var auditCmd = new NpgsqlCommand(@"
-                    INSERT INTO gradecorrectionlogs (recordid, oldgrade, newgrade, reasontext, approvedby, timestamp)
-                    VALUES ('SYSTEM-AUTH', @email, 'REVOKED', @reason, @admin, CURRENT_TIMESTAMP)", conn);
-                auditCmd.Parameters.AddWithValue("email", userEmail);
-                auditCmd.Parameters.AddWithValue("reason", $"Chairperson Access Revoked ({department})");
-                auditCmd.Parameters.AddWithValue("admin", User.Identity?.Name ?? "Admin");
-                await auditCmd.ExecuteNonQueryAsync();
+                await SafeInsertAuthAuditLogAsync(
+                    conn,
+                    "SYSTEM-AUTH",
+                    userEmail,
+                    "REVOKED",
+                    $"Chairperson Access Revoked ({department})",
+                    User.Identity?.Name ?? "Admin"
+                );
 
                 _cache.Remove("approved_department_admins");
-                await NotifyAcademicDataChangedAsync("department_admin_revoked", department, userEmail);
+                await SafeNotifyAcademicDataChangedAsync("department_admin_revoked", department, userEmail);
                 return Ok(new { status = "Success", message = $"{userName} access revoked." });
             }
             catch (Exception ex) { return StatusCode(500, new { status = "Error", message = ex.Message }); }
@@ -945,15 +1006,17 @@ namespace Client_app.Controllers
                 deleteCmd.Parameters.AddWithValue("id", id);
                 await deleteCmd.ExecuteNonQueryAsync();
 
-                using var auditCmd = new NpgsqlCommand(@"
-                    INSERT INTO gradecorrectionlogs (recordid, oldgrade, newgrade, reasontext, approvedby, timestamp)
-                    VALUES ('SYSTEM-AUTH', @email, 'REVOKED', 'Faculty Access Revoked', @admin, CURRENT_TIMESTAMP)", conn);
-                auditCmd.Parameters.AddWithValue("email", userEmail);
-                auditCmd.Parameters.AddWithValue("admin", User.Identity?.Name ?? "Admin");
-                await auditCmd.ExecuteNonQueryAsync();
+                await SafeInsertAuthAuditLogAsync(
+                    conn,
+                    "SYSTEM-AUTH",
+                    userEmail,
+                    "REVOKED",
+                    "Faculty Access Revoked",
+                    User.Identity?.Name ?? "Admin"
+                );
 
                 _cache.Remove("approved_faculties");
-                await NotifyAcademicDataChangedAsync("faculty_revoked", null, userEmail);
+                await SafeNotifyAcademicDataChangedAsync("faculty_revoked", null, userEmail);
                 return Ok(new { status = "Success", message = "Faculty access revoked." });
             }
             catch (Exception ex) { return StatusCode(500, new { status = "Error", message = ex.Message }); }

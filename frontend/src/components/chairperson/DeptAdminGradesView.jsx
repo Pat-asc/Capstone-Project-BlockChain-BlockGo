@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { fetchAllGrades, approveGrade, finalizeGrade, batchUploadGrades, fetchFacultySections, fetchFacultyStudents, createSection, fetchDepartmentSections, batchEnrollStudentsToSection, dropStudent, fetchApprovedFaculties, unassignFacultySection, getDecryptedIpfsUrl, getSystemSetting, issueGrade, bulkUploadMasterlist, deleteAcademicSection, deleteDepartmentAcademicSections } from '../../services/api';
 import { useNotification } from '../../services/NotificationContext';
 import ChairpersonHeader from './ChairpersonHeader';
@@ -44,22 +44,360 @@ const getRecordSubjectKey = (record) => (
     ''
 );
 
+const getRecordSectionKey = (record) => (
+    record?.section ||
+    record?.Section ||
+    ''
+);
+
+const getRecordIpfsCid = (record) => (
+    record?.ipfsCid ||
+    record?.IpfsCID ||
+    record?.ipfs_cid ||
+    ''
+);
+
+const getRecordFacultyKey = (record) => (
+    record?.facultyId ||
+    record?.faculty_id ||
+    record?.FacultyId ||
+    ''
+);
+
+const getSavedRegistrarAssignments = () => {
+    try {
+        const saved = JSON.parse(localStorage.getItem('registrarAssignments') || '[]');
+        return Array.isArray(saved) ? saved : [];
+    } catch (error) {
+        return [];
+    }
+};
+
+const getAssignmentStudentKey = (student) => (
+    student?.studentId ||
+    student?.id ||
+    student?.studentno ||
+    student?.studentNo ||
+    student?.email ||
+    ''
+);
+
+const resolveAssignmentForGradeRecord = (record, assignments = []) => {
+    const normalizedFacultyId = normalizeFacultyIdentity(getRecordFacultyKey(record));
+    const normalizedStudentKey = normalizeText(getRecordStudentKey(record));
+    const normalizedSubjectCode = normalizeText(getRecordSubjectKey(record));
+    const normalizedSemester = normalizeText(record?.semester || record?.Semester || '');
+    const normalizedSchoolYear = normalizeText(record?.schoolYear || record?.SchoolYear || '');
+
+    const matchingAssignments = assignments.filter((assignment) => {
+        const assignmentFacultyKey = normalizeFacultyIdentity(
+            assignment?.facultyId || assignment?.facultyEmail || assignment?.email || ''
+        );
+
+        if (!assignmentFacultyKey || assignmentFacultyKey !== normalizedFacultyId) {
+            return false;
+        }
+
+        const assignmentSemester = normalizeText(assignment?.semester);
+        const assignmentSchoolYear = normalizeText(assignment?.schoolYear);
+        const assignmentSubjectCode = normalizeText(assignment?.subjectCode);
+
+        if (normalizedSemester && assignmentSemester && assignmentSemester !== normalizedSemester) {
+            return false;
+        }
+
+        if (normalizedSchoolYear && assignmentSchoolYear && assignmentSchoolYear !== normalizedSchoolYear) {
+            return false;
+        }
+
+        if (normalizedSubjectCode && assignmentSubjectCode && assignmentSubjectCode !== normalizedSubjectCode) {
+            return false;
+        }
+
+        return true;
+    });
+
+    if (!matchingAssignments.length) {
+        return null;
+    }
+
+    const rosterMatchedAssignment = matchingAssignments.find((assignment) =>
+        Array.isArray(assignment?.rosterStudents) &&
+        assignment.rosterStudents.some(
+            (student) => normalizeText(getAssignmentStudentKey(student)) === normalizedStudentKey
+        )
+    );
+
+    return rosterMatchedAssignment || matchingAssignments[0] || null;
+};
+
+const normalizeFacultyIdentity = (value = '') => {
+    let normalized = String(value || '').trim();
+
+    if (normalized.length > 40 && !normalized.includes('@')) {
+        try {
+            const decoded = atob(normalized);
+            const cnMatch = decoded.match(/CN=([^,]+)/);
+            if (cnMatch && cnMatch[1]) normalized = cnMatch[1];
+        } catch (e) {}
+    }
+
+    return normalizeText(normalized);
+};
+
 const parseStoredGrade = (rawGrade) => {
-    if (!rawGrade) return { midterm: '', finals: '', finalAverage: '' };
-    if (typeof rawGrade === 'number') return { midterm: '', finals: '', finalAverage: rawGrade };
+    if (!rawGrade) return { midterm: '', finals: '', finalAverage: '', standing: 'active', flagged: false };
+    if (typeof rawGrade === 'number') return { midterm: '', finals: '', finalAverage: rawGrade, standing: 'active', flagged: false };
     if (typeof rawGrade === 'string' && rawGrade.trim().startsWith('{')) {
         try {
             const parsed = JSON.parse(rawGrade);
             return {
                 midterm: parsed.midterm || '',
                 finals: parsed.finals || '',
-                finalAverage: parsed.finalAverage || parsed.final || parsed.grade || ''
+                finalAverage: parsed.finalAverage || parsed.final || parsed.grade || '',
+                standing: parsed.standing || parsed.remarks || 'active',
+                flagged: !!parsed.flagged,
             };
         } catch (e) {
-            return { midterm: '', finals: '', finalAverage: rawGrade };
+            return { midterm: '', finals: '', finalAverage: rawGrade, standing: 'active', flagged: false };
         }
     }
-    return { midterm: '', finals: '', finalAverage: rawGrade };
+    return { midterm: '', finals: '', finalAverage: rawGrade, standing: 'active', flagged: false };
+};
+
+const normalizeText = (value = '') => String(value || '').trim().toLowerCase();
+const hasEncodedValue = (value) => String(value ?? '').trim() !== '';
+const getRecordStudentNumber = (record) => (
+    record?.student_no ||
+    record?.studentNo ||
+    ''
+);
+const getRecordStudentName = (record) => (
+    record?.student_name ||
+    record?.studentName ||
+    ''
+);
+const isPlaceholderStudentName = (value = '') => {
+    const normalizedValue = normalizeText(value);
+    return !normalizedValue || normalizedValue === 'student';
+};
+const isPlaceholderStudentId = (value = '') => {
+    const normalizedValue = String(value || '').trim().toLowerCase();
+    return (
+        !normalizedValue ||
+        normalizedValue === 'unknown' ||
+        normalizedValue.endsWith('@plv.edu.ph')
+    );
+};
+const splitStudentName = (fullName = '') => {
+    const normalizedName = String(fullName || '').trim();
+    if (!normalizedName) {
+        return { firstName: '', lastName: '' };
+    }
+
+    if (normalizedName.includes(',')) {
+        const [lastName, ...rest] = normalizedName.split(',');
+        return {
+            lastName: String(lastName || '').trim(),
+            firstName: rest.join(',').trim(),
+        };
+    }
+
+    const parts = normalizedName.split(/\s+/).filter(Boolean);
+    if (parts.length === 1) {
+        return { firstName: parts[0], lastName: '' };
+    }
+
+    return {
+        firstName: parts.slice(0, -1).join(' '),
+        lastName: parts.slice(-1).join(' '),
+    };
+};
+const extractSectionCode = (value = '') => {
+    const match = String(value || '').match(/\b([1-4]-\d+)\b/i);
+    return match ? normalizeText(match[1]) : '';
+};
+const normalizeSectionIdentity = (value = '') =>
+    normalizeText(String(value || '').replace(/\([^)]*\)/g, ' ').replace(/\s+/g, ' ').trim());
+const sectionsMatch = (left = '', right = '') => {
+    const normalizedLeft = normalizeSectionIdentity(left);
+    const normalizedRight = normalizeSectionIdentity(right);
+    const leftCode = extractSectionCode(left);
+    const rightCode = extractSectionCode(right);
+
+    if (!normalizedLeft || !normalizedRight) return false;
+    if (normalizedLeft === normalizedRight) return true;
+    if (normalizedLeft.includes(normalizedRight) || normalizedRight.includes(normalizedLeft)) return true;
+    if (leftCode && rightCode && leftCode === rightCode) return true;
+
+    return false;
+};
+const getSavedStudentSections = () => {
+    try {
+        const saved = JSON.parse(localStorage.getItem('studentSections') || '[]');
+        return Array.isArray(saved) ? saved : [];
+    } catch (error) {
+        return [];
+    }
+};
+const findSavedSectionRoster = ({
+    studentSections = [],
+    assignment = null,
+    departmentName = '',
+    sectionName = '',
+    schoolYear = '',
+    semester = '',
+} = {}) => {
+    const matchedSection = studentSections.find((section) => {
+        const sameProgram =
+            normalizeText(section?.program) ===
+            normalizeText(assignment?.program || departmentName);
+        const sameSection =
+            sectionsMatch(
+                section?.section,
+                assignment?.sectionName || sectionName
+            );
+        const sameSchoolYear =
+            !normalizeText(section?.schoolYear) ||
+            !normalizeText(assignment?.schoolYear || schoolYear) ||
+            normalizeText(section?.schoolYear) ===
+                normalizeText(assignment?.schoolYear || schoolYear);
+        const sameSemester =
+            !normalizeText(section?.semester) ||
+            !normalizeText(assignment?.semester || semester) ||
+            normalizeText(section?.semester) ===
+                normalizeText(assignment?.semester || semester);
+
+        return sameProgram && sameSection && sameSchoolYear && sameSemester;
+    });
+
+    return Array.isArray(matchedSection?.students) ? matchedSection.students : [];
+};
+const resolveAssignmentForSectionGroup = (group, assignments = []) =>
+    assignments.find((assignment) => {
+        const sameFaculty =
+            normalizeFacultyIdentity(
+                assignment?.facultyId || assignment?.facultyEmail || assignment?.email || ''
+            ) === normalizeText(group?.facultyId);
+        const sameProgram =
+            normalizeText(assignment?.program) === normalizeText(group?.department);
+        const sameSection = sectionsMatch(assignment?.sectionName, group?.sectionName);
+        const sameSubject =
+            !normalizeText(assignment?.subjectCode) ||
+            !normalizeText(group?.subjectCode) ||
+            normalizeText(assignment?.subjectCode) === normalizeText(group?.subjectCode);
+        const sameSchoolYear =
+            !normalizeText(assignment?.schoolYear) ||
+            !normalizeText(group?.schoolYear) ||
+            normalizeText(assignment?.schoolYear) === normalizeText(group?.schoolYear);
+        const sameSemester =
+            !normalizeText(assignment?.semester) ||
+            !normalizeText(group?.semester) ||
+            normalizeText(assignment?.semester) === normalizeText(group?.semester);
+
+        return sameFaculty && sameProgram && sameSection && sameSubject && sameSchoolYear && sameSemester;
+    }) || null;
+const resolveStudentIdentityForRecord = ({
+    record,
+    assignment,
+    studentSections = [],
+    departmentName = '',
+    sectionName = '',
+    schoolYear = '',
+    semester = '',
+}) => {
+    const recordStudentKey = normalizeText(getRecordStudentKey(record));
+    const recordStudentNumber = String(getRecordStudentNumber(record) || '').trim();
+    const recordStudentName = String(getRecordStudentName(record) || '').trim();
+    const rosterStudents =
+        (Array.isArray(assignment?.rosterStudents) && assignment.rosterStudents.length
+            ? assignment.rosterStudents
+            : findSavedSectionRoster({
+                studentSections,
+                assignment,
+                departmentName,
+                sectionName,
+                schoolYear,
+                semester,
+            })) || [];
+
+    const rosterMatch = rosterStudents.length
+        ? rosterStudents.find((student) => {
+            const candidateKeys = [
+                student?.studentId,
+                student?.id,
+                student?.studentno,
+                student?.studentNo,
+                student?.email,
+            ]
+                .map((value) => normalizeText(value))
+                .filter(Boolean);
+
+            return (
+                (recordStudentKey && candidateKeys.includes(recordStudentKey)) ||
+                (recordStudentNumber && candidateKeys.includes(normalizeText(recordStudentNumber)))
+            );
+        })
+        : null;
+    const soleRosterStudent = rosterStudents.length === 1 ? rosterStudents[0] : null;
+    const fallbackRosterStudent =
+        rosterMatch ||
+        (
+            soleRosterStudent &&
+            isPlaceholderStudentId(recordStudentNumber || getRecordStudentKey(record)) &&
+            isPlaceholderStudentName(recordStudentName)
+                ? soleRosterStudent
+                : null
+        );
+
+    const rosterStudentId =
+        fallbackRosterStudent?.studentId ||
+        fallbackRosterStudent?.id ||
+        fallbackRosterStudent?.studentno ||
+        fallbackRosterStudent?.studentNo ||
+        '';
+    const rosterStudentName =
+        fallbackRosterStudent?.fullname ||
+        fallbackRosterStudent?.name ||
+        [fallbackRosterStudent?.lastName, fallbackRosterStudent?.firstName].filter(Boolean).join(', ') ||
+        fallbackRosterStudent?.email ||
+        '';
+
+    return {
+        studentId:
+            (!isPlaceholderStudentId(recordStudentNumber) && recordStudentNumber) ||
+            (!isPlaceholderStudentId(recordStudentKey) && getRecordStudentKey(record)) ||
+            rosterStudentId ||
+            getRecordStudentKey(record) ||
+            recordStudentNumber ||
+            'Unknown',
+        studentName:
+            (!isPlaceholderStudentName(recordStudentName) && recordStudentName) ||
+            rosterStudentName ||
+            recordStudentName ||
+            'Student',
+    };
+};
+const getDepartmentSectionSnapshot = (department = '') => {
+    try {
+        const saved = JSON.parse(localStorage.getItem('studentSections') || '[]');
+        return saved
+            .filter((section) => normalizeText(section.program) === normalizeText(department))
+            .map((section) => ({
+                key: [
+                    normalizeText(section.program),
+                    normalizeText(section.yearLevel),
+                    normalizeText(section.section),
+                    normalizeText(section.schoolYear),
+                    normalizeText(section.semester),
+                ].join('|'),
+                sectionName: section.section || 'Unnamed Section',
+                serialized: JSON.stringify(section),
+            }))
+            .sort((a, b) => a.key.localeCompare(b.key));
+    } catch (error) {
+        return [];
+    }
 };
 
 const HoverableID = ({ fullId, isAuthorized }) => {
@@ -118,6 +456,9 @@ const DeptAdminGradesView = ({ loggedInEmail = '', loggedInName = '', userRole =
     const [passThreshold, setPassThreshold] = useState(75);
     const [statusFilter, setStatusFilter] = useState("All");
     const [activeSemester, setActiveSemester] = useState("2nd Semester");
+    const [activeEncodingTerm, setActiveEncodingTerm] = useState("midterm");
+    const lastSectionSnapshotRef = useRef([]);
+    const lastNotifiedSectionChangeRef = useRef('');
 
     useEffect(() => {
         const fetchThreshold = async () => {
@@ -134,10 +475,15 @@ const DeptAdminGradesView = ({ loggedInEmail = '', loggedInName = '', userRole =
     }, []);
 
     useEffect(() => {
+        lastSectionSnapshotRef.current = getDepartmentSectionSnapshot(department);
+    }, [department]);
+
+    useEffect(() => {
         const applyEncodingPeriod = (value) => {
             if (!value) return;
             const parsed = typeof value === 'string' ? JSON.parse(value) : value;
             setActiveSemester(parsed?.semester || "2nd Semester");
+            setActiveEncodingTerm(parsed?.term === "finals" ? "finals" : "midterm");
         };
 
         const loadEncodingPeriod = async () => {
@@ -218,32 +564,63 @@ const DeptAdminGradesView = ({ loggedInEmail = '', loggedInName = '', userRole =
 
     const facultyRows = useMemo(() => {
         const groups = {};
+        const savedAssignments = getSavedRegistrarAssignments();
+        const savedStudentSections = getSavedStudentSections();
+        const facultyNameMap = new Map(
+            departmentFaculties.map((faculty) => [
+                normalizeFacultyIdentity(faculty.email || faculty.facultyId || faculty.id),
+                faculty.fullname || faculty.fullName || faculty.email || "Unknown Faculty",
+            ])
+        );
+
         grades.forEach(g => {
             let facId = g.facultyId || g.faculty_id || g.FacultyId || 'Unknown';
-            
-            // Clean up Fabric Base64 X.509 Identity
-            if (facId.length > 40 && !facId.includes('@')) {
-                try {
-                    const decoded = atob(facId);
-                    const cnMatch = decoded.match(/CN=([^,]+)/);
-                    if (cnMatch && cnMatch[1]) facId = cnMatch[1];
-                } catch(e) {}
+            const normalizedFacultyId = normalizeFacultyIdentity(facId);
+            if (normalizedFacultyId) {
+                facId = normalizedFacultyId;
             }
 
-            const course = g.course || g.Course || g.subject_code || g.subjectCode || 'Unknown Section';
+            const matchedAssignment = resolveAssignmentForGradeRecord(g, savedAssignments);
+            const sectionName =
+                getRecordSectionKey(g) ||
+                matchedAssignment?.sectionName ||
+                g.course ||
+                g.Course ||
+                'Unknown Section';
+            const subjectCode =
+                g.subject_code ||
+                g.subjectCode ||
+                g.SubjectCode ||
+                matchedAssignment?.subjectCode ||
+                'Unknown Subject';
+            const departmentName =
+                g.department ||
+                matchedAssignment?.program ||
+                g.course ||
+                g.Course ||
+                'Unknown Department';
+            const schoolYear = g.schoolYear || g.SchoolYear || matchedAssignment?.schoolYear || '2024';
+            const semester = g.semester || g.Semester || matchedAssignment?.semester || '2nd Semester';
             const status = (g.status || g.Status || '').toLowerCase();
-            const key = `${facId}-${course}`;
+            const key = [
+                facId,
+                normalizeText(departmentName),
+                normalizeText(sectionName),
+                normalizeText(subjectCode),
+                normalizeText(schoolYear),
+                normalizeText(semester),
+            ].join('|');
 
             if (!groups[key]) {
                 groups[key] = {
                     reviewKey: key,
-                    facultyName: facId,
+                    facultyName: facultyNameMap.get(normalizedFacultyId) || facId,
                     facultyId: facId,
-                    department: course,
-                    sectionName: course,
-                    subjectCode: course,
-                    schoolYear: g.schoolYear || g.SchoolYear || '2024',
-                    semester: g.semester || g.Semester || '2nd Semester',
+                    department: departmentName,
+                    sectionName,
+                    subjectCode,
+                    schoolYear,
+                    semester,
                     totalStudents: 0,
                     encodedCount: 0,
                     progress: 0,
@@ -251,7 +628,9 @@ const DeptAdminGradesView = ({ loggedInEmail = '', loggedInName = '', userRole =
                     reviewStatus: 'pending',
                     grades: {},
                     students: [],
-                    ipfsCid: g.ipfs_cid || g.IpfsCID || g.ipfsCid || null
+                    rawStudentEntries: [],
+                    ipfsCid: g.ipfs_cid || g.IpfsCID || g.ipfsCid || null,
+                    earliestEncodedAt: g.date || g.Date || null,
                 };
             }
             
@@ -260,23 +639,60 @@ const DeptAdminGradesView = ({ loggedInEmail = '', loggedInName = '', userRole =
                 groups[key].ipfsCid = g.ipfs_cid || g.IpfsCID || g.ipfsCid;
             }
             groups[key].totalStudents += 1;
+
+            const parsedGrade = parseStoredGrade(getRecordGrade(g));
+            const gradeVal = parsedGrade.finalAverage;
+            if (
+                hasEncodedValue(parsedGrade.midterm) ||
+                hasEncodedValue(parsedGrade.finals) ||
+                hasEncodedValue(gradeVal)
+            ) {
+                groups[key].encodedCount += 1;
+            }
+            if (g.date || g.Date) {
+                const currentEarliest = groups[key].earliestEncodedAt ? new Date(groups[key].earliestEncodedAt).getTime() : Number.POSITIVE_INFINITY;
+                const incomingDate = new Date(g.date || g.Date).getTime();
+                if (!Number.isNaN(incomingDate) && incomingDate < currentEarliest) {
+                    groups[key].earliestEncodedAt = g.date || g.Date;
+                }
+            }
             
-            const gradeVal = parseStoredGrade(getRecordGrade(g)).finalAverage;
-            if (String(gradeVal || '').trim() !== '') groups[key].encodedCount += 1;
-            
-            const studentKey = getRecordStudentKey(g) || 'Unknown';
-            groups[key].students.push({
-                studentId: studentKey,
-                lastName: '',
-                firstName: studentKey
+            const resolvedStudentIdentity = resolveStudentIdentityForRecord({
+                record: g,
+                assignment: matchedAssignment,
+                studentSections: savedStudentSections,
+                departmentName,
+                sectionName,
+                schoolYear,
+                semester,
             });
+            const studentKey = getRecordStudentKey(g) || getRecordStudentNumber(g) || resolvedStudentIdentity.studentId || 'Unknown';
+            const studentNumber = resolvedStudentIdentity.studentId || getRecordStudentNumber(g) || studentKey;
+            const studentName = resolvedStudentIdentity.studentName || getRecordStudentName(g);
+            const { firstName, lastName } = splitStudentName(studentName);
+
+            if (!groups[key].students.some((student) => String(student.studentId) === String(studentKey))) {
+                groups[key].students.push({
+                    studentId: studentKey,
+                    studentNo: studentNumber,
+                    fullName: studentName || studentNumber,
+                    lastName,
+                    firstName,
+                });
+            }
             groups[key].grades[studentKey] = {
-                midterm: '-',
-                finals: '-',
+                midterm: parsedGrade.midterm || '-',
+                finals: parsedGrade.finals || '-',
                 finalAverage: gradeVal || '-',
-                    standing: g.remarks || g.Remarks || 'active',
-                    flagged: g.flagged || g.Flagged === true || String(g.flagged).toLowerCase() === "true"
+                standing: parsedGrade.standing || g.remarks || g.Remarks || 'active',
+                flagged: parsedGrade.flagged || g.flagged || g.Flagged === true || String(g.flagged).toLowerCase() === "true"
             };
+            groups[key].rawStudentEntries.push({
+                studentKey,
+                studentNumber,
+                studentName,
+                grade: groups[key].grades[studentKey],
+            });
             
             if (status.includes('issued') || status.includes('submitted')) groups[key].reviewStatus = 'submitted';
             if (status.includes('approved')) groups[key].reviewStatus = 'approved';
@@ -284,11 +700,170 @@ const DeptAdminGradesView = ({ loggedInEmail = '', loggedInName = '', userRole =
             if (status.includes('returned') || status.includes('rejected')) groups[key].reviewStatus = 'returned';
         });
         return Object.values(groups).map(g => {
+            const matchedAssignment = resolveAssignmentForSectionGroup(g, savedAssignments);
+            const rosterStudents =
+                (Array.isArray(matchedAssignment?.rosterStudents) && matchedAssignment.rosterStudents.length
+                    ? matchedAssignment.rosterStudents
+                    : findSavedSectionRoster({
+                        studentSections: savedStudentSections,
+                        assignment: matchedAssignment,
+                        departmentName: g.department,
+                        sectionName: g.sectionName,
+                        schoolYear: g.schoolYear,
+                        semester: g.semester,
+                    })) || [];
+
+            if (rosterStudents.length) {
+                const placeholderOnly =
+                    g.students.length > 0 &&
+                    g.students.every(
+                        (student) =>
+                            isPlaceholderStudentId(student.studentNo || student.studentId) ||
+                            isPlaceholderStudentName(student.fullName || `${student.lastName || ''}, ${student.firstName || ''}`)
+                    );
+
+                if (placeholderOnly || rosterStudents.length === g.students.length) {
+                    const remappedGrades = {};
+
+                    g.students = rosterStudents.map((student, index) => {
+                        const rosterStudentId =
+                            student.studentId ||
+                            student.id ||
+                            student.studentno ||
+                            student.studentNo ||
+                            `student-${index + 1}`;
+                        const rosterStudentName =
+                            student.fullname ||
+                            student.name ||
+                            [student.lastName, student.firstName].filter(Boolean).join(', ') ||
+                            rosterStudentId;
+                        const rawEntry = g.rawStudentEntries[index] || g.rawStudentEntries.find((entry) =>
+                            normalizeText(entry.studentNumber) === normalizeText(rosterStudentId)
+                        ) || null;
+                        const gradeRecord =
+                            (rawEntry && rawEntry.grade) ||
+                            g.grades[rosterStudentId] ||
+                            {};
+
+                        remappedGrades[rosterStudentId] = gradeRecord;
+
+                        return {
+                            studentId: rosterStudentId,
+                            studentNo: rosterStudentId,
+                            fullName: rosterStudentName,
+                            lastName: student.lastName || splitStudentName(rosterStudentName).lastName,
+                            firstName: student.firstName || splitStudentName(rosterStudentName).firstName,
+                        };
+                    });
+
+                    g.grades = remappedGrades;
+                }
+            }
+
+            if (!g.ipfsCid) {
+                const recoveredIpfsCid = grades
+                    .filter((record) => {
+                        const recordSubject = normalizeText(getRecordSubjectKey(record));
+                        const groupSubjects = [
+                            g.subjectCode,
+                            g.sectionName,
+                            g.department,
+                        ]
+                            .map((value) => normalizeText(value))
+                            .filter(Boolean);
+
+                        return (
+                            normalizeFacultyIdentity(record.facultyId || record.faculty_id || record.FacultyId) === normalizeText(g.facultyId) &&
+                            (
+                                groupSubjects.includes(recordSubject) ||
+                                (
+                                    normalizeText(record.semester || record.Semester) === normalizeText(g.semester) &&
+                                    normalizeText(record.schoolYear || record.SchoolYear) === normalizeText(g.schoolYear)
+                                )
+                            )
+                        );
+                    })
+                    .map((record) => getRecordIpfsCid(record))
+                    .find(Boolean);
+
+                if (recoveredIpfsCid) {
+                    g.ipfsCid = recoveredIpfsCid;
+                } else {
+                    const facultyWideFallback = grades
+                        .filter((record) =>
+                            normalizeFacultyIdentity(record.facultyId || record.faculty_id || record.FacultyId) === normalizeText(g.facultyId)
+                        )
+                        .map((record) => getRecordIpfsCid(record))
+                        .find(Boolean);
+
+                    g.ipfsCid = facultyWideFallback || null;
+                }
+            }
+
             g.progress = g.totalStudents > 0 ? Math.round((g.encodedCount / g.totalStudents) * 100) : 0;
             g.facultyEncodingStatus = g.progress === 100 ? 'Completed' : 'In Progress';
             return g;
         });
-    }, [grades]);
+    }, [departmentFaculties, grades]);
+
+    useEffect(() => {
+        if (!selectedReviewSection?.reviewKey) return;
+
+        const latestSelectedSection =
+            facultyRows.find((row) => row.reviewKey === selectedReviewSection.reviewKey) ||
+            null;
+
+        if (!latestSelectedSection) {
+            setSelectedReviewSection(null);
+            return;
+        }
+
+        const backfilledIpfsCid =
+            latestSelectedSection.ipfsCid ||
+            grades
+                .filter((record) => {
+                    const recordSubject = normalizeText(getRecordSubjectKey(record));
+                    const subjectCandidates = [
+                        latestSelectedSection.subjectCode,
+                        latestSelectedSection.sectionName,
+                        latestSelectedSection.department,
+                    ]
+                        .map((value) => normalizeText(value))
+                        .filter(Boolean);
+
+                    return (
+                        normalizeFacultyIdentity(record.facultyId || record.faculty_id || record.FacultyId) === normalizeText(latestSelectedSection.facultyId) &&
+                        (
+                            subjectCandidates.includes(recordSubject) ||
+                            (
+                                normalizeText(record.semester || record.Semester) === normalizeText(latestSelectedSection.semester) &&
+                                normalizeText(record.schoolYear || record.SchoolYear) === normalizeText(latestSelectedSection.schoolYear)
+                            )
+                        )
+                    );
+                })
+                .map((record) => getRecordIpfsCid(record))
+                .find(Boolean) ||
+            grades
+                .filter((record) =>
+                    normalizeFacultyIdentity(record.facultyId || record.faculty_id || record.FacultyId) === normalizeText(latestSelectedSection.facultyId)
+                )
+                .map((record) => getRecordIpfsCid(record))
+                .find(Boolean) ||
+            null;
+
+        const nextSelectedSection = {
+            ...latestSelectedSection,
+            ipfsCid: backfilledIpfsCid,
+        };
+
+        if (
+            latestSelectedSection !== selectedReviewSection ||
+            nextSelectedSection.ipfsCid !== selectedReviewSection.ipfsCid
+        ) {
+            setSelectedReviewSection(nextSelectedSection);
+        }
+    }, [facultyRows, grades, selectedReviewSection]);
 
     const loadGrades = useCallback(async (isBackground = false) => {
         if (!isBackground) setLoading(true);
@@ -339,24 +914,94 @@ const DeptAdminGradesView = ({ loggedInEmail = '', loggedInName = '', userRole =
     }, [department, addNotification]);
 
     useEffect(() => {
-        const handleAcademicDataChanged = () => {
+        const notifySectionStorageChanges = () => {
+            const previousSnapshot = lastSectionSnapshotRef.current;
+            const nextSnapshot = getDepartmentSectionSnapshot(department);
+            const previousMap = new Map(previousSnapshot.map((item) => [item.key, item]));
+
+            const createdSections = nextSnapshot.filter((item) => !previousMap.has(item.key));
+            const updatedSections = nextSnapshot.filter((item) => {
+                const previous = previousMap.get(item.key);
+                return previous && previous.serialized !== item.serialized;
+            });
+
+            createdSections.forEach((item) => {
+                const notificationKey = `created|${item.key}|${item.serialized}`;
+                if (lastNotifiedSectionChangeRef.current === notificationKey) return;
+                lastNotifiedSectionChangeRef.current = notificationKey;
+                addNotification(
+                    `New section created in ${department}: ${item.sectionName}`,
+                    'success'
+                );
+            });
+
+            updatedSections.forEach((item) => {
+                const notificationKey = `updated|${item.key}|${item.serialized}`;
+                if (lastNotifiedSectionChangeRef.current === notificationKey) return;
+                lastNotifiedSectionChangeRef.current = notificationKey;
+                addNotification(
+                    `Section updated in ${department}: ${item.sectionName}`,
+                    'success'
+                );
+            });
+
+            lastSectionSnapshotRef.current = nextSnapshot;
+        };
+
+        const handleAcademicDataChanged = (event) => {
+            const reason = event.detail?.Reason || event.detail?.reason || '';
+            const changedDepartment = event.detail?.Department || event.detail?.department || '';
+            const actor = event.detail?.Actor || event.detail?.actor || '';
+            const sameDepartment = normalizeText(changedDepartment) === normalizeText(department);
+            const sameActor = normalizeText(actor) === normalizeText(loggedInEmail);
+
+            if (sameDepartment && !sameActor) {
+                if (reason === 'section_created') {
+                    addNotification(
+                        `Registrar created a new section in ${department}.`,
+                        'success'
+                    );
+                }
+
+                if (reason === 'masterlist_uploaded' || reason === 'students_enrolled') {
+                    addNotification(
+                        `Registrar updated section records in ${department}.`,
+                        'success'
+                    );
+                }
+            }
+
             loadGrades(true);
             if (mainTab === 'myClasses') loadMyClasses();
             if (mainTab === 'assignment') {
                 loadAcademicSections();
                 loadDepartmentFaculties();
             }
+            notifySectionStorageChanges();
+        };
+
+        const handleStorageChanged = (event) => {
+            if (event.key === 'studentSections') {
+                notifySectionStorageChanges();
+                if (mainTab === 'assignment' || mainTab === 'myClasses') {
+                    loadAcademicSections();
+                }
+            }
         };
 
         window.addEventListener('blockgo:academic-data-changed', handleAcademicDataChanged);
-        return () => window.removeEventListener('blockgo:academic-data-changed', handleAcademicDataChanged);
-    }, [loadGrades, mainTab, loadMyClasses, loadAcademicSections, loadDepartmentFaculties]);
+        window.addEventListener('storage', handleStorageChanged);
+        return () => {
+            window.removeEventListener('blockgo:academic-data-changed', handleAcademicDataChanged);
+            window.removeEventListener('storage', handleStorageChanged);
+        };
+    }, [addNotification, department, loadGrades, loggedInEmail, mainTab, loadMyClasses, loadAcademicSections, loadDepartmentFaculties]);
 
     useEffect(() => {
         if (mainTab === 'assignment' || mainTab === 'myClasses') {
             loadAcademicSections();
         }
-        if (mainTab === 'assignment') {
+        if (['assignment', 'forReview', 'returned', 'approved', 'forwarded', 'flagged'].includes(mainTab)) {
             loadDepartmentFaculties();
         }
     }, [mainTab, loadAcademicSections, loadDepartmentFaculties]);
@@ -485,7 +1130,7 @@ const DeptAdminGradesView = ({ loggedInEmail = '', loggedInName = '', userRole =
             const semester = selectedMySection?.semester || "2nd Semester";
             const schoolYear = selectedMySection?.schoolYear || "2024";
             const course = selectedMySection?.subject || "Unknown";
-            const facultyId = selectedMySection?.facultyId || loggedInEmail;
+            const facultyId = loggedInEmail;
 
             const res = await batchUploadGrades(uploadFile, semester, schoolYear, course, facultyId);
             if (res.status === 'Success' || res.status === 'Partial Success') {
@@ -783,32 +1428,22 @@ const DeptAdminGradesView = ({ loggedInEmail = '', loggedInName = '', userRole =
                                     if (activeChairTab === 'forwarded') return r.reviewStatus === 'forwarded';
                                         if (activeChairTab === 'flagged') return Object.values(r.grades).some(g => g.flagged);
                                     return true;
-                                })} 
+                                })}
+                                allRows={facultyRows}
                                 selectedReviewKey={selectedReviewSection?.reviewKey} 
-                                onSelectSection={setSelectedReviewSection} 
+                                onSelectSection={setSelectedReviewSection}
+                                onViewIpfs={handleViewIpfs}
+                                viewMode={activeChairTab}
                             />
                             {selectedReviewSection && (
-                                <div className="flex flex-col gap-4">
-                                    {selectedReviewSection.ipfsCid && (
-                                        <div className="flex items-center justify-between rounded-xl border border-blue-200 bg-blue-50 p-5 shadow-sm">
-                                            <div>
-                                                <h4 className="font-bold text-blue-900">Attached Grading Sheet (IPFS Vault)</h4>
-                                                <p className="text-sm text-blue-700">The faculty member securely attached the source Excel/CSV file.</p>
-                                            </div>
-                                            <button onClick={() => handleViewIpfs(selectedReviewSection.ipfsCid)} className="rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-blue-700">
-                                                Decrypt & View
-                                            </button>
-                                        </div>
-                                    )}
-                                    <SectionReviewPanel 
-                                        selectedSection={selectedReviewSection} 
-                                        activeTerm="finals" 
-                                        onApprove={handleBulkApprove} 
-                                        onSubmitToRegistrar={handleBulkForward} 
-                                        onSendBack={() => { addNotification("Section sent back to faculty.", "success"); setSelectedReviewSection(null); }} 
-                                        onViewIpfs={handleViewIpfs}
-                                    />
-                                </div>
+                                <SectionReviewPanel 
+                                    selectedSection={selectedReviewSection} 
+                                    activeTerm={activeEncodingTerm}
+                                    onApprove={handleBulkApprove} 
+                                    onSubmitToRegistrar={handleBulkForward} 
+                                    onSendBack={() => { addNotification("Section sent back to faculty.", "success"); setSelectedReviewSection(null); }} 
+                                    onViewIpfs={handleViewIpfs}
+                                />
                             )}
                         </div>
                     )}

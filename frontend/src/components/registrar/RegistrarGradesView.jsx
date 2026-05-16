@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { fetchAllGrades, finalizeGrade, fetchPendingRequests, approveRegistrationRequest, denyRegistrationRequest, fetchApprovedStudents, assignStudent, fetchApprovedAdmins, assignDepartmentAdmin, revokeDepartmentAdmin, fetchApprovedFaculties, assignFaculty, dropStudent, revokeFaculty, getDecryptedIpfsUrl, fetchStagedGrades, finalizeStagedGrades, getSystemSetting, registrarBulkEnrollStudents, registrarBulkUpdateStudents } from '../../services/api';
+import { fetchAllGrades, finalizeGrade, fetchPendingRequests, approveRegistrationRequest, denyRegistrationRequest, fetchApprovedStudents, assignStudent, fetchApprovedAdmins, assignDepartmentAdmin, revokeDepartmentAdmin, fetchApprovedFaculties, assignFaculty, dropStudent, revokeFaculty, getDecryptedIpfsUrl, fetchStagedGrades, finalizeStagedGrades, getSystemSetting, registrarBulkEnrollStudents, registrarBulkUpdateStudents, resetEncodingSeason } from '../../services/api';
 import RegistrarHeader from './RegistrarHeader';
 import RegistrarSidebar from './RegistrarSidebar';
 import RegistrarDashboard from './RegistrarDashboard';
@@ -104,6 +104,8 @@ const RegistrarGradesView = ({
     const [showChairpersonAccounts, setShowChairpersonAccounts] = useState(false);
     const [showFacultyDepartments, setShowFacultyDepartments] = useState(false);
     const [selectedFacultyDepartment, setSelectedFacultyDepartment] = useState('');
+    const [selectedFacultyReview, setSelectedFacultyReview] = useState('');
+    const [openedFacultySections, setOpenedFacultySections] = useState({});
 
     const revocationPreviewSections = [
         {
@@ -311,6 +313,39 @@ const RegistrarGradesView = ({
         } catch (error) { console.error('Error loading faculties:', error); }
     }, []);
 
+    const handleResetEncodingSeason = useCallback(async () => {
+        try {
+            await resetEncodingSeason();
+            const resetEncodingPeriod = JSON.stringify({
+                semester: '2nd Semester',
+                startDate: '',
+                endDate: '',
+                term: 'midterm',
+            });
+            localStorage.removeItem('registrarAssignments');
+            localStorage.setItem('encodingPeriod', resetEncodingPeriod);
+            localStorage.setItem('facultyLoadResetAt', new Date().toISOString());
+            window.dispatchEvent(
+                new CustomEvent('blockgo:system-setting-changed', {
+                    detail: {
+                        key: 'encoding_period',
+                        value: resetEncodingPeriod,
+                    },
+                })
+            );
+            window.dispatchEvent(
+                new CustomEvent('blockgo:faculty-load-reset', {
+                    detail: { clearedAt: new Date().toISOString() },
+                })
+            );
+            await loadApprovedFaculties();
+            await loadGrades(true);
+        } catch (error) {
+            alert(error.message || 'Failed to reset encoding season.');
+            throw error;
+        }
+    }, [loadApprovedFaculties, loadGrades]);
+
     useEffect(() => { loadGrades(); }, [loadGrades]);
 
     useEffect(() => {
@@ -344,6 +379,7 @@ const RegistrarGradesView = ({
         if (mainTab === 'assignStudents') loadApprovedStudents();
         if (mainTab === 'assignAdmins') loadApprovedAdmins();
         if (mainTab === 'assignFaculties') loadApprovedFaculties();
+        if (mainTab === 'grades') loadApprovedFaculties();
         if (mainTab === 'revokeAccounts') {
             loadApprovedAdmins();
             loadApprovedFaculties();
@@ -495,6 +531,7 @@ const RegistrarGradesView = ({
             onConfirm: async () => {
                 try {
                     await revokeDepartmentAdmin(id);
+                    setApprovedAdmins((current) => current.filter((admin) => admin.id !== id));
                     alert(`${name} has been revoked.`);
                     await loadApprovedAdmins();
                 } catch (error) {
@@ -518,6 +555,152 @@ const RegistrarGradesView = ({
         const matchesSection = filterSection === 'All' || (String(grade.section) === filterSection) || (grade.section?.includes(filterSection));
         return matchesDept && matchesYear && matchesSection;
     });
+
+    const parseGradePayload = useCallback((rawGrade) => {
+        if (!rawGrade) return {};
+        if (typeof rawGrade === 'object') return rawGrade;
+        if (typeof rawGrade === 'string' && rawGrade.trim().startsWith('{')) {
+            try {
+                return JSON.parse(rawGrade);
+            } catch (error) {
+                return {};
+            }
+        }
+        return { finalAverage: rawGrade };
+    }, []);
+
+    const formatStudentStanding = useCallback((standing) => {
+        switch (standing) {
+            case 'dropped':
+                return 'Dropped (D)';
+            case 'unofficially_dropped':
+                return 'Unofficial Dropped (UD)';
+            case 'withdrawn':
+                return 'Withdrawn (W)';
+            case 'incomplete':
+                return 'Incomplete (INC)';
+            default:
+                return 'Active';
+        }
+    }, []);
+
+    const facultyNameLookup = useMemo(
+        () =>
+            approvedFaculties.reduce((acc, faculty) => {
+                const key = String(faculty.email || '').trim().toLowerCase();
+                if (key) acc[key] = faculty.fullname || faculty.email || key;
+                return acc;
+            }, {}),
+        [approvedFaculties]
+    );
+
+    const facultyMonitoringRecords = useMemo(
+        () =>
+            filteredGrades.map((grade) => {
+                const payload = parseGradePayload(grade.grade);
+                const standing = payload.standing || payload.remarks || 'active';
+                const facultyEmail = grade.facultyId || grade.faculty_id || 'N/A';
+                const normalizedFacultyEmail = String(facultyEmail).trim().toLowerCase();
+                const facultyName = facultyNameLookup[normalizedFacultyEmail] || facultyEmail;
+                const sectionName = grade.section || 'Unassigned Section';
+
+                return {
+                    ...grade,
+                    payload,
+                    standing,
+                    standingLabel: formatStudentStanding(standing),
+                    hasPriorityStatus: ['dropped', 'unofficially_dropped', 'withdrawn', 'incomplete'].includes(standing),
+                    facultyEmail,
+                    facultyName,
+                    sectionName,
+                    studentDisplayId: grade.student_no || grade.studentNo || grade.student_hash || grade.studentId || 'N/A',
+                    studentDisplayName: grade.student_name || grade.studentName || 'Unknown Student',
+                    midterm: payload.midterm || '',
+                    finals: payload.finals || '',
+                    finalAverage: payload.finalAverage || payload.final || payload.grade || '',
+                    flagged: !!payload.flagged,
+                };
+            }),
+        [filteredGrades, parseGradePayload, facultyNameLookup, formatStudentStanding]
+    );
+
+    const facultyMonitoringList = useMemo(() => {
+        const grouped = facultyMonitoringRecords.reduce((acc, record) => {
+            const key = String(record.facultyEmail || 'n/a').trim().toLowerCase();
+            if (!acc[key]) {
+                acc[key] = {
+                    facultyKey: key,
+                    facultyName: record.facultyName,
+                    facultyEmail: record.facultyEmail,
+                    records: [],
+                };
+            }
+
+            acc[key].records.push(record);
+            return acc;
+        }, {});
+
+        return Object.values(grouped)
+            .map((faculty) => {
+                const sections = Object.values(
+                    faculty.records.reduce((acc, record) => {
+                        const sectionKey = `${record.sectionName}|||${record.course || ''}`;
+                        if (!acc[sectionKey]) {
+                            acc[sectionKey] = {
+                                sectionKey,
+                                sectionName: record.sectionName,
+                                department: record.course || 'N/A',
+                                records: [],
+                            };
+                        }
+                        acc[sectionKey].records.push(record);
+                        return acc;
+                    }, {})
+                ).sort((left, right) => {
+                    const leftPriority = left.records.some((record) => record.hasPriorityStatus) ? 1 : 0;
+                    const rightPriority = right.records.some((record) => record.hasPriorityStatus) ? 1 : 0;
+                    return rightPriority - leftPriority || left.sectionName.localeCompare(right.sectionName);
+                });
+
+                return {
+                    ...faculty,
+                    sections,
+                    totalSections: sections.length,
+                    totalRecords: faculty.records.length,
+                    priorityCount: faculty.records.filter((record) => record.hasPriorityStatus).length,
+                    flaggedCount: faculty.records.filter((record) => record.flagged).length,
+                    hasPriorityStatus: faculty.records.some((record) => record.hasPriorityStatus),
+                };
+            })
+            .sort((left, right) =>
+                Number(right.hasPriorityStatus) - Number(left.hasPriorityStatus) ||
+                right.priorityCount - left.priorityCount ||
+                left.facultyName.localeCompare(right.facultyName)
+            );
+    }, [facultyMonitoringRecords]);
+
+    const selectedFacultyMonitoringData = useMemo(() => {
+        if (!selectedFacultyReview) return facultyMonitoringList[0] || null;
+        return facultyMonitoringList.find((faculty) => faculty.facultyKey === selectedFacultyReview) || facultyMonitoringList[0] || null;
+    }, [facultyMonitoringList, selectedFacultyReview]);
+
+    useEffect(() => {
+        if (!selectedFacultyMonitoringData) {
+            setSelectedFacultyReview('');
+            return;
+        }
+
+        if (selectedFacultyReview !== selectedFacultyMonitoringData.facultyKey) {
+            setSelectedFacultyReview(selectedFacultyMonitoringData.facultyKey);
+        }
+    }, [selectedFacultyMonitoringData, selectedFacultyReview]);
+
+    const toggleFacultySectionView = (sectionKey) => {
+        setOpenedFacultySections((prev) => ({
+            ...prev,
+            [sectionKey]: !prev[sectionKey],
+        }));
+    };
 
     const handleDownloadLedgerPDF = () => {
         try {
@@ -647,7 +830,7 @@ const RegistrarGradesView = ({
                 )}
                 <main className="flex-1 overflow-y-auto pr-2">
                     {mainTab === 'dashboard' && <RegistrarDashboard grades={grades} />}
-                    {mainTab === 'encoding' && <EncodingPeriod />}
+                    {mainTab === 'encoding' && <EncodingPeriod onResetEncodingSeason={handleResetEncodingSeason} />}
                     {mainTab === 'studentlist' && <StudentListImport />}
                     {mainTab === 'sectioning' && (
                         <div className="space-y-4">
@@ -767,29 +950,172 @@ const RegistrarGradesView = ({
                                     </div>
                                 </div>
                             </div>
-                            <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm overflow-x-auto">
-                                <table className="w-full min-w-[800px] text-left text-sm">
-                                    <thead>
-                                        <tr className="bg-[#003366] text-white">
-                                            <th className="p-4">Record ID</th><th className="p-4">Student Hash</th><th className="p-4">Subject</th><th className="p-4">Grade</th><th className="p-4">Faculty</th><th className="p-4">Status</th><th className="p-4">Actions</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {filteredGrades.map((grade) => (
-                                            <tr key={grade.id} className="border-b border-slate-100 hover:bg-slate-50">
-                                                <td className="p-4 font-mono text-xs">{grade.id}</td>
-                                                <td className="p-4 font-mono text-xs"><HoverableID fullId={grade.student_hash || grade.studentId} isAuthorized={true} /></td>
-                                                <td className="p-4 font-bold">{grade.subject_code}</td>
-                                                <td className="p-4 font-black">{grade.grade}</td>
-                                                <td className="p-4">{grade.facultyId || "N/A"}</td>
-                                                <td className="p-4"><span className="rounded-full bg-slate-100 px-2 py-1 text-[10px] font-bold uppercase">{grade.status}</span></td>
-                                                <td className="p-4">
-                                                    {(grade.ipfs_cid || grade.IpfsCID) && <button onClick={() => handleViewIpfs(grade.ipfs_cid || grade.IpfsCID)} className="text-blue-600 font-bold hover:underline">View File</button>}
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
+                            <div className="grid gap-6 xl:grid-cols-[340px_minmax(0,1fr)]">
+                                <aside className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+                                    <div className="border-b border-slate-200 px-5 py-4">
+                                        <h3 className="text-lg font-bold text-[#003366]">Faculty Encoding Monitoring</h3>
+                                        <p className="mt-1 text-sm text-slate-500">Faculty with `D`, `UD`, `W`, or `INC` records are prioritized at the top.</p>
+                                    </div>
+                                    <div className="max-h-[720px] overflow-y-auto p-4">
+                                        {facultyMonitoringList.length === 0 ? (
+                                            <div className="rounded-2xl border border-dashed border-slate-200 p-6 text-center text-sm text-slate-500">
+                                                No faculty submissions matched the current filters.
+                                            </div>
+                                        ) : facultyMonitoringList.map((faculty) => {
+                                            const isSelected = selectedFacultyMonitoringData?.facultyKey === faculty.facultyKey;
+                                            return (
+                                                <button
+                                                    key={faculty.facultyKey}
+                                                    type="button"
+                                                    onClick={() => setSelectedFacultyReview(faculty.facultyKey)}
+                                                    className={`mb-3 w-full rounded-2xl border p-4 text-left transition ${
+                                                        isSelected
+                                                            ? 'border-[#003366] bg-[#003366]/5 shadow-sm'
+                                                            : 'border-slate-200 bg-slate-50 hover:border-slate-300'
+                                                    }`}
+                                                >
+                                                    <div className="flex items-start justify-between gap-3">
+                                                        <div>
+                                                            <p className="text-sm font-bold text-slate-900">{faculty.facultyName}</p>
+                                                            <p className="mt-1 break-all text-xs text-slate-500">{faculty.facultyEmail}</p>
+                                                        </div>
+                                                        {faculty.hasPriorityStatus ? (
+                                                            <span className="rounded-full bg-red-100 px-3 py-1 text-[10px] font-bold uppercase text-red-700">
+                                                                Priority
+                                                            </span>
+                                                        ) : null}
+                                                    </div>
+                                                    <div className="mt-3 flex flex-wrap gap-2 text-[11px] font-semibold text-slate-600">
+                                                        <span className="rounded-full bg-white px-3 py-1">Sections: {faculty.totalSections}</span>
+                                                        <span className="rounded-full bg-white px-3 py-1">Records: {faculty.totalRecords}</span>
+                                                        <span className="rounded-full bg-white px-3 py-1">Special Status: {faculty.priorityCount}</span>
+                                                        <span className="rounded-full bg-white px-3 py-1">Flagged: {faculty.flaggedCount}</span>
+                                                    </div>
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                </aside>
+
+                                <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                                    {!selectedFacultyMonitoringData ? (
+                                        <div className="rounded-2xl border border-dashed border-slate-200 p-10 text-center text-slate-500">
+                                            Select a faculty submission to review encoded sections.
+                                        </div>
+                                    ) : (
+                                        <div className="space-y-5">
+                                            <div className="flex flex-col gap-3 border-b border-slate-200 pb-4 lg:flex-row lg:items-center lg:justify-between">
+                                                <div>
+                                                    <h3 className="text-xl font-bold text-[#003366]">{selectedFacultyMonitoringData.facultyName}</h3>
+                                                    <p className="text-sm text-slate-500">{selectedFacultyMonitoringData.facultyEmail}</p>
+                                                </div>
+                                                <div className="flex flex-wrap gap-2 text-xs font-semibold text-slate-600">
+                                                    <span className="rounded-full bg-slate-100 px-3 py-2">Sections: {selectedFacultyMonitoringData.totalSections}</span>
+                                                    <span className="rounded-full bg-slate-100 px-3 py-2">Records: {selectedFacultyMonitoringData.totalRecords}</span>
+                                                    <span className="rounded-full bg-red-50 px-3 py-2 text-red-700">D / UD / W / INC: {selectedFacultyMonitoringData.priorityCount}</span>
+                                                    <span className="rounded-full bg-amber-50 px-3 py-2 text-amber-700">Flagged: {selectedFacultyMonitoringData.flaggedCount}</span>
+                                                </div>
+                                            </div>
+
+                                            <div className="space-y-4">
+                                                {selectedFacultyMonitoringData.sections.map((section) => {
+                                                    const isOpen = !!openedFacultySections[section.sectionKey];
+                                                    const sectionPriorityCount = section.records.filter((record) => record.hasPriorityStatus).length;
+                                                    return (
+                                                        <div key={section.sectionKey} className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-50">
+                                                            <div className="flex flex-col gap-3 border-b border-slate-200 px-4 py-4 lg:flex-row lg:items-center lg:justify-between">
+                                                                <div>
+                                                                    <p className="text-base font-bold text-slate-900">{section.sectionName}</p>
+                                                                    <p className="text-sm text-slate-500">{section.department}</p>
+                                                                </div>
+                                                                <div className="flex flex-wrap items-center gap-2">
+                                                                    <span className="rounded-full bg-white px-3 py-2 text-[11px] font-semibold text-slate-600">Encoded Grades: {section.records.length}</span>
+                                                                    {sectionPriorityCount > 0 ? (
+                                                                        <span className="rounded-full bg-red-100 px-3 py-2 text-[11px] font-semibold text-red-700">Special Status: {sectionPriorityCount}</span>
+                                                                    ) : null}
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => toggleFacultySectionView(section.sectionKey)}
+                                                                        className="rounded-xl bg-[#003366] px-4 py-2 text-sm font-bold text-white transition hover:bg-[#00264d]"
+                                                                    >
+                                                                        {isOpen ? 'Hide Grades' : 'View Grades'}
+                                                                    </button>
+                                                                </div>
+                                                            </div>
+
+                                                            {isOpen ? (
+                                                                <div className="overflow-x-auto">
+                                                                    <table className="w-full min-w-[950px] text-left text-sm">
+                                                                        <thead>
+                                                                            <tr className="bg-[#003366] text-white">
+                                                                                <th className="p-4">Student ID</th>
+                                                                                <th className="p-4">Student Name</th>
+                                                                                <th className="p-4">Subject</th>
+                                                                                <th className="p-4">Midterm</th>
+                                                                                <th className="p-4">Finals</th>
+                                                                                <th className="p-4">Final Rating</th>
+                                                                                <th className="p-4">Student Status</th>
+                                                                                <th className="p-4">Record Status</th>
+                                                                                <th className="p-4">Flags</th>
+                                                                                <th className="p-4">Actions</th>
+                                                                            </tr>
+                                                                        </thead>
+                                                                        <tbody>
+                                                                            {section.records
+                                                                                .slice()
+                                                                                .sort((left, right) =>
+                                                                                    Number(right.hasPriorityStatus) - Number(left.hasPriorityStatus) ||
+                                                                                    left.studentDisplayId.localeCompare(right.studentDisplayId)
+                                                                                )
+                                                                                .map((record) => (
+                                                                                    <tr key={record.id} className={`border-b border-slate-100 hover:bg-white ${record.hasPriorityStatus ? 'bg-red-50/60' : ''}`}>
+                                                                                        <td className="p-4 font-semibold text-slate-700">{record.studentDisplayId}</td>
+                                                                                        <td className="p-4">{record.studentDisplayName}</td>
+                                                                                        <td className="p-4 font-bold text-slate-800">{record.subject_code || 'N/A'}</td>
+                                                                                        <td className="p-4">{record.midterm || '--'}</td>
+                                                                                        <td className="p-4">{record.finals || '--'}</td>
+                                                                                        <td className="p-4 font-black text-[#003366]">{record.finalAverage || '--'}</td>
+                                                                                        <td className="p-4">
+                                                                                            <span className={`rounded-full px-3 py-1 text-[10px] font-bold uppercase ${
+                                                                                                record.hasPriorityStatus ? 'bg-red-100 text-red-700' : 'bg-slate-100 text-slate-700'
+                                                                                            }`}>
+                                                                                                {record.standingLabel}
+                                                                                            </span>
+                                                                                        </td>
+                                                                                        <td className="p-4">
+                                                                                            <span className="rounded-full bg-slate-100 px-3 py-1 text-[10px] font-bold uppercase text-slate-700">
+                                                                                                {record.status || 'N/A'}
+                                                                                            </span>
+                                                                                        </td>
+                                                                                        <td className="p-4">
+                                                                                            {record.flagged ? (
+                                                                                                <span className="rounded-full bg-amber-100 px-3 py-1 text-[10px] font-bold uppercase text-amber-700">Flagged</span>
+                                                                                            ) : (
+                                                                                                <span className="text-xs text-slate-400">--</span>
+                                                                                            )}
+                                                                                        </td>
+                                                                                        <td className="p-4">
+                                                                                            {(record.ipfs_cid || record.IpfsCID) ? (
+                                                                                                <button onClick={() => handleViewIpfs(record.ipfs_cid || record.IpfsCID)} className="font-bold text-blue-600 hover:underline">
+                                                                                                    View File
+                                                                                                </button>
+                                                                                            ) : (
+                                                                                                <span className="text-xs text-slate-400">No File</span>
+                                                                                            )}
+                                                                                        </td>
+                                                                                    </tr>
+                                                                                ))}
+                                                                        </tbody>
+                                                                    </table>
+                                                                </div>
+                                                            ) : null}
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+                                    )}
+                                </section>
                             </div>
                         </>
                     )}

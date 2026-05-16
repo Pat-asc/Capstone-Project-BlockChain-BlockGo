@@ -131,6 +131,9 @@ const escapeCsvValue = (value = "") => {
 export const buildCsvContent = (rows = []) =>
   rows.map((row) => row.map(escapeCsvValue).join(",")).join("\n");
 
+export const getStudentMiddleName = (student = {}) =>
+  student.middleName || student.middleInitial || "";
+
 export const parseStudentIdSpreadsheet = (text = "") => {
   const rows = parseCsvRows(text);
 
@@ -150,7 +153,7 @@ export const parseStudentIdSpreadsheet = (text = "") => {
     "given name",
     "first",
   ]);
-  const middleInitialIndex = getColumnIndex(headers, [
+  const middleNameIndex = getColumnIndex(headers, [
     "middle initial",
     "mi",
     "m i",
@@ -163,7 +166,7 @@ export const parseStudentIdSpreadsheet = (text = "") => {
     sexIndex === -1 ||
     lastNameIndex === -1 ||
     firstNameIndex === -1 ||
-    middleInitialIndex === -1
+    middleNameIndex === -1
   ) {
     return [];
   }
@@ -175,7 +178,8 @@ export const parseStudentIdSpreadsheet = (text = "") => {
       sex: values[sexIndex]?.trim() || "",
       lastName: values[lastNameIndex]?.trim() || "",
       firstName: values[firstNameIndex]?.trim() || "",
-      middleInitial: values[middleInitialIndex]?.trim() || "",
+      middleName: values[middleNameIndex]?.trim() || "",
+      middleInitial: values[middleNameIndex]?.trim() || "",
       yearLevel:
         yearLevelIndex === -1 ? "1st Year" : values[yearLevelIndex]?.trim() || "1st Year",
       sectionCode: "",
@@ -186,7 +190,7 @@ export const parseStudentIdSpreadsheet = (text = "") => {
         student.sex &&
         student.lastName &&
         student.firstName &&
-        student.middleInitial
+        student.middleName
     );
 };
 
@@ -197,7 +201,7 @@ export const buildStudentCsvContent = (students = [], options = {}) => {
     "Sex",
     "Last Name",
     "First Name",
-    "Middle Initial",
+    "Middle Name",
   ];
 
   if (includeYearLevel) {
@@ -211,7 +215,7 @@ export const buildStudentCsvContent = (students = [], options = {}) => {
           student.sex,
           student.lastName,
           student.firstName,
-          student.middleInitial,
+          getStudentMiddleName(student),
           student.yearLevel || "",
         ]
       : [
@@ -219,7 +223,7 @@ export const buildStudentCsvContent = (students = [], options = {}) => {
           student.sex,
           student.lastName,
           student.firstName,
-          student.middleInitial,
+          getStudentMiddleName(student),
         ]
   );
 
@@ -252,7 +256,8 @@ export const buildStudentMasterlistFromBatches = (batches = []) =>
         sex: student.sex || "",
         firstName: student.firstName || "",
         lastName: student.lastName || "",
-        middleInitial: student.middleInitial || "",
+        middleName: getStudentMiddleName(student),
+        middleInitial: student.middleInitial || getStudentMiddleName(student),
         program: batch.program,
         yearLevel: student.yearLevel || "",
         section: student.sectionCode
@@ -299,7 +304,8 @@ export const buildGroupedSectionLists = (students = []) => {
       sex: student.sex || "",
       firstName: student.firstName || "",
       lastName: student.lastName || "",
-      middleInitial: student.middleInitial || "",
+      middleName: getStudentMiddleName(student),
+      middleInitial: student.middleInitial || getStudentMiddleName(student),
       studentType: student.studentType || "Regular",
       remarks: student.remarks || "",
       repeatedSubjects: student.repeatedSubjects || "",

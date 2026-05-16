@@ -9,6 +9,7 @@ function EncodingPeriod({ onResetEncodingSeason }) {
     term: "midterm",
   });
   const [statusMessage, setStatusMessage] = useState("");
+  const [isResettingSeason, setIsResettingSeason] = useState(false);
 
   useEffect(() => {
     const loadSavedPeriod = async () => {
@@ -80,15 +81,35 @@ function EncodingPeriod({ onResetEncodingSeason }) {
     }
   };
 
-  const handleResetSeason = () => {
+  const handleResetSeason = async () => {
     const shouldReset = window.confirm(
-      "Reset this encoding season? This will clear faculty section assignments, saved grades, and chairperson review statuses."
+      "Reset this encoding season? This will clear assigned faculty sections for the current encoding cycle, but will keep the saved student sections."
     );
 
     if (!shouldReset) return;
 
-    onResetEncodingSeason?.();
-    alert("Encoding season has been reset. Faculty section cards are now cleared.");
+    try {
+      setIsResettingSeason(true);
+      await onResetEncodingSeason?.();
+      setPeriod({
+        semester: "2nd Semester",
+        startDate: "",
+        endDate: "",
+        term: "midterm",
+      });
+      setStatusMessage(
+        "Encoding season reset successfully. Faculty assigned sections were cleared, saved sections were kept, and the encoding period was closed."
+      );
+      alert(
+        "Encoding season has been reset. Faculty assigned sections are now cleared, saved sections were kept, and the encoding period is now closed."
+      );
+    } catch (error) {
+      setStatusMessage(
+        error?.message || "Failed to reset encoding season."
+      );
+    } finally {
+      setIsResettingSeason(false);
+    }
   };
 
   return (
@@ -185,9 +206,10 @@ function EncodingPeriod({ onResetEncodingSeason }) {
 
           <button
             onClick={handleResetSeason}
+            disabled={isResettingSeason}
             className="rounded-xl border border-red-200 bg-red-50 px-5 py-3 text-sm font-semibold text-red-700 transition hover:bg-red-100"
           >
-            Reset Encoding Season
+            {isResettingSeason ? "Resetting..." : "Reset Encoding Season"}
           </button>
         </div>
       </div>

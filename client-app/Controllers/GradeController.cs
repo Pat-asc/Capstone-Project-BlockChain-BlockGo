@@ -21,6 +21,7 @@ using System.Net.Http;
 using System.Security.Cryptography;
 using System.Security.Claims;
 using System.Text;
+using System.Text.RegularExpressions;
 using Client_app.Services;
 using Client_app.Controllers;
 using Microsoft.AspNetCore.SignalR;
@@ -79,6 +80,38 @@ namespace BlockGo.Controllers
             public string Status { get; set; } = string.Empty;
         }
 
+        private async Task<(string? Department, string? Identity)> ResolveApprovedAcademicIdentityAsync(
+            NpgsqlConnection conn,
+            string? preferredIdentity,
+            string? fallbackIdentity = null)
+        {
+            async Task<(string? Department, string? Identity)> TryResolveAsync(string? identity)
+            {
+                if (string.IsNullOrWhiteSpace(identity)) return (null, null);
+
+                using var cmd = new NpgsqlCommand(@"
+                    SELECT department FROM (
+                        SELECT fp.department FROM Users u JOIN FacultyProfiles fp ON u.id = fp.user_id WHERE LOWER(u.email) = LOWER(@email) AND u.status = 'APPROVED'
+                        UNION
+                        SELECT ap.department FROM Users u JOIN AdminProfiles ap ON u.id = ap.user_id WHERE LOWER(u.email) = LOWER(@email) AND u.status = 'APPROVED'
+                    ) AS combined LIMIT 1", conn);
+                cmd.Parameters.AddWithValue("email", identity);
+                var department = await cmd.ExecuteScalarAsync() as string;
+                return department == null ? (null, null) : (department, identity);
+            }
+
+            var resolved = await TryResolveAsync(preferredIdentity);
+            if (resolved.Department != null) return resolved;
+
+            if (!string.Equals(preferredIdentity, fallbackIdentity, StringComparison.OrdinalIgnoreCase))
+            {
+                resolved = await TryResolveAsync(fallbackIdentity);
+                if (resolved.Department != null) return resolved;
+            }
+
+            return (null, null);
+        }
+
         [HttpPost("record")]
         public async Task<IActionResult> RecordGrade([FromBody] GradeRequest request)
         {
@@ -91,24 +124,125 @@ namespace BlockGo.Controllers
                 using var conn = new NpgsqlConnection(_connectionString);
                 await conn.OpenAsync();
 
-                using var cmdFac = new NpgsqlCommand(@"
-                    SELECT department FROM (
-                        SELECT fp.department FROM Users u JOIN FacultyProfiles fp ON u.id = fp.user_id WHERE u.email = @email AND u.status = 'APPROVED'
-                        UNION 
-                        SELECT ap.department FROM Users u JOIN AdminProfiles ap ON u.id = ap.user_id WHERE u.email = @email AND u.status = 'APPROVED'
-                    ) AS combined LIMIT 1", conn);
-                cmdFac.Parameters.AddWithValue("email", request.FacultyId);
-                var facDept = await cmdFac.ExecuteScalarAsync() as string;
+                var jwtUser = User.Identity?.Name
+                    ?? User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Email)?.Value
+                    ?? User.Claims.FirstOrDefault(c => c.Type == "email")?.Value;
+
+                var resolvedFaculty = await ResolveApprovedAcademicIdentityAsync(
+                    conn,
+                    request.FacultyId,
+                    jwtUser
+                );
+                var facDept = resolvedFaculty.Department;
+                var effectiveFacultyId = resolvedFaculty.Identity;
                 if (facDept == null)
                     return BadRequest(new { status = "Error", message = "Faculty not approved or does not exist." });
 
-                using var cmdStu = new NpgsqlCommand("SELECT sp.department FROM Users u JOIN StudentProfiles sp ON u.id = sp.user_id WHERE u.email = @email AND u.role = 'student'", conn);
-                cmdStu.Parameters.AddWithValue("email", request.StudentHash);
-                var stuDept = await cmdStu.ExecuteScalarAsync() as string;
-                if (stuDept == null)
-                    return NotFound(new { status = "Error", message = "Student not found in registration logs." });
+                using var cmdStu = new NpgsqlCommand(@"
+                    SELECT sp.department, u.email
+                    FROM Users u
+                    JOIN StudentProfiles sp ON u.id = sp.user_id
+                    WHERE u.role = 'student'
+                      AND (
+                        LOWER(u.email) = LOWER(@studentHash)
+                        OR sp.student_no = @studentId
+                        OR LOWER(u.email) = LOWER(@studentId)
+                      )
+                    LIMIT 1", conn);
+                cmdStu.Parameters.AddWithValue("studentHash", request.StudentHash ?? (object)DBNull.Value);
+                cmdStu.Parameters.AddWithValue("studentId", request.StudentId ?? (object)DBNull.Value);
+                string? stuDept = null;
+                string? stuEmail = null;
+                string stuNumber = request.StudentId ?? "";
+                string stuName = request.StudentName ?? "";
+                using (var stuReader = await cmdStu.ExecuteReaderAsync())
+                {
+                    if (await stuReader.ReadAsync())
+                    {
+                        stuDept = stuReader.IsDBNull(0) ? null : stuReader.GetString(0);
+                        stuEmail = stuReader.IsDBNull(1) ? null : stuReader.GetString(1);
+                    }
+                }
+                if (stuDept == null || string.IsNullOrWhiteSpace(stuEmail))
+                {
+                    string defaultDob = "01/01/2005";
+                    string defaultPassword = "01/01/2005";
+                    string generatedEmail = !string.IsNullOrWhiteSpace(request.StudentId) && request.StudentId.Contains("@")
+                        ? request.StudentId
+                        : $"{request.StudentId}@plv.edu.ph";
+                    stuNumber = request.StudentId ?? "";
+                    stuName = !string.IsNullOrWhiteSpace(request.StudentName) ? request.StudentName : $"Student {request.StudentId}";
+
+                    using var txCreate = await conn.BeginTransactionAsync();
+
+                    using (var cmdUser = new NpgsqlCommand(
+                        "INSERT INTO Users (email, password_hash, role, status) VALUES (@email, crypt(@password, gen_salt('bf', 12)), 'student', 'APPROVED') RETURNING id",
+                        conn,
+                        txCreate))
+                    {
+                        cmdUser.Parameters.AddWithValue("email", generatedEmail);
+                        cmdUser.Parameters.AddWithValue("password", defaultPassword);
+                        int newUserId = (int)(await cmdUser.ExecuteScalarAsync() ?? throw new Exception("Failed to get ID"));
+
+                        using var cmdProfile = new NpgsqlCommand(@"
+                            INSERT INTO StudentProfiles (user_id, full_name, student_no, department, section, date_of_birth, assignment_status)
+                            VALUES (@uid, @name, @studentno, @dept, @sec, @dob, 'Enrolled')",
+                            conn,
+                            txCreate);
+                        cmdProfile.Parameters.AddWithValue("uid", newUserId);
+                        cmdProfile.Parameters.AddWithValue("name", "Student " + (request.StudentId ?? ""));
+                        cmdProfile.Parameters.AddWithValue("studentno", (object?)request.StudentId ?? DBNull.Value);
+                        cmdProfile.Parameters.AddWithValue("dept", request.Course ?? "Unassigned");
+                        cmdProfile.Parameters.AddWithValue("sec", DBNull.Value);
+                        cmdProfile.Parameters.AddWithValue("dob", DateTime.Parse(defaultDob));
+                        await cmdProfile.ExecuteNonQueryAsync();
+                    }
+
+                    await txCreate.CommitAsync();
+
+                    var payload = new { email = generatedEmail, role = "student", password = defaultPassword };
+                    var content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
+                    var middlewareUrl = _configuration["Middleware:Url"] ?? _configuration["MIDDLEWARE_URL"] ?? "http://127.0.0.1:4000";
+
+                    using var client = _httpClientFactory.CreateClient("FabricCAClient");
+                    var apiK = Environment.GetEnvironmentVariable("INTERNAL_API_KEY") ?? _configuration["InternalApiKey"] ?? throw new InvalidOperationException("Internal API Key not configured.");
+                    client.DefaultRequestHeaders.Add("x-api-key", apiK);
+
+                    var fabResponse = await client.PostAsync($"{middlewareUrl}/api/fabric/register-user", content);
+                    if (!fabResponse.IsSuccessStatusCode)
+                        throw new Exception($"Blockchain wallet auto-creation failed: {await fabResponse.Content.ReadAsStringAsync()}");
+
+                    stuEmail = generatedEmail;
+                    stuDept = request.Course ?? "Unassigned";
+                }
+
+                using (var cmdStuIdentity = new NpgsqlCommand(@"
+                    SELECT sp.student_no, sp.full_name
+                    FROM Users u
+                    JOIN StudentProfiles sp ON u.id = sp.user_id
+                    WHERE u.role = 'student'
+                      AND (
+                        LOWER(u.email) = LOWER(@studentHash)
+                        OR sp.student_no = @studentId
+                        OR LOWER(u.email) = LOWER(@studentId)
+                      )
+                    LIMIT 1", conn))
+                {
+                    cmdStuIdentity.Parameters.AddWithValue("studentHash", request.StudentHash ?? (object)DBNull.Value);
+                    cmdStuIdentity.Parameters.AddWithValue("studentId", request.StudentId ?? (object)DBNull.Value);
+                    using var identityReader = await cmdStuIdentity.ExecuteReaderAsync();
+                    if (await identityReader.ReadAsync())
+                    {
+                        if (!identityReader.IsDBNull(0)) stuNumber = identityReader.GetString(0);
+                        if (!identityReader.IsDBNull(1)) stuName = identityReader.GetString(1);
+                    }
+                }
 
                 var blockchainRecord = request.ToBlockchainRecord("PLV");
+                blockchainRecord.FacultyId = effectiveFacultyId ?? request.FacultyId ?? "";
+                blockchainRecord.StudentHash = stuEmail;
+                blockchainRecord.StudentNo = stuNumber;
+                blockchainRecord.StudentName = stuName;
                 
                 using var transaction = await conn.BeginTransactionAsync();
                 try
@@ -117,6 +251,8 @@ namespace BlockGo.Controllers
                         CREATE TABLE IF NOT EXISTS pending_grade_records (
                             id VARCHAR(255) PRIMARY KEY,
                             student_hash VARCHAR(255),
+                            student_no VARCHAR(255),
+                            student_name VARCHAR(255),
                             section VARCHAR(100),
                             course VARCHAR(255),
                             subject_code VARCHAR(100),
@@ -134,10 +270,18 @@ namespace BlockGo.Controllers
                     using var cmdEnsureGradeText = new NpgsqlCommand("ALTER TABLE pending_grade_records ALTER COLUMN grade TYPE TEXT;", conn, transaction);
                     await cmdEnsureGradeText.ExecuteNonQueryAsync();
 
+                    using var cmdEnsureIdentityColumns = new NpgsqlCommand(EnsurePendingGradeRecordIdentityColumnsSql(), conn, transaction);
+                    await cmdEnsureIdentityColumns.ExecuteNonQueryAsync();
+
+                    using var cmdEnsureUniqueConstraint = new NpgsqlCommand(EnsurePendingGradeSectionScopedConstraintSql(), conn, transaction);
+                    await cmdEnsureUniqueConstraint.ExecuteNonQueryAsync();
+
                     using var cmdStage = new NpgsqlCommand(@"
                         WITH updated AS (
                             UPDATE pending_grade_records
                             SET section = @sec,
+                                student_no = @studentNo,
+                                student_name = @studentName,
                                 course = @course,
                                 grade = @gr,
                                 faculty_id = @fac,
@@ -148,17 +292,22 @@ namespace BlockGo.Controllers
                               AND subject_code = @subj
                               AND school_year = @sy
                               AND semester = @sem
+                              AND section = @sec
                             RETURNING id
                         )
-                        INSERT INTO pending_grade_records (id, student_hash, section, course, subject_code, grade, semester, school_year, faculty_id, date, ipfs_cid, status)
-                        SELECT @id, @sh, @sec, @course, @subj, @gr, @sem, @sy, @fac, @dt, @ipfs, 'Issued'
+                        INSERT INTO pending_grade_records (id, student_hash, student_no, student_name, section, course, subject_code, grade, semester, school_year, faculty_id, date, ipfs_cid, status)
+                        SELECT @id, @sh, @studentNo, @studentName, @sec, @course, @subj, @gr, @sem, @sy, @fac, @dt, @ipfs, 'Issued'
                         WHERE NOT EXISTS (SELECT 1 FROM updated)
                         ON CONFLICT (id) DO UPDATE SET
+                            student_no = EXCLUDED.student_no,
+                            student_name = EXCLUDED.student_name,
                             grade = EXCLUDED.grade,
                             status = 'Issued',
                             date = EXCLUDED.date;", conn, transaction);
                     cmdStage.Parameters.AddWithValue("id", blockchainRecord.Id ?? (object)Guid.NewGuid().ToString());
                     cmdStage.Parameters.AddWithValue("sh", blockchainRecord.StudentHash ?? "");
+                    cmdStage.Parameters.AddWithValue("studentNo", blockchainRecord.StudentNo ?? "");
+                    cmdStage.Parameters.AddWithValue("studentName", blockchainRecord.StudentName ?? "");
                     cmdStage.Parameters.AddWithValue("sec", blockchainRecord.Section ?? "");
                     cmdStage.Parameters.AddWithValue("course", blockchainRecord.Course ?? "");
                     cmdStage.Parameters.AddWithValue("subj", blockchainRecord.SubjectCode ?? "");
@@ -170,6 +319,12 @@ namespace BlockGo.Controllers
                     cmdStage.Parameters.AddWithValue("ipfs", blockchainRecord.IpfsCid ?? "");
                     await cmdStage.ExecuteNonQueryAsync();
 
+                    using var cmdEnsureLogGradeText = new NpgsqlCommand(@"
+                        ALTER TABLE gradecorrectionlogs
+                        ALTER COLUMN oldgrade TYPE TEXT,
+                        ALTER COLUMN newgrade TYPE TEXT;", conn, transaction);
+                    await cmdEnsureLogGradeText.ExecuteNonQueryAsync();
+
                     using var cmdLog = new NpgsqlCommand(@"
                         INSERT INTO gradecorrectionlogs (recordid, oldgrade, newgrade, reasontext, approvedby, timestamp) 
                         VALUES (@rid, @old, @new, @reason, @appr, CURRENT_TIMESTAMP)", conn, transaction);
@@ -177,12 +332,12 @@ namespace BlockGo.Controllers
                     cmdLog.Parameters.AddWithValue("old", DBNull.Value);
                     cmdLog.Parameters.AddWithValue("new", request.Grade ?? "");
                     cmdLog.Parameters.AddWithValue("reason", "Initial Grade Entry (Staged)");
-                    cmdLog.Parameters.AddWithValue("appr", request.FacultyId ?? (object)DBNull.Value);
+                    cmdLog.Parameters.AddWithValue("appr", effectiveFacultyId ?? (object)DBNull.Value);
                     await cmdLog.ExecuteNonQueryAsync();
 
                     await transaction.CommitAsync();
 
-                    await NotifyAcademicDataChangedAsync("grade_recorded", blockchainRecord.Course, request.FacultyId);
+                    await NotifyAcademicDataChangedAsync("grade_recorded", blockchainRecord.Course, effectiveFacultyId);
                     return Ok(new { status = "Success", message = "Grade securely staged for Chairperson approval!" });
                 }
                 catch (Exception ex)
@@ -318,6 +473,127 @@ namespace BlockGo.Controllers
                 finals = finals > 0 ? finals.ToString("0.##") : "",
                 finalAverage = ToUniversityGrade(rawAverage).ToString("0.00")
             });
+        }
+
+        private static string? GetUploadedTermGrade(Func<string, string?> getter, string? term)
+        {
+            var activeTerm = string.Equals(term, "finals", StringComparison.OrdinalIgnoreCase) ? "finals" : "midterm";
+            return activeTerm == "finals"
+                ? getter("final_grade") ?? getter("finals_grade")
+                : getter("midterm_grade");
+        }
+
+        private static string? GetUploadedMidtermGrade(Func<string, string?> getter)
+        {
+            return getter("midterm_grade");
+        }
+
+        private static string? GetUploadedFinalGrade(Func<string, string?> getter)
+        {
+            return getter("final_grade") ?? getter("finals_grade");
+        }
+
+        private static string GetGradeLogValue(string? rawPayload, string? term)
+        {
+            if (string.IsNullOrWhiteSpace(rawPayload)) return "";
+
+            if (!rawPayload.TrimStart().StartsWith("{"))
+            {
+                return rawPayload.Length > 10 ? rawPayload.Substring(0, 10) : rawPayload;
+            }
+
+            try
+            {
+                using var doc = JsonDocument.Parse(rawPayload);
+                var activeTerm = string.Equals(term, "finals", StringComparison.OrdinalIgnoreCase) ? "finals" : "midterm";
+                var propertyName = activeTerm == "finals" ? "finals" : "midterm";
+
+                if (doc.RootElement.TryGetProperty(propertyName, out var gradeElement))
+                {
+                    var gradeValue = gradeElement.ToString() ?? "";
+                    return gradeValue.Length > 10 ? gradeValue.Substring(0, 10) : gradeValue;
+                }
+            }
+            catch
+            {
+            }
+
+            return "";
+        }
+
+        private static string EnsurePendingGradeSectionScopedConstraintSql() => @"
+            DO $$
+            BEGIN
+                IF EXISTS (
+                    SELECT 1
+                    FROM pg_constraint
+                    WHERE conname = 'unique_grade_entry'
+                ) THEN
+                    ALTER TABLE pending_grade_records DROP CONSTRAINT unique_grade_entry;
+                END IF;
+
+                IF NOT EXISTS (
+                    SELECT 1
+                    FROM pg_constraint
+                    WHERE conname = 'unique_grade_entry_section'
+                ) THEN
+                    ALTER TABLE pending_grade_records
+                    ADD CONSTRAINT unique_grade_entry_section
+                    UNIQUE (student_hash, subject_code, school_year, semester, section);
+                END IF;
+            END $$;";
+
+        private static string EnsurePendingGradeRecordIdentityColumnsSql() => @"
+            DO $$
+            BEGIN
+                IF NOT EXISTS (
+                    SELECT 1 FROM information_schema.columns
+                    WHERE table_name = 'pending_grade_records' AND column_name = 'student_no'
+                ) THEN
+                    ALTER TABLE pending_grade_records ADD COLUMN student_no VARCHAR(255);
+                END IF;
+
+                IF NOT EXISTS (
+                    SELECT 1 FROM information_schema.columns
+                    WHERE table_name = 'pending_grade_records' AND column_name = 'student_name'
+                ) THEN
+                    ALTER TABLE pending_grade_records ADD COLUMN student_name VARCHAR(255);
+                END IF;
+            END $$;";
+
+        private static string ResolveDisplaySection(string? recordSection, string? profileSection)
+        {
+            var normalizedRecordSection = string.IsNullOrWhiteSpace(recordSection) ? "" : recordSection.Trim();
+            if (!string.IsNullOrWhiteSpace(normalizedRecordSection))
+            {
+                return normalizedRecordSection;
+            }
+
+            var normalizedProfileSection = string.IsNullOrWhiteSpace(profileSection) ? "" : profileSection.Trim();
+            return string.IsNullOrWhiteSpace(normalizedProfileSection) ? "Unknown" : normalizedProfileSection;
+        }
+
+        private static string ResolveYearLevelFromSection(string? displaySection, string? profileSection)
+        {
+            var sectionSource = string.IsNullOrWhiteSpace(displaySection) ? profileSection : displaySection;
+            if (string.IsNullOrWhiteSpace(sectionSource))
+            {
+                return "Unknown";
+            }
+
+            var match = Regex.Match(sectionSource, @"\b([1-4])(?:st|nd|rd|th)?(?:\s*year)?\s*-\s*\d+\b", RegexOptions.IgnoreCase);
+            if (match.Success)
+            {
+                return match.Groups[1].Value;
+            }
+
+            var leadingDigitMatch = Regex.Match(sectionSource.Trim(), @"^([1-4])\b");
+            if (leadingDigitMatch.Success)
+            {
+                return leadingDigitMatch.Groups[1].Value;
+            }
+
+            return "Unknown";
         }
 
         [HttpPost("bulk-upload")]
@@ -461,9 +737,9 @@ namespace BlockGo.Controllers
                             {
                                 StudentId = sId ?? "",
                                 Grade = BuildUploadedGradePayload(
-                                    getVal("grade") ?? getVal("final_grade"),
-                                    getVal("midterm") ?? getVal("midterm_grade"),
-                                    getVal("finals") ?? getVal("finals_grade"),
+                                    GetUploadedTermGrade(getVal, term),
+                                    GetUploadedMidtermGrade(getVal),
+                                    GetUploadedFinalGrade(getVal),
                                     term),
                                 SubjectCode = getVal("subject_code") ?? course ?? "Unknown",
                                 SubjectName = getVal("subject_name") ?? getVal("course") ?? course ?? "Unknown",
@@ -504,9 +780,9 @@ namespace BlockGo.Controllers
                                 {
                                     StudentId = sId ?? "",
                                     Grade = BuildUploadedGradePayload(
-                                        GetCsvField(fields, headerMap, "grade") ?? GetCsvField(fields, headerMap, "final_grade"),
-                                        GetCsvField(fields, headerMap, "midterm") ?? GetCsvField(fields, headerMap, "midterm_grade"),
-                                        GetCsvField(fields, headerMap, "finals") ?? GetCsvField(fields, headerMap, "finals_grade"),
+                                        GetUploadedTermGrade((key) => GetCsvField(fields, headerMap, key), term),
+                                        GetUploadedMidtermGrade((key) => GetCsvField(fields, headerMap, key)),
+                                        GetUploadedFinalGrade((key) => GetCsvField(fields, headerMap, key)),
                                         term),
                                     SubjectCode = GetCsvField(fields, headerMap, "subject_code") ?? course ?? "Unknown",
                                     SubjectName = GetCsvField(fields, headerMap, "subject_name") ?? GetCsvField(fields, headerMap, "course") ?? course ?? "Unknown",
@@ -546,6 +822,8 @@ namespace BlockGo.Controllers
                             using var cmdStu = new NpgsqlCommand("SELECT sp.department, u.email FROM Users u JOIN StudentProfiles sp ON u.id = sp.user_id WHERE (sp.student_no = @sid OR u.email = @sid) AND u.role = 'student'", conn);
                             cmdStu.Parameters.AddWithValue("sid", record.StudentId);
                             string? stuDept = null, stuEmail = null;
+                            string stuNumber = record.StudentId ?? "";
+                            string stuName = record.StudentName ?? "";
                             using (var reader = await cmdStu.ExecuteReaderAsync())
                             {
                                 if (await reader.ReadAsync())
@@ -599,16 +877,32 @@ namespace BlockGo.Controllers
                                 
                                 stuEmail = generatedEmail;
                                 stuDept = course ?? "Unassigned";
+                                stuName = !string.IsNullOrWhiteSpace(record.StudentName) ? record.StudentName : $"Student {record.StudentId}";
                             }
 
-                            using var cmdFac = new NpgsqlCommand(@"
-                                SELECT department FROM (
-                                    SELECT fp.department FROM Users u JOIN FacultyProfiles fp ON u.id = fp.user_id WHERE u.email = @email AND u.status = 'APPROVED'
-                                    UNION 
-                                    SELECT ap.department FROM Users u JOIN AdminProfiles ap ON u.id = ap.user_id WHERE u.email = @email AND u.status = 'APPROVED'
-                                ) AS combined LIMIT 1", conn);
-                            cmdFac.Parameters.AddWithValue("email", facultyId ?? (object)DBNull.Value);
-                            var facDept = await cmdFac.ExecuteScalarAsync() as string;
+                            using (var cmdStuIdentity = new NpgsqlCommand(@"
+                                SELECT sp.student_no, sp.full_name
+                                FROM Users u
+                                JOIN StudentProfiles sp ON u.id = sp.user_id
+                                WHERE (sp.student_no = @sid OR u.email = @sid) AND u.role = 'student'
+                                LIMIT 1", conn))
+                            {
+                                cmdStuIdentity.Parameters.AddWithValue("sid", record.StudentId);
+                                using var identityReader = await cmdStuIdentity.ExecuteReaderAsync();
+                                if (await identityReader.ReadAsync())
+                                {
+                                    if (!identityReader.IsDBNull(0)) stuNumber = identityReader.GetString(0);
+                                    if (!identityReader.IsDBNull(1)) stuName = identityReader.GetString(1);
+                                }
+                            }
+
+                            var resolvedFaculty = await ResolveApprovedAcademicIdentityAsync(
+                                conn,
+                                facultyId,
+                                jwtUser
+                            );
+                            var facDept = resolvedFaculty.Department;
+                            var effectiveFacultyId = resolvedFaculty.Identity;
 
                             if (facDept == null)
                             {
@@ -620,7 +914,9 @@ namespace BlockGo.Controllers
 
                             var blockchainRecord = record.ToBlockchainRecord("PLV");
                             blockchainRecord.StudentHash = stuEmail ?? "";
-                            blockchainRecord.FacultyId = facultyId ?? "";
+                            blockchainRecord.StudentNo = stuNumber;
+                            blockchainRecord.StudentName = stuName;
+                            blockchainRecord.FacultyId = effectiveFacultyId ?? facultyId ?? "";
                             blockchainRecord.IpfsCid = ipfsCid;
                                 
                             using var transaction = await conn.BeginTransactionAsync();
@@ -630,6 +926,8 @@ namespace BlockGo.Controllers
                                     CREATE TABLE IF NOT EXISTS pending_grade_records (
                                         id VARCHAR(255) PRIMARY KEY,
                                         student_hash VARCHAR(255),
+                                        student_no VARCHAR(255),
+                                        student_name VARCHAR(255),
                                         section VARCHAR(100),
                                         course VARCHAR(255),
                                         subject_code VARCHAR(100),
@@ -647,21 +945,29 @@ namespace BlockGo.Controllers
                                 using var cmdEnsureGradeText = new NpgsqlCommand("ALTER TABLE pending_grade_records ALTER COLUMN grade TYPE TEXT;", conn, transaction);
                                 await cmdEnsureGradeText.ExecuteNonQueryAsync();
 
-                                using var cmdAddConstraint = new NpgsqlCommand(@"
-                                    DO $$ 
-                                    BEGIN 
-                                        IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'unique_grade_entry') THEN
-                                            ALTER TABLE pending_grade_records ADD CONSTRAINT unique_grade_entry UNIQUE (student_hash, subject_code, school_year, semester);
-                                        END IF;
-                                    END $$;", conn, transaction);
+                                using var cmdEnsureIdentityColumns = new NpgsqlCommand(EnsurePendingGradeRecordIdentityColumnsSql(), conn, transaction);
+                                await cmdEnsureIdentityColumns.ExecuteNonQueryAsync();
+
+                                using var cmdAddConstraint = new NpgsqlCommand(EnsurePendingGradeSectionScopedConstraintSql(), conn, transaction);
                                 await cmdAddConstraint.ExecuteNonQueryAsync();
 
                                 using var cmdStage = new NpgsqlCommand(@"
-                                    INSERT INTO pending_grade_records (id, student_hash, section, course, subject_code, grade, semester, school_year, faculty_id, date, ipfs_cid, status)
-                                    VALUES (@id, @sh, @sec, @course, @subj, @gr, @sem, @sy, @fac, @dt, @ipfs, 'Issued')
-                                    ON CONFLICT (id) DO UPDATE SET grade = EXCLUDED.grade, status = 'Issued', ipfs_cid = EXCLUDED.ipfs_cid, date = EXCLUDED.date;", conn, transaction);
+                                    INSERT INTO pending_grade_records (id, student_hash, student_no, student_name, section, course, subject_code, grade, semester, school_year, faculty_id, date, ipfs_cid, status)
+                                    VALUES (@id, @sh, @studentNo, @studentName, @sec, @course, @subj, @gr, @sem, @sy, @fac, @dt, @ipfs, 'Issued')
+                                    ON CONFLICT ON CONSTRAINT unique_grade_entry_section DO UPDATE SET
+                                        student_no = EXCLUDED.student_no,
+                                        student_name = EXCLUDED.student_name,
+                                        section = EXCLUDED.section,
+                                        course = EXCLUDED.course,
+                                        grade = EXCLUDED.grade,
+                                        faculty_id = EXCLUDED.faculty_id,
+                                        date = EXCLUDED.date,
+                                        ipfs_cid = EXCLUDED.ipfs_cid,
+                                        status = 'Issued';", conn, transaction);
                                 cmdStage.Parameters.AddWithValue("id", blockchainRecord.Id ?? Guid.NewGuid().ToString());
                                 cmdStage.Parameters.AddWithValue("sh", blockchainRecord.StudentHash ?? "");
+                                cmdStage.Parameters.AddWithValue("studentNo", blockchainRecord.StudentNo ?? "");
+                                cmdStage.Parameters.AddWithValue("studentName", blockchainRecord.StudentName ?? "");
                                 cmdStage.Parameters.AddWithValue("sec", blockchainRecord.Section ?? "");
                                 cmdStage.Parameters.AddWithValue("course", blockchainRecord.Course ?? "");
                                 cmdStage.Parameters.AddWithValue("subj", blockchainRecord.SubjectCode ?? "");
@@ -673,14 +979,20 @@ namespace BlockGo.Controllers
                                 cmdStage.Parameters.AddWithValue("ipfs", blockchainRecord.IpfsCid ?? "");
                                 await cmdStage.ExecuteNonQueryAsync();
 
+                                using var cmdEnsureLogGradeText = new NpgsqlCommand(@"
+                                    ALTER TABLE gradecorrectionlogs
+                                    ALTER COLUMN oldgrade TYPE TEXT,
+                                    ALTER COLUMN newgrade TYPE TEXT;", conn, transaction);
+                                await cmdEnsureLogGradeText.ExecuteNonQueryAsync();
+
                                 using var cmdLog = new NpgsqlCommand(@"
                                     INSERT INTO gradecorrectionlogs (recordid, oldgrade, newgrade, reasontext, approvedby, timestamp) 
                                     VALUES (@rid, @old, @new, @reason, @appr, CURRENT_TIMESTAMP)", conn, transaction);
                                 cmdLog.Parameters.AddWithValue("rid", blockchainRecord.Id);
                                 cmdLog.Parameters.AddWithValue("old", (object)DBNull.Value);
-                                cmdLog.Parameters.AddWithValue("new", record.Grade ?? "");
+                                cmdLog.Parameters.AddWithValue("new", GetGradeLogValue(record.Grade, term));
                                 cmdLog.Parameters.AddWithValue("reason", "Bulk Excel/CSV Upload (Staged)");
-                                cmdLog.Parameters.AddWithValue("appr", facultyId ?? (object)DBNull.Value);
+                                cmdLog.Parameters.AddWithValue("appr", effectiveFacultyId ?? facultyId ?? (object)DBNull.Value);
                                 await cmdLog.ExecuteNonQueryAsync();
                                 
                                 await transaction.CommitAsync();
@@ -858,27 +1170,32 @@ namespace BlockGo.Controllers
                 using var conn = new NpgsqlConnection(_connectionString);
                 await conn.OpenAsync();
                 
-                using var cmdInitTable = new NpgsqlCommand("CREATE TABLE IF NOT EXISTS pending_grade_records (id VARCHAR(255) PRIMARY KEY, student_hash VARCHAR(255), section VARCHAR(100), course VARCHAR(255), subject_code VARCHAR(100), grade TEXT, semester VARCHAR(50), school_year VARCHAR(50), faculty_id VARCHAR(255), date VARCHAR(50), ipfs_cid VARCHAR(255), status VARCHAR(50), note TEXT);", conn);
+                using var cmdInitTable = new NpgsqlCommand("CREATE TABLE IF NOT EXISTS pending_grade_records (id VARCHAR(255) PRIMARY KEY, student_hash VARCHAR(255), student_no VARCHAR(255), student_name VARCHAR(255), section VARCHAR(100), course VARCHAR(255), subject_code VARCHAR(100), grade TEXT, semester VARCHAR(50), school_year VARCHAR(50), faculty_id VARCHAR(255), date VARCHAR(50), ipfs_cid VARCHAR(255), status VARCHAR(50), note TEXT);", conn);
                 await cmdInitTable.ExecuteNonQueryAsync();
 
-                using var cmd = new NpgsqlCommand("SELECT id, student_hash, section, course, subject_code, grade, semester, school_year, faculty_id, date, ipfs_cid, status, note FROM pending_grade_records", conn);
+                using var cmdEnsureIdentityColumns = new NpgsqlCommand(EnsurePendingGradeRecordIdentityColumnsSql(), conn);
+                await cmdEnsureIdentityColumns.ExecuteNonQueryAsync();
+
+                using var cmd = new NpgsqlCommand("SELECT id, student_hash, student_no, student_name, section, course, subject_code, grade, semester, school_year, faculty_id, date, ipfs_cid, status, note FROM pending_grade_records", conn);
                 using var reader = await cmd.ExecuteReaderAsync();
                 while (await reader.ReadAsync())
                 {
                     allGrades.Add(new AcademicRecord {
                         Id = reader.IsDBNull(0) ? "" : reader.GetString(0),
                         StudentHash = reader.IsDBNull(1) ? "" : reader.GetString(1),
-                        Section = reader.IsDBNull(2) ? "" : reader.GetString(2),
-                        Course = reader.IsDBNull(3) ? "" : reader.GetString(3),
-                        SubjectCode = reader.IsDBNull(4) ? "" : reader.GetString(4),
-                        Grade = reader.IsDBNull(5) ? "" : reader.GetString(5),
-                        Semester = reader.IsDBNull(6) ? "" : reader.GetString(6),
-                        SchoolYear = reader.IsDBNull(7) ? "" : reader.GetString(7),
-                        FacultyId = reader.IsDBNull(8) ? "" : reader.GetString(8),
-                        Date = reader.IsDBNull(9) ? "" : reader.GetString(9),
-                        IpfsCid = reader.IsDBNull(10) ? "" : reader.GetString(10),
-                        Status = reader.IsDBNull(11) ? "" : reader.GetString(11),
-                        Note = reader.IsDBNull(12) ? "" : reader.GetString(12),
+                        StudentNo = reader.IsDBNull(2) ? "" : reader.GetString(2),
+                        StudentName = reader.IsDBNull(3) ? "" : reader.GetString(3),
+                        Section = reader.IsDBNull(4) ? "" : reader.GetString(4),
+                        Course = reader.IsDBNull(5) ? "" : reader.GetString(5),
+                        SubjectCode = reader.IsDBNull(6) ? "" : reader.GetString(6),
+                        Grade = reader.IsDBNull(7) ? "" : reader.GetString(7),
+                        Semester = reader.IsDBNull(8) ? "" : reader.GetString(8),
+                        SchoolYear = reader.IsDBNull(9) ? "" : reader.GetString(9),
+                        FacultyId = reader.IsDBNull(10) ? "" : reader.GetString(10),
+                        Date = reader.IsDBNull(11) ? "" : reader.GetString(11),
+                        IpfsCid = reader.IsDBNull(12) ? "" : reader.GetString(12),
+                        Status = reader.IsDBNull(13) ? "" : reader.GetString(13),
+                        Note = reader.IsDBNull(14) ? "" : reader.GetString(14),
                         University = "PLV",
                         Version = 1
                     });
@@ -890,14 +1207,16 @@ namespace BlockGo.Controllers
 
                 var enrichedGrades = new List<Dictionary<string, object>>();
                 
-                using var cmdProfiles = new NpgsqlCommand("SELECT u.email, sp.department, sp.section FROM Users u JOIN StudentProfiles sp ON u.id = sp.user_id", conn);
-                var studentProfiles = new Dictionary<string, (string dept, string sec)>();
+                using var cmdProfiles = new NpgsqlCommand("SELECT u.email, sp.department, sp.section, sp.student_no, sp.full_name FROM Users u JOIN StudentProfiles sp ON u.id = sp.user_id", conn);
+                var studentProfiles = new Dictionary<string, (string dept, string sec, string studentNo, string fullName)>();
                 using var profReader = await cmdProfiles.ExecuteReaderAsync();
                 while (await profReader.ReadAsync())
                 {
                     studentProfiles[profReader.GetString(0)] = (
                         profReader.IsDBNull(1) ? "Unknown" : profReader.GetString(1),
-                        profReader.IsDBNull(2) ? "Unknown" : profReader.GetString(2)
+                        profReader.IsDBNull(2) ? "Unknown" : profReader.GetString(2),
+                        profReader.IsDBNull(3) ? "" : profReader.GetString(3),
+                        profReader.IsDBNull(4) ? "" : profReader.GetString(4)
                     );
                 }
                 await profReader.CloseAsync();
@@ -905,16 +1224,20 @@ namespace BlockGo.Controllers
                 foreach(var g in allGrades) 
                 {
                     string dept = "Unknown";
-                    string sec = g.Section ?? "Unknown";
-                    string year = "Unknown";
+                    string profileSection = "Unknown";
+                    string sec = ResolveDisplaySection(g.Section, null);
+                    string year = ResolveYearLevelFromSection(sec, null);
+                    string studentNo = g.StudentNo ?? "";
+                    string studentName = g.StudentName ?? "";
                     
                     if (g.StudentHash != null && studentProfiles.TryGetValue(g.StudentHash, out var prof))
                     {
                         dept = prof.dept;
-                        sec = prof.sec;
-                        if (!string.IsNullOrEmpty(sec) && sec.Length >= 1 && char.IsDigit(sec[0])) {
-                            year = sec[0].ToString();
-                        }
+                        profileSection = prof.sec;
+                        sec = ResolveDisplaySection(g.Section, prof.sec);
+                        if (string.IsNullOrWhiteSpace(studentNo)) studentNo = prof.studentNo;
+                        if (string.IsNullOrWhiteSpace(studentName)) studentName = prof.fullName;
+                        year = ResolveYearLevelFromSection(sec, prof.sec);
                     }
 
                     string safeStudentHash = g.StudentHash ?? "";
@@ -929,8 +1252,13 @@ namespace BlockGo.Controllers
                     enrichedGrades.Add(new Dictionary<string, object> {
                         { "id", g.Id ?? "" },
                         { "student_hash", safeStudentHash },
-                        { "studentId", safeStudentHash },
+                        { "studentId", !string.IsNullOrWhiteSpace(studentNo) ? studentNo : safeStudentHash },
+                        { "student_no", studentNo },
+                        { "studentNo", studentNo },
+                        { "student_name", studentName },
                         { "section", sec },
+                        { "record_section", g.Section ?? "" },
+                        { "student_section", profileSection },
                         { "course", g.Course ?? "" },
                         { "subject_code", g.SubjectCode ?? "" },
                         { "grade", g.Grade ?? "" },

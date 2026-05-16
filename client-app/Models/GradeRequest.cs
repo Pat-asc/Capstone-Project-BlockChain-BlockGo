@@ -6,6 +6,9 @@ namespace BlockGo.Models
     {
         [JsonPropertyName("student_id")]
         public string StudentId { get; set; } = string.Empty;
+
+        [JsonPropertyName("student_name")]
+        public string StudentName { get; set; } = string.Empty;
         
         [JsonPropertyName("course")]
         public string Course { get; set; } = string.Empty;

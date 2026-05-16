@@ -5,21 +5,27 @@ import {
   YEAR_LEVEL_PREFIXES,
   downloadStudentCsvFile,
   getDefaultSectionName,
+  getStudentMiddleName,
   parseStudentIdSpreadsheet,
   syncSectionedStudentsToStorage,
 } from "../../utils/studentSectioningHelpers";
 
-const buildStudentName = (student) =>
-  [student.lastName, student.firstName, student.middleInitial]
+const buildStudentName = (student) => {
+  const firstAndMiddle = [
+    student.firstName,
+    getStudentMiddleName(student),
+  ]
     .filter(Boolean)
-    .join(", ")
-    .replace(", ,", ",");
+    .join(" ");
+
+  return [student.lastName, firstAndMiddle].filter(Boolean).join(", ");
+};
 
 const compareStudentsByName = (left, right) => {
   const leftName = [
     left.lastName,
     left.firstName,
-    left.middleInitial,
+    getStudentMiddleName(left),
     left.studentId,
   ]
     .join(" ")
@@ -27,7 +33,7 @@ const compareStudentsByName = (left, right) => {
   const rightName = [
     right.lastName,
     right.firstName,
-    right.middleInitial,
+    getStudentMiddleName(right),
     right.studentId,
   ]
     .join(" ")
@@ -194,7 +200,7 @@ function StudentSectioning({
     sex: "",
     lastName: "",
     firstName: "",
-    middleInitial: "",
+    middleName: "",
   });
 
   const departmentBatches = useMemo(() => {
@@ -648,12 +654,30 @@ function StudentSectioning({
       yearLevel: targetYearLevel,
       sectionCount: requestedSectionCount,
     });
+    const existingYearSections = (workspace.sectionPlans || []).filter((section) =>
+      sectionMatchesYearLevel(section, targetYearLevel)
+    );
+    const existingYearSectionsByCode = new Map(
+      existingYearSections.map((section) => [section.sectionCode, section])
+    );
+    const missingSections = generatedSections.filter(
+      (section) => !existingYearSectionsByCode.has(section.sectionCode)
+    );
+    const mergedYearSections = [...existingYearSections, ...missingSections].sort(
+      (left, right) => String(left.sectionCode || "").localeCompare(String(right.sectionCode || ""))
+    );
+    const mergedYearSectionCodes = new Set(
+      mergedYearSections.map((section) => section.sectionCode)
+    );
     const studentsForYear = (workspace.students || []).filter(
       (student) => (student.yearLevel || targetYearLevel) === targetYearLevel
     );
+    const studentsNeedingSection = studentsForYear.filter(
+      (student) => !mergedYearSectionCodes.has(student.sectionCode)
+    );
     const assignedStudentsById = new Map(
-      studentsForYear.map((student, index) => {
-        const targetSection = generatedSections[index % generatedSections.length];
+      studentsNeedingSection.map((student, index) => {
+        const targetSection = mergedYearSections[index % mergedYearSections.length];
 
         return [
           student.studentId,
@@ -674,7 +698,7 @@ function StudentSectioning({
         ...(workspace.sectionPlans || []).filter(
           (section) => (section.yearLevel || "") !== targetYearLevel
         ),
-        ...generatedSections,
+        ...mergedYearSections,
       ],
       students: (workspace.students || []).map((student) =>
         assignedStudentsById.get(student.studentId) || student
@@ -689,11 +713,11 @@ function StudentSectioning({
     setSelectedBatchKey(workspaceKey);
     setSectioningBatchYear(workspace.batchYear || sectioningBatchYear);
     setSelectedYearLevel(targetYearLevel);
-    setSelectedSectionCode(generatedSections[0]?.sectionCode || "");
+    setSelectedSectionCode(mergedYearSections[0]?.sectionCode || "");
 
-    if (!workspace.students.length) {
+    if (!studentsForYear.length) {
       alert(
-        `${generatedSections.length} empty 1st Year section${generatedSections.length === 1 ? "" : "s"} created for ${workspace.program}.`
+        `${missingSections.length || mergedYearSections.length} empty 1st Year section${(missingSections.length || mergedYearSections.length) === 1 ? "" : "s"} created for ${workspace.program}.`
       );
     }
   };
@@ -853,7 +877,8 @@ function StudentSectioning({
         sex: removedStudent.sex || "",
         lastName: removedStudent.lastName || "",
         firstName: removedStudent.firstName || "",
-        middleInitial: removedStudent.middleInitial || "",
+        middleName: getStudentMiddleName(removedStudent),
+        middleInitial: removedStudent.middleInitial || getStudentMiddleName(removedStudent),
         yearLevel: originalSectionExists
           ? removedStudent.yearLevel || selectedYearLevel
           : "",
@@ -891,7 +916,7 @@ function StudentSectioning({
       !lateStudent.sex ||
       !lateStudent.lastName.trim() ||
       !lateStudent.firstName.trim() ||
-      !lateStudent.middleInitial.trim()
+      !lateStudent.middleName.trim()
     ) {
       alert("Complete all late enrollee fields before adding the student.");
       return;
@@ -912,7 +937,8 @@ function StudentSectioning({
       sex: lateStudent.sex,
       lastName: lateStudent.lastName.trim(),
       firstName: lateStudent.firstName.trim(),
-      middleInitial: lateStudent.middleInitial.trim().slice(0, 2),
+      middleName: lateStudent.middleName.trim(),
+      middleInitial: lateStudent.middleName.trim(),
       yearLevel: targetSection ? targetSection.yearLevel || selectedYearLevel : "",
       sectionCode: targetSection?.sectionCode || "",
       sectionName: targetSection
@@ -933,7 +959,7 @@ function StudentSectioning({
       sex: "",
       lastName: "",
       firstName: "",
-      middleInitial: "",
+      middleName: "",
     });
   };
 
@@ -991,7 +1017,7 @@ function StudentSectioning({
 
         if (!parsedStudents.length) {
           alert(
-            "The section CSV must contain Student ID, Sex, Last Name, First Name, and Middle Initial columns with valid rows."
+            "The section CSV must contain Student ID, Sex, Last Name, First Name, and Middle Name columns with valid rows."
           );
           return;
         }
@@ -1383,7 +1409,8 @@ function StudentSectioning({
         studentId,
         firstName: student.firstName,
         lastName: student.lastName,
-        middleInitial: student.middleInitial || "",
+        middleName: getStudentMiddleName(student),
+        middleInitial: student.middleInitial || getStudentMiddleName(student),
         sex: student.sex || "",
         program: batch.program,
         mainBatchYear: batch.batchYear,
@@ -2781,11 +2808,11 @@ function StudentSectioning({
                 />
                 <input
                   type="text"
-                  value={lateStudent.middleInitial}
+                  value={lateStudent.middleName}
                   onChange={(event) =>
-                    handleLateStudentChange("middleInitial", event.target.value)
+                    handleLateStudentChange("middleName", event.target.value)
                   }
-                  placeholder="M.I."
+                  placeholder="Middle name"
                   className="rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-[#003366]"
                 />
                 <button

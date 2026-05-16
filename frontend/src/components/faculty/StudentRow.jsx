@@ -81,7 +81,7 @@ const StudentRow = ({
             ? "text-green-600"
             : status === "Failed"
             ? "text-red-600"
-            : "text-amber-600"
+            : "text-slate-500"
         }`}
       >
         {status}
@@ -95,10 +95,10 @@ const StudentRow = ({
           className="rounded-lg border border-slate-300 px-3 py-2 text-sm disabled:bg-slate-100 disabled:text-slate-400"
         >
           <option value="active">Active</option>
-          <option value="dropped">Dropped</option>
-          <option value="unofficially_dropped">UD</option>
-          <option value="withdrawn">W</option>
-          <option value="incomplete">INC</option>
+          <option value="dropped">Dropped (D)</option>
+          <option value="unofficially_dropped">Unofficial Dropped (UD)</option>
+          <option value="withdrawn">Withdrawn (W)</option>
+          <option value="incomplete">Incomplete (INC)</option>
         </select>
       </td>
 

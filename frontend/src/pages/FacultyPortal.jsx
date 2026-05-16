@@ -50,6 +50,11 @@ const compareStudentsByName = (left, right) => {
   return leftName.localeCompare(rightName);
 };
 
+const getOptionalAssignmentValue = (value) => {
+  const normalizedValue = String(value || "").trim();
+  return normalizedValue || "Not Available";
+};
+
 const FacultyPortal = ({ onLogout, allGrades, setAllGrades }) => {
   const [activeTab, setActiveTab] = useState("All Sections");
   const [selectedProgram, setSelectedProgram] = useState("");
@@ -194,8 +199,9 @@ const FacultyPortal = ({ onLogout, allGrades, setAllGrades }) => {
         subjectTitle: assign.subjectTitle,
         sectionCourse: assign.program,
         units: assign.units || 3,
-        schedule: assign.schedule || "TBA",
-        day: assign.day || "TBA",
+        schedule: getOptionalAssignmentValue(assign.schedule),
+        day: getOptionalAssignmentValue(assign.day),
+        date: getOptionalAssignmentValue(assign.date),
         semester: assign.semester,
         schoolYear: assign.schoolYear,
         students: Array.from(rosterById.values()).sort(compareStudentsByName),

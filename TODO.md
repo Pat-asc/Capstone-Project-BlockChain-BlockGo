@@ -9,5 +9,7 @@
 - [ ] Test: start stack with one nginx-shield stopped/removed and verify backend/middleware endpoints still reachable
 
 ##
-- [ ] Fix Bulk Upload Function (pls priority this, may ui na sa registrar)
-- [ ] Add Revoke Account
+- [x] Fix Bulk Upload Function (pls priority this, may ui na sa registrar)
+- [x] Add Revoke Account
+
+-[ ] Uploading of Grades to Chairperson

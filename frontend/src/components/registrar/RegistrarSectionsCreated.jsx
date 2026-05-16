@@ -5,6 +5,7 @@ import {
   YEAR_LEVEL_PREFIXES,
   downloadStudentCsvFile,
   getDefaultSectionName,
+  getStudentMiddleName,
   parseStudentIdSpreadsheet,
   syncSectionedStudentsToStorage,
 } from "../../utils/studentSectioningHelpers";
@@ -25,11 +26,16 @@ const getStoredArray = (key) => {
   return saved ? JSON.parse(saved) : [];
 };
 
-const buildStudentName = (student) =>
-  [student.lastName, student.firstName, student.middleInitial]
+const buildStudentName = (student) => {
+  const firstAndMiddle = [
+    student.firstName,
+    getStudentMiddleName(student),
+  ]
     .filter(Boolean)
-    .join(", ")
-    .replace(", ,", ",");
+    .join(" ");
+
+  return [student.lastName, firstAndMiddle].filter(Boolean).join(", ");
+};
 
 const sectionMatchesYearLevel = (section = {}, yearLevel = "1st Year") => {
   const yearPrefix = YEAR_LEVEL_PREFIXES[yearLevel] || "";
@@ -95,7 +101,7 @@ function RegistrarSectionsCreated() {
     sex: "",
     lastName: "",
     firstName: "",
-    middleInitial: "",
+    middleName: "",
   });
   const [promotionSummary, setPromotionSummary] = useState(null);
   const [changedDepartments, setChangedDepartments] = useState(() => new Set());
@@ -294,7 +300,7 @@ function RegistrarSectionsCreated() {
 
         if (!parsedStudents.length) {
           alert(
-            "The section CSV must contain Student ID, Sex, Last Name, First Name, and Middle Initial columns with valid rows."
+            "The section CSV must contain Student ID, Sex, Last Name, First Name, and Middle Name columns with valid rows."
           );
           return;
         }
@@ -409,7 +415,8 @@ function RegistrarSectionsCreated() {
             sex: removedStudent.sex || "",
             lastName: removedStudent.lastName || "",
             firstName: removedStudent.firstName || "",
-            middleInitial: removedStudent.middleInitial || "",
+            middleName: getStudentMiddleName(removedStudent),
+            middleInitial: removedStudent.middleInitial || getStudentMiddleName(removedStudent),
             yearLevel: restoredSectionExists
               ? removedStudent.yearLevel || activeYearLevel
               : activeYearLevel,
@@ -438,7 +445,7 @@ function RegistrarSectionsCreated() {
       !studentForm.sex ||
       !studentForm.lastName.trim() ||
       !studentForm.firstName.trim() ||
-      !studentForm.middleInitial.trim()
+      !studentForm.middleName.trim()
     ) {
       alert("Complete all student fields before adding.");
       return;
@@ -461,7 +468,8 @@ function RegistrarSectionsCreated() {
           sex: studentForm.sex,
           lastName: studentForm.lastName.trim(),
           firstName: studentForm.firstName.trim(),
-          middleInitial: studentForm.middleInitial.trim().slice(0, 2),
+          middleName: studentForm.middleName.trim(),
+          middleInitial: studentForm.middleName.trim(),
           yearLevel: selectedSection.yearLevel || activeYearLevel,
           sectionCode: selectedSection.sectionCode,
           sectionName:
@@ -476,7 +484,7 @@ function RegistrarSectionsCreated() {
       sex: "",
       lastName: "",
       firstName: "",
-      middleInitial: "",
+      middleName: "",
     });
   };
 
@@ -1067,7 +1075,7 @@ function RegistrarSectionsCreated() {
                         {[
                           ["lastName", "Last name"],
                           ["firstName", "First name"],
-                          ["middleInitial", "M.I."],
+                          ["middleName", "Middle name"],
                         ].map(([field, placeholder]) => (
                           <input
                             key={field}

@@ -4,6 +4,7 @@ import {
   STUDENT_BATCHES_KEY,
   downloadStudentCsvFile,
   getDefaultSectionName,
+  parseCsvRows,
   parseStudentIdSpreadsheet,
 } from "../../utils/studentSectioningHelpers";
 import {
@@ -22,31 +23,9 @@ const DAY_OPTIONS = [
   "Saturday",
 ];
 
-const parseCsvRows = (csvText = "") => {
-  const rows = csvText
-    .split(/\r?\n/)
-    .map((line) => line.trim())
-    .filter(Boolean)
-    .map((line) =>
-      line
-        .split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/)
-        .map((value) => value.replace(/^"|"$/g, "").trim())
-    );
-
-  const [headers = [], ...dataRows] = rows;
-  const normalizedHeaders = headers.map((header) =>
-    header.toLowerCase().replace(/\s+/g, " ")
-  );
-
-  return dataRows.map((row) =>
-    normalizedHeaders.reduce((record, header, index) => {
-      record[header] = row[index] || "";
-      return record;
-    }, {})
-  );
-};
-
 const normalizeText = (value = "") => String(value).trim().toLowerCase();
+const normalizeHeader = (value = "") =>
+  normalizeText(String(value).replace(/[_-]+/g, " "));
 const getFacultyDisplayName = (faculty = {}) =>
   faculty.fullname ||
   faculty.fullName ||
@@ -57,6 +36,44 @@ const getFacultyKey = (faculty = {}) =>
   String(faculty.id || faculty.email || getFacultyDisplayName(faculty));
 const getFacultyDepartment = (faculty = {}) =>
   faculty.department || faculty.program || "";
+const buildFacultyLoadingKey = (item = {}) =>
+  [
+    normalizeText(item.facultyId || item.id),
+    normalizeText(item.sectionName || item.section),
+    normalizeText(item.schoolYear),
+    normalizeText(item.semester),
+    normalizeText(item.subjectCode || item.subject),
+  ].join("|");
+const getCsvRowValue = (row = {}, acceptedHeaders = []) => {
+  for (const header of acceptedHeaders) {
+    const value = row[normalizeHeader(header)];
+    if (String(value || "").trim()) {
+      return String(value).trim();
+    }
+  }
+
+  return "";
+};
+const mapFacultyLoadingRows = (csvText = "") => {
+  const rows = parseCsvRows(csvText);
+
+  if (rows.length < 2) {
+    return { headers: [], rows: [] };
+  }
+
+  const [headerRow = [], ...dataRows] = rows;
+  const headers = headerRow.map((header) => normalizeHeader(header));
+  const mappedRows = dataRows
+    .filter((row) => row.some((value) => String(value).trim()))
+    .map((row) =>
+      headers.reduce((record, header, index) => {
+        record[header] = row[index]?.trim() || "";
+        return record;
+      }, {})
+    );
+
+  return { headers, rows: mappedRows };
+};
 
 const syncFacultyLoadToBackend = (assignment) => {
   assignFacultyLoadToBackend(assignment).catch((error) => {
@@ -82,6 +99,7 @@ function AcademicAssignment({ chairpersonDepartment = "" }) {
   const [facultyLoadingFile, setFacultyLoadingFile] = useState(null);
   const [facultyLoadingPreview, setFacultyLoadingPreview] = useState([]);
   const [facultyLoadingErrors, setFacultyLoadingErrors] = useState([]);
+  const [facultyLoadingSummary, setFacultyLoadingSummary] = useState(null);
   const [approvedFaculties, setApprovedFaculties] = useState([]);
 
   const [savedAssignments, setSavedAssignments] = useState(() => {
@@ -338,59 +356,136 @@ function AcademicAssignment({ chairpersonDepartment = "" }) {
         section.section.toLowerCase() === sectionName.trim().toLowerCase()
     );
 
-  const buildFacultyLoadingPreview = (rows) => {
+  const findFacultyForLoadingRow = (row = {}) => {
+    const facultyId = getCsvRowValue(row, ["faculty id", "id"]);
+    const facultyName = getCsvRowValue(row, [
+      "faculty name",
+      "faculty",
+      "name",
+      "full name",
+    ]);
+
+    if (facultyId) {
+      return (
+        filteredFaculty.find(
+          (item) => normalizeText(getFacultyKey(item)) === normalizeText(facultyId)
+        ) || null
+      );
+    }
+
+    if (facultyName) {
+      return (
+        filteredFaculty.find(
+          (item) =>
+            normalizeText(getFacultyDisplayName(item)) === normalizeText(facultyName)
+        ) || null
+      );
+    }
+
+    return null;
+  };
+
+  const buildFacultyLoadingPreview = (rows, headers = []) => {
     const previewRows = [];
     const errors = [];
+    const duplicateKeys = new Set();
+    const knownSections = filteredSections.map((section) => section.section).sort();
+    const hasFacultyIdentifierColumn =
+      headers.includes("faculty id") ||
+      headers.includes("faculty name") ||
+      headers.includes("faculty") ||
+      headers.includes("name");
+
+    if (
+      !hasFacultyIdentifierColumn ||
+      !headers.includes("subject title") ||
+      !headers.includes("subject code") ||
+      !headers.includes("section")
+    ) {
+      return {
+        previewRows,
+        errors: [
+          "Missing required CSV headers. Use Faculty ID or Faculty Name, plus Subject Title, Subject Code, and Section.",
+        ],
+        summary: {
+          totalRows: rows.length,
+          acceptedRows: 0,
+          rejectedRows: rows.length,
+        },
+      };
+    }
 
     rows.forEach((row, index) => {
       const rowNumber = index + 2;
-      const facultyName = row["faculty name"] || row.faculty || row.name;
-      const rowSubjectTitle =
-        row["subject title"] || row["subject name"] || row.subject;
-      const rowSubjectCode = row["subject code"] || row.code;
-      const sectionName = row.section || row["section name"];
-      const rowSemester = row.semester || semester || "2nd Semester";
-      const rowUnits = row.units || "3";
-      const rowDate = row.date || "";
-      const rowDay = row.day || "";
-      const rowTime = row.time || row.schedule || "";
+      const facultyName = getCsvRowValue(row, [
+        "faculty name",
+        "faculty",
+        "name",
+        "full name",
+      ]);
+      const facultyId = getCsvRowValue(row, ["faculty id", "id"]);
+      const rowSubjectTitle = getCsvRowValue(row, [
+        "subject title",
+        "subject name",
+        "subject",
+      ]);
+      const rowSubjectCode = getCsvRowValue(row, ["subject code", "code"]);
+      const sectionName = getCsvRowValue(row, ["section", "section name"]);
+      const rowSemester = getCsvRowValue(row, ["semester"]) || semester || "2nd Semester";
+      const rowUnits = getCsvRowValue(row, ["units"]) || "3";
+      const rowDay = getCsvRowValue(row, ["day"]);
+      const rowTime = getCsvRowValue(row, ["time", "schedule"]);
 
-      if (!facultyName || !rowSubjectTitle || !rowSubjectCode || !sectionName) {
+      if (
+        !(facultyId || facultyName) ||
+        !rowSubjectTitle ||
+        !rowSubjectCode ||
+        !sectionName
+      ) {
         errors.push(`Row ${rowNumber}: missing required loading fields.`);
         return;
       }
 
-      const faculty = filteredFaculty.find(
-        (item) =>
-          getFacultyDisplayName(item).toLowerCase() ===
-          facultyName.trim().toLowerCase()
-      );
+      const faculty = findFacultyForLoadingRow(row);
       const section = findSectionByName(sectionName);
 
       if (!faculty) {
-        errors.push(`Row ${rowNumber}: faculty "${facultyName}" was not found.`);
+        const facultyLabel = facultyId || facultyName;
+        errors.push(
+          `Row ${rowNumber}: faculty "${facultyLabel}" was not found in ${selectedProgram}.`
+        );
         return;
       }
 
       if (!section) {
-        errors.push(`Row ${rowNumber}: section "${sectionName}" was not found.`);
+        const availableSectionText = knownSections.length
+          ? ` Available sections: ${knownSections.slice(0, 8).join(", ")}${
+              knownSections.length > 8 ? ", ..." : ""
+            }.`
+          : " No sections are currently available in this department/year.";
+        errors.push(
+          `Row ${rowNumber}: section "${sectionName}" does not exist in the system.${availableSectionText}`
+        );
         return;
       }
 
-      const alreadyExists = savedAssignments.some(
-        (item) =>
-          String(item.facultyId) === String(getFacultyKey(faculty)) &&
-          item.sectionName === section.section &&
-          item.schoolYear === section.schoolYear &&
-          normalizeText(item.semester) === normalizeText(rowSemester) &&
-          normalizeText(item.subjectCode) === normalizeText(rowSubjectCode)
+      const duplicateKey = buildFacultyLoadingKey({
+        facultyId: getFacultyKey(faculty),
+        sectionName: section.section,
+        schoolYear: section.schoolYear,
+        semester: rowSemester,
+        subjectCode: rowSubjectCode,
+      });
+      const existingAssignment = savedAssignments.find(
+        (item) => buildFacultyLoadingKey(item) === duplicateKey
       );
 
-      if (alreadyExists) {
-        errors.push(`Row ${rowNumber}: duplicate faculty loading skipped.`);
+      if (duplicateKeys.has(duplicateKey)) {
+        errors.push(`Row ${rowNumber}: duplicate row in this CSV skipped.`);
         return;
       }
 
+      duplicateKeys.add(duplicateKey);
       previewRows.push({
         id: `${rowNumber}-${getFacultyKey(faculty)}-${section.section}-${rowSubjectCode}`,
         facultyId: getFacultyKey(faculty),
@@ -402,24 +497,32 @@ function AcademicAssignment({ chairpersonDepartment = "" }) {
         subjectTitle: rowSubjectTitle.trim(),
         units: rowUnits.trim(),
         schedule: rowTime.trim(),
-        date: rowDate.trim(),
         day: rowDay.trim(),
         schoolYear: section.schoolYear,
         semester: rowSemester.trim(),
         loadMode: "Faculty Loading",
         rosterFileName: "Created section roster",
         rosterStudents: section.students || [],
+        existingAssignmentId: existingAssignment?.id || null,
       });
     });
 
-    return { previewRows, errors };
+    return {
+      previewRows,
+      errors,
+      summary: {
+        totalRows: rows.length,
+        acceptedRows: previewRows.length,
+        rejectedRows: rows.length - previewRows.length,
+      },
+    };
   };
 
   const handleDownloadFacultyLoadingTemplate = () => {
     const template =
-      "Faculty Name,Subject Title,Subject Code,Section,Units,Semester,Date,Day,Time\n" +
-      "Juan Dela Cruz,Introduction to Computing,IT 101,BSIT 1-1,3,2nd Semester,,Monday,7:00 AM - 9:00 AM\n" +
-      "Juan Dela Cruz,Computer Programming 1,IT 102,BSIT 1-2,3,2nd Semester,,Tuesday,10:00 AM - 12:00 PM";
+      "Faculty Name,Subject Title,Subject Code,Section,Units,Semester,Day,Time\n" +
+      "Juan Dela Cruz,Introduction to Computing,IT 101,BSIT 1-1,3,2nd Semester,Monday,7:00 AM - 9:00 AM\n" +
+      "Maria Santos,Computer Programming 1,IT 102,BSIT 1-2,3,2nd Semester,Tuesday,10:00 AM - 12:00 PM";
     const blob = new Blob([template], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
@@ -451,17 +554,31 @@ function AcademicAssignment({ chairpersonDepartment = "" }) {
     const reader = new FileReader();
 
     reader.onload = (event) => {
-      const rows = parseCsvRows(event.target?.result || "");
-      const { previewRows, errors } = buildFacultyLoadingPreview(rows);
+      const csvText = String(event.target?.result || "");
+      const { headers, rows } = mapFacultyLoadingRows(csvText);
+      const { previewRows, errors, summary } = buildFacultyLoadingPreview(
+        rows,
+        headers
+      );
 
       setFacultyLoadingPreview(previewRows);
       setFacultyLoadingErrors(errors);
+      setFacultyLoadingSummary(summary);
 
       if (!previewRows.length) {
         alert(
           `No valid faculty loading rows found.${
             errors.length ? `\n\n${errors.slice(0, 5).join("\n")}` : ""
           }`
+        );
+        return;
+      }
+
+      if (errors.length) {
+        alert(
+          `Faculty loading preview ready.\nAccepted: ${summary.acceptedRows}\nRejected: ${summary.rejectedRows}\n\nFirst issues:\n${errors
+            .slice(0, 5)
+            .join("\n")}`
         );
       }
     };
@@ -478,10 +595,18 @@ function AcademicAssignment({ chairpersonDepartment = "" }) {
     const timestamp = Date.now();
     const importedAssignments = facultyLoadingPreview.map((item, index) => ({
       ...item,
-      id: timestamp + index,
+      id: item.existingAssignmentId || timestamp + index,
       uploadedAt: new Date().toISOString(),
     }));
-    const updatedAssignments = [...savedAssignments, ...importedAssignments];
+    const assignmentMap = new Map(
+      savedAssignments.map((item) => [buildFacultyLoadingKey(item), item])
+    );
+
+    importedAssignments.forEach((item) => {
+      assignmentMap.set(buildFacultyLoadingKey(item), item);
+    });
+
+    const updatedAssignments = Array.from(assignmentMap.values());
 
     setSavedAssignments(updatedAssignments);
     localStorage.setItem("registrarAssignments", JSON.stringify(updatedAssignments));
@@ -489,6 +614,7 @@ function AcademicAssignment({ chairpersonDepartment = "" }) {
     setFacultyLoadingFile(null);
     setFacultyLoadingPreview([]);
     setFacultyLoadingErrors([]);
+    setFacultyLoadingSummary(null);
     alert(
       `${importedAssignments.length} faculty loading assignment${
         importedAssignments.length === 1 ? "" : "s"
@@ -554,6 +680,7 @@ function AcademicAssignment({ chairpersonDepartment = "" }) {
                   setFacultyLoadingFile(event.target.files?.[0] || null);
                   setFacultyLoadingPreview([]);
                   setFacultyLoadingErrors([]);
+                  setFacultyLoadingSummary(null);
                 }}
                 className="block w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-500 file:mr-10 file:border-0 file:border-r file:border-solid file:border-slate-300 file:bg-transparent file:pr-4 file:text-sm file:font-semibold file:text-slate-500"
               />
@@ -561,7 +688,7 @@ function AcademicAssignment({ chairpersonDepartment = "" }) {
             <p className="mt-2 text-sm text-slate-500">
               {facultyLoadingFile
                 ? `Selected file: ${facultyLoadingFile.name}`
-                : "Required columns: Faculty Name, Subject Title, Subject Code, Section. Optional: Units, Semester, Date, Day, Time."}
+                : "Required columns: Faculty ID or Faculty Name, plus Subject Title, Subject Code, and Section. Optional: Units, Semester, Day, Time."}
             </p>
           </div>
 
@@ -584,6 +711,14 @@ function AcademicAssignment({ chairpersonDepartment = "" }) {
                 <p className="mt-1 text-sm text-slate-500">
                   Review the rows before distributing them to faculty.
                 </p>
+                {facultyLoadingSummary ? (
+                  <p className="mt-2 text-sm font-medium text-slate-700">
+                    Processed {facultyLoadingSummary.totalRows} row
+                    {facultyLoadingSummary.totalRows === 1 ? "" : "s"}:{" "}
+                    {facultyLoadingSummary.acceptedRows} accepted,{" "}
+                    {facultyLoadingSummary.rejectedRows} rejected.
+                  </p>
+                ) : null}
               </div>
               <div className="flex flex-wrap gap-2">
                 <button
@@ -591,6 +726,7 @@ function AcademicAssignment({ chairpersonDepartment = "" }) {
                   onClick={() => {
                     setFacultyLoadingPreview([]);
                     setFacultyLoadingErrors([]);
+                    setFacultyLoadingSummary(null);
                   }}
                   className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
                 >
@@ -609,9 +745,19 @@ function AcademicAssignment({ chairpersonDepartment = "" }) {
 
             {facultyLoadingErrors.length ? (
               <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-700">
-                {facultyLoadingErrors.slice(0, 5).map((error) => (
+                <p className="font-semibold">
+                  Warning{facultyLoadingErrors.length === 1 ? "" : "s"} found in
+                  the uploaded CSV:
+                </p>
+                {facultyLoadingErrors.slice(0, 10).map((error) => (
                   <p key={error}>{error}</p>
                 ))}
+                {facultyLoadingErrors.length > 10 ? (
+                  <p>
+                    {facultyLoadingErrors.length - 10} more issue
+                    {facultyLoadingErrors.length - 10 === 1 ? "" : "s"} not shown.
+                  </p>
+                ) : null}
               </div>
             ) : null}
 
@@ -639,9 +785,8 @@ function AcademicAssignment({ chairpersonDepartment = "" }) {
                         <td className="px-4 py-3">{item.units || "--"}</td>
                         <td className="px-4 py-3">{item.semester || "--"}</td>
                         <td className="px-4 py-3">
-                          {[item.date, item.day, item.schedule]
-                            .filter(Boolean)
-                            .join(" | ") || "--"}
+                          {[item.day, item.schedule].filter(Boolean).join(" | ") ||
+                            "--"}
                         </td>
                       </tr>
                     ))

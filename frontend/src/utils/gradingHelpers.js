@@ -36,21 +36,13 @@ export const getGradeEquivalent = (grade) => {
 
 export const computeFinal = (grades, studentId, activeTerm) => {
   const student = grades[studentId] || {};
-  const standing = student.standing;
-
-  // PRIORITY: standing overrides grades
-  if (standing === "dropped") return "D";
-  if (standing === "unofficially_dropped") return "UD";
-  if (standing === "withdrawn") return "W";
-  if (standing === "incomplete") return "INC";
-
   const mid = Number(student.midterm);
   const fin = Number(student.finals);
 
   if (activeTerm === "midterm") return "-";
 
   if (activeTerm === "finals") {
-    if (!mid || !fin) return "-";
+    if (Number.isNaN(mid) || Number.isNaN(fin)) return "-";
     return ((mid + fin) / 2).toFixed(2);
   }
 
@@ -58,10 +50,8 @@ export const computeFinal = (grades, studentId, activeTerm) => {
 };
 
 export const getStatus = (final, activeTerm) => {
-  if (["D", "UD", "W", "INC"].includes(final)) return final;
-
-  if (activeTerm === "midterm") return "Pending Finals";
-  if (final === "-") return "Incomplete";
+  if (activeTerm === "midterm") return "-";
+  if (final === "-") return "-";
 
   return Number(final) >= 75 ? "Passed" : "Failed";
 };

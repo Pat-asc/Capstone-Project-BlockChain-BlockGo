@@ -8,11 +8,11 @@ import {
 describe("studentSectioningHelpers", () => {
   it("parses Excel CSV rows with quoted commas and CRLF line endings", () => {
     const csv =
-      'Student ID,Sex,Last Name,First Name,Middle Initial\r\n' +
+      'Student ID,Sex,Last Name,First Name,Middle Name\r\n' +
       '26-0001,Male,"Dela, Cruz",Juan,A\r\n';
 
     expect(parseCsvRows(csv)).toEqual([
-      ["Student ID", "Sex", "Last Name", "First Name", "Middle Initial"],
+      ["Student ID", "Sex", "Last Name", "First Name", "Middle Name"],
       ["26-0001", "Male", "Dela, Cruz", "Juan", "A"],
     ]);
   });
@@ -25,6 +25,7 @@ describe("studentSectioningHelpers", () => {
           sex: "Male",
           lastName: "Dela Cruz",
           firstName: "Juan",
+          middleName: "Andres",
           middleInitial: "A",
         },
       ],
@@ -37,24 +38,26 @@ describe("studentSectioningHelpers", () => {
         sex: "Male",
         lastName: "Dela Cruz",
         firstName: "Juan",
-        middleInitial: "A",
+        middleName: "Andres",
+        middleInitial: "Andres",
         yearLevel: "1st Year",
         sectionCode: "",
       },
     ]);
   });
 
-  it("accepts common student number and middle initial header aliases", () => {
+  it("accepts common student number and middle name header aliases", () => {
     const csv =
-      "student_no,gender,surname,given_name,mi,year\n" +
-      "26-0002,Female,Santos,Maria,L,2nd Year\n";
+      "student_no,gender,surname,given_name,middle_name,year\n" +
+      "26-0002,Female,Santos,Maria,Luna,2nd Year\n";
 
     expect(parseStudentIdSpreadsheet(csv)[0]).toMatchObject({
       studentId: "26-0002",
       sex: "Female",
       lastName: "Santos",
       firstName: "Maria",
-      middleInitial: "L",
+      middleName: "Luna",
+      middleInitial: "Luna",
       yearLevel: "2nd Year",
     });
   });

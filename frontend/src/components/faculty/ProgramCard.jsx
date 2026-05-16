@@ -11,6 +11,8 @@ const ProgramCard = ({
   onSubmit,
 }) => {
   const totalStudents = sectionData.students?.length || 0;
+  const displaySchedule = sectionData.schedule || "Not Available";
+  const displayDay = sectionData.day || "Not Available";
   const isStarted = progress > 0;
   const isCompleted = progress >= 100;
   const isReturned = reviewStatus === "returned";
@@ -70,8 +72,8 @@ const ProgramCard = ({
 
       <div className="mb-4 flex flex-wrap gap-2 text-xs">
         <span className="rounded-lg bg-slate-100 px-3 py-1">Units: {sectionData.units}</span>
-        <span className="rounded-lg bg-slate-100 px-3 py-1">{sectionData.schedule}</span>
-        <span className="rounded-lg bg-slate-100 px-3 py-1">{sectionData.day}</span>
+        <span className="rounded-lg bg-slate-100 px-3 py-1">{displaySchedule}</span>
+        <span className="rounded-lg bg-slate-100 px-3 py-1">{displayDay}</span>
       </div>
 
       <hr className="my-3 border-slate-200" />

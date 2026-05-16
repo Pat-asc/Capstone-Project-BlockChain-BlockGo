@@ -1,9 +1,0 @@
-2026-04-19 22:33:53.503 +08:00 [INF] Application starting up...
-2026-04-19 22:33:54.274 +08:00 [INF] HSTS enabled (HTTPS Redirection disabled for Nginx)
-2026-04-19 22:33:55.083 +08:00 [INF] Application configured successfully
-2026-04-19 22:33:55.085 +08:00 [INF] Listening on 
-2026-04-19 22:33:55.297 +08:00 [INF] Now listening on: http://0.0.0.0:5000
-2026-04-19 22:33:55.301 +08:00 [INF] Application started. Press Ctrl+C to shut down.
-2026-04-19 22:33:55.302 +08:00 [INF] Hosting environment: Production
-2026-04-19 22:33:55.303 +08:00 [INF] Content root path: /mnt/c/Users/pascu/Documents/GitHub2/GitHub/Capstone-Project-/For_Testing_Only_Capstone/client-app
-2026-04-19 22:34:45.656 +08:00 [INF] Application is shutting down...
