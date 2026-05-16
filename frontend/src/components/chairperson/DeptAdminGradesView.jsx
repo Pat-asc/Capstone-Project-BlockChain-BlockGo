@@ -1281,48 +1281,6 @@ const DeptAdminGradesView = ({ loggedInEmail = '', loggedInName = '', userRole =
         } catch(e) { addNotification(`Error returning section: ${e.message}`, "error"); }
     };
 
-    const handleBulkReturn = async (notes) => {
-        if (!selectedReviewSection) return;
-        try {
-            const recordsToReturn = grades.filter(g => {
-                const facId = g.facultyId || g.faculty_id || g.FacultyId || 'Unknown';
-                const status = (g.status || g.Status || '').toLowerCase();
-                const normalizedFacultyId = normalizeFacultyIdentity(facId) || facId;
-                const subjectCode = g.subject_code || g.subjectCode || g.SubjectCode || '';
-                const departmentName = g.department || g.course || g.Course || '';
-                const sectionName =
-                    getRecordSectionKey(g) ||
-                    g.record_section ||
-                    buildSectionDisplayName({
-                        departmentName,
-                        sectionValue: g.student_section || g.studentSection || '',
-                        subjectCode,
-                    }) ||
-                    departmentName;
-                const schoolYear = g.schoolYear || g.SchoolYear || '2024';
-                const semester = g.semester || g.Semester || '2nd Semester';
-
-                return (
-                    normalizeText(normalizedFacultyId) === normalizeText(selectedReviewSection.facultyId) &&
-                    normalizeText(sectionName) === normalizeText(selectedReviewSection.sectionName) &&
-                    normalizeText(subjectCode) === normalizeText(selectedReviewSection.subjectCode) &&
-                    normalizeText(schoolYear) === normalizeText(selectedReviewSection.schoolYear) &&
-                    normalizeText(semester) === normalizeText(selectedReviewSection.semester) &&
-                    (status.includes('issued') || status.includes('submitted'))
-                );
-            });
-            
-            for (const g of recordsToReturn) {
-                if (typeof returnGrade === 'function') {
-                    await returnGrade(g.id, loggedInEmail, notes);
-                }
-            }
-            addNotification("Section returned to faculty successfully!", "success");
-            setSelectedReviewSection(null);
-            loadGrades();
-        } catch(e) { addNotification(`Error returning section: ${e.message}`, "error"); }
-    };
-
     const handleBulkUpload = async () => {
         if (!uploadFile) return;
         setIsUploading(true);
