@@ -12,4 +12,8 @@
 - [x] Fix Bulk Upload Function (pls priority this, may ui na sa registrar)
 - [x] Add Revoke Account
 
--[ ] Uploading of Grades to Chairperson
+##
+- [ ] Bulk Upload lang napapasa sa chairperson, pag manual na type not working di na kikita sa for review ng chairperson. 
+- [ ] Yung return to faculty function di gumagana.
+- [ ] Pa-check yung revoke account, last check ko na-revoke account, hindi na nakakalogin pero still showing sa system na pwede pa ulit i-revoke.
+- [ ] Update Student Info button (Bulk Enroll), may error kapag nag update ng info ng student. Yung csv na gamit dito is same lang sa pag Upload Student (Bulk Enroll)
