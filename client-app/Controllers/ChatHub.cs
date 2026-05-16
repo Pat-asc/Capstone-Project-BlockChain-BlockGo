@@ -468,6 +468,8 @@ namespace Client_app.Controllers
                 ALTER TABLE chat_messages ADD COLUMN IF NOT EXISTS sent_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP;
                 ALTER TABLE chat_messages ADD COLUMN IF NOT EXISTS delivered_at TIMESTAMP WITH TIME ZONE;
                 ALTER TABLE chat_messages ADD COLUMN IF NOT EXISTS seen_at TIMESTAMP WITH TIME ZONE;
+                ALTER TABLE chat_messages DROP CONSTRAINT IF EXISTS chat_messages_sender_email_fkey;
+                ALTER TABLE chat_messages DROP CONSTRAINT IF EXISTS chat_messages_receiver_email_fkey;
                 UPDATE chat_messages SET sent_at = COALESCE(sent_at, timestamp, CURRENT_TIMESTAMP) WHERE sent_at IS NULL;
                 UPDATE chat_messages SET timestamp = COALESCE(timestamp, sent_at, CURRENT_TIMESTAMP) WHERE timestamp IS NULL;
                 CREATE INDEX IF NOT EXISTS idx_chat_messages_sender ON chat_messages(sender_email);
