@@ -667,3 +667,12 @@ wait_for_service $POSTGRES_HOST $POSTGRES_PORT "Postgres" 120
 # Run schema migrations (init-db-schema.sql already auto-run, but ensure new columns)
 docker exec -e PGPASSWORD="$POSTGRES_PASS" postgres psql -U $POSTGRES_USER -d $POSTGRES_DB -f /docker-entrypoint-initdb.d/init.sql
 docker exec -e PGPASSWORD="$POSTGRES_PASS" postgres psql -U $POSTGRES_USER -d $POSTGRES_DB -c "CREATE EXTENSION IF NOT EXISTS pgcrypto;"
+
+log_info "Bootstrapping root registrar account..."
+# Give middleware a few seconds to fully initialize its DB connection pool
+sleep 5
+curl -s http://127.0.0.1:4000/api/bootstrap || true
+
+log_info "============================================================"
+log_info "BLOCKGO FULL DEPLOYMENT COMPLETE!"
+log_info "============================================================"
