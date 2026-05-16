@@ -11,3 +11,6 @@
 ##
 - [ ] Fix Bulk Upload Function (pls priority this, may ui na sa registrar)
 - [ ] Add Revoke Account
+
+-future features needed to be fixed (dito ilagay):
+-
