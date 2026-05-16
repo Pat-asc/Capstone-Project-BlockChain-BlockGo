@@ -1118,7 +1118,8 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
               semester: encodingSemester,
               school_year: "2024",
               faculty_id: facultyData.email,
-              date: new Date().toISOString().split('T')[0]
+              date: new Date().toISOString().split('T')[0],
+              status: "Issued"
           };
           return issueGrade(gradePayload);
       });

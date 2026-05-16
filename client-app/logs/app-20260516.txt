@@ -19620,3 +19620,17 @@ RolesAuthorizationRequirement:User.IsInRole must be true for one of the followin
 2026-05-16 07:12:11.244 +00:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/socket.io/?EIO=4&transport=polling&t=0dk3lemv - 404 0 null 1.6293ms
 2026-05-16 07:12:11.244 +00:00 [INF] Request reached the end of the middleware pipeline without being handled by application code. Request path: GET http://localhost:5000/socket.io/, Response status code: 404
 2026-05-16 07:12:15.076 +00:00 [INF] Executed endpoint '/chatHub'
+2026-05-16 13:24:07.777 +00:00 [INF] Application starting up...
+2026-05-16 13:24:16.031 +00:00 [INF] HSTS enabled (HTTPS Redirection disabled for Nginx)
+2026-05-16 13:24:21.789 +00:00 [INF] Application configured successfully
+2026-05-16 13:24:21.790 +00:00 [INF] Listening on 
+2026-05-16 13:24:22.226 +00:00 [WRN] Storing keys in a directory '/root/.aspnet/DataProtection-Keys' that may not be persisted outside of the container. Protected data will be unavailable when container is destroyed. For more information go to https://aka.ms/aspnet/dataprotectionwarning
+2026-05-16 13:24:22.228 +00:00 [INF] User profile is available. Using '/root/.aspnet/DataProtection-Keys' as key repository; keys will not be encrypted at rest.
+2026-05-16 13:24:22.238 +00:00 [INF] Creating key {b836253f-ca08-4ed5-8014-b700e12671bc} with creation date 2026-05-16 13:24:22Z, activation date 2026-05-16 13:24:22Z, and expiration date 2026-08-14 13:24:22Z.
+2026-05-16 13:24:22.511 +00:00 [WRN] No XML encryptor configured. Key {b836253f-ca08-4ed5-8014-b700e12671bc} may be persisted to storage in unencrypted form.
+2026-05-16 13:24:22.515 +00:00 [INF] Writing data to file '/root/.aspnet/DataProtection-Keys/key-b836253f-ca08-4ed5-8014-b700e12671bc.xml'.
+2026-05-16 13:24:22.670 +00:00 [WRN] Overriding HTTP_PORTS '8080' and HTTPS_PORTS ''. Binding to values defined by URLS instead 'http://0.0.0.0:5000'.
+2026-05-16 13:24:23.801 +00:00 [INF] Now listening on: http://0.0.0.0:5000
+2026-05-16 13:24:23.802 +00:00 [INF] Application started. Press Ctrl+C to shut down.
+2026-05-16 13:24:23.802 +00:00 [INF] Hosting environment: Production
+2026-05-16 13:24:23.803 +00:00 [INF] Content root path: /app

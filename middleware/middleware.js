@@ -23,8 +23,6 @@ if (!fs.existsSync(uploadDir)) {
     fs.mkdirSync(uploadDir, { recursive: true });
 }
 
-// --- Automatic Uploads Garbage Collector ---
-// Cleans up orphaned Excel/CSV files in case a worker crashes or times out.
 setInterval(() => {
     fs.readdir(uploadDir, (err, files) => {
         if (err) return;
@@ -47,7 +45,6 @@ setInterval(() => {
 
 const caConfigCache = new Map();
 
-// Global cache for Gateway connections to prevent re-initialization overhead
 global.userGatewayCache = global.userGatewayCache || new Map();
 const userGatewayCache = global.userGatewayCache;
 

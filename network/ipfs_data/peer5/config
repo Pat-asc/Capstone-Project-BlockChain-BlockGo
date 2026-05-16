@@ -9,7 +9,11 @@
       ],
       "Access-Control-Allow-Origin": [
         "http://localhost:8080",
-        "http://127.0.0.1:8080"
+        "http://127.0.0.1:8080",
+        "http://localhost:8090",
+        "http://127.0.0.1:8090",
+        "http://localhost:8100",
+        "http://127.0.0.1:8100"
       ]
     }
   },
@@ -55,9 +59,7 @@
     "Enabled": false
   },
   "Bitswap": {},
-  "Bootstrap": [
-    "/dns4/ipfs0/tcp/4001/p2p/12D3KooW9y66PLW5ysYbSfYyDT3D5V8GCtKgKEBKu67kF2y3e8vf"
-  ],
+  "Bootstrap": [],
   "DNS": {
     "Resolvers": {}
   },
@@ -122,6 +124,7 @@
     "BatchMaxNodes": null,
     "BatchMaxSize": null,
     "CidVersion": null,
+    "FastProvideDAG": null,
     "FastProvideRoot": null,
     "FastProvideWait": null,
     "HashFunction": null,
@@ -146,7 +149,9 @@
     "FuseAllowOther": false,
     "IPFS": "/ipfs",
     "IPNS": "/ipns",
-    "MFS": "/mfs"
+    "MFS": "/mfs",
+    "StoreMode": null,
+    "StoreMtime": null
   },
   "Peering": {
     "Peers": null

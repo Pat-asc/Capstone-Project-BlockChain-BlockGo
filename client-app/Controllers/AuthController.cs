@@ -677,9 +677,17 @@ namespace Client_app.Controllers
                     }
                 }
 
-                using var deleteCmd = new NpgsqlCommand("DELETE FROM Users WHERE id = @id", conn);
+                using var tx = await conn.BeginTransactionAsync();
+
+                using var delProfileCmd = new NpgsqlCommand("DELETE FROM StudentProfiles WHERE user_id = @id", conn, tx);
+                delProfileCmd.Parameters.AddWithValue("id", id);
+                await delProfileCmd.ExecuteNonQueryAsync();
+
+                using var deleteCmd = new NpgsqlCommand("DELETE FROM Users WHERE id = @id", conn, tx);
                 deleteCmd.Parameters.AddWithValue("id", id);
                 await deleteCmd.ExecuteNonQueryAsync();
+
+                await tx.CommitAsync();
 
                 await SafeInsertAuthAuditLogAsync(
                     conn,
@@ -839,9 +847,17 @@ namespace Client_app.Controllers
                     }
                 }
 
-                using var deleteCmd = new NpgsqlCommand("DELETE FROM Users WHERE id = @id", conn);
+                using var tx = await conn.BeginTransactionAsync();
+
+                using var delProfileCmd = new NpgsqlCommand("DELETE FROM AdminProfiles WHERE user_id = @id", conn, tx);
+                delProfileCmd.Parameters.AddWithValue("id", id);
+                await delProfileCmd.ExecuteNonQueryAsync();
+
+                using var deleteCmd = new NpgsqlCommand("DELETE FROM Users WHERE id = @id", conn, tx);
                 deleteCmd.Parameters.AddWithValue("id", id);
                 await deleteCmd.ExecuteNonQueryAsync();
+
+                await tx.CommitAsync();
 
                 await SafeInsertAuthAuditLogAsync(
                     conn,
@@ -1002,9 +1018,21 @@ namespace Client_app.Controllers
                         _logger.LogWarning("WBSD 1.29.2: Account {Email} is already revoked on the CA.", userEmail);
                 }
 
-                using var deleteCmd = new NpgsqlCommand("DELETE FROM Users WHERE id = @id", conn);
+                using var tx = await conn.BeginTransactionAsync();
+
+                using var delSecCmd = new NpgsqlCommand("DELETE FROM FacultySections WHERE user_id = @id", conn, tx);
+                delSecCmd.Parameters.AddWithValue("id", id);
+                await delSecCmd.ExecuteNonQueryAsync();
+
+                using var delProfileCmd = new NpgsqlCommand("DELETE FROM FacultyProfiles WHERE user_id = @id", conn, tx);
+                delProfileCmd.Parameters.AddWithValue("id", id);
+                await delProfileCmd.ExecuteNonQueryAsync();
+
+                using var deleteCmd = new NpgsqlCommand("DELETE FROM Users WHERE id = @id", conn, tx);
                 deleteCmd.Parameters.AddWithValue("id", id);
                 await deleteCmd.ExecuteNonQueryAsync();
+
+                await tx.CommitAsync();
 
                 await SafeInsertAuthAuditLogAsync(
                     conn,
@@ -1528,15 +1556,18 @@ namespace Client_app.Controllers
 
                         await tx.CommitAsync();
 
-                        // Fabric Wallet Generation
-                        var payload = new { email = loginId, role = "student", password = password };
-                        var content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
-                        var fabResponse = await httpClient.PostAsync($"{middlewareUrl}/api/fabric/register-user", content);
-                        
-                        if (!fabResponse.IsSuccessStatusCode)
+                        if (exists == 0)
                         {
-                            string errBody = await fabResponse.Content.ReadAsStringAsync();
-                            throw new Exception($"Blockchain wallet registration failed: {errBody}");
+                            // Fabric Wallet Generation
+                            var payload = new { email = loginId, role = "student", password = password };
+                            var content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
+                            var fabResponse = await httpClient.PostAsync($"{middlewareUrl}/api/fabric/register-user", content);
+                            
+                            if (!fabResponse.IsSuccessStatusCode)
+                            {
+                                string errBody = await fabResponse.Content.ReadAsStringAsync();
+                                throw new Exception($"Blockchain wallet registration failed: {errBody}");
+                            }
                         }
 
                         successCount++;

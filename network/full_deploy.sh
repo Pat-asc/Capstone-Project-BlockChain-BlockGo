@@ -29,7 +29,11 @@ cleanup_processes() {
     for pid in "${PIDS[@]}"; do
         if ps -p $pid > /dev/null 2>&1; then kill $pid 2>/dev/null || true; fi
     done
-    pkill -f dotnet || true
+    if [ -f .watchdog.pid ]; then
+        kill -9 $(cat .watchdog.pid) 2>/dev/null || true
+        rm -f .watchdog.pid
+    fi
+    pkill -9 -f nginx_failover_watchdog.sh 2>/dev/null || true
     docker compose -f docker-compose-main.yaml -f docker-compose-annex.yaml -f docker-compose-pubad.yaml down -v --remove-orphans 2>/dev/null || true
     docker rm -f -v couchdb_wallet couchdb_wallet_faculty couchdb_wallet_department blockgo-middleware nginx-shield-main-failover nginx-shield-annex-failover nginx-shield-pubad-failover 2>/dev/null || true
     log_info "All processes stopped and volumes wiped."
@@ -43,6 +47,20 @@ wait_for_service() {
     log_info "Waiting for $name ($host:$port)..."
     while ! nc -z -w 2 $host $port > /dev/null 2>&1; do
         if [ $(($(date +%s) - start_time)) -ge $timeout ]; then log_error "$name timeout!"; fi
+        sleep 2
+    done
+    log_info "$name is ready!"
+}
+
+wait_for_optional_service() {
+    local host=$1; local port=$2; local name=$3; local timeout=$4
+    local start_time=$(date +%s)
+    log_info "Checking optional $name ($host:$port)..."
+    while ! nc -z -w 2 $host $port > /dev/null 2>&1; do
+        if [ $(($(date +%s) - start_time)) -ge $timeout ]; then
+            log_warn "$name is not reachable. Continuing because core services do not depend on nginx-shield."
+            return 0
+        fi
         sleep 2
     done
     log_info "$name is ready!"
@@ -111,8 +129,12 @@ spawn_couchdb_wallet() {
 log_info "Phase 1: Initializing CA infrastructure..."
 log_warn "Wiping previous CA databases and crypto material..."
 
-# Purge orphaned local services holding ports for absolute idempotency
-pkill -f dotnet || true
+# Gracefully stop the orphaned watchdog if it's still running
+if [ -f .watchdog.pid ]; then
+    kill -9 $(cat .watchdog.pid) 2>/dev/null || true
+    rm -f .watchdog.pid
+fi
+    pkill -9 -f nginx_failover_watchdog.sh 2>/dev/null || true
 
 docker compose -f docker-compose-main.yaml -f docker-compose-annex.yaml -f docker-compose-pubad.yaml down -v --remove-orphans 2>/dev/null || true
 docker rm -f -v couchdb_wallet couchdb_wallet_faculty couchdb_wallet_department blockgo-middleware nginx-shield-main-failover nginx-shield-annex-failover nginx-shield-pubad-failover 2>/dev/null || true
@@ -393,12 +415,15 @@ IPFS_NODE_COUNT=6
 for i in $(seq 0 $(($IPFS_NODE_COUNT - 1))); do
     IMAGE=$(docker inspect --format='{{.Config.Image}}' "ipfs${i}" 2>/dev/null || echo "ipfs/kubo:latest")
     log_info "Initializing config for ipfs${i} offline..."
-    docker run --rm --volumes-from "ipfs${i}" --entrypoint sh "$IMAGE" -c "ipfs init 2>/dev/null || true; ipfs config --json AutoConf.Enabled false 2>/dev/null || true; ipfs config Routing.Type dht 2>/dev/null || true; ipfs config --json Bootstrap '[]' 2>/dev/null || true; ipfs config --json DNS.Resolvers '{}' 2>/dev/null || true; ipfs config --json Routing.DelegatedRouters '[]' 2>/dev/null || true; ipfs config --json Ipns.DelegatedPublishers '[]' 2>/dev/null || true; ipfs config --json API.HTTPHeaders.Access-Control-Allow-Origin '[\"http://localhost:8080\", \"http://127.0.0.1:8080\"]' 2>/dev/null || true; ipfs config --json API.HTTPHeaders.Access-Control-Allow-Methods '[\"PUT\", \"POST\", \"GET\", \"OPTIONS\"]' 2>/dev/null || true"
+    docker run --rm --volumes-from "ipfs${i}" --entrypoint sh "$IMAGE" -c "ipfs init 2>/dev/null || true; ipfs config --json AutoConf.Enabled false 2>/dev/null || true; ipfs config Routing.Type dht 2>/dev/null || true; ipfs config --json Bootstrap '[]' 2>/dev/null || true; ipfs config --json DNS.Resolvers '{}' 2>/dev/null || true; ipfs config --json Routing.DelegatedRouters '[]' 2>/dev/null || true; ipfs config --json Ipns.DelegatedPublishers '[]' 2>/dev/null || true; ipfs config --json API.HTTPHeaders.Access-Control-Allow-Origin '[\"http://localhost:8080\", \"http://127.0.0.1:8080\", \"http://localhost:8090\", \"http://127.0.0.1:8090\", \"http://localhost:8100\", \"http://127.0.0.1:8100\"]' 2>/dev/null || true; ipfs config --json API.HTTPHeaders.Access-Control-Allow-Methods '[\"PUT\", \"POST\", \"GET\", \"OPTIONS\"]' 2>/dev/null || true"
 done
 
 log_info "Starting IPFS nodes..."
 DOCKER_CONFIG=$TMP_DOCKER_CFG docker compose -f docker-compose-main.yaml -f docker-compose-annex.yaml -f docker-compose-pubad.yaml up -d ipfs0 ipfs1 ipfs2 ipfs3 ipfs4 ipfs5
 wait_for_service 127.0.0.1 5001 "IPFS0 API" 60
+
+log_info "Removing any stray failover containers before final network startup..."
+docker rm -f nginx-shield-main-failover nginx-shield-annex-failover nginx-shield-pubad-failover 2>/dev/null || true
 
 log_info "Starting the rest of the network..."
 DOCKER_CONFIG=$TMP_DOCKER_CFG docker compose -f docker-compose-main.yaml -f docker-compose-annex.yaml -f docker-compose-pubad.yaml up -d --build
@@ -412,9 +437,11 @@ wait_for_service 127.0.0.1 7051 "Peer0 Registrar" 60
 wait_for_service 127.0.0.1 5990 "CouchDB Wallet Registrar" 60
 wait_for_service 127.0.0.1 6990 "CouchDB Wallet Faculty" 60
 wait_for_service 127.0.0.1 7990 "CouchDB Wallet Department" 60
-wait_for_service 127.0.0.1 8080 "Nginx Shield Main" 60
-wait_for_service 127.0.0.1 8090 "Nginx Shield Annex" 60
-wait_for_service 127.0.0.1 8100 "Nginx Shield Pubad" 60
+wait_for_optional_service 127.0.0.1 5000 "Backend Direct Port" 90
+wait_for_optional_service 127.0.0.1 4000 "Middleware Direct Port" 30
+wait_for_optional_service 127.0.0.1 8080 "Nginx Shield Main" 30
+wait_for_optional_service 127.0.0.1 8090 "Nginx Shield Annex" 30
+wait_for_optional_service 127.0.0.1 8100 "Nginx Shield Pubad" 30
 
 chmod +x ./nginx_failover_watchdog.sh
 ./nginx_failover_watchdog.sh &
@@ -772,19 +799,6 @@ cleanup_mock_data() {
     DELETE FROM adminprofiles WHERE full_name IN ('System Registrar', 'Dean Maria Santos');
     DELETE FROM facultyprofiles WHERE full_name = 'Dr. Juan Dela Cruz';
     DELETE FROM studentprofiles WHERE student_no LIKE 'mock-student%' OR student_no LIKE '2023-%';
-    DELETE FROM users WHERE email LIKE '%mock-student%' OR email LIKE '2023-%' OR email IN ('registrar@plv.edu.ph', 'faculty@plv.edu.ph', 'chairperson@plv.edu.ph');
+    DELETE FROM users WHERE email IN ('registrar@plv.edu.ph', 'faculty@plv.edu.ph', 'chairperson@plv.edu.ph') OR email LIKE 'mock-student%' OR email LIKE '2023-%@plv.edu.ph';
   "
 }
-
-trap "cleanup_mock_data 2>/dev/null || true; cleanup_processes" SIGINT SIGTERM ERR
-
-log_info "Phase 6: Starting Application Services & Bootstrapping..."
-
-
-log_info "BLOCKGO IS LIVE! http://localhost:8080"
-log_info "Student: http://localhost:8080/student | Faculty: http://localhost:8080/faculty"
-log_info "Chat is embedded in the frontend! | Upload ./mock_students.csv in the frontend to test committing grades to CouchDB."
-
-if [ "$CI" != "true" ]; then
-    while true; do sleep 86400; done
-fi

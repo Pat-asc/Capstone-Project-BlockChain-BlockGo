@@ -263,6 +263,8 @@ try
 
     app.UseAuthentication();
     app.UseAuthorization();
+    app.MapGet("/health", () => Results.Ok(new { status = "healthy", service = "blockgo-backend" }));
+    app.MapGet("/api/backend/health", () => Results.Ok(new { status = "healthy", service = "blockgo-backend" }));
     app.MapControllers();
     Log.Information("Application configured successfully");
     Log.Information("Listening on {Urls}", string.Join(", ", app.Urls));
