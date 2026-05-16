@@ -72,6 +72,22 @@ const getSavedRegistrarAssignments = () => {
         return [];
     }
 };
+const resolveAssignmentFacultyIdentity = (assignment, facultyIdentityByAssignmentId = new Map()) => {
+    const directIdentity = normalizeFacultyIdentity(
+        assignment?.facultyEmail || assignment?.email || assignment?.facultyId || ''
+    );
+
+    if (directIdentity && String(assignment?.facultyId || '').includes('@')) {
+        return directIdentity;
+    }
+
+    const mappedIdentity = facultyIdentityByAssignmentId.get(String(assignment?.facultyId || '').trim());
+    if (mappedIdentity) {
+        return mappedIdentity;
+    }
+
+    return directIdentity;
+};
 
 const getAssignmentStudentKey = (student) => (
     student?.studentId ||
@@ -82,7 +98,7 @@ const getAssignmentStudentKey = (student) => (
     ''
 );
 
-const resolveAssignmentForGradeRecord = (record, assignments = []) => {
+const resolveAssignmentForGradeRecord = (record, assignments = [], facultyIdentityByAssignmentId = new Map()) => {
     const normalizedFacultyId = normalizeFacultyIdentity(getRecordFacultyKey(record));
     const normalizedStudentKey = normalizeText(getRecordStudentKey(record));
     const normalizedSubjectCode = normalizeText(getRecordSubjectKey(record));
@@ -91,7 +107,7 @@ const resolveAssignmentForGradeRecord = (record, assignments = []) => {
 
     const matchingAssignments = assignments.filter((assignment) => {
         const assignmentFacultyKey = normalizeFacultyIdentity(
-            assignment?.facultyId || assignment?.facultyEmail || assignment?.email || ''
+            resolveAssignmentFacultyIdentity(assignment, facultyIdentityByAssignmentId)
         );
 
         if (!assignmentFacultyKey || assignmentFacultyKey !== normalizedFacultyId) {
@@ -232,6 +248,29 @@ const sectionsMatch = (left = '', right = '') => {
 
     return false;
 };
+const buildSectionDisplayName = ({
+    departmentName = '',
+    sectionValue = '',
+    subjectCode = '',
+} = {}) => {
+    const normalizedSectionValue = String(sectionValue || '').trim();
+    if (!normalizedSectionValue) return '';
+
+    const normalizedDepartmentName = String(departmentName || '').trim();
+    const normalizedSubjectCode = String(subjectCode || '').trim();
+
+    if (!normalizedDepartmentName) {
+        return normalizedSubjectCode
+            ? `${normalizedSectionValue} (${normalizedSubjectCode})`
+            : normalizedSectionValue;
+    }
+
+    if (normalizedSubjectCode) {
+        return `${normalizedDepartmentName} ${normalizedSectionValue} (${normalizedSubjectCode})`;
+    }
+
+    return `${normalizedDepartmentName} ${normalizedSectionValue}`;
+};
 const getSavedStudentSections = () => {
     try {
         const saved = JSON.parse(localStorage.getItem('studentSections') || '[]');
@@ -273,11 +312,11 @@ const findSavedSectionRoster = ({
 
     return Array.isArray(matchedSection?.students) ? matchedSection.students : [];
 };
-const resolveAssignmentForSectionGroup = (group, assignments = []) =>
+const resolveAssignmentForSectionGroup = (group, assignments = [], facultyIdentityByAssignmentId = new Map()) =>
     assignments.find((assignment) => {
         const sameFaculty =
             normalizeFacultyIdentity(
-                assignment?.facultyId || assignment?.facultyEmail || assignment?.email || ''
+                resolveAssignmentFacultyIdentity(assignment, facultyIdentityByAssignmentId)
             ) === normalizeText(group?.facultyId);
         const sameProgram =
             normalizeText(assignment?.program) === normalizeText(group?.department);
@@ -566,6 +605,12 @@ const DeptAdminGradesView = ({ loggedInEmail = '', loggedInName = '', userRole =
         const groups = {};
         const savedAssignments = getSavedRegistrarAssignments();
         const savedStudentSections = getSavedStudentSections();
+        const facultyIdentityByAssignmentId = new Map(
+            departmentFaculties.map((faculty) => [
+                String(faculty.id ?? '').trim(),
+                normalizeFacultyIdentity(faculty.email || faculty.facultyId || faculty.id),
+            ])
+        );
         const facultyNameMap = new Map(
             departmentFaculties.map((faculty) => [
                 normalizeFacultyIdentity(faculty.email || faculty.facultyId || faculty.id),
@@ -580,33 +625,53 @@ const DeptAdminGradesView = ({ loggedInEmail = '', loggedInName = '', userRole =
                 facId = normalizedFacultyId;
             }
 
-            const matchedAssignment = resolveAssignmentForGradeRecord(g, savedAssignments);
-            const sectionName =
-                getRecordSectionKey(g) ||
-                matchedAssignment?.sectionName ||
-                g.course ||
-                g.Course ||
-                'Unknown Section';
             const subjectCode =
                 g.subject_code ||
                 g.subjectCode ||
                 g.SubjectCode ||
-                matchedAssignment?.subjectCode ||
                 'Unknown Subject';
             const departmentName =
                 g.department ||
-                matchedAssignment?.program ||
                 g.course ||
                 g.Course ||
+                'Unknown Department';
+            const matchedAssignment = resolveAssignmentForGradeRecord(
+                g,
+                savedAssignments,
+                facultyIdentityByAssignmentId
+            );
+            const recordSectionName =
+                getRecordSectionKey(g) ||
+                g.record_section ||
+                g.RecordSection ||
+                '';
+            const profiledSectionName = buildSectionDisplayName({
+                departmentName,
+                sectionValue: g.student_section || g.studentSection || '',
+                subjectCode,
+            });
+            const sectionName =
+                recordSectionName ||
+                profiledSectionName ||
+                matchedAssignment?.sectionName ||
+                departmentName ||
+                'Unknown Section';
+            const resolvedSubjectCode =
+                subjectCode ||
+                matchedAssignment?.subjectCode ||
+                'Unknown Subject';
+            const resolvedDepartmentName =
+                departmentName ||
+                matchedAssignment?.program ||
                 'Unknown Department';
             const schoolYear = g.schoolYear || g.SchoolYear || matchedAssignment?.schoolYear || '2024';
             const semester = g.semester || g.Semester || matchedAssignment?.semester || '2nd Semester';
             const status = (g.status || g.Status || '').toLowerCase();
             const key = [
                 facId,
-                normalizeText(departmentName),
+                normalizeText(resolvedDepartmentName),
                 normalizeText(sectionName),
-                normalizeText(subjectCode),
+                normalizeText(resolvedSubjectCode),
                 normalizeText(schoolYear),
                 normalizeText(semester),
             ].join('|');
@@ -616,9 +681,9 @@ const DeptAdminGradesView = ({ loggedInEmail = '', loggedInName = '', userRole =
                     reviewKey: key,
                     facultyName: facultyNameMap.get(normalizedFacultyId) || facId,
                     facultyId: facId,
-                    department: departmentName,
+                    department: resolvedDepartmentName,
                     sectionName,
-                    subjectCode,
+                    subjectCode: resolvedSubjectCode,
                     schoolYear,
                     semester,
                     totalStudents: 0,
@@ -661,13 +726,13 @@ const DeptAdminGradesView = ({ loggedInEmail = '', loggedInName = '', userRole =
                 record: g,
                 assignment: matchedAssignment,
                 studentSections: savedStudentSections,
-                departmentName,
+                departmentName: resolvedDepartmentName,
                 sectionName,
                 schoolYear,
                 semester,
             });
-            const studentKey = getRecordStudentKey(g) || getRecordStudentNumber(g) || resolvedStudentIdentity.studentId || 'Unknown';
-            const studentNumber = resolvedStudentIdentity.studentId || getRecordStudentNumber(g) || studentKey;
+            const studentNumber = resolvedStudentIdentity.studentId || getRecordStudentNumber(g) || getRecordStudentKey(g) || 'Unknown';
+            const studentKey = studentNumber || getRecordStudentKey(g) || 'Unknown';
             const studentName = resolvedStudentIdentity.studentName || getRecordStudentName(g);
             const { firstName, lastName } = splitStudentName(studentName);
 
@@ -700,7 +765,11 @@ const DeptAdminGradesView = ({ loggedInEmail = '', loggedInName = '', userRole =
             if (status.includes('returned') || status.includes('rejected')) groups[key].reviewStatus = 'returned';
         });
         return Object.values(groups).map(g => {
-            const matchedAssignment = resolveAssignmentForSectionGroup(g, savedAssignments);
+            const matchedAssignment = resolveAssignmentForSectionGroup(
+                g,
+                savedAssignments,
+                facultyIdentityByAssignmentId
+            );
             const rosterStudents =
                 (Array.isArray(matchedAssignment?.rosterStudents) && matchedAssignment.rosterStudents.length
                     ? matchedAssignment.rosterStudents
@@ -1094,9 +1163,30 @@ const DeptAdminGradesView = ({ loggedInEmail = '', loggedInName = '', userRole =
         try {
             const recordsToApprove = grades.filter(g => {
                 const facId = g.facultyId || g.faculty_id || g.FacultyId || 'Unknown';
-                const course = g.course || g.Course || g.subject_code || g.subjectCode || 'Unknown Section';
                 const status = (g.status || g.Status || '').toLowerCase();
-                return `${facId}-${course}` === selectedReviewSection.reviewKey && status.includes('issued');
+                const normalizedFacultyId = normalizeFacultyIdentity(facId) || facId;
+                const subjectCode = g.subject_code || g.subjectCode || g.SubjectCode || '';
+                const departmentName = g.department || g.course || g.Course || '';
+                const sectionName =
+                    getRecordSectionKey(g) ||
+                    g.record_section ||
+                    buildSectionDisplayName({
+                        departmentName,
+                        sectionValue: g.student_section || g.studentSection || '',
+                        subjectCode,
+                    }) ||
+                    departmentName;
+                const schoolYear = g.schoolYear || g.SchoolYear || '2024';
+                const semester = g.semester || g.Semester || '2nd Semester';
+
+                return (
+                    normalizeText(normalizedFacultyId) === normalizeText(selectedReviewSection.facultyId) &&
+                    normalizeText(sectionName) === normalizeText(selectedReviewSection.sectionName) &&
+                    normalizeText(subjectCode) === normalizeText(selectedReviewSection.subjectCode) &&
+                    normalizeText(schoolYear) === normalizeText(selectedReviewSection.schoolYear) &&
+                    normalizeText(semester) === normalizeText(selectedReviewSection.semester) &&
+                    status.includes('issued')
+                );
             });
             
             for (const g of recordsToApprove) await approveGrade(g.id, loggedInEmail);
@@ -1111,9 +1201,30 @@ const DeptAdminGradesView = ({ loggedInEmail = '', loggedInName = '', userRole =
         try {
             const recordsToForward = grades.filter(g => {
                 const facId = g.facultyId || g.faculty_id || g.FacultyId || 'Unknown';
-                const course = g.course || g.Course || g.subject_code || g.subjectCode || 'Unknown Section';
                 const status = (g.status || g.Status || '').toLowerCase();
-                return `${facId}-${course}` === selectedReviewSection.reviewKey && status.includes('approved');
+                const normalizedFacultyId = normalizeFacultyIdentity(facId) || facId;
+                const subjectCode = g.subject_code || g.subjectCode || g.SubjectCode || '';
+                const departmentName = g.department || g.course || g.Course || '';
+                const sectionName =
+                    getRecordSectionKey(g) ||
+                    g.record_section ||
+                    buildSectionDisplayName({
+                        departmentName,
+                        sectionValue: g.student_section || g.studentSection || '',
+                        subjectCode,
+                    }) ||
+                    departmentName;
+                const schoolYear = g.schoolYear || g.SchoolYear || '2024';
+                const semester = g.semester || g.Semester || '2nd Semester';
+
+                return (
+                    normalizeText(normalizedFacultyId) === normalizeText(selectedReviewSection.facultyId) &&
+                    normalizeText(sectionName) === normalizeText(selectedReviewSection.sectionName) &&
+                    normalizeText(subjectCode) === normalizeText(selectedReviewSection.subjectCode) &&
+                    normalizeText(schoolYear) === normalizeText(selectedReviewSection.schoolYear) &&
+                    normalizeText(semester) === normalizeText(selectedReviewSection.semester) &&
+                    status.includes('approved')
+                );
             });
 
             for (const g of recordsToForward) await finalizeGrade(g.id, loggedInEmail);
@@ -1129,10 +1240,11 @@ const DeptAdminGradesView = ({ loggedInEmail = '', loggedInName = '', userRole =
         try {
             const semester = selectedMySection?.semester || "2nd Semester";
             const schoolYear = selectedMySection?.schoolYear || "2024";
-            const course = selectedMySection?.subject || "Unknown";
+            const course = selectedMySection?.department || selectedMySection?.subject || "Unknown";
             const facultyId = loggedInEmail;
+            const section = `${selectedMySection?.department || ''} ${selectedMySection?.sectionNum || selectedMySection?.section || ''}${selectedMySection?.subject ? ` (${selectedMySection.subject})` : ''}`.trim();
 
-            const res = await batchUploadGrades(uploadFile, semester, schoolYear, course, facultyId);
+            const res = await batchUploadGrades(uploadFile, semester, schoolYear, course, facultyId, activeEncodingTerm, section);
             if (res.status === 'Success' || res.status === 'Partial Success') {
                 addNotification(`Uploaded successfully! Processed: ${res.totalProcessed}, Success: ${res.successful}`, 'success');
                 setUploadFile(null);
@@ -1168,15 +1280,20 @@ const DeptAdminGradesView = ({ loggedInEmail = '', loggedInName = '', userRole =
                 if (!cg || (!cg.midterm && !cg.finals && !cg.finalAverage)) continue;
                 
                 const gradePayload = JSON.stringify({ midterm: cg.midterm, finals: cg.finals, finalAverage: cg.finalAverage });
+                const sectionName = `${selectedMySection.department || ''} ${selectedMySection.sectionNum || selectedMySection.section || ''}${selectedMySection.subject ? ` (${selectedMySection.subject})` : ''}`.trim();
                 const payload = {
-                    StudentId: student.studentno || student.email,
-                    FacultyId: loggedInEmail,
-                    SubjectCode: selectedMySection.subject || 'Unknown',
-                    SubjectName: selectedMySection.subject || 'Unknown',
-                    Course: selectedMySection.department,
-                    Semester: "2nd Semester",
-                    SchoolYear: "2024",
-                    Grade: gradePayload
+                    student_id: student.studentno || student.email || student.id,
+                    student_name: student.fullname || student.name || [student.lastName, student.firstName].filter(Boolean).join(', '),
+                    student_hash: student.email || student.studentno || student.id,
+                    section: sectionName,
+                    year_level: selectedMySection.yearLevel || '',
+                    faculty_id: loggedInEmail,
+                    subject_code: selectedMySection.subject || 'Unknown',
+                    subject_name: selectedMySection.subject || 'Unknown',
+                    course: selectedMySection.department,
+                    semester: selectedMySection.semester || activeSemester || "2nd Semester",
+                    school_year: selectedMySection.schoolYear || "2024",
+                    grade: gradePayload
                 };
                 await issueGrade(payload);
             }

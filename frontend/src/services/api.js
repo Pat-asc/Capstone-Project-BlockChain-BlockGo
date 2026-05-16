@@ -229,7 +229,7 @@ export const batchIssueGradeToBlockchain = async (grades = []) => {
     });
 };
 
-export const batchUploadGrades = async (file, semester = '', schoolYear = '', course = '', facultyId = '', term = '') => {
+export const batchUploadGrades = async (file, semester = '', schoolYear = '', course = '', facultyId = '', term = '', section = '') => {
     const formData = new FormData();
     formData.append('file', file);
 
@@ -241,6 +241,7 @@ export const batchUploadGrades = async (file, semester = '', schoolYear = '', co
     if (course) formData.append('course', course);
     if (resolvedFacultyId) formData.append('facultyId', resolvedFacultyId);
     if (term) formData.append('term', term);
+    if (section) formData.append('section', section);
 
     return await fetchWithAuth(`/Grades/bulk-upload`, {
         method: 'POST',

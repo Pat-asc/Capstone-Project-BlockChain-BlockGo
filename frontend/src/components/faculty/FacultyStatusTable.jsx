@@ -155,20 +155,20 @@ function FacultyStatusTable({
                   rowsForFaculty.push(
                     <tr key={`${faculty.facultyId}-sections`} className="border-b border-slate-200 bg-slate-50">
                       <td colSpan="4" className="px-6 py-5">
-                        <div className="flex flex-wrap gap-3">
+                        <div className="flex flex-col gap-3">
                           {faculty.sections.map((section) => {
                             const isActive = selectedReviewKey === section.reviewKey;
 
                             return (
                               <div
                                 key={section.reviewKey}
-                                className={`flex items-center gap-3 rounded-2xl border px-4 py-3 ${
+                                className={`flex w-full items-center justify-between gap-4 rounded-2xl border px-5 py-4 ${
                                   isActive
                                     ? "border-[#003366] bg-blue-50"
                                     : "border-slate-200 bg-white"
                                 }`}
                               >
-                                <p className="text-sm font-semibold text-slate-800">
+                                <p className="min-w-0 flex-1 text-sm font-semibold text-slate-800">
                                   {section.sectionName}
                                 </p>
                                 <button

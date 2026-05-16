@@ -190,7 +190,10 @@ namespace BlockGo.Controllers
                             conn,
                             txCreate);
                         cmdProfile.Parameters.AddWithValue("uid", newUserId);
-                        cmdProfile.Parameters.AddWithValue("name", "Student " + (request.StudentId ?? ""));
+                        cmdProfile.Parameters.AddWithValue("name",
+                            !IsPlaceholderStudentName(request.StudentName, request.StudentId)
+                                ? request.StudentName
+                                : "Student " + (request.StudentId ?? ""));
                         cmdProfile.Parameters.AddWithValue("studentno", (object?)request.StudentId ?? DBNull.Value);
                         cmdProfile.Parameters.AddWithValue("dept", request.Course ?? "Unassigned");
                         cmdProfile.Parameters.AddWithValue("sec", DBNull.Value);
@@ -234,7 +237,14 @@ namespace BlockGo.Controllers
                     if (await identityReader.ReadAsync())
                     {
                         if (!identityReader.IsDBNull(0)) stuNumber = identityReader.GetString(0);
-                        if (!identityReader.IsDBNull(1)) stuName = identityReader.GetString(1);
+                        if (!identityReader.IsDBNull(1))
+                        {
+                            stuName = ResolvePreferredStudentName(
+                                stuName,
+                                identityReader.GetString(1),
+                                request.StudentId
+                            );
+                        }
                     }
                 }
 
@@ -371,10 +381,21 @@ namespace BlockGo.Controllers
                 using var conn = new NpgsqlConnection(_connectionString);
                 await conn.OpenAsync();
 
+                var resolvedFaculty = await ResolveApprovedAcademicIdentityAsync(
+                    conn,
+                    facultyId,
+                    facultyId
+                );
+                var effectiveFacultyId = resolvedFaculty.Identity ?? facultyId;
+                var compactSection = ExtractCompactSectionToken(section);
+                var subjectCodeFromLabel = ExtractSubjectCodeFromSectionLabel(section);
+
                 using var cmdInitTable = new NpgsqlCommand(@"
                     CREATE TABLE IF NOT EXISTS pending_grade_records (
                         id VARCHAR(255) PRIMARY KEY,
                         student_hash VARCHAR(255),
+                        student_no VARCHAR(255),
+                        student_name VARCHAR(255),
                         section VARCHAR(100),
                         course VARCHAR(255),
                         subject_code VARCHAR(100),
@@ -389,22 +410,74 @@ namespace BlockGo.Controllers
                     );", conn);
                 await cmdInitTable.ExecuteNonQueryAsync();
 
+                using var cmdEnsureIdentityColumns = new NpgsqlCommand(EnsurePendingGradeRecordIdentityColumnsSql(), conn);
+                await cmdEnsureIdentityColumns.ExecuteNonQueryAsync();
+
                 using var cmd = new NpgsqlCommand(@"
                     UPDATE pending_grade_records
-                    SET status = 'Issued', date = @date
-                    WHERE faculty_id = @faculty
+                    SET status = 'Issued',
+                        date = @date,
+                        section = CASE
+                            WHEN COALESCE(NULLIF(TRIM(section), ''), '') = ''
+                                OR LOWER(TRIM(section)) = LOWER(TRIM(@compactSection))
+                                OR LOWER(TRIM(section)) = LOWER(TRIM(subject_code))
+                            THEN @section
+                            ELSE section
+                        END,
+                        student_no = COALESCE(
+                            NULLIF(student_no, ''),
+                            (
+                                SELECT sp.student_no
+                                FROM Users u
+                                JOIN StudentProfiles sp ON u.id = sp.user_id
+                                WHERE LOWER(u.email) = LOWER(pending_grade_records.student_hash)
+                                LIMIT 1
+                            )
+                        ),
+                        student_name = COALESCE(
+                            NULLIF(student_name, ''),
+                            (
+                                SELECT sp.full_name
+                                FROM Users u
+                                JOIN StudentProfiles sp ON u.id = sp.user_id
+                                WHERE LOWER(u.email) = LOWER(pending_grade_records.student_hash)
+                                LIMIT 1
+                            )
+                        )
+                    WHERE LOWER(TRIM(faculty_id)) = LOWER(TRIM(@faculty))
                       AND (
-                        section = @section
-                        OR subject_code = @section
-                        OR course = @section
+                        LOWER(TRIM(COALESCE(section, ''))) = LOWER(TRIM(@section))
+                        OR (@compactSection <> '' AND LOWER(TRIM(COALESCE(section, ''))) = LOWER(TRIM(@compactSection)))
+                        OR LOWER(TRIM(COALESCE(subject_code, ''))) = LOWER(TRIM(@section))
+                        OR (@subjectCode <> '' AND LOWER(TRIM(COALESCE(subject_code, ''))) = LOWER(TRIM(@subjectCode)))
+                        OR LOWER(TRIM(COALESCE(course, ''))) = LOWER(TRIM(@section))
                         OR (COALESCE(section, '') <> '' AND @section ILIKE '%' || section || '%')
+                        OR (COALESCE(section, '') <> '' AND section ILIKE '%' || @section || '%')
+                        OR (@compactSection <> '' AND COALESCE(section, '') <> '' AND section ILIKE '%' || @compactSection || '%')
                         OR (COALESCE(subject_code, '') <> '' AND @section ILIKE '%' || subject_code || '%')
                       )", conn);
-                cmd.Parameters.AddWithValue("faculty", facultyId);
+                cmd.Parameters.AddWithValue("faculty", effectiveFacultyId);
                 cmd.Parameters.AddWithValue("section", section);
+                cmd.Parameters.AddWithValue("compactSection", compactSection);
+                cmd.Parameters.AddWithValue("subjectCode", subjectCodeFromLabel);
                 cmd.Parameters.AddWithValue("date", DateTime.UtcNow.ToString("yyyy-MM-dd"));
 
                 var updated = await cmd.ExecuteNonQueryAsync();
+                if (updated == 0)
+                {
+                    _logger.LogWarning(
+                        "SubmitSection matched no staged rows for faculty {FacultyId} and section {Section}",
+                        effectiveFacultyId,
+                        section
+                    );
+                    return BadRequest(new
+                    {
+                        status = "Error",
+                        message = "No staged grades matched the submitted section. Please save the section grades first.",
+                        updated
+                    });
+                }
+
                 await NotifyAcademicDataChangedAsync("section_submitted", department, facultyId);
                 return Ok(new { status = "Success", message = "Section submitted to Chairperson.", updated });
             }
@@ -573,6 +646,29 @@ namespace BlockGo.Controllers
             return string.IsNullOrWhiteSpace(normalizedProfileSection) ? "Unknown" : normalizedProfileSection;
         }
 
+        private static string ExtractCompactSectionToken(string? value)
+        {
+            if (string.IsNullOrWhiteSpace(value)) return "";
+
+            var normalized = value.Trim();
+            var programMatch = Regex.Match(normalized, @"\b([A-Za-z]{2,}\s*\d+-\d+)\b", RegexOptions.IgnoreCase);
+            if (programMatch.Success)
+            {
+                return programMatch.Groups[1].Value.Trim();
+            }
+
+            var numericMatch = Regex.Match(normalized, @"\b(\d+-\d+)\b");
+            return numericMatch.Success ? numericMatch.Groups[1].Value.Trim() : "";
+        }
+
+        private static string ExtractSubjectCodeFromSectionLabel(string? value)
+        {
+            if (string.IsNullOrWhiteSpace(value)) return "";
+
+            var match = Regex.Match(value.Trim(), @"\(([^)]+)\)\s*$");
+            return match.Success ? match.Groups[1].Value.Trim() : "";
+        }
+
         private static string ResolveYearLevelFromSection(string? displaySection, string? profileSection)
         {
             var sectionSource = string.IsNullOrWhiteSpace(displaySection) ? profileSection : displaySection;
@@ -596,9 +692,50 @@ namespace BlockGo.Controllers
             return "Unknown";
         }
 
+        private static int GetAcademicRecordCompletenessScore(AcademicRecord record)
+        {
+            var score = 0;
+
+            if (!string.IsNullOrWhiteSpace(record.StudentNo)) score += 4;
+            if (!string.IsNullOrWhiteSpace(record.StudentName)) score += 4;
+            if (!string.IsNullOrWhiteSpace(record.Section)) score += 2;
+            if (!string.IsNullOrWhiteSpace(record.Status)) score += 1;
+            if (!string.IsNullOrWhiteSpace(record.IpfsCid)) score += 1;
+
+            return score;
+        }
+
+        private static bool IsPlaceholderStudentName(string? value, string? studentId = null)
+        {
+            var normalized = (value ?? string.Empty).Trim();
+            if (string.IsNullOrWhiteSpace(normalized)) return true;
+
+            if (string.Equals(normalized, "student", StringComparison.OrdinalIgnoreCase)) return true;
+
+            if (!string.IsNullOrWhiteSpace(studentId) &&
+                string.Equals(normalized, $"Student {studentId}".Trim(), StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+
+            return false;
+        }
+
+        private static string ResolvePreferredStudentName(string? currentName, string? candidateName, string? studentId = null)
+        {
+            if (!IsPlaceholderStudentName(candidateName, studentId))
+            {
+                return (candidateName ?? string.Empty).Trim();
+            }
+
+            return string.IsNullOrWhiteSpace(currentName)
+                ? (candidateName ?? string.Empty).Trim()
+                : currentName.Trim();
+        }
+
         [HttpPost("bulk-upload")]
         [Consumes("multipart/form-data")]
-        public async Task<IActionResult> BulkUploadGrades([FromForm] IFormFile file, [FromForm] string? semester, [FromForm] string? schoolYear, [FromForm] string? facultyId, [FromForm] string? course, [FromForm] string? term)
+        public async Task<IActionResult> BulkUploadGrades([FromForm] IFormFile file, [FromForm] string? semester, [FromForm] string? schoolYear, [FromForm] string? facultyId, [FromForm] string? course, [FromForm] string? term, [FromForm] string? section)
         {
             _logger.LogInformation("Bulk upload initiated by user: {User}", User.Identity?.Name);
 
@@ -736,6 +873,8 @@ namespace BlockGo.Controllers
                             parsedRecords.Add(new GradeRequest
                             {
                                 StudentId = sId ?? "",
+                                StudentName = getVal("student_name") ?? getVal("student") ?? "",
+                                Section = !string.IsNullOrWhiteSpace(section) ? section : (getVal("section") ?? getVal("class_section") ?? ""),
                                 Grade = BuildUploadedGradePayload(
                                     GetUploadedTermGrade(getVal, term),
                                     GetUploadedMidtermGrade(getVal),
@@ -779,6 +918,8 @@ namespace BlockGo.Controllers
                                 parsedRecords.Add(new GradeRequest
                                 {
                                     StudentId = sId ?? "",
+                                    StudentName = GetCsvField(fields, headerMap, "student_name") ?? GetCsvField(fields, headerMap, "student") ?? "",
+                                    Section = !string.IsNullOrWhiteSpace(section) ? section : (GetCsvField(fields, headerMap, "section") ?? GetCsvField(fields, headerMap, "class_section") ?? ""),
                                     Grade = BuildUploadedGradePayload(
                                         GetUploadedTermGrade((key) => GetCsvField(fields, headerMap, key), term),
                                         GetUploadedMidtermGrade((key) => GetCsvField(fields, headerMap, key)),
@@ -853,7 +994,10 @@ namespace BlockGo.Controllers
                                     INSERT INTO StudentProfiles (user_id, full_name, student_no, department, section, date_of_birth, assignment_status) 
                                     VALUES (@uid, @name, @studentno, @dept, @sec, @dob, 'Enrolled')", conn, txCreate);
                                 cmdProfile.Parameters.AddWithValue("uid", newUserId);
-                                cmdProfile.Parameters.AddWithValue("name", "Student " + (record.StudentId ?? ""));
+                                cmdProfile.Parameters.AddWithValue("name",
+                                    !IsPlaceholderStudentName(record.StudentName, record.StudentId)
+                                        ? record.StudentName
+                                        : "Student " + (record.StudentId ?? ""));
                                 cmdProfile.Parameters.AddWithValue("studentno", (object?)record.StudentId ?? DBNull.Value);
                                 cmdProfile.Parameters.AddWithValue("dept", course ?? "Unassigned");
                                 cmdProfile.Parameters.AddWithValue("sec", DBNull.Value);
@@ -892,7 +1036,14 @@ namespace BlockGo.Controllers
                                 if (await identityReader.ReadAsync())
                                 {
                                     if (!identityReader.IsDBNull(0)) stuNumber = identityReader.GetString(0);
-                                    if (!identityReader.IsDBNull(1)) stuName = identityReader.GetString(1);
+                                    if (!identityReader.IsDBNull(1))
+                                    {
+                                        stuName = ResolvePreferredStudentName(
+                                            stuName,
+                                            identityReader.GetString(1),
+                                            record.StudentId
+                                        );
+                                    }
                                 }
                             }
 
@@ -913,6 +1064,7 @@ namespace BlockGo.Controllers
 
 
                             var blockchainRecord = record.ToBlockchainRecord("PLV");
+                            blockchainRecord.Section = !string.IsNullOrWhiteSpace(record.Section) ? record.Section : (section ?? "");
                             blockchainRecord.StudentHash = stuEmail ?? "";
                             blockchainRecord.StudentNo = stuNumber;
                             blockchainRecord.StudentName = stuName;
@@ -1202,8 +1354,15 @@ namespace BlockGo.Controllers
                 }
                 await reader.CloseAsync();
 
-                // Deduplicate records that might temporarily exist in both staging and the ledger
-                allGrades = allGrades.GroupBy(g => g.Id).Select(g => g.First()).ToList();
+                // Deduplicate records that might temporarily exist in both staging and the ledger.
+                // Prefer the richer local staged copy when it contains student number/name metadata.
+                allGrades = allGrades
+                    .GroupBy(g => g.Id)
+                    .Select(group => group
+                        .OrderByDescending(GetAcademicRecordCompletenessScore)
+                        .ThenByDescending(record => string.Equals(record.Status, "Issued", StringComparison.OrdinalIgnoreCase))
+                        .First())
+                    .ToList();
 
                 var enrichedGrades = new List<Dictionary<string, object>>();
                 
@@ -1236,7 +1395,10 @@ namespace BlockGo.Controllers
                         profileSection = prof.sec;
                         sec = ResolveDisplaySection(g.Section, prof.sec);
                         if (string.IsNullOrWhiteSpace(studentNo)) studentNo = prof.studentNo;
-                        if (string.IsNullOrWhiteSpace(studentName)) studentName = prof.fullName;
+                        if (string.IsNullOrWhiteSpace(studentName) || IsPlaceholderStudentName(studentName, studentNo))
+                        {
+                            studentName = ResolvePreferredStudentName(studentName, prof.fullName, studentNo);
+                        }
                         year = ResolveYearLevelFromSection(sec, prof.sec);
                     }
 

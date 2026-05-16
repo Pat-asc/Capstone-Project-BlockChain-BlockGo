@@ -383,6 +383,7 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
 
       const newSections = {};
       const nextSectionStatuses = {};
+      const nextBulkUploadedSections = {};
 
       const parseSavedGrade = (rawGrade) => {
         if (!rawGrade) {
@@ -505,6 +506,7 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
 
           return subjectCandidates.includes(gradeSubjectKey) || sectionCandidates.includes(gradeSectionKey);
         });
+        nextBulkUploadedSections[sectionKey] = sectionGrades.length > 0;
         nextSectionStatuses[sectionKey] = createDefaultSectionTermStatuses();
         const backendStudents = actualStudents.filter(s => 
           s.department === sec.department && 
@@ -517,10 +519,15 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
             ? matchedAssignment.rosterStudents
             : backendStudents;
         const enrolledStudents = rosterSource.map(studentRecord => {
-          const studentId =
+          const preferredStudentNo =
+            studentRecord.studentno ||
+            studentRecord.studentNo ||
+            "";
+          const rosterStudentId =
+            preferredStudentNo ||
             studentRecord.studentId ||
             studentRecord.id ||
-            studentRecord.studentno ||
+            studentRecord.email ||
             'N/A';
           const firstName = studentRecord.firstName || "";
           const lastName = studentRecord.lastName || "";
@@ -532,17 +539,22 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
             "Unnamed Student";
           const backendMatch = backendStudents.find(
             (student) =>
-              String(student.studentno || "").trim() === String(studentId).trim() ||
+              String(student.studentno || "").trim() === String(rosterStudentId).trim() ||
               normalizeText(student.email) === normalizeText(studentRecord.email)
           );
           const globalStudentMatch =
             backendMatch ||
-            studentsByStudentNo.get(String(studentId).trim()) ||
+            studentsByStudentNo.get(String(rosterStudentId).trim()) ||
             actualStudents.find(
               (student) =>
                 normalizeText(student.email) === normalizeText(studentRecord.email)
             ) ||
             null;
+          const resolvedStudentNo =
+            preferredStudentNo ||
+            backendMatch?.studentno ||
+            globalStudentMatch?.studentno ||
+            "";
           const savedGrade = [...sectionGrades].reverse().find(g => {
             const gradeStudentKey = normalizeText(getGradeStudentKey(g));
             const studentCandidates = [
@@ -551,7 +563,7 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
               globalStudentMatch?.email,
               backendMatch?.studentno,
               globalStudentMatch?.studentno,
-              studentId,
+              rosterStudentId,
             ]
               .map((value) => normalizeText(value))
               .filter(Boolean);
@@ -559,8 +571,8 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
             return sameStudent;
           });
           const snapshotStudent =
-            savedSectionSnapshot?.students?.[normalizeText(globalStudentMatch?.email || studentRecord.email || studentId)] ||
-            savedSectionSnapshot?.students?.[normalizeText(studentId)] ||
+            savedSectionSnapshot?.students?.[normalizeText(globalStudentMatch?.email || studentRecord.email || resolvedStudentNo || rosterStudentId)] ||
+            savedSectionSnapshot?.students?.[normalizeText(resolvedStudentNo || rosterStudentId)] ||
             null;
           const savedValues = savedGrade
             ? parseSavedGrade(savedGrade?.grade || savedGrade?.Grade)
@@ -573,7 +585,9 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
               };
 
           return {
-            id: studentId,
+            id: resolvedStudentNo || rosterStudentId,
+            studentNo: resolvedStudentNo || rosterStudentId,
+            userId: backendMatch?.id || globalStudentMatch?.id || studentRecord.id || "",
             name: fullName,
             email: globalStudentMatch?.email || studentRecord.email || "",
             firstName: firstName || globalStudentMatch?.fullname?.split(", ").slice(1).join(", ") || "",
@@ -666,6 +680,7 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
 
         return mergedStatuses;
       });
+      setBulkUploadedSections(nextBulkUploadedSections);
     } catch (error) {
       console.error("Failed to load faculty sections:", error);
     } finally {
@@ -774,6 +789,7 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
   };
 
   const handleGradeChange = useCallback((sectionName, index, field, value) => {
+    if (bulkUploadedSections[sectionName]) return;
     if (isLockedSectionStatus(getSectionTermStatus(sectionName))) return;
     if (field === 'midterm' && encodingTerm !== 'midterm') return;
     if (field === 'finals' && encodingTerm !== 'finals') return;
@@ -790,9 +806,10 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
     
     setSections(updated);
     setRowSaveState(prev => ({ ...prev, [sectionName]: { ...(prev[sectionName] || {}), [index]: 'idle' } }));
-  }, [sections, encodingTerm, getSectionTermStatus]);
+  }, [sections, encodingTerm, getSectionTermStatus, bulkUploadedSections]);
 
   const handleStudentStatusChange = useCallback((sectionName, index, value) => {
+    if (bulkUploadedSections[sectionName]) return;
     if (isLockedSectionStatus(getSectionTermStatus(sectionName))) return;
 
     const updated = JSON.parse(JSON.stringify(sections));
@@ -806,15 +823,16 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
 
     setSections(updated);
     setRowSaveState(prev => ({ ...prev, [sectionName]: { ...(prev[sectionName] || {}), [index]: 'idle' } }));
-  }, [sections, getSectionTermStatus]);
+  }, [sections, getSectionTermStatus, bulkUploadedSections]);
 
   const toggleStudentFlag = useCallback((sectionName, index) => {
+    if (bulkUploadedSections[sectionName]) return;
     if (isLockedSectionStatus(getSectionTermStatus(sectionName))) return;
 
     const updated = JSON.parse(JSON.stringify(sections));
     updated[sectionName].students[index].flagged = !updated[sectionName].students[index].flagged;
     setSections(updated);
-  }, [sections, getSectionTermStatus]);
+  }, [sections, getSectionTermStatus, bulkUploadedSections]);
 
   const handleCustomGradeChange = useCallback((sectionName, index, colId, value) => {
     if (isLockedSectionStatus(getSectionTermStatus(sectionName))) return;
@@ -884,7 +902,7 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
             const finalGrade = calculateFinalAverage(student);
             const status = getAcademicStatus(student);
             return [
-              student.id,
+              student.studentNo || student.id,
               student.name,
               student.midterm ?? "",
               student.finals ?? "",
@@ -915,7 +933,7 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
         const finalGrade = calculateFinalAverage(student);
         const status = getAcademicStatus(student);
         return [
-            student.id, 
+            student.studentNo || student.id, 
             `"${student.name}"`, 
             student.midterm || "", 
             student.finals || "", 
@@ -949,7 +967,7 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
           [student.lastName, student.firstName].filter(Boolean).join(", ");
 
         return [
-          student.id || "",
+          student.studentNo || student.id || "",
           `"${studentName}"`,
           "",
           "",
@@ -989,12 +1007,12 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
     const sectionData = sections[sectionName];
     const semester = encodingSemester; 
     const schoolYear = "2024";
-    const course = sectionData.subjectCode || sectionName;
+    const course = sectionData.sectionCourse || sectionData.subjectCode || sectionName;
 
     setUploadingSection(sectionName);
 
     try {
-      const res = await batchUploadGrades(file, semester, schoolYear, course, facultyData.email, encodingTerm);
+      const res = await batchUploadGrades(file, semester, schoolYear, course, facultyData.email, encodingTerm, sectionName);
       if (res.status === 'Success' || res.status === 'Partial Success') {
         setUploadResult({ 
           type: 'success', 
@@ -1018,6 +1036,10 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
   };
 
   const handleSaveRow = (sectionName, index) => {
+    if (bulkUploadedSections[sectionName]) {
+      alert("Manual encoding is locked for this section after bulk upload. To edit grades, upload an updated grading sheet.");
+      return;
+    }
     const errors = validationErrors[sectionName]?.[index] || {};
     if (errors.midterm || errors.finals) return;
     setRowSaveState(prev => ({ ...prev, [sectionName]: { ...(prev[sectionName] || {}), [index]: 'saving' } }));
@@ -1026,26 +1048,27 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
       const student = sections[sectionName].students[index];
       const sectionData = sections[sectionName];
       const finalAverage = calculateFinalAverage(student);
+      const resolvedStudentId = student.studentNo || student.id || "";
       const gradePayload = {
-          StudentId: student.id,
-          StudentName: student.name || [student.lastName, student.firstName].filter(Boolean).join(", "),
-          StudentHash: student.email || student.id,
-          Section: sectionName,
-          Course: sectionName,
-          SubjectCode: sectionData.subjectCode,
-          SubjectName: sectionData.subjectTitle || sectionData.subjectCode,
-          YearLevel: sectionData.year || "",
-          Grade: JSON.stringify({
+          student_id: resolvedStudentId,
+          student_name: student.name || [student.lastName, student.firstName].filter(Boolean).join(", "),
+          student_hash: student.email || resolvedStudentId,
+          section: sectionName,
+          course: sectionData.sectionCourse || sectionData.subjectCode || sectionName,
+          subject_code: sectionData.subjectCode,
+          subject_name: sectionData.subjectTitle || sectionData.subjectCode,
+          year_level: sectionData.year || "",
+          grade: JSON.stringify({
             midterm: student.midterm,
             finals: student.finals,
             finalAverage: finalAverage === null ? "" : finalAverage.toFixed(2),
             standing: student.standing || STUDENT_STATUS_ACTIVE,
             flagged: !!student.flagged,
           }),
-          Semester: encodingSemester,
-          SchoolYear: "2024",
-          FacultyId: facultyData.email,
-          Date: new Date().toISOString().split('T')[0]
+          semester: encodingSemester,
+          school_year: "2024",
+          faculty_id: facultyData.email,
+          date: new Date().toISOString().split('T')[0]
       };
       
       issueGrade(gradePayload).then(() => {
@@ -1062,6 +1085,10 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
   };
 
   const handleSaveAll = async (sectionName) => {
+    if (bulkUploadedSections[sectionName]) {
+      alert("Manual encoding is locked for this section after bulk upload. To edit grades, upload an updated grading sheet.");
+      return;
+    }
     const students = sections[sectionName].students;
     const saving = {};
     students.forEach((_, i) => { saving[i] = 'saving'; });
@@ -1071,26 +1098,27 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
       const sectionData = sections[sectionName];
       const promises = students.map(student => {
           const finalAverage = calculateFinalAverage(student);
+          const resolvedStudentId = student.studentNo || student.id || "";
           const gradePayload = {
-              StudentId: student.id,
-              StudentName: student.name || [student.lastName, student.firstName].filter(Boolean).join(", "),
-              StudentHash: student.email || student.id,
-              Section: sectionName,
-              Course: sectionName,
-              SubjectCode: sectionData.subjectCode,
-              SubjectName: sectionData.subjectTitle || sectionData.subjectCode,
-              YearLevel: sectionData.year || "",
-              Grade: JSON.stringify({
+              student_id: resolvedStudentId,
+              student_name: student.name || [student.lastName, student.firstName].filter(Boolean).join(", "),
+              student_hash: student.email || resolvedStudentId,
+              section: sectionName,
+              course: sectionData.sectionCourse || sectionData.subjectCode || sectionName,
+              subject_code: sectionData.subjectCode,
+              subject_name: sectionData.subjectTitle || sectionData.subjectCode,
+              year_level: sectionData.year || "",
+              grade: JSON.stringify({
                 midterm: student.midterm,
                 finals: student.finals,
                 finalAverage: finalAverage === null ? "" : finalAverage.toFixed(2),
                 standing: student.standing || STUDENT_STATUS_ACTIVE,
                 flagged: !!student.flagged,
               }),
-              Semester: encodingSemester,
-              SchoolYear: "2024",
-              FacultyId: facultyData.email,
-              Date: new Date().toISOString().split('T')[0]
+              semester: encodingSemester,
+              school_year: "2024",
+              faculty_id: facultyData.email,
+              date: new Date().toISOString().split('T')[0]
           };
           return issueGrade(gradePayload);
       });
@@ -1150,6 +1178,8 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
   const currentStatus = activeSection ? getSectionTermStatus(activeSection) : null;
   const isFinalized = currentStatus === 'finalized' || currentStatus === 'forwarded';
   const isSubmittedToChairperson = isLockedSectionStatus(currentStatus);
+  const isBulkUploadedSection = activeSection ? !!bulkUploadedSections[activeSection] : false;
+  const isManualEncodingLocked = isSubmittedToChairperson || isBulkUploadedSection;
   const isMidtermLocked = encodingTerm !== 'midterm';
   const isFinalsLocked = encodingTerm !== 'finals';
 
@@ -1329,6 +1359,12 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
               </div>
             )}
 
+            {!isSubmittedToChairperson && isBulkUploadedSection && (
+              <div className="border-b border-amber-200 bg-amber-50 p-4 text-center text-sm font-semibold text-amber-800">
+                 Manual encoding is locked because this section was bulk uploaded. To edit grades, upload an updated grading sheet.
+              </div>
+            )}
+
             <div className="overflow-x-auto">
               <table className="w-full min-w-[800px] text-left text-sm">
                 <thead className="bg-[#003366] text-white">
@@ -1365,7 +1401,7 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
                           <div className="relative inline-block">
                             <input
                               className={`w-20 rounded-lg border p-2 text-center outline-none focus:ring-2 focus:ring-[#003366]/20 disabled:bg-slate-100 disabled:text-slate-500 ${errors.midterm ? 'border-red-500 bg-red-50' : 'border-slate-300'}`}
-                              type="number" min="60" max="100" value={stu.midterm ?? ''} disabled={isSubmittedToChairperson || isClosed || isMidtermLocked || isStudentLocked}
+                              type="number" min="60" max="100" value={stu.midterm ?? ''} disabled={isManualEncodingLocked || isClosed || isMidtermLocked || isStudentLocked}
                               onChange={e => handleGradeChange(activeSection, i, 'midterm', e.target.value)} placeholder="60-100"
                             />
                             {errors.midterm && <div className="absolute left-1/2 -translate-x-1/2 -bottom-5 whitespace-nowrap text-[10px] font-bold text-red-600">{errors.midterm}</div>}
@@ -1375,7 +1411,7 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
                           <div className="relative inline-block">
                             <input
                               className={`w-20 rounded-lg border p-2 text-center outline-none focus:ring-2 focus:ring-[#003366]/20 disabled:bg-slate-100 disabled:text-slate-500 ${errors.finals ? 'border-red-500 bg-red-50' : 'border-slate-300'}`}
-                              type="number" min="60" max="100" value={stu.finals ?? ''} disabled={isSubmittedToChairperson || isClosed || isFinalsLocked || isStudentLocked}
+                              type="number" min="60" max="100" value={stu.finals ?? ''} disabled={isManualEncodingLocked || isClosed || isFinalsLocked || isStudentLocked}
                               onChange={e => handleGradeChange(activeSection, i, 'finals', e.target.value)} placeholder="60-100"
                             />
                             {errors.finals && <div className="absolute left-1/2 -translate-x-1/2 -bottom-5 whitespace-nowrap text-[10px] font-bold text-red-600">{errors.finals}</div>}
@@ -1397,7 +1433,7 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
                             className="rounded-lg border border-slate-300 px-3 py-2 text-sm disabled:bg-slate-100 disabled:text-slate-500"
                             value={studentStatus}
                             onChange={e => handleStudentStatusChange(activeSection, i, e.target.value)}
-                            disabled={isSubmittedToChairperson || isClosed}
+                            disabled={isManualEncodingLocked || isClosed}
                           >
                             <option value="active">Active</option>
                             <option value="dropped">Dropped (D)</option>
@@ -1415,7 +1451,7 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
                                 : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                             } disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400`}
                             onClick={() => toggleStudentFlag(activeSection, i)}
-                            disabled={isSubmittedToChairperson || isClosed}
+                            disabled={isManualEncodingLocked || isClosed}
                           >
                             {isFlagged ? 'Flagged' : 'Flag'}
                           </button>
