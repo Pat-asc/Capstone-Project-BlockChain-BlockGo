@@ -527,16 +527,20 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
             preferredStudentNo ||
             studentRecord.studentId ||
             studentRecord.id ||
-            studentRecord.email ||
-            'N/A';
+
+            (studentRecord.email ? studentRecord.email.split('@')[0] : 'N/A');
           const firstName = studentRecord.firstName || "";
           const lastName = studentRecord.lastName || "";
-          const fullName =
+            let fullName =
             studentRecord.fullname ||
             studentRecord.name ||
             [lastName, firstName].filter(Boolean).join(", ") ||
-            studentRecord.email ||
-            "Unnamed Student";
+              (rosterStudentId !== 'N/A' ? `Student ${rosterStudentId}` : "Unnamed Student");
+              
+            if (fullName.includes('@')) {
+                fullName = fullName.split('@')[0];
+            }
+
           const backendMatch = backendStudents.find(
             (student) =>
               String(student.studentno || "").trim() === String(rosterStudentId).trim() ||

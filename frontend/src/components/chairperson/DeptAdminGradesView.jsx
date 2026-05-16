@@ -399,8 +399,17 @@ const resolveStudentIdentityForRecord = ({
         fallbackRosterStudent?.fullname ||
         fallbackRosterStudent?.name ||
         [fallbackRosterStudent?.lastName, fallbackRosterStudent?.firstName].filter(Boolean).join(', ') ||
-        fallbackRosterStudent?.email ||
-        '';
+        (rosterStudentId ? `Student ${rosterStudentId}` : '');
+
+    let finalStudentName = 
+        (!isPlaceholderStudentName(recordStudentName) && recordStudentName) ||
+        rosterStudentName ||
+        recordStudentName ||
+        'Student';
+        
+    if (finalStudentName.includes('@')) {
+        finalStudentName = finalStudentName.split('@')[0];
+    }
 
     return {
         studentId:
@@ -410,11 +419,7 @@ const resolveStudentIdentityForRecord = ({
             getRecordStudentKey(record) ||
             recordStudentNumber ||
             'Unknown',
-        studentName:
-            (!isPlaceholderStudentName(recordStudentName) && recordStudentName) ||
-            rosterStudentName ||
-            recordStudentName ||
-            'Student',
+        studentName: finalStudentName,
     };
 };
 const getDepartmentSectionSnapshot = (department = '') => {
@@ -805,7 +810,7 @@ const DeptAdminGradesView = ({ loggedInEmail = '', loggedInName = '', userRole =
                             student.fullname ||
                             student.name ||
                             [student.lastName, student.firstName].filter(Boolean).join(', ') ||
-                            rosterStudentId;
+                            (rosterStudentId.includes('@') ? rosterStudentId.split('@')[0] : rosterStudentId);
                         const rawEntry = g.rawStudentEntries[index] || g.rawStudentEntries.find((entry) =>
                             normalizeText(entry.studentNumber) === normalizeText(rosterStudentId)
                         ) || null;

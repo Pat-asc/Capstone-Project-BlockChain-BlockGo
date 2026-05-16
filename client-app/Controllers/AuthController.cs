@@ -1314,6 +1314,8 @@ namespace Client_app.Controllers
                 var parsedRecords = new List<Dictionary<string, string>>();
                 var parsedHeaders = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
+                string NormalizeHeader(string s) => System.Text.RegularExpressions.Regex.Replace(s.Trim().ToLower(), @"[^a-z0-9]+", "_").Trim('_');
+
                 if (ext == ".xlsx")
                 {
                     using var workbook = new XLWorkbook(tempFile);
@@ -1321,22 +1323,27 @@ namespace Client_app.Controllers
                     var headerRow = ws.FirstRowUsed();
                     var headerMap = new Dictionary<string, int>();
                     
-                    foreach (var cell in headerRow.CellsUsed())
+                    if (headerRow != null)
                     {
-                        var normalizedHeader = cell.Value.ToString().Trim().ToLower().Replace(" ", "_");
-                        headerMap[normalizedHeader] = cell.Address.ColumnNumber;
-                        parsedHeaders.Add(normalizedHeader);
-                    }
-
-                    var rows = ws.RowsUsed().Skip(1);
-                    foreach (var row in rows)
-                    {
-                        var dict = new Dictionary<string, string>();
-                        foreach (var kvp in headerMap)
+                        foreach (var cell in headerRow.CellsUsed())
                         {
-                            dict[kvp.Key] = row.Cell(kvp.Value).Value.ToString().Trim();
+                            var normalizedHeader = NormalizeHeader(cell.Value.ToString() ?? "");
+                            if (!string.IsNullOrEmpty(normalizedHeader)) {
+                                headerMap[normalizedHeader] = cell.Address.ColumnNumber;
+                                parsedHeaders.Add(normalizedHeader);
+                            }
                         }
-                        parsedRecords.Add(dict);
+
+                        var rows = ws.RowsUsed().Skip(1);
+                        foreach (var row in rows)
+                        {
+                            var dict = new Dictionary<string, string>();
+                            foreach (var kvp in headerMap)
+                            {
+                                dict[kvp.Key] = row.Cell(kvp.Value).Value.ToString().Trim();
+                            }
+                            parsedRecords.Add(dict);
+                        }
                     }
                 }
                 else if (ext == ".csv")
@@ -1362,9 +1369,11 @@ namespace Client_app.Controllers
                             headerMap = new Dictionary<string, int>();
                             for (int i = 0; i < fields.Length; i++)
                             {
-                                var normalizedHeader = fields[i].Trim().Trim('"').ToLower().Replace(" ", "_");
-                                headerMap[normalizedHeader] = i;
-                                parsedHeaders.Add(normalizedHeader);
+                                var normalizedHeader = NormalizeHeader(fields[i]);
+                                if (!string.IsNullOrEmpty(normalizedHeader)) {
+                                    headerMap[normalizedHeader] = i;
+                                    parsedHeaders.Add(normalizedHeader);
+                                }
                             }
                             continue;
                         }
@@ -1385,15 +1394,37 @@ namespace Client_app.Controllers
                 int failureCount = 0;
                 var errors = new List<object>();
 
-                var requiredHeaders = new[] { "student_id", "first_name", "last_name", "middle_name", "sex", "email", "number", "address", "birthday" };
-                var missingHeaders = requiredHeaders.Where(header => !parsedHeaders.Contains(header)).ToList();
-                if (missingHeaders.Count > 0)
+                var requiredGroups = new List<string[]>
+                {
+                    new[] { "student_id", "student_no", "student_number", "id_number" }
+                };
+
+                if (normalizedMode != "update")
+                {
+                    requiredGroups.Add(new[] { "birthday", "dob", "date_of_birth" });
+                    
+                    bool hasFullName = parsedHeaders.Contains("name") || parsedHeaders.Contains("full_name") || parsedHeaders.Contains("student_name");
+                    bool hasFirstLast = parsedHeaders.Any(h => h.Contains("first")) && parsedHeaders.Any(h => h.Contains("last"));
+                    
+                    if (!hasFullName && !hasFirstLast)
+                    {
+                        requiredGroups.Add(new[] { "first_name", "firstname", "given_name", "name", "full_name" });
+                        requiredGroups.Add(new[] { "last_name", "lastname", "surname" });
+                    }
+                }
+
+                var missingGroups = requiredGroups
+                    .Where(group => !group.Any(h => parsedHeaders.Contains(h)))
+                    .Select(group => group[0])
+                    .ToList();
+
+                if (missingGroups.Count > 0)
                 {
                     return BadRequest(new
                     {
                         status = "Error",
-                        message = $"Missing required column(s): {string.Join(", ", missingHeaders)}",
-                        missingColumns = missingHeaders
+                        message = $"Missing required column(s): {string.Join(", ", missingGroups)}",
+                        missingColumns = missingGroups
                     });
                 }
 
@@ -1431,7 +1462,11 @@ namespace Client_app.Controllers
                         string dobStr = GetVal("birthday", "dob", "date_of_birth");
                         string section = GetVal("section", "class_section");
                         string dept = GetVal("department", "course", "program");
-                        string name = $"{firstName} {middleName} {lastName}".Replace("  ", " ").Trim();
+                        
+                        string name = GetVal("name", "full_name", "student_name");
+                        if (string.IsNullOrEmpty(name)) {
+                            name = $"{firstName} {middleName} {lastName}".Replace("  ", " ").Trim();
+                        }
 
                         // Smart Fallback: Decide if the filename is a Department or a Section
                         if (isDepartmentFallback) 
@@ -1446,18 +1481,18 @@ namespace Client_app.Controllers
                         if (string.IsNullOrEmpty(dept)) dept = defaultDepartment ?? "Unassigned";
                         var invalidColumns = new List<string>();
                         if (string.IsNullOrEmpty(studentNo)) invalidColumns.Add("student_id");
-                        if (string.IsNullOrEmpty(firstName)) invalidColumns.Add("first_name");
-                        if (string.IsNullOrEmpty(lastName)) invalidColumns.Add("last_name");
-                        if (string.IsNullOrEmpty(middleName)) invalidColumns.Add("middle_name");
-                        if (string.IsNullOrEmpty(sex)) invalidColumns.Add("sex");
-                        if (string.IsNullOrEmpty(email)) invalidColumns.Add("email");
-                        if (string.IsNullOrEmpty(phone)) invalidColumns.Add("number");
-                        if (string.IsNullOrEmpty(address)) invalidColumns.Add("address");
-                        if (string.IsNullOrEmpty(dobStr)) invalidColumns.Add("birthday");
+                        
+                        if (normalizedMode != "update") 
+                        {
+                            if (string.IsNullOrEmpty(name)) invalidColumns.Add("name (or first/last name)");
+                            if (string.IsNullOrEmpty(dobStr)) invalidColumns.Add("birthday");
+                        }
+
                         if (invalidColumns.Count > 0)
                             throw new Exception($"Missing required value(s) in column(s): {string.Join(", ", invalidColumns)}");
 
                         string loginId = studentNo; 
+                        if (string.IsNullOrEmpty(email)) email = $"{loginId}@plv.edu.ph";
 
                         email = email.Trim().ToLower();
                         loginId = loginId.Trim().ToLower();
@@ -1466,20 +1501,30 @@ namespace Client_app.Controllers
                         sex = sex.Trim();
                         phone = phone.Trim();
                         address = address.Trim();
-                        if (!System.Text.RegularExpressions.Regex.IsMatch(loginId, @"^\d{2}-\d{4}$"))
-                            throw new Exception("Invalid value in column 'student_id'. Use xx-xxxx.");
-                        if (!System.Text.RegularExpressions.Regex.IsMatch(dobStr, @"^\d{2}/\d{2}/\d{4}$"))
+                        if (!System.Text.RegularExpressions.Regex.IsMatch(loginId, @"^\d{2,4}-\d{4,}$"))
+                            throw new Exception("Invalid value in column 'student_id'. Use xx-xxxx or xxxx-xxxx.");
+                        
+                        if (normalizedMode != "update" && !System.Text.RegularExpressions.Regex.IsMatch(dobStr, @"^\d{2}/\d{2}/\d{4}$") && !DateTime.TryParse(dobStr, out _))
                             throw new Exception("Invalid value in column 'birthday'. Use MM/DD/YYYY.");
 
                         string password = dobStr;
 
                         // Parse Birthday if available
                         DateTime? dobDate = null;
-                        if (!string.IsNullOrEmpty(dobStr) && DateTime.TryParseExact(dobStr, "MM/dd/yyyy", System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out DateTime parsedDob))
+                        if (!string.IsNullOrEmpty(dobStr))
                         {
-                            dobDate = parsedDob;
+                            if (DateTime.TryParseExact(dobStr, "MM/dd/yyyy", System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out DateTime parsedDob))
+                            {
+                                dobDate = parsedDob;
+                            }
+                            else if (DateTime.TryParse(dobStr, out DateTime fallbackDob))
+                            {
+                                dobDate = fallbackDob;
+                                password = fallbackDob.ToString("MM/dd/yyyy");
+                            }
                         }
-                        if (!dobDate.HasValue) throw new Exception("Invalid value in column 'birthday'. Use MM/DD/YYYY.");
+                        
+                        if (normalizedMode != "update" && !dobDate.HasValue) throw new Exception("Invalid value in column 'birthday'. Use MM/DD/YYYY.");
 
                         using var checkCmd = new NpgsqlCommand("SELECT COUNT(1) FROM Users WHERE email = @email", conn);
                         checkCmd.Parameters.AddWithValue("email", loginId);
@@ -1501,16 +1546,16 @@ namespace Client_app.Controllers
                             {
                                 using var updateProfile = new NpgsqlCommand(@"
                                     UPDATE StudentProfiles 
-                                    SET full_name = @name,
-                                        student_no = @studentno,
-                                        department = @dept,
+                                    SET full_name = COALESCE(@name, full_name),
+                                        student_no = COALESCE(@studentno, student_no),
+                                        department = COALESCE(@dept, department),
                                         section = COALESCE(@sec, section),
                                         date_of_birth = COALESCE(@dob, date_of_birth),
-                                        student_email = @studentEmail,
-                                        middle_name = @middleName,
-                                        sex = @sex,
-                                        phone = @phone,
-                                        address = @address,
+                                        student_email = COALESCE(@studentEmail, student_email),
+                                        middle_name = COALESCE(@middleName, middle_name),
+                                        sex = COALESCE(@sex, sex),
+                                        phone = COALESCE(@phone, phone),
+                                        address = COALESCE(@address, address),
                                         assignment_status = 'Enrolled'
                                     WHERE user_id = @uid", conn, tx);
                                 updateProfile.Parameters.AddWithValue("name", !string.IsNullOrEmpty(name) ? (object)name : DBNull.Value);
@@ -1575,10 +1620,11 @@ namespace Client_app.Controllers
                     catch (Exception rowEx)
                     {
                         failureCount++;
+                        var studentIdVal = GetVal("student_id", "student_no", "student_number", "id_number");
                         errors.Add(new
                         {
                             row = rowNumber,
-                            identifier = record.TryGetValue("student_id", out var studentId) && !string.IsNullOrWhiteSpace(studentId) ? studentId : "Unknown",
+                            identifier = !string.IsNullOrWhiteSpace(studentIdVal) ? studentIdVal : "Unknown",
                             reason = rowEx.Message
                         });
                     }

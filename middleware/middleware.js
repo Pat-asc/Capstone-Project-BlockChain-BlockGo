@@ -651,13 +651,26 @@ app.post('/api/login', loginLimiter, async (req, res) => {
     try {
         const { username, password } = req.body;
         const normalizedUsername = (username || '').trim().toLowerCase();
+        const baseUsername = normalizedUsername.split('@')[0];
         
-        const userResult = await dbRead.query('SELECT * FROM Users WHERE email = $1', [normalizedUsername]);
+        const userResult = await dbRead.query(`
+            SELECT u.* 
+            FROM Users u 
+            LEFT JOIN studentprofiles sp ON u.id = sp.user_id 
+            WHERE u.email = $1 
+               OR u.email = $2
+               OR sp.student_no = $1 
+               OR sp.student_no = $2
+               OR sp.student_email = $1
+            LIMIT 1
+        `, [normalizedUsername, baseUsername]);
+
         if (userResult.rows.length === 0) {
             return res.status(401).json({ error: "Invalid email or password." });
         }
         
         const userRecord = userResult.rows[0];
+        const walletIdentityName = userRecord.email;
         
         if (userRecord.status === 'pending') {
             return res.status(403).json({ error: "Account pending administrative approval." });
@@ -669,27 +682,27 @@ app.post('/api/login', loginLimiter, async (req, res) => {
         }
 
         const wallet = await getWallet(userRecord.role);
-        let identity = await wallet.get(normalizedUsername);
+        let identity = await wallet.get(walletIdentityName);
         
         if (!identity) {
-            console.warn(`[Self-Healing] Wallet missing for ${normalizedUsername}. Attempting automatic recovery...`);
+            console.warn(`[Self-Healing] Wallet missing for ${walletIdentityName}. Attempting automatic recovery...`);
             try {
                 const { caURL, caName, adminLabel, mspId, tlsOptions, caClient } = getCAConfig(userRecord.role);
                 const ca = caClient;
                 
                 try {
                     const enrollment = await ca.enroll({
-                        enrollmentID: normalizedUsername,
+                        enrollmentID: walletIdentityName,
                         enrollmentSecret: password,
                         attr_reqs: [{ name: 'role', optional: true }, { name: 'grade.manage', optional: true }]
                     });
-                    await wallet.put(normalizedUsername, {
+                    await wallet.put(walletIdentityName, {
                         credentials: { certificate: enrollment.certificate, privateKey: enrollment.key.toBytes() },
                         mspId: mspId,
                         type: 'X.509'
                     });
                 } catch (enrollErr) {
-                    console.log(`[Self-Healing] Enrollment failed, attempting to register ${normalizedUsername} into CA...`);
+                    console.log(`[Self-Healing] Enrollment failed, attempting to register ${walletIdentityName} into CA...`);
                     
                     await ensureAdminEnrolled(caURL, caName, mspId, adminLabel, tlsOptions, caClient);
                     
@@ -700,7 +713,7 @@ app.post('/api/login', loginLimiter, async (req, res) => {
                     let adminUser = await provider.getUserContext(adminIdentity, 'admin');
                     
                     const registerPayload = {
-                        enrollmentID: normalizedUsername,
+                        enrollmentID: walletIdentityName,
                         enrollmentSecret: password,
                         role: (userRecord.role === 'registrar' || userRecord.role === 'department_admin' || userRecord.role === 'deptAdmin' || userRecord.role === 'chairperson') ? 'admin' : 'client',
                         attrs: [
@@ -721,27 +734,27 @@ app.post('/api/login', loginLimiter, async (req, res) => {
                             adminUser = await provider.getUserContext(newAdminIdentity, 'admin');
                             await ca.register(registerPayload, adminUser);
                         } else if (regErr.toString().includes('code: 74') || regErr.toString().includes('is already registered')) {
-                            console.log(`[Self-Healing] ${normalizedUsername} already exists in CA. Updating enrollment secret for wallet recovery...`);
+                            console.log(`[Self-Healing] ${walletIdentityName} already exists in CA. Updating enrollment secret for wallet recovery...`);
                             const identityService = ca.newIdentityService();
-                            await identityService.update(normalizedUsername, { enrollmentSecret: password }, adminUser);
+                            await identityService.update(walletIdentityName, { enrollmentSecret: password }, adminUser);
                         } else {
                             throw regErr;
                         }
                     }
                     
                     const newEnrollment = await ca.enroll({
-                        enrollmentID: normalizedUsername,
+                        enrollmentID: walletIdentityName,
                         enrollmentSecret: password,
                         attr_reqs: [{ name: 'role', optional: true }, { name: 'grade.manage', optional: true }]
                     });
-                    await wallet.put(normalizedUsername, {
+                    await wallet.put(walletIdentityName, {
                         credentials: { certificate: newEnrollment.certificate, privateKey: newEnrollment.key.toBytes() },
                         mspId: mspId,
                         type: 'X.509'
                     });
                 }
-                console.log(`[Self-Healing] Successfully recovered wallet for ${normalizedUsername}`);
-                identity = await wallet.get(normalizedUsername);
+                console.log(`[Self-Healing] Successfully recovered wallet for ${walletIdentityName}`);
+                identity = await wallet.get(walletIdentityName);
             } catch (recoveryErr) {
                 console.error(`[Self-Healing] Recovery failed: ${recoveryErr.message}`);
                 return res.status(401).json({ error: "Blockchain Identity not found, and automatic recovery failed. Please contact admin." });
@@ -750,12 +763,12 @@ app.post('/api/login', loginLimiter, async (req, res) => {
 
 
         const tokenPayload = { 
-            username: normalizedUsername, 
+            username: walletIdentityName, 
             role: identity.mspId, 
             dbRole: userRecord.role,
-            "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier": normalizedUsername,
-            "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name": normalizedUsername,
-            "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress": normalizedUsername,
+            "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier": walletIdentityName,
+            "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name": walletIdentityName,
+            "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress": walletIdentityName,
             "http://schemas.microsoft.com/ws/2008/06/identity/claims/role": userRecord.role
         };
         
@@ -873,7 +886,8 @@ app.post('/api/forgot-password', passwordResetLimiter, async (req, res) => {
 
         await dbWrite.query('UPDATE Users SET password_reset_token = $1, password_reset_expires = $2 WHERE email = $3', [resetToken, tokenExpiry, email]);
 
-        const resetURL = `http://localhost:3000/reset-password?token=${resetToken}`;
+        const frontendUrl = process.env.FRONTEND_URL || req.headers.origin || 'http://localhost';
+        const resetURL = `${frontendUrl}/reset-password?token=${resetToken}`;
         
         console.log(`[DEV MODE] Reset Link generated: ${resetURL}\n`);
 
