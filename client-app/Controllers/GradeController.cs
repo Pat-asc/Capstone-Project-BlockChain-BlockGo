@@ -878,7 +878,7 @@ namespace BlockGo.Controllers
                                     {
                                         var cell = row.Cell(headerMap[col]);
                                         var val = "";
-                                        try { val = cell.HasFormula ? (cell.CachedValue?.ToString() ?? cell.Value.ToString()) : cell.Value.ToString(); }
+                                        try { val = cell.HasFormula ? cell.CachedValue.ToString() : cell.Value.ToString(); }
                                         catch { val = cell.Value.ToString(); }
                                         if (!string.IsNullOrWhiteSpace(val)) return val.Trim();
                                     }
