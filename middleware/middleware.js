@@ -657,16 +657,16 @@ app.post('/api/login', loginLimiter, async (req, res) => {
             SELECT u.* 
             FROM Users u 
             LEFT JOIN studentprofiles sp ON u.id = sp.user_id 
-            WHERE u.email = $1 
-               OR u.email = $2
-               OR sp.student_no = $1 
-               OR sp.student_no = $2
-               OR sp.student_email = $1
+            WHERE LOWER(u.email) = $1 
+               OR LOWER(u.email) = $2
+               OR LOWER(sp.student_no) = $1 
+               OR LOWER(sp.student_no) = $2
+               OR LOWER(sp.student_email) = $1
             LIMIT 1
         `, [normalizedUsername, baseUsername]);
 
         if (userResult.rows.length === 0) {
-            return res.status(401).json({ error: "Invalid email or password." });
+            return res.status(401).json({ error: "Invalid email/student_no. or password." });
         }
         
         const userRecord = userResult.rows[0];
