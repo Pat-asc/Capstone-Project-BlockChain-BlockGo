@@ -269,7 +269,7 @@ async function bootstrapMockStudents(wallet) {
 async function main() {
     console.log('--- Running Decentralized CA Admin Enrollment Script ---');
     try {
-        const caAdminSecret = process.env.CA_ADMIN_PASS || 'adminpw';
+        const caAdminSecret = process.env.CA_ADMIN_PASS || process.env.BOOTSTRAP_REGISTRAR_PASS || 'adminpw';
         
         // 1. Registrar Wallet & Admin
         const walletRegistrar = await getWallet('registrar');

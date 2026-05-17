@@ -45,8 +45,15 @@ wait_for_service() {
     local host=$1; local port=$2; local name=$3; local timeout=$4
     local start_time=$(date +%s)
     log_info "Waiting for $name ($host:$port)..."
-    while ! nc -z -w 2 $host $port > /dev/null 2>&1; do
-        if [ $(($(date +%s) - start_time)) -ge $timeout ]; then log_error "$name timeout!"; fi
+    while ! nc -z -w 2 $host $port > /dev/null 2>&1 && ! bash -c "echo > /dev/tcp/$host/$port" > /dev/null 2>&1 && ! curl -s http://$host:$port > /dev/null 2>&1 && ! curl -s -k https://$host:$port > /dev/null 2>&1; do
+        if [ $(($(date +%s) - start_time)) -ge $timeout ]; then 
+            if [ "$port" == "7054" ]; then
+                echo -e "\n--- CA REGISTRAR DOCKER LOGS ---"
+                docker logs ca.registrar.capstone.com || true
+                echo "--------------------------------"
+            fi
+            log_error "$name timeout on $host:$port!"
+        fi
         sleep 2
     done
     log_info "$name is ready!"
@@ -56,7 +63,7 @@ wait_for_optional_service() {
     local host=$1; local port=$2; local name=$3; local timeout=$4
     local start_time=$(date +%s)
     log_info "Checking optional $name ($host:$port)..."
-    while ! nc -z -w 2 $host $port > /dev/null 2>&1; do
+    while ! nc -z -w 2 $host $port > /dev/null 2>&1 && ! bash -c "echo > /dev/tcp/$host/$port" > /dev/null 2>&1; do
         if [ $(($(date +%s) - start_time)) -ge $timeout ]; then
             log_warn "$name is not reachable. Continuing because core services do not depend on nginx-shield."
             return 0
@@ -138,6 +145,10 @@ fi
 
 docker compose -f docker-compose-main.yaml -f docker-compose-annex.yaml -f docker-compose-pubad.yaml down -v --remove-orphans 2>/dev/null || true
 docker rm -f -v couchdb_wallet couchdb_wallet_faculty couchdb_wallet_department blockgo-middleware nginx-shield-main-failover nginx-shield-annex-failover nginx-shield-pubad-failover 2>/dev/null || true
+
+# Force remove root-owned files created by containers to prevent CA container crashes
+docker run --rm -v "$(pwd):/tmp/network" alpine sh -c "rm -rf /tmp/network/fabric-ca/registrar/* /tmp/network/fabric-ca/faculty/* /tmp/network/fabric-ca/department/* /tmp/network/${CRYPTO_DIR} /tmp/network/${ARTIFACTS_DIR} /tmp/network/../middleware/wallet" 2>/dev/null || true
+
 rm -rf ./fabric-ca/registrar/* ./fabric-ca/faculty/* ./fabric-ca/department/* 2>/dev/null || true
 rm -rf "$CRYPTO_DIR" "$ARTIFACTS_DIR" 2>/dev/null || true
 rm -rf ../middleware/wallet 2>/dev/null || true
@@ -151,7 +162,7 @@ echo "{}" > "$TMP_DOCKER_CFG/config.json"
 DOCKER_CONFIG=$TMP_DOCKER_CFG docker compose -f docker-compose-main.yaml -f docker-compose-annex.yaml -f docker-compose-pubad.yaml up -d ca.registrar.capstone.com ca.faculty.capstone.com ca.department.capstone.com cli
 rm -rf "$TMP_DOCKER_CFG"
 
-wait_for_service 127.0.0.1 7054 "Registrar CA" 60
+wait_for_service 127.0.0.1 7054 "Registrar CA" 120
 
 # ============================================================
 # PHASE 2: DYNAMIC ENROLLMENT
