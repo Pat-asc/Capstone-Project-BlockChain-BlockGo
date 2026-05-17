@@ -206,66 +206,6 @@ async function bootstrapRootUser(wallet) {
     }
 }
 
-async function bootstrapMockStudents(wallet) {
-    console.log('\n--- Bootstrapping Mock Students Wallets ---');
-    const ca = new FabricCAServices('https://localhost:7054', { verify: false }, 'ca-registrar');
-    const adminIdentity = await wallet.get('admin-registrar');
-    
-    if (!adminIdentity) {
-        console.warn('admin-registrar not found, skipping mock student wallet generation.');
-        return;
-    }
-    
-    const provider = wallet.getProviderRegistry().getProvider(adminIdentity.type);
-    const adminUser = await provider.getUserContext(adminIdentity, 'admin');
-
-    const mockData = [
-        { email: 'mock-student1@plv.edu.ph', pass: 'mock-student1' },
-        { email: 'mock-student2@plv.edu.ph', pass: 'mock-student2' },
-        { email: 'mock-student3@plv.edu.ph', pass: 'mock-student3' },
-        { email: 'mock-student4@plv.edu.ph', pass: 'mock-student4' },
-        { email: 'mock-student5@plv.edu.ph', pass: 'mock-student5' },
-        { email: 'mock-student6@plv.edu.ph', pass: 'mock-student6' },
-        { email: 'mock-student7@plv.edu.ph', pass: 'mock-student7' },
-        { email: 'mock-student8@plv.edu.ph', pass: 'mock-student8' },
-        { email: 'mock-student9@plv.edu.ph', pass: 'mock-student9' },
-        { email: 'mock-student10@plv.edu.ph', pass: 'mock-student10' }
-    ];
-
-    for (const student of mockData) {
-        const { email, pass } = student;
-        const identityExists = await wallet.get(email);
-        
-        if (!identityExists) {
-            try {
-                await ca.register({
-                    enrollmentID: email,
-                    enrollmentSecret: pass,
-                    role: 'client',
-                    attrs: [
-                        { name: 'role', value: 'student', ecert: true },
-                        { name: 'grade.manage', value: 'false', ecert: true }
-                    ]
-                }, adminUser);
-            } catch (regErr) {
-                if (!regErr.toString().includes('is already registered')) {
-                    console.error(`Failed to register ${email}: ${regErr.message}`);
-                    continue;
-                }
-            }
-
-            try {
-                const enrollment = await ca.enroll({ enrollmentID: email, enrollmentSecret: pass });
-                const x509Identity = { credentials: { certificate: enrollment.certificate, privateKey: enrollment.key.toBytes() }, mspId: 'RegistrarMSP', type: 'X.509' };
-                await wallet.put(email, x509Identity);
-                console.log(`Generated Fabric Wallet for mock student: ${email}`);
-            } catch (enrollErr) {
-                console.error(`Failed to enroll ${email}: ${enrollErr.message}`);
-            }
-        }
-    }
-}
-
 async function main() {
     console.log('--- Running Decentralized CA Admin Enrollment Script ---');
     try {
@@ -287,7 +227,6 @@ async function main() {
         await enrollCAAdmin(caDepartment, walletDept, 'DepartmentMSP', 'admin', caAdminSecret, 'admin-department');
 
         await bootstrapRootUser(walletRegistrar);
-        await bootstrapMockStudents(walletRegistrar);
 
     } catch (error) {
         console.error(`\nEnrollment script failed: ${error}`);
