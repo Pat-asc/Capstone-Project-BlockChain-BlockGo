@@ -42,6 +42,7 @@ namespace Client_app.Controllers
             await Groups.AddToGroupAsync(Context.ConnectionId, $"role_{normalizedRole}");
             
             await UpdateOnlineStatus(userEmail, true, resolvedRole);
+            await MarkPendingIncomingMessagesDeliveredAsync(userEmail);
             await Clients.All.SendAsync("OnlineStatusChanged", new { Email = userEmail, IsOnline = true });
             await SendContactsToCallerAsync(userEmail, resolvedRole);
 
@@ -320,6 +321,52 @@ namespace Client_app.Controllers
             catch (Exception ex)
             {
                 _logger.LogWarning(ex, "Failed to mark chat message as delivered.");
+            }
+        }
+
+        private async Task MarkPendingIncomingMessagesDeliveredAsync(string receiverEmail)
+        {
+            if (string.IsNullOrWhiteSpace(receiverEmail)) return;
+
+            var deliveredAt = DateTime.UtcNow;
+            var deliveredMessages = new List<(int MessageId, string SenderEmail)>();
+
+            try
+            {
+                using var conn = new NpgsqlConnection(_connectionString);
+                await conn.OpenAsync();
+                await EnsureChatSchemaAsync(conn);
+
+                using var cmd = new NpgsqlCommand(@"
+                    UPDATE chat_messages
+                    SET delivered_at = COALESCE(delivered_at, @deliveredAt)
+                    WHERE LOWER(receiver_email) = LOWER(@receiverEmail)
+                      AND delivered_at IS NULL
+                      AND COALESCE(sent_at, timestamp) >= @cutoff
+                    RETURNING id, sender_email;", conn);
+                cmd.Parameters.AddWithValue("deliveredAt", deliveredAt);
+                cmd.Parameters.AddWithValue("receiverEmail", receiverEmail);
+                cmd.Parameters.AddWithValue("cutoff", DateTime.UtcNow.Subtract(DatabaseHistoryDuration));
+
+                using var reader = await cmd.ExecuteReaderAsync();
+                while (await reader.ReadAsync())
+                {
+                    deliveredMessages.Add((reader.GetInt32(0), reader.GetString(1)));
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to mark pending incoming chat messages as delivered for {ReceiverEmail}.", receiverEmail);
+                return;
+            }
+
+            foreach (var deliveredMessage in deliveredMessages)
+            {
+                await Clients.Group($"private_{deliveredMessage.SenderEmail}").SendAsync("MessageDelivered", new
+                {
+                    MessageId = deliveredMessage.MessageId,
+                    DeliveredAt = deliveredAt
+                });
             }
         }
 

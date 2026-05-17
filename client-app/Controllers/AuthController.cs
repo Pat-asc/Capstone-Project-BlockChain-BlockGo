@@ -2195,6 +2195,7 @@ namespace Client_app.Controllers
                     }
                 } catch (Exception notifyEx) { _logger.LogWarning(notifyEx, "Could not notify chairperson of masterlist upload"); }
 
+                _cache.Remove("approved_students");
                 await NotifyAcademicDataChangedAsync("masterlist_uploaded", department, User.Identity?.Name);
                 return Ok(new { 
                     status = (successCount > 0 && failureCount == 0) ? "Success" : (successCount > 0 ? "Partial Success" : "Error"), 
@@ -2477,6 +2478,7 @@ namespace Client_app.Controllers
                     }
                 }
                 finally { if (System.IO.File.Exists(tempFile)) System.IO.File.Delete(tempFile); }
+                _cache.Remove("approved_students");
                 await NotifyAcademicDataChangedAsync("students_enrolled", department, User.Identity?.Name);
                 return Ok(new { status = "Success", message = $"Successfully enrolled {successCount} students into {department} {yearLevel}-{sectionNum}!" });
             }

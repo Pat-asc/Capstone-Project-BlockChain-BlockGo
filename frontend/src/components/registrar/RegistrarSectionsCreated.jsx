@@ -9,6 +9,7 @@ import {
   parseStudentIdSpreadsheet,
   syncSectionedStudentsToStorage,
 } from "../../utils/studentSectioningHelpers";
+import { syncSectioningBatchesToBackend } from "../../utils/registrarSectioningBackendSync";
 
 const GRADUATING_STUDENTS_KEY = "graduatingStudents";
 const IRREGULAR_SUBJECTS_KEY = "irregularSubjectAssignments";
@@ -121,17 +122,26 @@ function RegistrarSectionsCreated() {
     });
   };
 
-  const handleApplyDepartmentChanges = () => {
+  const handleApplyDepartmentChanges = async () => {
     if (!selectedDepartment) return;
 
     localStorage.setItem(STUDENT_BATCHES_KEY, JSON.stringify(batches));
     syncSectionedStudentsToStorage(batches);
-    setChangedDepartments((current) => {
-      const nextDepartments = new Set(current);
-      nextDepartments.delete(selectedDepartment);
-      return nextDepartments;
-    });
-    alert(`${selectedDepartment} section changes applied.`);
+    try {
+      await syncSectioningBatchesToBackend(
+        batches.filter((batch) => batch.program === selectedDepartment)
+      );
+      setChangedDepartments((current) => {
+        const nextDepartments = new Set(current);
+        nextDepartments.delete(selectedDepartment);
+        return nextDepartments;
+      });
+      alert(`${selectedDepartment} section changes applied and synced.`);
+    } catch (error) {
+      alert(
+        `Changes were saved locally, but backend sync failed: ${error.message || "Please try applying again."}`
+      );
+    }
   };
 
   const sectionedBatches = useMemo(

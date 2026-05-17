@@ -1,6 +1,8 @@
 =============== May 17, 2026 (UTC) ===============
-16:17:12.910200 log@legend F·NumFile S·FileSize N·Entry C·BadEntry B·BadBlock Ke·KeyError D·DroppedEntry L·Level Q·SeqNum T·TimeElapsed
-16:17:12.976728 db@open opening
-16:17:13.002029 version@stat F·[] S·0B[] Sc·[]
-16:17:13.015746 db@janitor F·2 G·0
-16:17:13.016432 db@open done T·38.114822ms
+20:59:07.594912 log@legend F·NumFile S·FileSize N·Entry C·BadEntry B·BadBlock Ke·KeyError D·DroppedEntry L·Level Q·SeqNum T·TimeElapsed
+20:59:07.641301 db@open opening
+20:59:07.651515 version@stat F·[] S·0B[] Sc·[]
+20:59:07.662815 db@janitor F·2 G·0
+20:59:07.663796 db@open done T·21.734314ms
+21:02:46.045172 db@close closing
+21:02:46.049912 db@close done T·4.73129ms

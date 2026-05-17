@@ -9,6 +9,10 @@ import {
   parseStudentIdSpreadsheet,
   syncSectionedStudentsToStorage,
 } from "../../utils/studentSectioningHelpers";
+import {
+  fetchApprovedStudents,
+  fetchDepartmentSections,
+} from "../../services/api";
 
 const buildStudentName = (student) => {
   const firstAndMiddle = [
@@ -147,6 +151,145 @@ const getCurrentRolloverBatches = (workspaces = []) => {
 
 const buildIrregularSubjectKey = () =>
   `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+const BACKEND_BATCH_KEY_PREFIX = "backend-approved-students";
+const BACKEND_SYNCED_AT = "1970-01-01T00:00:00.000Z";
+
+const normalizeYearLevelLabel = (value = "") => {
+  const text = String(value || "").trim();
+  if (AVAILABLE_YEAR_LEVELS.includes(text)) return text;
+
+  const matchedYear = text.match(/[1-4]/)?.[0];
+  const yearLabels = {
+    1: "1st Year",
+    2: "2nd Year",
+    3: "3rd Year",
+    4: "4th Year",
+  };
+
+  return yearLabels[matchedYear] || "1st Year";
+};
+
+const normalizeSectionCode = (section = "", yearLevel = "1st Year") => {
+  const text = String(section || "").trim();
+  const matchedCode = text.match(/([1-4])\s*-\s*(\d+)/);
+  if (matchedCode) return `${matchedCode[1]}-${matchedCode[2]}`;
+
+  const matchedCompact = text.match(/([1-4])\s+(\d+)/);
+  if (matchedCompact) return `${matchedCompact[1]}-${matchedCompact[2]}`;
+
+  const matchedNumber = text.match(/\d+/);
+  if (!matchedNumber) return "";
+
+  return `${YEAR_LEVEL_PREFIXES[yearLevel] || "1"}-${matchedNumber[0]}`;
+};
+
+const splitBackendFullName = (fullName = "") => {
+  const cleanName = String(fullName || "").trim();
+  if (!cleanName) return { firstName: "", lastName: "", middleName: "" };
+
+  if (cleanName.includes(",")) {
+    const [lastName, rest = ""] = cleanName.split(",");
+    const nameParts = rest.trim().split(/\s+/).filter(Boolean);
+    return {
+      firstName: nameParts[0] || "",
+      middleName: nameParts.slice(1).join(" "),
+      lastName: lastName.trim(),
+    };
+  }
+
+  const parts = cleanName.split(/\s+/).filter(Boolean);
+  return {
+    firstName: parts[0] || "",
+    middleName: parts.length > 2 ? parts.slice(1, -1).join(" ") : "",
+    lastName: parts.length > 1 ? parts[parts.length - 1] : "",
+  };
+};
+
+const buildBackendBatch = (department, approvedStudents = [], academicSections = []) => {
+  if (!department) return null;
+
+  const students = approvedStudents
+    .filter((student) => student.department === department)
+    .map((student) => {
+      const inferredYearLevel = normalizeYearLevelLabel(student.yearLevel || student.section);
+      const sectionCode = normalizeSectionCode(student.section, inferredYearLevel);
+      const names = splitBackendFullName(student.fullname || student.fullName);
+
+      return {
+        studentId: student.studentno || student.email || String(student.id || ""),
+        sex: student.sex || "",
+        firstName: names.firstName,
+        lastName: names.lastName,
+        middleName: names.middleName,
+        middleInitial: names.middleName,
+        yearLevel: inferredYearLevel,
+        sectionCode,
+        sectionName: sectionCode ? getDefaultSectionName(department, sectionCode) : "",
+        studentType: "Regular",
+        remarks: student.assignmentStatus || "",
+      };
+    })
+    .sort(compareStudentsByName);
+
+  const sectionPlansByCode = new Map();
+
+  academicSections
+    .filter((section) => section.department === department)
+    .forEach((section) => {
+      const yearLevel = normalizeYearLevelLabel(section.yearLevel);
+      const sectionCode = normalizeSectionCode(
+        `${section.yearLevel}-${section.sectionNum}`,
+        yearLevel
+      );
+      if (!sectionCode) return;
+      sectionPlansByCode.set(sectionCode, {
+        id: section.id || sectionCode,
+        sectionCode,
+        sectionName: getDefaultSectionName(department, sectionCode),
+        yearLevel,
+      });
+    });
+
+  students.forEach((student) => {
+    if (!student.sectionCode || sectionPlansByCode.has(student.sectionCode)) return;
+    sectionPlansByCode.set(student.sectionCode, {
+      id: `student-${student.sectionCode}`,
+      sectionCode: student.sectionCode,
+      sectionName: student.sectionName || getDefaultSectionName(department, student.sectionCode),
+      yearLevel: student.yearLevel,
+    });
+  });
+
+  const sectionPlans = [...sectionPlansByCode.values()].sort((left, right) =>
+    String(left.sectionCode || "").localeCompare(String(right.sectionCode || ""))
+  );
+
+  if (!students.length && !sectionPlans.length) return null;
+
+  return {
+    id: `${BACKEND_BATCH_KEY_PREFIX}-${department}`,
+    key: `${BACKEND_BATCH_KEY_PREFIX}|${department}`,
+    program: department,
+    batchYear: String(new Date().getFullYear()),
+    submittedTo: `${department} Chairperson`,
+    fileName: "System student records",
+    submittedAt: BACKEND_SYNCED_AT,
+    status: sectionPlans.length ? "Sectioning" : "Imported",
+    students,
+    sectionPlans,
+    removedStudents: [],
+    importedCount: students.length,
+    source: "backend",
+  };
+};
+
+const mergeBackendBatch = (previousBatches = [], backendBatch) => {
+  if (!backendBatch) return previousBatches;
+  return [
+    ...previousBatches.filter((batch) => batch.key !== backendBatch.key),
+    backendBatch,
+  ];
+};
 
 function StudentSectioning({
   chairpersonDepartment,
@@ -202,6 +345,55 @@ function StudentSectioning({
     firstName: "",
     middleName: "",
   });
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const refreshBackendSectioningData = async () => {
+      if (!chairpersonDepartment) return;
+
+      try {
+        const [studentsResponse, sectionsResponse] = await Promise.all([
+          fetchApprovedStudents(),
+          fetchDepartmentSections(chairpersonDepartment),
+        ]);
+
+        if (cancelled) return;
+
+        const backendBatch = buildBackendBatch(
+          chairpersonDepartment,
+          studentsResponse.students || studentsResponse.data || [],
+          sectionsResponse.data || sectionsResponse.sections || []
+        );
+
+        if (!backendBatch) return;
+
+        setBatches((previousBatches) => {
+          const nextBatches = mergeBackendBatch(previousBatches, backendBatch);
+          if (JSON.stringify(previousBatches) === JSON.stringify(nextBatches)) {
+            return previousBatches;
+          }
+
+          localStorage.setItem(STUDENT_BATCHES_KEY, JSON.stringify(nextBatches));
+          syncSectionedStudentsToStorage(nextBatches);
+          onSectioningSaved?.();
+          return nextBatches;
+        });
+      } catch (error) {
+        console.error("Failed to refresh backend sectioning data:", error);
+      }
+    };
+
+    refreshBackendSectioningData();
+
+    const handleAcademicDataChanged = () => refreshBackendSectioningData();
+    window.addEventListener("blockgo:academic-data-changed", handleAcademicDataChanged);
+
+    return () => {
+      cancelled = true;
+      window.removeEventListener("blockgo:academic-data-changed", handleAcademicDataChanged);
+    };
+  }, [chairpersonDepartment, onSectioningSaved]);
 
   const departmentBatches = useMemo(() => {
     return batches

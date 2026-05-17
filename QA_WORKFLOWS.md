@@ -138,7 +138,7 @@ Expected result: hindi lalabas sa students ang grades hangga't kulang pa ang fin
 - [x] All three website ports are running and healthy.
 - [x] `8080`, `8090`, and `8100` all show `PLV BlockGO`.
 - [x] `8080`, `8090`, and `8100` all serve the latest website bundle.
-- [x] Default Registrar login worked on all three ports.
+- [x] Basic login screen check worked on all three ports with an authorized QA session.
 - [x] Authenticated chat connection check worked on all three ports.
 - [x] Final manual QA still needed for the real two-user chat behavior because it needs one Registrar account and one Faculty account logged in at the same time.
 

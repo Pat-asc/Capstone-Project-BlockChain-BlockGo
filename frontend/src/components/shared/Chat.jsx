@@ -69,6 +69,7 @@ const normalizeMessage = (payload) => {
     attachmentMime: valueOf(payload, 'attachmentMime', 'AttachmentMime'),
     attachmentSizeBytes: valueOf(payload, 'attachmentSizeBytes', 'AttachmentSizeBytes'),
     attachmentDataBase64: valueOf(payload, 'attachmentDataBase64', 'AttachmentDataBase64'),
+    receivedAt: valueOf(payload, 'receivedAt', 'ReceivedAt') || Date.now(),
   };
 
   normalized.message = getVisibleMessageText(normalized);
@@ -92,10 +93,12 @@ const isSameMessage = (a, b) => {
 };
 
 const getMessageTimeMs = (message) => {
-  const raw = message?.sentAt || message?.timestamp;
+  const raw = message?.sentAt || message?.timestamp || message?.receivedAt;
   if (!raw) return null;
   const time = raw instanceof Date ? raw.getTime() : new Date(raw).getTime();
-  return Number.isFinite(time) ? time : null;
+  if (Number.isFinite(time)) return time;
+  const fallbackTime = Number(raw);
+  return Number.isFinite(fallbackTime) ? fallbackTime : null;
 };
 
 const sortMessagesOldestFirst = (list) =>
@@ -581,14 +584,18 @@ const Chat = ({
     };
   }, [connection, markConversationSeen]);
 
+  const selectedUserTyping = selectedUser ? typingUsers[selectedUser] : false;
+
   // Scroll
   useEffect(() => {
-    scrollToBottom();
-  }, [messages, selectedUser]);
+    const frame = window.requestAnimationFrame(scrollToBottom);
+    return () => window.cancelAnimationFrame(frame);
+  }, [messages.length, selectedUser, selectedUserTyping]);
 
   useEffect(() => {
-    scrollSecondaryToBottom();
-  }, [messages, openChatUsers]);
+    const frame = window.requestAnimationFrame(scrollSecondaryToBottom);
+    return () => window.cancelAnimationFrame(frame);
+  }, [messages.length, openChatUsers, typingUsers]);
 
   useEffect(() => {
     const totalUnread = Object.values(unreadCounts).reduce((total, count) => total + Number(count || 0), 0);

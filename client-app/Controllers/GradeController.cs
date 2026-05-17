@@ -823,53 +823,56 @@ namespace BlockGo.Controllers
                     using (var fileStream = new FileStream(tempFile, FileMode.Create))
                         await file.CopyToAsync(fileStream);
 
-                    // Distribute Encrypted File to IPFS Network
-                    try
+                    // Keep midterm uploads staged only. Distribution happens once finals are being processed.
+                    if (string.Equals(term, "finals", StringComparison.OrdinalIgnoreCase))
                     {
-                        using var client = _httpClientFactory.CreateClient();
-                        using var content = new MultipartFormDataContent();
-                        
-                        // Encrypt before upload
-                        byte[] encryptedData;
-                        using (var fsEncrypt = new FileStream(tempFile, FileMode.Open, FileAccess.Read))
+                        try
                         {
-                            encryptedData = EncryptStream(fsEncrypt);
-                        }
-                        
-                        content.Add(new ByteArrayContent(encryptedData), "file", file.FileName + ".enc");
-                        
-                        var ipfsHost = Environment.GetEnvironmentVariable("IPFS_HOST") ?? "ipfs0";
-                        var ipfsUrl = _configuration["IpfsApiUrl"] ?? $"http://{ipfsHost}:5001/api/v0/add?cid-version=1&wrap-with-directory=false";
-                        var ipfsRes = await client.PostAsync(ipfsUrl, content);
-                        if (ipfsRes.IsSuccessStatusCode)
-                        {
-                            var ipfsJson = await ipfsRes.Content.ReadAsStringAsync();
-                            var lines = ipfsJson.Split('\n', StringSplitOptions.RemoveEmptyEntries);
-                            foreach (var line in lines)
-                            {
-                                try {
-                                    using var doc = JsonDocument.Parse(line);
-                                    var root = doc.RootElement;
-                                    if (root.TryGetProperty("Hash", out var hashProp)) {
-                                        var currentHash = hashProp.GetString();
-                                        // If wrap-with-directory=true, we get 2+ hashes. 
-                                        // The file hash has a 'Name' property. The directory hash has an empty 'Name'.
-                                        // We want the file hash so we can 'cat' it later.
-                                        if (root.TryGetProperty("Name", out var nameProp) && !string.IsNullOrEmpty(nameProp.GetString())) {
-                                            ipfsCid = currentHash ?? ipfsCid;
-                                        } else if (string.IsNullOrEmpty(ipfsCid)) {
-                                            ipfsCid = currentHash ?? ipfsCid; // Fallback to whatever we find first
-                                        }
-                                    }
-                                } catch { }
-                            }
-                            _logger.LogInformation("Encrypted file distributed to IPFS. CID: {CID}", ipfsCid);
+                            using var client = _httpClientFactory.CreateClient();
+                            using var content = new MultipartFormDataContent();
                             
-                            // Explicitly distribute pin to other nodes in the cluster (fire-and-forget)
-                            _ = Task.Run(() => DistributePinAsync(ipfsCid));
+                            // Encrypt before upload
+                            byte[] encryptedData;
+                            using (var fsEncrypt = new FileStream(tempFile, FileMode.Open, FileAccess.Read))
+                            {
+                                encryptedData = EncryptStream(fsEncrypt);
+                            }
+                            
+                            content.Add(new ByteArrayContent(encryptedData), "file", file.FileName + ".enc");
+                            
+                            var ipfsHost = Environment.GetEnvironmentVariable("IPFS_HOST") ?? "ipfs0";
+                            var ipfsUrl = _configuration["IpfsApiUrl"] ?? $"http://{ipfsHost}:5001/api/v0/add?cid-version=1&wrap-with-directory=false";
+                            var ipfsRes = await client.PostAsync(ipfsUrl, content);
+                            if (ipfsRes.IsSuccessStatusCode)
+                            {
+                                var ipfsJson = await ipfsRes.Content.ReadAsStringAsync();
+                                var lines = ipfsJson.Split('\n', StringSplitOptions.RemoveEmptyEntries);
+                                foreach (var line in lines)
+                                {
+                                    try {
+                                        using var doc = JsonDocument.Parse(line);
+                                        var root = doc.RootElement;
+                                        if (root.TryGetProperty("Hash", out var hashProp)) {
+                                            var currentHash = hashProp.GetString();
+                                            // If wrap-with-directory=true, we get 2+ hashes. 
+                                            // The file hash has a 'Name' property. The directory hash has an empty 'Name'.
+                                            // We want the file hash so we can 'cat' it later.
+                                            if (root.TryGetProperty("Name", out var nameProp) && !string.IsNullOrEmpty(nameProp.GetString())) {
+                                                ipfsCid = currentHash ?? ipfsCid;
+                                            } else if (string.IsNullOrEmpty(ipfsCid)) {
+                                                ipfsCid = currentHash ?? ipfsCid; // Fallback to whatever we find first
+                                            }
+                                        }
+                                    } catch { }
+                                }
+                                _logger.LogInformation("Encrypted finals file distributed to IPFS. CID: {CID}", ipfsCid);
+                                
+                                // Explicitly distribute pin to other nodes in the cluster (fire-and-forget)
+                                _ = Task.Run(() => DistributePinAsync(ipfsCid));
+                            }
                         }
+                        catch (Exception ex) { _logger.LogWarning("IPFS upload skipped (daemon may be offline): {Message}", ex.Message); }
                     }
-                    catch (Exception ex) { _logger.LogWarning("IPFS upload skipped (daemon may be offline): {Message}", ex.Message); }
 
                     if (ext == ".xlsx")
                     {

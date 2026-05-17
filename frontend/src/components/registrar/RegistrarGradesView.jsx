@@ -377,17 +377,11 @@ const RegistrarGradesView = ({
     useEffect(() => {
         const handleAcademicDataChanged = () => {
             loadGrades(true);
+            loadApprovedStudents();
+            loadApprovedAdmins();
+            loadApprovedFaculties();
             if (mainTab === 'Requests') loadRequests();
             if (mainTab === 'finalization') loadStagedGrades();
-            if (mainTab === 'assigning') {
-                loadApprovedStudents();
-                loadApprovedAdmins();
-                loadApprovedFaculties();
-            }
-            if (mainTab === 'revokeAccounts') {
-                loadApprovedAdmins();
-                loadApprovedFaculties();
-            }
         };
 
         window.addEventListener('blockgo:academic-data-changed', handleAcademicDataChanged);

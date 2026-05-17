@@ -12,6 +12,7 @@ import {
   syncSectionedStudentsToStorage,
 } from "../../utils/studentSectioningHelpers";
 import { downloadTemplateButtonClass } from "../shared/downloadButtonStyles";
+import { syncSectioningBatchToBackend } from "../../utils/registrarSectioningBackendSync";
 
 const buildStudentName = (student) => {
   const firstAndMiddle = [
@@ -209,6 +210,19 @@ function RegistrarStudentSectioning({
     firstName: "",
     middleName: "",
   });
+
+  const syncBatchToBackend = async (batch, successMessage = "") => {
+    if (!batch || !isRegistrarMode) return;
+
+    try {
+      await syncSectioningBatchToBackend(batch);
+      if (successMessage) alert(successMessage);
+    } catch (error) {
+      alert(
+        `Saved locally, but backend sync failed: ${error.message || "Please try saving again."}`
+      );
+    }
+  };
 
   const departmentWorkspaces = useMemo(
     () =>
@@ -699,10 +713,13 @@ function RegistrarStudentSectioning({
       lastSectionedAt: new Date().toISOString(),
     };
 
-    persistBatches([
+    const nextBatches = [
       ...batches.filter((batch) => batch.key !== workspaceKey),
       nextWorkspace,
-    ]);
+    ];
+
+    persistBatches(nextBatches);
+    syncBatchToBackend(nextWorkspace);
     setSelectedBatchKey(workspaceKey);
     setSectioningBatchYear(workspace.batchYear || sectioningBatchYear);
     setSelectedYearLevel(targetYearLevel);
@@ -1080,6 +1097,8 @@ function RegistrarStudentSectioning({
         );
 
         persistBatches(nextBatches);
+        const updatedBatch = nextBatches.find((batch) => batch.key === selectedBatch.key);
+        syncBatchToBackend(updatedBatch);
         setSelectedSectionCode(section.sectionCode);
         alert(
           `${importedStudents.length} student${importedStudents.length === 1 ? "" : "s"} imported into ${sectionName}.`
@@ -1092,7 +1111,7 @@ function RegistrarStudentSectioning({
     input.click();
   };
 
-  const handleSaveSectioning = () => {
+  const handleSaveSectioning = async () => {
     const nextBatches = batches.map((batch) =>
       batch.key === activeBatchKey && (batch.sectionPlans || []).length > 0
         ? {
@@ -1106,7 +1125,8 @@ function RegistrarStudentSectioning({
     localStorage.setItem(STUDENT_BATCHES_KEY, JSON.stringify(nextBatches));
     syncSectionedStudentsToStorage(nextBatches);
     onSectioningSaved?.();
-    alert("Sections saved successfully.");
+    const batchToSync = nextBatches.find((batch) => batch.key === activeBatchKey);
+    await syncBatchToBackend(batchToSync, "Sections saved and synced successfully.");
   };
 
   const handleShuffleSections = () => {

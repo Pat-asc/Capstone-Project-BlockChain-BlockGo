@@ -1098,20 +1098,17 @@ const DeptAdminGradesView = ({ loggedInEmail = '', loggedInName = '', userRole =
             }
 
             loadGrades(true);
-            if (mainTab === 'myClasses') loadMyClasses();
-            if (mainTab === 'assignment') {
-                loadAcademicSections();
-                loadDepartmentFaculties();
-            }
+            loadMyClasses();
+            loadAcademicSections();
+            loadDepartmentFaculties();
             notifySectionStorageChanges();
         };
 
         const handleStorageChanged = (event) => {
             if (event.key === 'studentSections') {
                 notifySectionStorageChanges();
-                if (mainTab === 'assignment' || mainTab === 'myClasses') {
-                    loadAcademicSections();
-                }
+                loadAcademicSections();
+                loadMyClasses();
             }
         };
 
@@ -1122,6 +1119,12 @@ const DeptAdminGradesView = ({ loggedInEmail = '', loggedInName = '', userRole =
             window.removeEventListener('storage', handleStorageChanged);
         };
     }, [addNotification, department, loadGrades, loggedInEmail, mainTab, loadMyClasses, loadAcademicSections, loadDepartmentFaculties]);
+
+    useEffect(() => {
+        loadAcademicSections();
+        loadDepartmentFaculties();
+        loadMyClasses();
+    }, [loadAcademicSections, loadDepartmentFaculties, loadMyClasses]);
 
     useEffect(() => {
         if (mainTab === 'assignment' || mainTab === 'myClasses') {
@@ -1472,6 +1475,8 @@ const DeptAdminGradesView = ({ loggedInEmail = '', loggedInName = '', userRole =
                 setEnrollSectionId('');
                 const fileInput = document.getElementById('student-enroll-upload');
                 if (fileInput) fileInput.value = '';
+                loadAcademicSections();
+                loadMyClasses();
             } else {
                 addNotification(res.message || 'Enrollment failed.', 'error');
             }
