@@ -661,7 +661,6 @@ app.post('/api/login', loginLimiter, async (req, res) => {
                OR LOWER(u.email) = $2
                OR LOWER(sp.student_no) = $1 
                OR LOWER(sp.student_no) = $2
-               OR LOWER(sp.student_email) = $1
             LIMIT 1
         `, [normalizedUsername, baseUsername]);
 
