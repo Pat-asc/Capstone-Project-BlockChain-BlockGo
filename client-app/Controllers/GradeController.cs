@@ -1475,6 +1475,8 @@ namespace BlockGo.Controllers
                     if (isStudent && !string.Equals(g.Status, "Finalized", StringComparison.OrdinalIgnoreCase))
                     {
                         continue;
+                        g.Grade = "";
+                        g.Note = "Pending Finalization";
                     }
 
                     enrichedGrades.Add(new Dictionary<string, object> {
@@ -1561,6 +1563,10 @@ namespace BlockGo.Controllers
                         
                         if (isStudent && !string.Equals(localGrade.Status, "Finalized", StringComparison.OrdinalIgnoreCase))
                             return NotFound(new { status = "Error", message = "Grade is pending finalization." });
+                        {
+                            localGrade.Grade = "";
+                            localGrade.Note = "Pending Finalization";
+                        }
 
                         return Ok(new { status = "Success", data = localGrade });
                     }

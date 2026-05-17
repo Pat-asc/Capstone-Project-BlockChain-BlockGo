@@ -87,7 +87,7 @@ try
     Environment.SetEnvironmentVariable("PGTARGETSESSIONATTR", null);
 
     var builder = WebApplication.CreateBuilder(args);
-    builder.WebHost.UseUrls("http://0.0.0.0:5000"); // Ensure C# binds correctly for Nginx to reach it
+    builder.WebHost.UseUrls("http://0.0.0.0:5000");
     builder.Host.UseSerilog();
 
 
@@ -109,7 +109,7 @@ try
     {
         options.AddPolicy("AllowFrontend", policy =>
         {
-            policy.WithOrigins("http://localhost:8080", "http://localhost:3000") 
+            policy.WithOrigins("http://localhost:8080", "http://localhost:8090", "http://localhost:8100", "http://localhost:3000") 
                   .WithMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
                   .WithHeaders("Content-Type", "Authorization", "x-user-identity", "x-api-key")
                   .AllowCredentials();
@@ -122,8 +122,6 @@ try
     builder.Services.AddSwaggerGen();
     builder.Services.AddSignalR(options =>
     {
-        // Chat attachments are sent through SignalR as base64. 5MB files expand to
-        // roughly 6.7MB, so keep the hub receive limit above that payload size.
         options.MaximumReceiveMessageSize = 8 * 1024 * 1024;
     });
 

@@ -9809,6 +9809,7 @@
 11:53:05.991055 db@close closing
 11:53:05.993013 db@close done T·1.957196ms
 =============== May 17, 2026 (UTC) ===============
+<<<<<<< HEAD
 13:00:50.534957 log@legend F·NumFile S·FileSize N·Entry C·BadEntry B·BadBlock Ke·KeyError D·DroppedEntry L·Level Q·SeqNum T·TimeElapsed
 13:00:50.574405 version@stat F·[1 1] S·22KiB[7KiB 14KiB] Sc·[0.25 0.00]
 13:00:50.575231 db@open opening
@@ -10019,3 +10020,102 @@
 14:25:33.063950 table@compaction committed F-1 S-5KiB Ke·0 D·79 T·30.26606ms
 14:25:33.069241 table@remove removed @2232
 14:25:33.073085 table@remove removed @2231
+=======
+12:14:15.890910 log@legend F·NumFile S·FileSize N·Entry C·BadEntry B·BadBlock Ke·KeyError D·DroppedEntry L·Level Q·SeqNum T·TimeElapsed
+12:14:15.897451 version@stat F·[1 1] S·22KiB[7KiB 14KiB] Sc·[0.25 0.00]
+12:14:15.897976 db@open opening
+12:14:15.899243 journal@recovery F·1
+12:14:15.899608 journal@recovery recovering @2210
+12:14:15.982545 memdb@flush created L0@2212 N·4 S·1KiB "/F5..3OY,v6512":"/pr..len,v6513"
+12:14:15.984333 version@stat F·[2 1] S·23KiB[9KiB 14KiB] Sc·[0.50 0.00]
+12:14:16.745475 db@janitor F·5 G·0
+12:14:16.745753 db@open done T·847.564017ms
+12:14:17.258019 db@close closing
+12:14:17.259221 db@close done T·1.194119ms
+=============== May 17, 2026 (UTC) ===============
+12:14:17.317885 log@legend F·NumFile S·FileSize N·Entry C·BadEntry B·BadBlock Ke·KeyError D·DroppedEntry L·Level Q·SeqNum T·TimeElapsed
+12:14:17.323090 version@stat F·[2 1] S·23KiB[9KiB 14KiB] Sc·[0.50 0.00]
+12:14:17.323619 db@open opening
+12:14:17.324836 journal@recovery F·1
+12:14:17.326831 journal@recovery recovering @2213
+12:14:17.330575 version@stat F·[2 1] S·23KiB[9KiB 14KiB] Sc·[0.50 0.00]
+12:14:19.250115 db@janitor F·5 G·0
+12:14:19.250428 db@open done T·1.92660321s
+12:14:19.747742 db@close closing
+12:14:19.748898 db@close done T·1.156396ms
+=============== May 17, 2026 (UTC) ===============
+12:14:19.803561 log@legend F·NumFile S·FileSize N·Entry C·BadEntry B·BadBlock Ke·KeyError D·DroppedEntry L·Level Q·SeqNum T·TimeElapsed
+12:14:19.808320 version@stat F·[2 1] S·23KiB[9KiB 14KiB] Sc·[0.50 0.00]
+12:14:19.808835 db@open opening
+12:14:19.810019 journal@recovery F·1
+12:14:19.810385 journal@recovery recovering @2215
+12:14:19.813255 version@stat F·[2 1] S·23KiB[9KiB 14KiB] Sc·[0.50 0.00]
+12:14:21.747983 db@janitor F·5 G·0
+12:14:21.748430 db@open done T·1.939432196s
+12:14:21.972489 db@close closing
+12:14:21.974028 db@close done T·1.533185ms
+=============== May 17, 2026 (UTC) ===============
+12:14:22.039074 log@legend F·NumFile S·FileSize N·Entry C·BadEntry B·BadBlock Ke·KeyError D·DroppedEntry L·Level Q·SeqNum T·TimeElapsed
+12:14:22.148163 version@stat F·[2 1] S·23KiB[9KiB 14KiB] Sc·[0.50 0.00]
+12:14:22.466309 db@open opening
+12:14:22.467951 journal@recovery F·1
+12:14:22.468438 journal@recovery recovering @2217
+12:14:22.471776 version@stat F·[2 1] S·23KiB[9KiB 14KiB] Sc·[0.50 0.00]
+12:14:23.336826 db@janitor F·5 G·0
+12:14:23.337042 db@open done T·870.467167ms
+12:14:23.600758 db@close closing
+12:14:23.602103 db@close done T·1.354897ms
+=============== May 17, 2026 (UTC) ===============
+12:14:23.660678 log@legend F·NumFile S·FileSize N·Entry C·BadEntry B·BadBlock Ke·KeyError D·DroppedEntry L·Level Q·SeqNum T·TimeElapsed
+12:14:23.665759 version@stat F·[2 1] S·23KiB[9KiB 14KiB] Sc·[0.50 0.00]
+12:14:23.666289 db@open opening
+12:14:23.667589 journal@recovery F·1
+12:14:23.670567 journal@recovery recovering @2219
+12:14:23.674422 version@stat F·[2 1] S·23KiB[9KiB 14KiB] Sc·[0.50 0.00]
+12:14:24.290126 db@janitor F·5 G·0
+12:14:24.290349 db@open done T·623.884635ms
+12:14:24.426424 db@close closing
+12:14:24.427705 db@close done T·1.269323ms
+=============== May 17, 2026 (UTC) ===============
+12:14:24.492383 log@legend F·NumFile S·FileSize N·Entry C·BadEntry B·BadBlock Ke·KeyError D·DroppedEntry L·Level Q·SeqNum T·TimeElapsed
+12:14:24.497783 version@stat F·[2 1] S·23KiB[9KiB 14KiB] Sc·[0.50 0.00]
+12:14:24.498475 db@open opening
+12:14:24.500139 journal@recovery F·1
+12:14:24.501941 journal@recovery recovering @2221
+12:14:24.505397 version@stat F·[2 1] S·23KiB[9KiB 14KiB] Sc·[0.50 0.00]
+12:14:26.659273 db@janitor F·5 G·0
+12:14:26.659533 db@open done T·2.160831434s
+12:14:26.788634 db@close closing
+12:14:26.789923 db@close done T·1.286387ms
+=============== May 17, 2026 (UTC) ===============
+12:14:27.140638 log@legend F·NumFile S·FileSize N·Entry C·BadEntry B·BadBlock Ke·KeyError D·DroppedEntry L·Level Q·SeqNum T·TimeElapsed
+12:14:27.146710 version@stat F·[2 1] S·23KiB[9KiB 14KiB] Sc·[0.50 0.00]
+12:14:27.147264 db@open opening
+12:14:27.148864 journal@recovery F·1
+12:14:27.149321 journal@recovery recovering @2223
+12:14:27.153410 version@stat F·[2 1] S·23KiB[9KiB 14KiB] Sc·[0.50 0.00]
+12:14:27.685823 db@janitor F·5 G·0
+12:14:27.686066 db@open done T·538.645325ms
+12:14:27.972334 db@close closing
+12:14:27.973865 db@close done T·1.52575ms
+=============== May 17, 2026 (UTC) ===============
+12:14:28.349049 log@legend F·NumFile S·FileSize N·Entry C·BadEntry B·BadBlock Ke·KeyError D·DroppedEntry L·Level Q·SeqNum T·TimeElapsed
+12:14:28.357167 version@stat F·[2 1] S·23KiB[9KiB 14KiB] Sc·[0.50 0.00]
+12:14:28.357773 db@open opening
+12:14:28.359320 journal@recovery F·1
+12:14:28.362291 journal@recovery recovering @2225
+12:14:28.365258 version@stat F·[2 1] S·23KiB[9KiB 14KiB] Sc·[0.50 0.00]
+12:14:28.965084 db@janitor F·5 G·0
+12:14:28.965320 db@open done T·607.33809ms
+12:14:29.102025 db@close closing
+12:14:29.103244 db@close done T·1.23027ms
+=============== May 17, 2026 (UTC) ===============
+12:15:31.766676 log@legend F·NumFile S·FileSize N·Entry C·BadEntry B·BadBlock Ke·KeyError D·DroppedEntry L·Level Q·SeqNum T·TimeElapsed
+12:15:31.772162 version@stat F·[2 1] S·23KiB[9KiB 14KiB] Sc·[0.50 0.00]
+12:15:31.772746 db@open opening
+12:15:31.774030 journal@recovery F·1
+12:15:31.774428 journal@recovery recovering @2227
+12:15:31.777443 version@stat F·[2 1] S·23KiB[9KiB 14KiB] Sc·[0.50 0.00]
+12:15:35.215793 db@janitor F·5 G·0
+12:15:35.216093 db@open done T·3.443155924s
+>>>>>>> 534ac787f83766b69b61f0ca8a8b27576563df10

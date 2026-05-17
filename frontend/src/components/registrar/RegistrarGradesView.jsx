@@ -456,6 +456,45 @@ const RegistrarGradesView = ({
         } catch (error) { alert(`Finalization failed: ${error.message}`); }
     };
 
+    const groupedStagedGrades = useMemo(() => {
+        const groups = {};
+        stagedGrades.forEach(g => {
+            const key = `${g.course}-${g.yearLevel}-${g.section}-${g.subjectCode}`;
+            if (!groups[key]) {
+                groups[key] = {
+                    course: g.course,
+                    yearLevel: g.yearLevel,
+                    section: g.section,
+                    subjectCode: g.subjectCode,
+                    records: []
+                };
+            }
+            groups[key].records.push(g);
+        });
+        
+        return Object.values(groups).sort((a, b) => 
+            String(a.course).localeCompare(String(b.course)) || 
+            String(a.yearLevel).localeCompare(String(b.yearLevel)) || 
+            String(a.section).localeCompare(String(b.section)) ||
+            String(a.subjectCode).localeCompare(String(b.subjectCode))
+        );
+    }, [stagedGrades]);
+
+    const handleFinalizeBatch = async (records) => {
+        if (!window.confirm(`Are you sure you want to commit all ${records.length} grades in this section to the blockchain ledger?`)) return;
+        
+        try {
+            for (const g of records) {
+                await finalizeGrade(g.stagingId, loggedInEmail);
+            }
+            alert("Section grades officially committed to the ledger!");
+            loadStagedGrades();
+            loadGrades(true);
+        } catch (err) {
+            alert(`Finalization failed: ${err.message}`);
+        }
+    };
+
     const handleViewIpfs = (cid) => {
         setIpfsCid(cid);
         setVaultPassword("");
@@ -1145,29 +1184,68 @@ const RegistrarGradesView = ({
                                 <button onClick={loadStagedGrades} className="rounded-lg bg-slate-100 px-4 py-2 text-sm font-bold text-slate-700 hover:bg-slate-200">Refresh Staging</button>
                             </div>
                             {stagedLoading ? <p>Loading staged records...</p> : (
-                                <div className="overflow-x-auto">
-                                    <table className="w-full text-left text-sm">
-                                        <thead>
-                                            <tr className="bg-slate-100 text-slate-600">
-                                                <th className="p-3">Student (Hashed)</th><th className="p-3">Subject</th><th className="p-3">Grade</th><th className="p-3">Dept</th><th className="p-3">Sec</th><th className="p-3">Status</th><th className="p-3">Action</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {stagedGrades.length === 0 ? <tr><td colSpan="7" className="p-8 text-center text-slate-400">No grades approved by departments waiting for finalization.</td></tr> : stagedGrades.map(sg => (
-                                                <tr key={sg.stagingId} className="border-b border-slate-50">
-                                                    <td className="p-3 font-mono text-[10px]">{sg.studentHash}</td>
-                                                    <td className="p-3 font-bold">{sg.subjectCode}</td>
-                                                    <td className="p-3 font-black text-blue-700">{sg.grade}</td>
-                                                    <td className="p-3 text-xs">{sg.course}</td>
-                                                    <td className="p-3">{sg.yearLevel}-{sg.section}</td>
-                                                    <td className="p-3"><span className="text-[10px] font-bold text-emerald-600">{sg.status}</span></td>
-                                                    <td className="p-3">
-                                                        <button onClick={() => handleFinalizeStaged(sg.stagingId)} className="rounded-lg bg-emerald-600 px-3 py-1 text-xs font-bold text-white hover:bg-emerald-700">Commit to Ledger</button>
-                                                    </td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
+                                <div className="space-y-6">
+                                    {groupedStagedGrades.length === 0 ? (
+                                        <div className="rounded-xl border border-dashed border-slate-300 p-10 text-center text-slate-500 bg-slate-50">
+                                            No grades approved by departments waiting for finalization.
+                                        </div>
+                                    ) : (
+                                        groupedStagedGrades.map((group, index) => (
+                                            <div key={index} className="rounded-xl border border-slate-200 bg-white overflow-hidden shadow-sm">
+                                                <div className="flex flex-col md:flex-row md:items-center justify-between bg-slate-50 p-5 border-b border-slate-200">
+                                                    <div>
+                                                        <h4 className="font-bold text-[#003366] text-lg">
+                                                            {group.course} — {group.yearLevel} / {group.section}
+                                                        </h4>
+                                                        <p className="text-sm font-semibold text-slate-500 mt-1">
+                                                            Subject: <span className="text-blue-600">{group.subjectCode}</span> 
+                                                            <span className="mx-2">•</span> 
+                                                            {group.records.length} pending grade(s)
+                                                        </p>
+                                                    </div>
+                                                    <button 
+                                                        onClick={() => handleFinalizeBatch(group.records)}
+                                                        className="mt-3 md:mt-0 rounded-lg bg-emerald-600 px-5 py-2.5 text-sm font-bold text-white transition hover:bg-emerald-700 shadow-sm"
+                                                    >
+                                                        Finalize All to Ledger
+                                                    </button>
+                                                </div>
+                                                <div className="overflow-x-auto">
+                                                    <table className="w-full text-left text-sm">
+                                                        <thead>
+                                                            <tr className="bg-white text-slate-500 border-b border-slate-200">
+                                                                <th className="p-4 font-semibold">Student (Hashed)</th>
+                                                                <th className="p-4 font-semibold text-center">Grade</th>
+                                                                <th className="p-4 font-semibold text-center">Status</th>
+                                                                <th className="p-4 font-semibold text-right">Action</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            {group.records.map((sg) => (
+                                                                <tr key={sg.stagingId} className="border-b border-slate-50 hover:bg-slate-50">
+                                                                    <td className="p-4 font-mono text-[11px] text-slate-600">{sg.studentHash}</td>
+                                                                    <td className="p-4 font-black text-blue-700 text-center text-base">{sg.grade}</td>
+                                                                    <td className="p-4 text-center">
+                                                                        <span className="rounded-full bg-emerald-100 px-3 py-1 text-[10px] font-bold uppercase text-emerald-700">
+                                                                            {sg.status}
+                                                                        </span>
+                                                                    </td>
+                                                                    <td className="p-4 text-right">
+                                                                        <button
+                                                                            onClick={() => handleFinalizeStaged(sg.stagingId)} 
+                                                                            className="rounded-lg border border-emerald-600 px-4 py-1.5 text-xs font-bold text-emerald-700 hover:bg-emerald-50 transition"
+                                                                        >
+                                                                            Commit
+                                                                        </button>
+                                                                    </td>
+                                                                </tr>
+                                                            ))}
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            </div>
+                                        ))
+                                    )}
                                 </div>
                             )}
                         </div>
