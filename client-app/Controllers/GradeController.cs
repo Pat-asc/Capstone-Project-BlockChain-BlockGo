@@ -297,7 +297,7 @@ namespace BlockGo.Controllers
                                 faculty_id = @fac,
                                 date = @dt,
                                 ipfs_cid = COALESCE(NULLIF(@ipfs, ''), ipfs_cid),
-                                status = 'Issued'
+                        status = 'Draft'
                             WHERE student_hash = @sh
                               AND subject_code = @subj
                               AND school_year = @sy
@@ -306,13 +306,13 @@ namespace BlockGo.Controllers
                             RETURNING id
                         )
                         INSERT INTO pending_grade_records (id, student_hash, student_no, student_name, section, course, subject_code, grade, semester, school_year, faculty_id, date, ipfs_cid, status)
-                        SELECT @id, @sh, @studentNo, @studentName, @sec, @course, @subj, @gr, @sem, @sy, @fac, @dt, @ipfs, 'Issued'
+                SELECT @id, @sh, @studentNo, @studentName, @sec, @course, @subj, @gr, @sem, @sy, @fac, @dt, @ipfs, 'Draft'
                         WHERE NOT EXISTS (SELECT 1 FROM updated)
                         ON CONFLICT (id) DO UPDATE SET
                             student_no = EXCLUDED.student_no,
                             student_name = EXCLUDED.student_name,
                             grade = EXCLUDED.grade,
-                            status = 'Issued',
+                    status = 'Draft',
                             date = EXCLUDED.date;", conn, transaction);
                     cmdStage.Parameters.AddWithValue("id", blockchainRecord.Id ?? (object)Guid.NewGuid().ToString());
                     cmdStage.Parameters.AddWithValue("sh", blockchainRecord.StudentHash ?? "");
@@ -415,7 +415,7 @@ namespace BlockGo.Controllers
 
                 using var cmd = new NpgsqlCommand(@"
                     UPDATE pending_grade_records
-                    SET status = 'Issued',
+                    SET status = 'Submitted',
                         date = @date,
                         section = CASE
                             WHEN COALESCE(NULLIF(TRIM(section), ''), '') = ''
@@ -1144,7 +1144,7 @@ namespace BlockGo.Controllers
 
                                 using var cmdStage = new NpgsqlCommand(@"
                                     INSERT INTO pending_grade_records (id, student_hash, student_no, student_name, section, course, subject_code, grade, semester, school_year, faculty_id, date, ipfs_cid, status)
-                                    VALUES (@id, @sh, @studentNo, @studentName, @sec, @course, @subj, @gr, @sem, @sy, @fac, @dt, @ipfs, 'Issued')
+                        VALUES (@id, @sh, @studentNo, @studentName, @sec, @course, @subj, @gr, @sem, @sy, @fac, @dt, @ipfs, 'Draft')
                                     ON CONFLICT ON CONSTRAINT unique_grade_entry_section DO UPDATE SET
                                         student_no = EXCLUDED.student_no,
                                         student_name = EXCLUDED.student_name,
@@ -1154,7 +1154,7 @@ namespace BlockGo.Controllers
                                         faculty_id = EXCLUDED.faculty_id,
                                         date = EXCLUDED.date,
                                         ipfs_cid = EXCLUDED.ipfs_cid,
-                                        status = 'Issued';", conn, transaction);
+                            status = 'Draft';", conn, transaction);
                                 cmdStage.Parameters.AddWithValue("id", blockchainRecord.Id ?? Guid.NewGuid().ToString());
                                 cmdStage.Parameters.AddWithValue("sh", blockchainRecord.StudentHash ?? "");
                                 cmdStage.Parameters.AddWithValue("studentNo", blockchainRecord.StudentNo ?? "");
@@ -1399,7 +1399,7 @@ namespace BlockGo.Controllers
                     .GroupBy(g => g.Id)
                     .Select(group => group
                         .OrderByDescending(GetAcademicRecordCompletenessScore)
-                        .ThenByDescending(record => string.Equals(record.Status, "Issued", StringComparison.OrdinalIgnoreCase))
+                        .ThenByDescending(record => string.Equals(record.Status, "Submitted", StringComparison.OrdinalIgnoreCase) || string.Equals(record.Status, "Issued", StringComparison.OrdinalIgnoreCase))
                         .First())
                     .ToList();
 
