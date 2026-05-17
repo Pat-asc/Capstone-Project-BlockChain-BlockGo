@@ -291,11 +291,6 @@ func (cc *SmartContract) updateGrade(stub shim.ChaincodeStubInterface, args []st
 		return shim.Error(fmt.Sprintf("Failed to unmarshal existing record: %v", err))
 	}
 
-	// VALIDATION: Prevent modification of a finalized record.
-	if existing.Status == "Finalized" {
-		return shim.Error("Cannot update a grade that has been finalized")
-	}
-
 	submitterID, _ := cid.GetID(stub)
 	var email string
 	cert, err := cid.GetX509Certificate(stub)

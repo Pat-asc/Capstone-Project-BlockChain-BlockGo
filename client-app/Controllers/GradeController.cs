@@ -985,6 +985,20 @@ namespace BlockGo.Controllers
                         }
                     }
 
+                    var allLedgerGrades = new List<AcademicRecord>();
+                    try {
+                        var jsonResult = await _blockchainService.GetAllGradesAsync(facultyId);
+                        using var doc = JsonDocument.Parse(jsonResult);
+                        if (doc.RootElement.TryGetProperty("data", out var dataElement))
+                        {
+                            var blockchainGrades = JsonSerializer.Deserialize<List<AcademicRecord>>(
+                                dataElement.GetRawText(), 
+                                new JsonSerializerOptions { PropertyNameCaseInsensitive = true }
+                            );
+                            if (blockchainGrades != null) allLedgerGrades.AddRange(blockchainGrades);
+                        }
+                    } catch (Exception ex) { _logger.LogWarning("Could not pre-fetch ledger grades for bulk upload: {Msg}", ex.Message); }
+
                     // Process all extracted records uniformly
                     var processedCombos = new HashSet<string>();
                     foreach (var record in parsedRecords)
@@ -1119,6 +1133,62 @@ namespace BlockGo.Controllers
                             blockchainRecord.StudentName = stuName;
                             blockchainRecord.FacultyId = effectiveFacultyId ?? facultyId ?? "";
                             blockchainRecord.IpfsCid = ipfsCid;
+
+                            string? existingId = null;
+                            string? existingGradeJson = null;
+                            
+                            using (var cmdCheck = new NpgsqlCommand("SELECT id, grade FROM pending_grade_records WHERE LOWER(student_hash) = LOWER(@sh) AND LOWER(subject_code) = LOWER(@subj) AND school_year = @sy AND semester = @sem AND LOWER(section) = LOWER(@sec) LIMIT 1", conn))
+                            {
+                                cmdCheck.Parameters.AddWithValue("sh", blockchainRecord.StudentHash ?? "");
+                                cmdCheck.Parameters.AddWithValue("subj", blockchainRecord.SubjectCode ?? "");
+                                cmdCheck.Parameters.AddWithValue("sy", blockchainRecord.SchoolYear ?? "");
+                                cmdCheck.Parameters.AddWithValue("sem", blockchainRecord.Semester ?? "");
+                                cmdCheck.Parameters.AddWithValue("sec", blockchainRecord.Section ?? "");
+                                using var checkReader = await cmdCheck.ExecuteReaderAsync();
+                                if (await checkReader.ReadAsync())
+                                {
+                                    existingId = checkReader.GetString(0);
+                                    existingGradeJson = checkReader.GetString(1);
+                                }
+                            }
+
+                            if (existingId == null)
+                            {
+                                var existingLedgerRecord = allLedgerGrades.FirstOrDefault(g => 
+                                    string.Equals(g.StudentHash, blockchainRecord.StudentHash, StringComparison.OrdinalIgnoreCase) && 
+                                    string.Equals(g.SubjectCode, blockchainRecord.SubjectCode, StringComparison.OrdinalIgnoreCase) &&
+                                    string.Equals(g.SchoolYear, blockchainRecord.SchoolYear, StringComparison.OrdinalIgnoreCase) &&
+                                    string.Equals(g.Semester, blockchainRecord.Semester, StringComparison.OrdinalIgnoreCase) &&
+                                    string.Equals(g.Section, blockchainRecord.Section, StringComparison.OrdinalIgnoreCase)
+                                );
+                                if (existingLedgerRecord != null) {
+                                    existingId = existingLedgerRecord.Id;
+                                    existingGradeJson = existingLedgerRecord.Grade;
+                                }
+                            }
+
+                            blockchainRecord.Id = existingId ?? Guid.NewGuid().ToString();
+
+                            string uploadedMidterm = "", uploadedFinals = "";
+                            if (!string.IsNullOrEmpty(record.Grade) && record.Grade.TrimStart().StartsWith("{")) {
+                                using var doc = JsonDocument.Parse(record.Grade);
+                                if (doc.RootElement.TryGetProperty("midterm", out var m)) uploadedMidterm = m.GetString() ?? "";
+                                if (doc.RootElement.TryGetProperty("finals", out var f)) uploadedFinals = f.GetString() ?? "";
+                            } else {
+                                if (string.Equals(term, "finals", StringComparison.OrdinalIgnoreCase)) uploadedFinals = record.Grade ?? "";
+                                else uploadedMidterm = record.Grade ?? "";
+                            }
+
+                            string mergedMidterm = uploadedMidterm, mergedFinals = uploadedFinals;
+                            if (!string.IsNullOrEmpty(existingGradeJson) && existingGradeJson.TrimStart().StartsWith("{")) {
+                                using var doc = JsonDocument.Parse(existingGradeJson);
+                                if (string.IsNullOrEmpty(mergedMidterm) && doc.RootElement.TryGetProperty("midterm", out var m)) mergedMidterm = m.GetString() ?? "";
+                                if (string.IsNullOrEmpty(mergedFinals) && doc.RootElement.TryGetProperty("finals", out var f)) mergedFinals = f.GetString() ?? "";
+                            } else if (!string.IsNullOrEmpty(existingGradeJson)) {
+                                if (string.Equals(term, "finals", StringComparison.OrdinalIgnoreCase) && string.IsNullOrEmpty(mergedMidterm)) mergedMidterm = existingGradeJson;
+                            }
+
+                            blockchainRecord.Grade = BuildUploadedGradePayload(null, mergedMidterm, mergedFinals, term);
                                 
                             using var transaction = await conn.BeginTransactionAsync();
                             try
@@ -1155,7 +1225,7 @@ namespace BlockGo.Controllers
                                 using var cmdStage = new NpgsqlCommand(@"
                                     INSERT INTO pending_grade_records (id, student_hash, student_no, student_name, section, course, subject_code, grade, semester, school_year, faculty_id, date, ipfs_cid, status)
                         VALUES (@id, @sh, @studentNo, @studentName, @sec, @course, @subj, @gr, @sem, @sy, @fac, @dt, @ipfs, 'Draft')
-                                    ON CONFLICT ON CONSTRAINT unique_grade_entry_section DO UPDATE SET
+                                    ON CONFLICT (id) DO UPDATE SET
                                         student_no = EXCLUDED.student_no,
                                         student_name = EXCLUDED.student_name,
                                         section = EXCLUDED.section,
@@ -1700,7 +1770,16 @@ namespace BlockGo.Controllers
                 if (pendingRecord != null)
                 {
                     var facId = string.IsNullOrEmpty(pendingRecord.FacultyId) ? invokerId : pendingRecord.FacultyId;
-                    await _blockchainService.SubmitGradeAsync(pendingRecord, facId);
+                    
+                    bool isExistingOnLedger = false;
+                    try {
+                        var existing = await _blockchainService.GetGradeAsync(recordId, facId);
+                        if (!string.IsNullOrEmpty(existing) && !existing.Contains("error") && !existing.Contains("not found")) isExistingOnLedger = true;
+                    } catch { }
+
+                    if (isExistingOnLedger) await _blockchainService.UpdateGradeAsync(pendingRecord, facId);
+                    else await _blockchainService.SubmitGradeAsync(pendingRecord, facId);
+
                     await _blockchainService.ApproveGradeAsync(recordId, invokerId);
                     await _blockchainService.FinalizeGradeAsync(recordId, invokerId);
                     
@@ -1737,6 +1816,90 @@ namespace BlockGo.Controllers
                     }
                 } catch (Exception ex) { _logger.LogWarning(ex, "Failed to send finalization notification to student."); }
             });
+        }
+
+        public class SubmitFinalsRequest
+        {
+            public string FinalGrade { get; set; } = string.Empty;
+            public string InvokerId { get; set; } = string.Empty;
+        }
+
+        [HttpPost("submit-finals/{recordId}")]
+        public async Task<IActionResult> SubmitFinals(string recordId, [FromBody] SubmitFinalsRequest request)
+        {
+            if (string.IsNullOrEmpty(recordId) || string.IsNullOrEmpty(request.FinalGrade))
+            {
+                return BadRequest(new { status = "Error", message = "Record ID and final grade are required." });
+            }
+
+            var invokerId = request.InvokerId ?? User.Identity?.Name ?? "Unknown";
+
+            try
+            {
+                // 1. Fetch the existing record from the ledger or staging area
+                string existingGradeJson = await _blockchainService.GetGradeAsync(recordId, invokerId);
+                var gradeRecord = JsonSerializer.Deserialize<AcademicRecord>(existingGradeJson, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+
+                if (gradeRecord == null)
+                {
+                    return NotFound(new { status = "Error", message = "Original grade record not found on blockchain." });
+                }
+
+                // 2. Parse the existing Grade JSON payload to get the midterm grade
+                string midtermGradeStr = "";
+                if (!string.IsNullOrEmpty(gradeRecord.Grade) && gradeRecord.Grade.Trim().StartsWith("{"))
+                {
+                    using var gradePayloadDoc = JsonDocument.Parse(gradeRecord.Grade);
+                    if (gradePayloadDoc.RootElement.TryGetProperty("midterm", out var midtermProp))
+                    {
+                        midtermGradeStr = midtermProp.GetString() ?? "";
+                    }
+                }
+                else
+                {
+                    // Fallback: If it's not a JSON object, assume the existing grade is the midterm
+                    midtermGradeStr = gradeRecord.Grade;
+                }
+
+                // 3. Build the new, merged payload using the existing helper
+                string newGradePayload = BuildUploadedGradePayload(
+                    rawGrade: request.FinalGrade, // The new grade being submitted for the active term
+                    rawMidterm: midtermGradeStr,   // The existing midterm grade
+                    rawFinals: request.FinalGrade, // The new final grade
+                    term: "finals"                 // Specify the context is for finals
+                );
+
+                // 4. Update the record and submit it to the blockchain
+                gradeRecord.Grade = newGradePayload;
+                gradeRecord.Date = DateTime.UtcNow.ToString("yyyy-MM-dd");
+                gradeRecord.Status = "Corrected"; // Or a more specific status like "FinalsSubmitted"
+
+                await _blockchainService.UpdateGradeAsync(gradeRecord, invokerId);
+
+                // 5. Log the update for audit purposes
+                using (var conn = new NpgsqlConnection(_connectionString))
+                {
+                    await conn.OpenAsync();
+                    using var cmdLog = new NpgsqlCommand(@"
+                        INSERT INTO gradecorrectionlogs (recordid, oldgrade, newgrade, reasontext, approvedby, timestamp) 
+                        VALUES (@rid, @old, @new, @reason, @appr, CURRENT_TIMESTAMP)", conn);
+                    cmdLog.Parameters.AddWithValue("rid", recordId);
+                    cmdLog.Parameters.AddWithValue("old", GetGradeLogValue(gradeRecord.Grade, "midterm"));
+                    cmdLog.Parameters.AddWithValue("new", GetGradeLogValue(newGradePayload, "finals"));
+                    cmdLog.Parameters.AddWithValue("reason", "Finals Grade Entry");
+                    cmdLog.Parameters.AddWithValue("appr", invokerId);
+                    await cmdLog.ExecuteNonQueryAsync();
+                }
+
+                await NotifyAcademicDataChangedAsync("finals_grade_submitted", gradeRecord.Course, invokerId);
+
+                return Ok(new { status = "Success", message = "Finals grade has been successfully recorded and is pending review." });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error submitting final grade for record {RecordId}", recordId);
+                return StatusCode(500, new { status = "Error", message = ex.Message });
+            }
         }
 
         private async Task<bool> UpdatePendingGradeJsonAsync(string recordId, Action<System.Text.Json.Nodes.JsonObject> updateAction)

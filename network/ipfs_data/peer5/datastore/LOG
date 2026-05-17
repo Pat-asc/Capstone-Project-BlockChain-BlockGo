@@ -9910,3 +9910,10 @@
 12:15:31.677934 version@stat F·[2 1] S·18KiB[3KiB 15KiB] Sc·[0.50 0.00]
 12:15:35.135494 db@janitor F·5 G·0
 12:15:35.135787 db@open done T·3.464434275s
+12:59:03.383895 table@compaction L0·2 -> L1·1 S·18KiB Q·4185
+12:59:03.415601 table@build created L1@2234 N·48 S·15KiB "/F5..4LA,v4180":"/pr..000,v2659"
+12:59:03.415924 version@stat F·[0 1] S·15KiB[0B 15KiB] Sc·[0.00 0.00]
+12:59:03.437862 table@compaction committed F-2 S-3KiB Ke·0 D·25 T·53.57765ms
+12:59:03.439519 table@remove removed @2215
+12:59:03.452057 table@remove removed @2196
+12:59:03.453953 table@remove removed @2181

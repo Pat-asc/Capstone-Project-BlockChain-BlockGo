@@ -12,7 +12,7 @@ namespace Client_app.Models
         public string? Department { get; set; }
         public string? StudentNo { get; set; }
         public string? Section { get; set; }
-        public string? DateOfBirth { get; set; } // mm/dd/yyyy format
+        public string? DateOfBirth { get; set; }
         public string? StudentEmail { get; set; }
         public string? MiddleName { get; set; }
         public string? Phone { get; set; }
@@ -21,6 +21,5 @@ namespace Client_app.Models
         public string? YearLevel { get; set; }
         public string? FacultyType { get; set; }
         public List<string>? EnrolledSubjects { get; set; }
-        // Add other profile-specific fields as needed
     }
 }
