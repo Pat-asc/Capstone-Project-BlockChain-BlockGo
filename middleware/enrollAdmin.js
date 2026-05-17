@@ -164,7 +164,7 @@ async function bootstrapRootUser(wallet) {
 
         if (!identityExists) {
             console.log('Root registrar wallet identity not found. Creating...');
-            const { caURL, caName, adminLabel, mspId } = { caURL: 'https://localhost:7054', caName: 'ca-registrar', adminLabel: 'admin-registrar', mspId: 'RegistrarMSP' };
+            const { caURL, caName, adminLabel, mspId } = { caURL: 'https://127.0.0.1:7054', caName: 'ca-registrar', adminLabel: 'admin-registrar', mspId: 'RegistrarMSP' };
             
             const ca = new FabricCAServices(caURL, { verify: false }, caName);
             const adminIdentity = await wallet.get(adminLabel);
@@ -213,17 +213,17 @@ async function main() {
         
         // 1. Registrar Wallet & Admin
         const walletRegistrar = await getWallet('registrar');
-        const caRegistrar = new FabricCAServices('https://localhost:7054', { tlsCACerts: [], verify: false }, 'ca-registrar');
+        const caRegistrar = new FabricCAServices('https://127.0.0.1:7054', { tlsCACerts: [], verify: false }, 'ca-registrar');
         await enrollCAAdmin(caRegistrar, walletRegistrar, 'RegistrarMSP', 'admin', caAdminSecret, 'admin-registrar');
         
         // 2. Faculty Wallet & Admin
         const walletFaculty = await getWallet('faculty');
-        const caFaculty = new FabricCAServices('https://localhost:8054', { tlsCACerts: [], verify: false }, 'ca-faculty');
+        const caFaculty = new FabricCAServices('https://127.0.0.1:8054', { tlsCACerts: [], verify: false }, 'ca-faculty');
         await enrollCAAdmin(caFaculty, walletFaculty, 'FacultyMSP', 'admin', caAdminSecret, 'admin-faculty');
         
         // 3. Department Wallet & Admin
         const walletDept = await getWallet('department');
-        const caDepartment = new FabricCAServices('https://localhost:9054', { tlsCACerts: [], verify: false }, 'ca-department');
+        const caDepartment = new FabricCAServices('https://127.0.0.1:9054', { tlsCACerts: [], verify: false }, 'ca-department');
         await enrollCAAdmin(caDepartment, walletDept, 'DepartmentMSP', 'admin', caAdminSecret, 'admin-department');
 
         await bootstrapRootUser(walletRegistrar);
