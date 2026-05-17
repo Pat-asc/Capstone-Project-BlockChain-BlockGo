@@ -36,7 +36,7 @@ namespace Client_app.Models
         public bool IsRead { get; set; } = false;
         
         [JsonIgnore]
-        public string? ConnectionId { get; set; } // SignalR client ID for real-time
+        public string? ConnectionId { get; set; }
     }
     
     public class ChatUserStatus

@@ -251,7 +251,12 @@ const Chat = ({
 
   // SignalR lifecycle
   useEffect(() => {
-    const chatUrl = getChatHubUrl();
+    let chatUrl = getChatHubUrl();
+
+    // Force all clients on proxy ports to tunnel their WebSocket connection to the main 8080 backend
+    if (['8080', '8090', '8100'].includes(window.location.port)) {
+      chatUrl = `${window.location.protocol}//${window.location.hostname}:8080/chatHub`;
+    }
     const token = localStorage.getItem('token');
 
     const conn = new signalR.HubConnectionBuilder()
