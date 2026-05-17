@@ -733,9 +733,21 @@ app.post('/api/login', loginLimiter, async (req, res) => {
                             adminUser = await provider.getUserContext(newAdminIdentity, 'admin');
                             await ca.register(registerPayload, adminUser);
                         } else if (regErr.toString().includes('code: 74') || regErr.toString().includes('is already registered')) {
-                            console.log(`[Self-Healing] ${walletIdentityName} already exists in CA. Updating enrollment secret for wallet recovery...`);
+                            console.log(`[Self-Healing] ${walletIdentityName} already exists in CA. Re-registering for wallet recovery...`);
                             const identityService = ca.newIdentityService();
-                            await identityService.update(walletIdentityName, { enrollmentSecret: password }, adminUser);
+                            try {
+                                const forceDeleteUrl = identityService._client.getBaseURL() + '/api/v1/identities/' + walletIdentityName + '?force=true';
+                                await identityService._client.delete(forceDeleteUrl, adminUser);
+                                await ca.register(registerPayload, adminUser);
+                            } catch (e) {
+                                console.log(`[Self-Healing] CA Force Delete failed: ${e.message}. Attempting forced update...`);
+                                await identityService.update(walletIdentityName, { 
+                                    type: registerPayload.role,
+                                    secret: password, 
+                                    max_enrollments: -1,
+                                    attrs: registerPayload.attrs 
+                                }, adminUser);
+                            }
                         } else {
                             throw regErr;
                         }

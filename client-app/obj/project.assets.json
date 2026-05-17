@@ -3451,19 +3451,19 @@
     ]
   },
   "packageFolders": {
-    "/root/.nuget/packages/": {}
+    "C:\\Users\\pascu\\.nuget\\packages\\": {}
   },
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "/app/For_Testing_Only_Capstone.csproj",
+      "projectUniqueName": "C:\\Users\\pascu\\Documents\\GitHub2\\GitHub\\Casptone 1\\Capstone-Project-BlockChain-BlockGo\\client-app\\For_Testing_Only_Capstone.csproj",
       "projectName": "For_Testing_Only_Capstone",
-      "projectPath": "/app/For_Testing_Only_Capstone.csproj",
-      "packagesPath": "/root/.nuget/packages/",
-      "outputPath": "/app/obj/",
+      "projectPath": "C:\\Users\\pascu\\Documents\\GitHub2\\GitHub\\Casptone 1\\Capstone-Project-BlockChain-BlockGo\\client-app\\For_Testing_Only_Capstone.csproj",
+      "packagesPath": "C:\\Users\\pascu\\.nuget\\packages\\",
+      "outputPath": "C:\\Users\\pascu\\Documents\\GitHub2\\GitHub\\Casptone 1\\Capstone-Project-BlockChain-BlockGo\\client-app\\obj\\",
       "projectStyle": "PackageReference",
       "configFilePaths": [
-        "/root/.nuget/NuGet/NuGet.Config"
+        "C:\\Users\\pascu\\AppData\\Roaming\\NuGet\\NuGet.Config"
       ],
       "originalTargetFrameworks": [
         "net8.0"
@@ -3486,7 +3486,8 @@
         "enableAudit": "true",
         "auditLevel": "low",
         "auditMode": "direct"
-      }
+      },
+      "SdkAnalysisLevel": "10.0.200"
     },
     "frameworks": {
       "net8.0": {
@@ -3564,6 +3565,24 @@
         ],
         "assetTargetFallback": true,
         "warn": true,
+        "downloadDependencies": [
+          {
+            "name": "Microsoft.AspNetCore.App.Ref",
+            "version": "[8.0.25, 8.0.25]"
+          },
+          {
+            "name": "Microsoft.NETCore.App.Host.win-x64",
+            "version": "[8.0.25, 8.0.25]"
+          },
+          {
+            "name": "Microsoft.NETCore.App.Ref",
+            "version": "[8.0.25, 8.0.25]"
+          },
+          {
+            "name": "Microsoft.WindowsDesktop.App.Ref",
+            "version": "[8.0.25, 8.0.25]"
+          }
+        ],
         "frameworkReferences": {
           "Microsoft.AspNetCore.App": {
             "privateAssets": "none"
@@ -3572,7 +3591,11 @@
             "privateAssets": "all"
           }
         },
+<<<<<<< HEAD
         "runtimeIdentifierGraphPath": "/usr/share/dotnet/sdk/8.0.420/PortableRuntimeIdentifierGraph.json"
+=======
+        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\10.0.201/PortableRuntimeIdentifierGraph.json"
+>>>>>>> e99949a7443cb70a116cbef4aac39b0ab74721d2
       }
     }
   }

@@ -186,7 +186,18 @@ async function bootstrapRootUser(wallet) {
                 if (regErr.toString().includes('is already registered')) {
                     console.log(`Identity ${email} already registered in CA. Forcing password update...`);
                     const identityService = ca.newIdentityService();
-                    await identityService.update(email, { enrollmentSecret: pass }, adminUser);
+                    try {
+                        const forceDeleteUrl = identityService._client.getBaseURL() + '/api/v1/identities/' + email + '?force=true';
+                        await identityService._client.delete(forceDeleteUrl, adminUser);
+                        await ca.register({
+                            enrollmentID: email,
+                            enrollmentSecret: pass,
+                            role: 'admin',
+                            attrs: [{ name: 'role', value: 'registrar', ecert: true }]
+                        }, adminUser);
+                    } catch (e) {
+                        await identityService.update(email, { type: 'admin', secret: pass, max_enrollments: -1, attrs: [{ name: 'role', value: 'registrar', ecert: true }] }, adminUser);
+                    }
                 } else {
                     throw regErr;
                 }
