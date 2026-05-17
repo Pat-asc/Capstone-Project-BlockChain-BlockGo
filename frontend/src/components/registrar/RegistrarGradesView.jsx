@@ -800,6 +800,100 @@ const RegistrarGradesView = ({
         } catch (error) { alert("Failed to export PDF."); }
     };
 
+    const handleExportFacultySummaryPDF = (facultyData) => {
+        if (!facultyData) return;
+        try {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF('p', 'mm', 'a4');
+            
+            doc.setTextColor(0, 51, 102);
+            doc.setFontSize(16);
+            doc.setFont("helvetica", "bold");
+            doc.text("PAMANTASAN NG LUNGSOD NG VALENZUELA", 105, 20, { align: 'center' });
+            
+            doc.setFontSize(12);
+            doc.text("FACULTY ENCODING SUMMARY REPORT", 105, 28, { align: 'center' });
+            
+            doc.setFontSize(10);
+            doc.setFont("helvetica", "normal");
+            doc.setTextColor(100);
+            doc.text(`Faculty Name: ${facultyData.facultyName}`, 14, 45);
+            doc.text(`Email: ${facultyData.facultyEmail}`, 14, 50);
+            doc.text(`Total Sections Encoded: ${facultyData.totalSections}`, 14, 55);
+            doc.text(`Total Records: ${facultyData.totalRecords}`, 14, 60);
+            doc.text(`Generated: ${new Date().toLocaleString()}`, 14, 65);
+            
+            let startY = 75;
+            
+            facultyData.sections.forEach((section, index) => {
+                doc.setFontSize(11);
+                doc.setTextColor(0, 51, 102);
+                doc.setFont("helvetica", "bold");
+                doc.text(`Section: ${section.sectionName} (${section.department})`, 14, startY);
+                
+                const tableColumn = ["Student ID", "Student Name", "Subj", "Mid", "Fin", "Final", "Status"];
+                const tableRows = section.records.map(r => [
+                    r.studentDisplayId,
+                    r.studentDisplayName,
+                    r.subject_code || '--',
+                    r.midterm || '--',
+                    r.finals || '--',
+                    r.finalAverage || '--',
+                    r.status || 'N/A'
+                ]);
+                
+                doc.autoTable({
+                    head: [tableColumn],
+                    body: tableRows,
+                    startY: startY + 4,
+                    theme: 'grid',
+                    headStyles: { fillColor: [0, 51, 102], fontSize: 8 },
+                    bodyStyles: { fontSize: 8 },
+                    margin: { left: 14, right: 14 }
+                });
+                
+                startY = doc.lastAutoTable.finalY + 15;
+                
+                if (startY > 250 && index < facultyData.sections.length - 1) {
+                    doc.addPage();
+                    startY = 20;
+                }
+            });
+            
+            if (startY > 230) {
+                doc.addPage();
+                startY = 20;
+            }
+            
+            doc.setFontSize(10);
+            doc.setFont("helvetica", "normal");
+            doc.setTextColor(0, 0, 0);
+            
+            startY += 20;
+            doc.text("Prepared by:", 14, startY);
+            doc.text("Verified & Received by:", 120, startY);
+            
+            startY += 15;
+            doc.setLineWidth(0.5);
+            doc.line(14, startY, 74, startY);
+            doc.line(120, startY, 180, startY);
+            
+            startY += 5;
+            doc.setFont("helvetica", "bold");
+            doc.text(facultyData.facultyName, 44, startY, { align: 'center' });
+            doc.text("University Registrar", 150, startY, { align: 'center' });
+            
+            doc.setFont("helvetica", "normal");
+            doc.text("Faculty / Instructor", 44, startY + 5, { align: 'center' });
+            doc.text("Pamantasan ng Lungsod ng Valenzuela", 150, startY + 5, { align: 'center' });
+            
+            doc.save(`Faculty_Summary_${facultyData.facultyName.replace(/\s+/g, '_')}.pdf`);
+        } catch (error) { 
+            console.error(error);
+            alert("Failed to export PDF."); 
+        }
+    };
+
     const handleDownloadBulkEnrollmentTemplate = () => {
         const rows = [
             ['student_id', 'first_name', 'last_name', 'middle_name', 'sex', 'email', 'number', 'address', 'birthday'],
@@ -1073,6 +1167,11 @@ const RegistrarGradesView = ({
                                                     <span className="rounded-full bg-red-50 px-3 py-2 text-red-700">D / UD / W / INC: {selectedFacultyMonitoringData.priorityCount}</span>
                                                     <span className="rounded-full bg-amber-50 px-3 py-2 text-amber-700">Flagged: {selectedFacultyMonitoringData.flaggedCount}</span>
                                                 </div>
+                                                <div className="flex flex-wrap gap-2 mt-2 lg:mt-0">
+                                                    <button onClick={() => handleExportFacultySummaryPDF(selectedFacultyMonitoringData)} className="rounded-xl border border-[#003366] bg-white px-4 py-2 text-sm font-bold text-[#003366] transition hover:bg-[#003366] hover:text-white">
+                                                        Export Summary for Signing
+                                                    </button>
+                                                </div>
                                             </div>
 
                                             <div className="space-y-4">
@@ -1217,7 +1316,6 @@ const RegistrarGradesView = ({
                                                                 <th className="p-4 font-semibold">Student (Hashed)</th>
                                                                 <th className="p-4 font-semibold text-center">Grade</th>
                                                                 <th className="p-4 font-semibold text-center">Status</th>
-                                                                <th className="p-4 font-semibold text-right">Action</th>
                                                             </tr>
                                                         </thead>
                                                         <tbody>
@@ -1229,14 +1327,6 @@ const RegistrarGradesView = ({
                                                                         <span className="rounded-full bg-emerald-100 px-3 py-1 text-[10px] font-bold uppercase text-emerald-700">
                                                                             {sg.status}
                                                                         </span>
-                                                                    </td>
-                                                                    <td className="p-4 text-right">
-                                                                        <button
-                                                                            onClick={() => handleFinalizeStaged(sg.stagingId)} 
-                                                                            className="rounded-lg border border-emerald-600 px-4 py-1.5 text-xs font-bold text-emerald-700 hover:bg-emerald-50 transition"
-                                                                        >
-                                                                            Commit
-                                                                        </button>
                                                                     </td>
                                                                 </tr>
                                                             ))}
