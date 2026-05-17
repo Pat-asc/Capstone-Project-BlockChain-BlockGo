@@ -20,15 +20,15 @@ export const getGradeEquivalent = (grade) => {
   const g = Number(grade);
 
   if (isNaN(g)) return "-";
-  if (g >= 97) return "1.00";
+  if (g <= 0) return "0";
+  if (g >= 98.5) return "1.00";
   if (g >= 94) return "1.25";
   if (g >= 91) return "1.50";
   if (g >= 88) return "1.75";
   if (g >= 85) return "2.00";
   if (g >= 82) return "2.25";
   if (g >= 79) return "2.50";
-  if (g >= 76) return "2.75";
-  if (g === 75) return "3.00";
+  if (g >= 75) return "3.00";
   if (g < 75) return "5.00";
 
   return "-";
@@ -53,5 +53,6 @@ export const getStatus = (final, activeTerm) => {
   if (activeTerm === "midterm") return "-";
   if (final === "-") return "-";
 
-  return Number(final) >= 75 ? "Passed" : "Failed";
+  const equivalent = getGradeEquivalent(final);
+  return equivalent === "5.00" ? "Failed" : "Passed";
 };

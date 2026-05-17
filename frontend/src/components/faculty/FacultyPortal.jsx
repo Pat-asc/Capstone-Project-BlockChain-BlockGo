@@ -189,6 +189,11 @@ const hasEncodedGrade = (value) => {
   return !Number.isNaN(numeric) && numeric > 0;
 };
 
+const hasEncodedGradeForTerm = (student = {}, term = "midterm") =>
+  term === "finals"
+    ? hasEncodedGrade(student.finals)
+    : hasEncodedGrade(student.midterm);
+
 const computeFinalAverage = (student = {}) => {
   if (!hasEncodedGrade(student.midterm) || !hasEncodedGrade(student.finals)) {
     return null;
@@ -438,47 +443,6 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
       const nextSectionStatuses = {};
       const nextBulkUploadedSections = {};
 
-      const deriveSectionReviewState = (records = []) => {
-        const meaningfulStatusRecords = records
-          .map((record, index) => ({
-            record,
-            index,
-            timestamp: parseTimestamp(record.date || record.Date),
-            normalizedStatus: normalizeSectionStatusValue(
-              record.status || record.Status
-            ),
-          }))
-          .filter(({ normalizedStatus }) => normalizedStatus !== "draft");
-
-        const latestRecordEntry = meaningfulStatusRecords.reduce((current, next) => {
-          if (!current) return next;
-          if (next.timestamp !== current.timestamp) {
-            return next.timestamp > current.timestamp ? next : current;
-          }
-
-          const nextPriority = SECTION_STATUS_PRIORITY[next.normalizedStatus] ?? 0;
-          const currentPriority = SECTION_STATUS_PRIORITY[current.normalizedStatus] ?? 0;
-          if (nextPriority !== currentPriority) {
-            return nextPriority > currentPriority ? next : current;
-          }
-
-          return next.index > current.index ? next : current;
-        }, null);
-
-        const latestStatus = latestRecordEntry?.normalizedStatus || "draft";
-        const reviewNote =
-          latestStatus === "returned"
-            ? latestRecordEntry?.record?.note ||
-              latestRecordEntry?.record?.Note ||
-              ""
-            : "";
-
-        return {
-          status: latestStatus,
-          note: reviewNote,
-        };
-      };
-
       const parseSavedGrade = (rawGrade) => {
         if (!rawGrade) {
           return {
@@ -537,6 +501,57 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
           finalAverage: numericGrade,
           standing: STUDENT_STATUS_ACTIVE,
           flagged: false,
+        };
+      };
+
+      const recordHasEncodedValueForTerm = (record, term) => {
+        const parsedGrade = parseSavedGrade(record?.grade || record?.Grade);
+        return term === "finals"
+          ? hasEncodedGrade(parsedGrade.finals)
+          : hasEncodedGrade(parsedGrade.midterm);
+      };
+
+      const deriveSectionReviewState = (records = [], term = encodingTerm) => {
+        const termRelevantRecords = records.filter((record) =>
+          recordHasEncodedValueForTerm(record, term)
+        );
+        const meaningfulStatusRecords = termRelevantRecords
+          .map((record, index) => ({
+            record,
+            index,
+            timestamp: parseTimestamp(record.date || record.Date),
+            normalizedStatus: normalizeSectionStatusValue(
+              record.status || record.Status
+            ),
+          }))
+          .filter(({ normalizedStatus }) => normalizedStatus !== "draft");
+
+        const latestRecordEntry = meaningfulStatusRecords.reduce((current, next) => {
+          if (!current) return next;
+          if (next.timestamp !== current.timestamp) {
+            return next.timestamp > current.timestamp ? next : current;
+          }
+
+          const nextPriority = SECTION_STATUS_PRIORITY[next.normalizedStatus] ?? 0;
+          const currentPriority = SECTION_STATUS_PRIORITY[current.normalizedStatus] ?? 0;
+          if (nextPriority !== currentPriority) {
+            return nextPriority > currentPriority ? next : current;
+          }
+
+          return next.index > current.index ? next : current;
+        }, null);
+
+        const latestStatus = latestRecordEntry?.normalizedStatus || "draft";
+        const reviewNote =
+          latestStatus === "returned"
+            ? latestRecordEntry?.record?.note ||
+              latestRecordEntry?.record?.Note ||
+              ""
+            : "";
+
+        return {
+          status: latestStatus,
+          note: reviewNote,
         };
       };
 
@@ -617,7 +632,10 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
 
           return sectionMatches && subjectMatches;
         });
-        const sectionReviewState = deriveSectionReviewState(sectionGrades);
+        const sectionReviewState = deriveSectionReviewState(
+          sectionGrades,
+          encodingTerm
+        );
         nextBulkUploadedSections[sectionKey] = !!savedBulkUploadedSections[sectionKey];
         nextSectionStatuses[sectionKey] = {
           ...createDefaultSectionTermStatuses(),
@@ -1401,7 +1419,9 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
               })
               .map(([sectionName, sectionData]) => {
                 const total = sectionData.students.length;
-                const encoded = sectionData.students.filter(s => parseFloat(s.midterm) > 0 || parseFloat(s.finals) > 0).length;
+                const encoded = sectionData.students.filter((student) =>
+                  hasEncodedGradeForTerm(student, encodingTerm)
+                ).length;
                 const progressPct = total > 0 ? Math.round((encoded / total) * 100) : 0;
                 const secStatus = getSectionTermStatus(sectionName);
 

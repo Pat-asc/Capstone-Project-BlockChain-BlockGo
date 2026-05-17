@@ -4,6 +4,7 @@ import StudentNavbar from './StudentNavbar';
 import StudentInfoCard from './StudentInfoCard';
 import StudentSummary from './StudentSummary';
 import StudentGradesTable from './StudentGradesTable';
+import { getGradeEquivalent } from '../../utils/gradingHelpers';
 
 const StudentPortal = ({ studentData, onLogout }) => {
   const [grades, setGrades] = useState([]);
@@ -127,32 +128,72 @@ const StudentPortal = ({ studentData, onLogout }) => {
   }, []);
 
   const totalUnits = grades.length * 3; // Assuming 3 units per subject block for now
-  
-  const totalWeight = grades.reduce((sum, sub) => sum + ((parseFloat(parseGradePayload(sub).finalAverage) || 0) * 3), 0);
+
+  const getResolvedRawAverage = useCallback((parsedGrade) => {
+    const mid = parseFloat(parsedGrade.midterm);
+    const fin = parseFloat(parsedGrade.finals);
+    const savedAverage = parseFloat(parsedGrade.finalAverage);
+
+    if (!isNaN(mid) && !isNaN(fin)) {
+      return Number(((mid + fin) / 2).toFixed(2));
+    }
+
+    if (!isNaN(savedAverage)) {
+      return savedAverage;
+    }
+
+    if (!isNaN(mid)) {
+      return mid;
+    }
+
+    if (!isNaN(fin)) {
+      return fin;
+    }
+
+    return NaN;
+  }, []);
+
+  const getEquivalentValue = useCallback((parsedGrade) => {
+    const rawAverage = getResolvedRawAverage(parsedGrade);
+    if (isNaN(rawAverage)) return NaN;
+
+    const equivalent = parseFloat(getGradeEquivalent(rawAverage));
+    return isNaN(equivalent) ? NaN : equivalent;
+  }, [getResolvedRawAverage]);
+
+  const totalWeight = grades.reduce((sum, sub) => {
+    const equivalent = getEquivalentValue(parseGradePayload(sub));
+    return sum + ((isNaN(equivalent) ? 0 : equivalent) * 3);
+  }, 0);
 
   const calculatedGWA = totalUnits > 0 ? (totalWeight / totalUnits).toFixed(2) : "0.00";
 
-  const isDeansLister = grades.length > 0 && Number(calculatedGWA) <= 1.75 && grades.every(s => parseFloat(parseGradePayload(s).finalAverage) <= 2.25);
-  const failedSubjectsCount = grades.filter(s => parseFloat(parseGradePayload(s).finalAverage) > 3.0 || parseFloat(parseGradePayload(s).finalAverage) === 5.0).length;
+  const isDeansLister =
+    grades.length > 0 &&
+    Number(calculatedGWA) <= 1.75 &&
+    grades.every((subject) => {
+      const equivalent = getEquivalentValue(parseGradePayload(subject));
+      return !isNaN(equivalent) && equivalent <= 2.25;
+    });
+
+  const failedSubjectsCount = grades.filter((subject) => {
+    const equivalent = getEquivalentValue(parseGradePayload(subject));
+    return !isNaN(equivalent) && equivalent === 5.0;
+  }).length;
 
   let mappedSubjects = grades.map(g => {
     const parsed = parseGradePayload(g);
-    
-    let rawAverage = "---";
-    const mid = parseFloat(parsed.midterm);
-    const fin = parseFloat(parsed.finals);
-    
-    if (!isNaN(mid) && !isNaN(fin)) {
-        rawAverage = ((mid + fin) / 2).toFixed(2);
-    } else if (!isNaN(mid)) {
-        rawAverage = mid.toFixed(2);
-    } else if (!isNaN(fin)) {
-        rawAverage = fin.toFixed(2);
-    }
+    const resolvedRawAverage = getResolvedRawAverage(parsed);
+    const rawAverage = isNaN(resolvedRawAverage)
+      ? "---"
+      : resolvedRawAverage.toFixed(2);
+    const equivalent = isNaN(resolvedRawAverage)
+      ? "---"
+      : getGradeEquivalent(resolvedRawAverage);
 
     let computedRemarks = "Pending";
-    if (!isNaN(parseFloat(parsed.finalAverage))) {
-        computedRemarks = parseFloat(parsed.finalAverage) <= 3.0 ? "Passed" : "Failed";
+    if (equivalent !== "---" && equivalent !== "-") {
+      computedRemarks = equivalent === "5.00" ? "Failed" : "Passed";
     }
 
     return {
@@ -162,7 +203,7 @@ const StudentPortal = ({ studentData, onLogout }) => {
       midterm: parsed.midterm,
       finals: parsed.finals,
       finalGrade: rawAverage !== "---" ? rawAverage : parsed.finalAverage,
-      equivalent: parsed.finalAverage,
+      equivalent,
       remarks: computedRemarks
     };
   });
