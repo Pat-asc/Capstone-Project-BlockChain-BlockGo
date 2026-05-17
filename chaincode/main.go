@@ -16,6 +16,8 @@ import (
 type AcademicRecord struct {
 	ID          string `json:"id"`
 	StudentHash string `json:"student_hash"`
+	StudentNo   string `json:"student_no"`
+	StudentName string `json:"student_name"`
 	Section     string `json:"section"`
 	YearLevel   string `json:"year_level"`
 	Course      string `json:"course"`
@@ -80,6 +82,8 @@ func (cc *SmartContract) initLedger(stub shim.ChaincodeStubInterface) *pb.Respon
 		{
 			ID:          "GENESIS-001",
 			StudentHash: "genesis.student@plv.edu.ph",
+			StudentNo:   "2024-0000",
+			StudentName: "Genesis Student",
 			Section:     "A",
 			Course:      "BSCS",
 			SubjectCode: "CS-GENESIS",

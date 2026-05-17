@@ -1348,6 +1348,7 @@ namespace BlockGo.Controllers
 
             var jwtRole = User.Claims.FirstOrDefault(c => c.Type == "dbRole")?.Value ?? User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Role)?.Value;
             bool isAuthorizedViewer = jwtRole == "registrar" || jwtRole == "chairperson" || jwtRole == "department_admin" || jwtRole == "deptAdmin" || jwtRole == "admin";
+            bool isStudent = jwtRole == "student";
 
             try
             {
@@ -1416,7 +1417,7 @@ namespace BlockGo.Controllers
                 var enrichedGrades = new List<Dictionary<string, object>>();
                 
                 using var cmdProfiles = new NpgsqlCommand("SELECT u.email, sp.department, sp.section, sp.student_no, sp.full_name FROM Users u JOIN StudentProfiles sp ON u.id = sp.user_id", conn);
-                var studentProfiles = new Dictionary<string, (string dept, string sec, string studentNo, string fullName)>();
+                var studentProfiles = new Dictionary<string, (string dept, string sec, string studentNo, string fullName)>(StringComparer.OrdinalIgnoreCase);
                 using var profReader = await cmdProfiles.ExecuteReaderAsync();
                 while (await profReader.ReadAsync())
                 {
@@ -1454,10 +1455,17 @@ namespace BlockGo.Controllers
                     string safeStudentHash = g.StudentHash ?? "";
                     string safeFacultyId = g.FacultyId ?? "";
 
-                    if (!isAuthorizedViewer && g.FacultyId != invokerId && g.StudentHash != invokerId)
+                    if (!isAuthorizedViewer && 
+                        !string.Equals(g.FacultyId, invokerId, StringComparison.OrdinalIgnoreCase) && 
+                        !string.Equals(g.StudentHash, invokerId, StringComparison.OrdinalIgnoreCase))
                     {
                         safeStudentHash = "[REDACTED]";
                         safeFacultyId = "[REDACTED]";
+                    }
+
+                    if (isStudent && !string.Equals(g.Status, "Finalized", StringComparison.OrdinalIgnoreCase))
+                    {
+                        continue;
                     }
 
                     enrichedGrades.Add(new Dictionary<string, object> {
@@ -1508,11 +1516,14 @@ namespace BlockGo.Controllers
             if (string.IsNullOrEmpty(invokerId)) 
                 return BadRequest(new { status = "Error", message = "invokerId query parameter is required." });
 
+            var jwtRole = User.Claims.FirstOrDefault(c => c.Type == "dbRole")?.Value ?? User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Role)?.Value;
+            bool isStudent = jwtRole == "student";
+
             try
             {
                 using var conn = new NpgsqlConnection(_connectionString);
                 await conn.OpenAsync();
-                using var cmd = new NpgsqlCommand("SELECT id, student_hash, section, course, subject_code, grade, semester, school_year, faculty_id, date, ipfs_cid, status, note FROM pending_grade_records WHERE id = @id", conn);
+                using var cmd = new NpgsqlCommand("SELECT id, student_hash, student_no, student_name, section, course, subject_code, grade, semester, school_year, faculty_id, date, ipfs_cid, status, note FROM pending_grade_records WHERE id = @id", conn);
                 cmd.Parameters.AddWithValue("id", recordId);
                 
                 using (var reader = await cmd.ExecuteReaderAsync())
@@ -1522,20 +1533,26 @@ namespace BlockGo.Controllers
                         var localGrade = new AcademicRecord {
                             Id = reader.IsDBNull(0) ? "" : reader.GetString(0),
                             StudentHash = reader.IsDBNull(1) ? "" : reader.GetString(1),
-                            Section = reader.IsDBNull(2) ? "" : reader.GetString(2),
-                            Course = reader.IsDBNull(3) ? "" : reader.GetString(3),
-                            SubjectCode = reader.IsDBNull(4) ? "" : reader.GetString(4),
-                            Grade = reader.IsDBNull(5) ? "" : reader.GetString(5),
-                            Semester = reader.IsDBNull(6) ? "" : reader.GetString(6),
-                            SchoolYear = reader.IsDBNull(7) ? "" : reader.GetString(7),
-                            FacultyId = reader.IsDBNull(8) ? "" : reader.GetString(8),
-                            Date = reader.IsDBNull(9) ? "" : reader.GetString(9),
-                            IpfsCid = reader.IsDBNull(10) ? "" : reader.GetString(10),
-                            Status = reader.IsDBNull(11) ? "" : reader.GetString(11),
-                            Note = reader.IsDBNull(12) ? "" : reader.GetString(12),
+                            StudentNo = reader.IsDBNull(2) ? "" : reader.GetString(2),
+                            StudentName = reader.IsDBNull(3) ? "" : reader.GetString(3),
+                            Section = reader.IsDBNull(4) ? "" : reader.GetString(4),
+                            Course = reader.IsDBNull(5) ? "" : reader.GetString(5),
+                            SubjectCode = reader.IsDBNull(6) ? "" : reader.GetString(6),
+                            Grade = reader.IsDBNull(7) ? "" : reader.GetString(7),
+                            Semester = reader.IsDBNull(8) ? "" : reader.GetString(8),
+                            SchoolYear = reader.IsDBNull(9) ? "" : reader.GetString(9),
+                            FacultyId = reader.IsDBNull(10) ? "" : reader.GetString(10),
+                            Date = reader.IsDBNull(11) ? "" : reader.GetString(11),
+                            IpfsCid = reader.IsDBNull(12) ? "" : reader.GetString(12),
+                            Status = reader.IsDBNull(13) ? "" : reader.GetString(13),
+                            Note = reader.IsDBNull(14) ? "" : reader.GetString(14),
                             University = "PLV",
                             Version = 1
                         };
+                        
+                        if (isStudent && !string.Equals(localGrade.Status, "Finalized", StringComparison.OrdinalIgnoreCase))
+                            return NotFound(new { status = "Error", message = "Grade is pending finalization." });
+
                         return Ok(new { status = "Success", data = localGrade });
                     }
                 }
@@ -1644,7 +1661,7 @@ namespace BlockGo.Controllers
                 using var conn = new NpgsqlConnection(_connectionString);
                 await conn.OpenAsync();
                 
-                using var cmd = new NpgsqlCommand("SELECT id, student_hash, section, course, subject_code, grade, semester, school_year, faculty_id, date, ipfs_cid, note FROM pending_grade_records WHERE id = @id", conn);
+                using var cmd = new NpgsqlCommand("SELECT id, student_hash, student_no, student_name, section, course, subject_code, grade, semester, school_year, faculty_id, date, ipfs_cid, note FROM pending_grade_records WHERE id = @id", conn);
                 cmd.Parameters.AddWithValue("id", recordId);
                 
                 AcademicRecord? pendingRecord = null;
@@ -1655,16 +1672,18 @@ namespace BlockGo.Controllers
                         pendingRecord = new AcademicRecord {
                             Id = reader.IsDBNull(0) ? "" : reader.GetString(0),
                             StudentHash = reader.IsDBNull(1) ? "" : reader.GetString(1),
-                            Section = reader.IsDBNull(2) ? "" : reader.GetString(2),
-                            Course = reader.IsDBNull(3) ? "" : reader.GetString(3),
-                            SubjectCode = reader.IsDBNull(4) ? "" : reader.GetString(4),
-                            Grade = reader.IsDBNull(5) ? "" : reader.GetString(5),
-                            Semester = reader.IsDBNull(6) ? "" : reader.GetString(6),
-                            SchoolYear = reader.IsDBNull(7) ? "" : reader.GetString(7),
-                            FacultyId = reader.IsDBNull(8) ? "" : reader.GetString(8),
-                            Date = reader.IsDBNull(9) ? "" : reader.GetString(9),
-                            IpfsCid = reader.IsDBNull(10) ? "" : reader.GetString(10),
-                            Note = reader.IsDBNull(11) ? "" : reader.GetString(11),
+                            StudentNo = reader.IsDBNull(2) ? "" : reader.GetString(2),
+                            StudentName = reader.IsDBNull(3) ? "" : reader.GetString(3),
+                            Section = reader.IsDBNull(4) ? "" : reader.GetString(4),
+                            Course = reader.IsDBNull(5) ? "" : reader.GetString(5),
+                            SubjectCode = reader.IsDBNull(6) ? "" : reader.GetString(6),
+                            Grade = reader.IsDBNull(7) ? "" : reader.GetString(7),
+                            Semester = reader.IsDBNull(8) ? "" : reader.GetString(8),
+                            SchoolYear = reader.IsDBNull(9) ? "" : reader.GetString(9),
+                            FacultyId = reader.IsDBNull(10) ? "" : reader.GetString(10),
+                            Date = reader.IsDBNull(11) ? "" : reader.GetString(11),
+                            IpfsCid = reader.IsDBNull(12) ? "" : reader.GetString(12),
+                            Note = reader.IsDBNull(13) ? "" : reader.GetString(13),
                             Status = "Finalized",
                             University = "PLV",
                             Version = 1
