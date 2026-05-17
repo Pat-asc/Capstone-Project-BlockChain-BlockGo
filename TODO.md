@@ -17,3 +17,10 @@
 - [x] Yung return to faculty function di gumagana.
 - [x] Pa-check yung revoke account, last check ko na-revoke account, hindi na nakakalogin pero still showing sa system na pwede pa ulit i-revoke.
 - [x] Update Student Info button (Bulk Enroll), may error kapag nag update ng info ng student. Yung csv na gamit dito is same lang sa pag Upload Student (Bulk Enroll)
+
+
+- [ ] ayos flow encoding ng grades pag midterm pero pag pinalitan na ng final term. kapag nag encode and submit to chairperson hindi nagkakaroon ng status na submitted to chairperson pero pag nagcheck ng account ng chairperson pumasok yung grades kahit na mark sa faculty acc
+
+- [ ] return to faculty function hindi rin gumagana during final term pero kapag midterm is gumagana
+
+- [ ] Paayos ng distribution dapat magkaroon muna ng final grades bago pwede madistribute sa students

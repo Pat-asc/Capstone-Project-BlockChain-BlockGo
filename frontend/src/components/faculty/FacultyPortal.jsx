@@ -67,6 +67,14 @@ const KNOWN_SECTION_STATUSES = [
   "finalized",
   "returned",
 ];
+const SECTION_STATUS_PRIORITY = {
+  draft: 0,
+  returned: 1,
+  submitted: 2,
+  approved: 3,
+  forwarded: 4,
+  finalized: 4,
+};
 const createDefaultSectionTermStatuses = () => ({
   midterm: "draft",
   finals: "draft",
@@ -74,6 +82,9 @@ const createDefaultSectionTermStatuses = () => ({
 const normalizeEncodingTerm = (term) => (term === "finals" ? "finals" : "midterm");
 const normalizeSectionStatusValue = (status) => {
   const normalized = normalizeText(status);
+  if (normalized === "issued") return "submitted";
+  if (normalized === "departmentapproved") return "approved";
+  if (normalized === "finalized") return "forwarded";
   if (RETURNED_SECTION_STATUSES.includes(normalized)) return "returned";
   return KNOWN_SECTION_STATUSES.includes(normalized) ? normalized : "draft";
 };
@@ -428,35 +439,39 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
       const nextBulkUploadedSections = {};
 
       const deriveSectionReviewState = (records = []) => {
-        const sortedRecords = [...records].sort((left, right) => {
-          const leftTimestamp = parseTimestamp(left.date || left.Date);
-          const rightTimestamp = parseTimestamp(right.date || right.Date);
-          return leftTimestamp - rightTimestamp;
-        });
-        const meaningfulStatusRecords = sortedRecords.filter((record) => {
-          const normalizedStatus = normalizeSectionStatusValue(
-            record.status || record.Status
-          );
-          return normalizedStatus !== "draft";
-        });
+        const meaningfulStatusRecords = records
+          .map((record, index) => ({
+            record,
+            index,
+            timestamp: parseTimestamp(record.date || record.Date),
+            normalizedStatus: normalizeSectionStatusValue(
+              record.status || record.Status
+            ),
+          }))
+          .filter(({ normalizedStatus }) => normalizedStatus !== "draft");
 
-        const latestReturnedRecord = [...meaningfulStatusRecords]
-          .reverse()
-          .find((record) =>
-            RETURNED_SECTION_STATUSES.includes(
-              normalizeText(record.status || record.Status)
-            )
-          );
+        const latestRecordEntry = meaningfulStatusRecords.reduce((current, next) => {
+          if (!current) return next;
+          if (next.timestamp !== current.timestamp) {
+            return next.timestamp > current.timestamp ? next : current;
+          }
 
-        const latestRecord =
-          meaningfulStatusRecords[meaningfulStatusRecords.length - 1] || null;
-        const latestStatus = normalizeSectionStatusValue(
-          latestRecord?.status || latestRecord?.Status
-        );
+          const nextPriority = SECTION_STATUS_PRIORITY[next.normalizedStatus] ?? 0;
+          const currentPriority = SECTION_STATUS_PRIORITY[current.normalizedStatus] ?? 0;
+          if (nextPriority !== currentPriority) {
+            return nextPriority > currentPriority ? next : current;
+          }
+
+          return next.index > current.index ? next : current;
+        }, null);
+
+        const latestStatus = latestRecordEntry?.normalizedStatus || "draft";
         const reviewNote =
-          latestReturnedRecord?.note ||
-          latestReturnedRecord?.Note ||
-          "";
+          latestStatus === "returned"
+            ? latestRecordEntry?.record?.note ||
+              latestRecordEntry?.record?.Note ||
+              ""
+            : "";
 
         return {
           status: latestStatus,
@@ -782,7 +797,13 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
       hasHydratedFacultyDataRef.current = true;
       if (!isBackground) setIsLoadingData(false);
     }
-  }, [facultyBulkUploadStorageKey, facultyData.email, facultyGradeSnapshotStorageKey]);
+  }, [
+    encodingSemester,
+    encodingTerm,
+    facultyBulkUploadStorageKey,
+    facultyData.email,
+    facultyGradeSnapshotStorageKey,
+  ]);
 
   useEffect(() => {
     loadFacultyData();

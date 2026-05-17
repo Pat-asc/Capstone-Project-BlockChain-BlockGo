@@ -297,23 +297,32 @@ namespace BlockGo.Controllers
                                 faculty_id = @fac,
                                 date = @dt,
                                 ipfs_cid = COALESCE(NULLIF(@ipfs, ''), ipfs_cid),
-                        status = 'Draft'
-                            WHERE student_hash = @sh
-                              AND subject_code = @subj
-                              AND school_year = @sy
-                              AND semester = @sem
-                              AND section = @sec
+                                status = 'Draft'
+                            WHERE LOWER(TRIM(student_hash)) = LOWER(TRIM(@sh))
+                              AND LOWER(TRIM(subject_code)) = LOWER(TRIM(@subj))
+                              AND LOWER(TRIM(school_year)) = LOWER(TRIM(@sy))
+                              AND LOWER(TRIM(semester)) = LOWER(TRIM(@sem))
+                              AND (
+                                LOWER(TRIM(COALESCE(section, ''))) = LOWER(TRIM(@sec))
+                                OR (COALESCE(section, '') <> '' AND section ILIKE '%' || @sec || '%')
+                                OR (@sec <> '' AND @sec ILIKE '%' || COALESCE(section, '') || '%')
+                                OR LOWER(TRIM(COALESCE(section, ''))) = LOWER(TRIM(@subj))
+                              )
                             RETURNING id
                         )
                         INSERT INTO pending_grade_records (id, student_hash, student_no, student_name, section, course, subject_code, grade, semester, school_year, faculty_id, date, ipfs_cid, status)
-                SELECT @id, @sh, @studentNo, @studentName, @sec, @course, @subj, @gr, @sem, @sy, @fac, @dt, @ipfs, 'Draft'
+                        SELECT @id, @sh, @studentNo, @studentName, @sec, @course, @subj, @gr, @sem, @sy, @fac, @dt, @ipfs, 'Draft'
                         WHERE NOT EXISTS (SELECT 1 FROM updated)
-                        ON CONFLICT (id) DO UPDATE SET
+                        ON CONFLICT ON CONSTRAINT unique_grade_entry_section DO UPDATE SET
                             student_no = EXCLUDED.student_no,
                             student_name = EXCLUDED.student_name,
+                            section = EXCLUDED.section,
+                            course = EXCLUDED.course,
                             grade = EXCLUDED.grade,
-                    status = 'Draft',
-                            date = EXCLUDED.date;", conn, transaction);
+                            faculty_id = EXCLUDED.faculty_id,
+                            date = EXCLUDED.date,
+                            ipfs_cid = COALESCE(NULLIF(EXCLUDED.ipfs_cid, ''), pending_grade_records.ipfs_cid),
+                            status = 'Draft';", conn, transaction);
                     cmdStage.Parameters.AddWithValue("id", blockchainRecord.Id ?? (object)Guid.NewGuid().ToString());
                     cmdStage.Parameters.AddWithValue("sh", blockchainRecord.StudentHash ?? "");
                     cmdStage.Parameters.AddWithValue("studentNo", blockchainRecord.StudentNo ?? "");
@@ -462,7 +471,7 @@ namespace BlockGo.Controllers
                 cmd.Parameters.AddWithValue("section", section);
                 cmd.Parameters.AddWithValue("compactSection", compactSection);
                 cmd.Parameters.AddWithValue("subjectCode", subjectCodeFromLabel);
-                cmd.Parameters.AddWithValue("date", DateTime.UtcNow.ToString("yyyy-MM-dd"));
+                cmd.Parameters.AddWithValue("date", DateTime.UtcNow.ToString("o"));
 
                 var updated = await cmd.ExecuteNonQueryAsync();
                 if (updated == 0)
@@ -1843,7 +1852,7 @@ namespace BlockGo.Controllers
                 
                 using var cmd = new NpgsqlCommand("UPDATE pending_grade_records SET status = 'Returned', note = @note, date = @dt WHERE id = @id RETURNING id", conn);
                 cmd.Parameters.AddWithValue("note", request.Note ?? "");
-                cmd.Parameters.AddWithValue("dt", DateTime.UtcNow.ToString("yyyy-MM-dd"));
+                cmd.Parameters.AddWithValue("dt", DateTime.UtcNow.ToString("o"));
                 cmd.Parameters.AddWithValue("id", recordId);
                 var res = await cmd.ExecuteScalarAsync();
                 

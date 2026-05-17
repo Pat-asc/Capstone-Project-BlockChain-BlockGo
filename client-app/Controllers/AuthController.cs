@@ -1536,52 +1536,103 @@ namespace Client_app.Controllers
                         
                         if (normalizedMode != "update" && !dobDate.HasValue) throw new Exception("Invalid value in column 'birthday'. Use MM/DD/YYYY.");
 
-                        using var checkCmd = new NpgsqlCommand("SELECT id FROM Users WHERE email = @email OR email = @loginId", conn);
+                        int existingUserId = 0;
+                        string existingRole = "";
+                        bool existingStudentProfile = false;
+
+                        using var checkCmd = new NpgsqlCommand(@"
+                            SELECT
+                                u.id,
+                                COALESCE(u.role, ''),
+                                COALESCE(u.status, ''),
+                                EXISTS (
+                                    SELECT 1
+                                    FROM StudentProfiles sp
+                                    WHERE sp.user_id = u.id
+                                ) AS has_profile
+                            FROM Users u
+                            WHERE LOWER(u.email) = LOWER(@email)
+                               OR LOWER(u.email) = LOWER(@loginId)
+                            LIMIT 1", conn);
                         checkCmd.Parameters.AddWithValue("email", email);
                         checkCmd.Parameters.AddWithValue("loginId", loginId);
-                        var existingIdObj = await checkCmd.ExecuteScalarAsync();
-                        long exists = existingIdObj != null ? 1 : 0;
+                        using (var existingReader = await checkCmd.ExecuteReaderAsync())
+                        {
+                            if (await existingReader.ReadAsync())
+                            {
+                                existingUserId = existingReader.GetInt32(0);
+                                existingRole = existingReader.GetString(1);
+                                _ = existingReader.GetString(2);
+                                existingStudentProfile = !existingReader.IsDBNull(3) && existingReader.GetBoolean(3);
+                            }
+                        }
+                        bool exists = existingUserId > 0;
 
                         using var tx = await conn.BeginTransactionAsync();
                         
-                        if (exists > 0)
+                        if (exists)
                         {
-                            if (normalizedMode != "update")
+                            var canReactivateExistingStudent =
+                                normalizedMode != "update" &&
+                                string.Equals(existingRole, "student", StringComparison.OrdinalIgnoreCase);
+
+                            if (normalizedMode != "update" && !canReactivateExistingStudent)
                                 throw new Exception("Student already exists. Use Bulk Update Info instead.");
 
                             using var updateStatusCmd = new NpgsqlCommand("UPDATE Users SET status = 'APPROVED', password_hash = crypt(@password, gen_salt('bf', 12)) WHERE id = @id RETURNING id", conn, tx);
-                            updateStatusCmd.Parameters.AddWithValue("id", Convert.ToInt32(existingIdObj));
+                            updateStatusCmd.Parameters.AddWithValue("id", existingUserId);
                             updateStatusCmd.Parameters.AddWithValue("password", password);
                             int userId = (int)(await updateStatusCmd.ExecuteScalarAsync() ?? 0);
 
                             if (userId > 0)
                             {
-                                using var updateProfile = new NpgsqlCommand(@"
-                                    UPDATE StudentProfiles 
-                                    SET full_name = COALESCE(@name, full_name),
-                                        student_no = COALESCE(@studentno, student_no),
-                                        department = COALESCE(@dept, department),
-                                        section = COALESCE(@sec, section),
-                                        date_of_birth = COALESCE(@dob, date_of_birth),
-                                        student_email = COALESCE(@studentEmail, student_email),
-                                        middle_name = COALESCE(@middleName, middle_name),
-                                        sex = COALESCE(@sex, sex),
-                                        phone = COALESCE(@phone, phone),
-                                        address = COALESCE(@address, address),
-                                        assignment_status = 'Enrolled'
-                                    WHERE user_id = @uid", conn, tx);
-                                updateProfile.Parameters.AddWithValue("name", !string.IsNullOrEmpty(name) ? (object)name : DBNull.Value);
-                                updateProfile.Parameters.AddWithValue("studentno", !string.IsNullOrEmpty(studentNo) ? (object)studentNo : DBNull.Value);
-                                updateProfile.Parameters.AddWithValue("dept", (object?)dept ?? DBNull.Value);
-                                updateProfile.Parameters.AddWithValue("sec", string.IsNullOrEmpty(section) ? DBNull.Value : (object)section);
-                                updateProfile.Parameters.AddWithValue("dob", dobDate.HasValue ? (object)dobDate.Value.Date : DBNull.Value);
-                                updateProfile.Parameters.AddWithValue("studentEmail", string.IsNullOrEmpty(email) ? DBNull.Value : (object)email);
-                                updateProfile.Parameters.AddWithValue("middleName", string.IsNullOrEmpty(middleName) ? DBNull.Value : (object)middleName);
-                                updateProfile.Parameters.AddWithValue("sex", string.IsNullOrEmpty(sex) ? DBNull.Value : (object)sex);
-                                updateProfile.Parameters.AddWithValue("phone", string.IsNullOrEmpty(phone) ? DBNull.Value : (object)phone);
-                                updateProfile.Parameters.AddWithValue("address", string.IsNullOrEmpty(address) ? DBNull.Value : (object)address);
-                                updateProfile.Parameters.AddWithValue("uid", userId);
-                                await updateProfile.ExecuteNonQueryAsync();
+                                if (existingStudentProfile)
+                                {
+                                    using var updateProfile = new NpgsqlCommand(@"
+                                        UPDATE StudentProfiles 
+                                        SET full_name = COALESCE(@name, full_name),
+                                            student_no = COALESCE(@studentno, student_no),
+                                            department = COALESCE(@dept, department),
+                                            section = COALESCE(@sec, section),
+                                            date_of_birth = COALESCE(@dob, date_of_birth),
+                                            student_email = COALESCE(@studentEmail, student_email),
+                                            middle_name = COALESCE(@middleName, middle_name),
+                                            sex = COALESCE(@sex, sex),
+                                            phone = COALESCE(@phone, phone),
+                                            address = COALESCE(@address, address),
+                                            assignment_status = 'Enrolled'
+                                        WHERE user_id = @uid", conn, tx);
+                                    updateProfile.Parameters.AddWithValue("name", !string.IsNullOrEmpty(name) ? (object)name : DBNull.Value);
+                                    updateProfile.Parameters.AddWithValue("studentno", !string.IsNullOrEmpty(studentNo) ? (object)studentNo : DBNull.Value);
+                                    updateProfile.Parameters.AddWithValue("dept", (object?)dept ?? DBNull.Value);
+                                    updateProfile.Parameters.AddWithValue("sec", string.IsNullOrEmpty(section) ? DBNull.Value : (object)section);
+                                    updateProfile.Parameters.AddWithValue("dob", dobDate.HasValue ? (object)dobDate.Value.Date : DBNull.Value);
+                                    updateProfile.Parameters.AddWithValue("studentEmail", string.IsNullOrEmpty(email) ? DBNull.Value : (object)email);
+                                    updateProfile.Parameters.AddWithValue("middleName", string.IsNullOrEmpty(middleName) ? DBNull.Value : (object)middleName);
+                                    updateProfile.Parameters.AddWithValue("sex", string.IsNullOrEmpty(sex) ? DBNull.Value : (object)sex);
+                                    updateProfile.Parameters.AddWithValue("phone", string.IsNullOrEmpty(phone) ? DBNull.Value : (object)phone);
+                                    updateProfile.Parameters.AddWithValue("address", string.IsNullOrEmpty(address) ? DBNull.Value : (object)address);
+                                    updateProfile.Parameters.AddWithValue("uid", userId);
+                                    await updateProfile.ExecuteNonQueryAsync();
+                                }
+                                else
+                                {
+                                    using var insertProfile = new NpgsqlCommand(@"
+                                        INSERT INTO StudentProfiles (user_id, full_name, student_no, department, section, date_of_birth, student_email, middle_name, sex, phone, address, assignment_status)
+                                        VALUES (@uid, @name, @studentno, @dept, @sec, @dob, @studentEmail, @middleName, @sex, @phone, @address, 'Enrolled')", conn, tx);
+                                    insertProfile.Parameters.AddWithValue("uid", userId);
+                                    insertProfile.Parameters.AddWithValue("name", !string.IsNullOrEmpty(name) ? (object)name : DBNull.Value);
+                                    insertProfile.Parameters.AddWithValue("studentno", !string.IsNullOrEmpty(studentNo) ? (object)studentNo : DBNull.Value);
+                                    insertProfile.Parameters.AddWithValue("dept", !string.IsNullOrEmpty(dept) ? (object)dept : DBNull.Value);
+                                    insertProfile.Parameters.AddWithValue("sec", string.IsNullOrEmpty(section) ? DBNull.Value : (object)section);
+                                    insertProfile.Parameters.AddWithValue("dob", dobDate.HasValue ? (object)dobDate.Value.Date : DBNull.Value);
+                                    insertProfile.Parameters.AddWithValue("studentEmail", string.IsNullOrEmpty(email) ? DBNull.Value : (object)email);
+                                    insertProfile.Parameters.AddWithValue("middleName", string.IsNullOrEmpty(middleName) ? DBNull.Value : (object)middleName);
+                                    insertProfile.Parameters.AddWithValue("sex", string.IsNullOrEmpty(sex) ? DBNull.Value : (object)sex);
+                                    insertProfile.Parameters.AddWithValue("phone", string.IsNullOrEmpty(phone) ? DBNull.Value : (object)phone);
+                                    insertProfile.Parameters.AddWithValue("address", string.IsNullOrEmpty(address) ? DBNull.Value : (object)address);
+                                    await insertProfile.ExecuteNonQueryAsync();
+                                }
                             }
                         }
                         else
@@ -1613,7 +1664,7 @@ namespace Client_app.Controllers
 
                         await tx.CommitAsync();
 
-                        if (exists == 0)
+                        if (!exists)
                         {
                             // Fabric Wallet Generation
                             var payload = new { email = loginId, role = "student", password = password };

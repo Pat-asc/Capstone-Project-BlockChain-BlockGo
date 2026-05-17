@@ -447,7 +447,7 @@ const FacultyPortal = ({ onLogout, allGrades, setAllGrades }) => {
                       submitSectionToChairperson(assignmentKey, sectionData)
                     }
                     onClick={() =>
-                      setSelectedSection({ ...sectionData })
+                      setSelectedSection({ ...sectionData, assignmentKey })
                     }
                   />
                 );

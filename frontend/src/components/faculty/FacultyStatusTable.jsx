@@ -1,5 +1,59 @@
 import React, { useMemo, useState } from "react";
 
+const PRIORITY_STANDINGS = new Set([
+  "d",
+  "dropped",
+  "ud",
+  "unofficially_dropped",
+  "unofficially dropped",
+  "w",
+  "withdrawn",
+  "inc",
+  "incomplete",
+]);
+
+const normalizePriorityStanding = (value = "") => String(value || "").trim().toLowerCase();
+
+const getSectionPrioritySummary = (section = {}) => {
+  const grades = Object.values(section.grades || {});
+
+  return grades.reduce(
+    (acc, grade) => {
+      const standing = normalizePriorityStanding(grade?.standing);
+
+      if (grade?.flagged) acc.flagged += 1;
+      if (standing === "d" || standing === "dropped") acc.d += 1;
+      if (standing === "ud" || standing === "unofficially_dropped" || standing === "unofficially dropped") acc.ud += 1;
+      if (standing === "w" || standing === "withdrawn") acc.w += 1;
+      if (standing === "inc" || standing === "incomplete") acc.inc += 1;
+
+      return acc;
+    },
+    { flagged: 0, d: 0, ud: 0, w: 0, inc: 0 }
+  );
+};
+
+const getSectionPriorityScore = (section = {}) => {
+  const summary = getSectionPrioritySummary(section);
+  return summary.flagged + summary.d + summary.ud + summary.w + summary.inc;
+};
+
+const hasPriorityReviewItems = (section = {}) =>
+  getSectionPriorityScore(section) > 0 ||
+  Object.values(section.grades || {}).some((grade) =>
+    PRIORITY_STANDINGS.has(normalizePriorityStanding(grade?.standing))
+  );
+
+const buildPriorityLabel = (summary = {}) => {
+  const parts = [];
+  if (summary.flagged) parts.push(`${summary.flagged} flagged`);
+  if (summary.d) parts.push(`${summary.d} D`);
+  if (summary.ud) parts.push(`${summary.ud} UD`);
+  if (summary.w) parts.push(`${summary.w} W`);
+  if (summary.inc) parts.push(`${summary.inc} INC`);
+  return parts.join(" • ");
+};
+
 const getWorkflowLabel = (status = "") => {
   const normalized = String(status || "").toLowerCase();
 
@@ -74,18 +128,33 @@ function FacultyStatusTable({
         const submittedCount = allFacultySections.filter(
           (section) => section.reviewStatus && section.reviewStatus !== "pending"
         ).length;
+        const sectionsWithPriority = faculty.sections.map((section) => {
+          const prioritySummary = getSectionPrioritySummary(section);
+          return {
+            ...section,
+            prioritySummary,
+            needsPriorityReview: hasPriorityReviewItems(section),
+            priorityScore: getSectionPriorityScore(section),
+          };
+        });
+        const facultyPriorityCount = sectionsWithPriority.filter(
+          (section) => section.needsPriorityReview
+        ).length;
 
         return {
           ...faculty,
-          sections: [...faculty.sections].sort((left, right) =>
+          sections: [...sectionsWithPriority].sort((left, right) =>
+            right.priorityScore - left.priorityScore ||
             String(left.sectionName || "").localeCompare(String(right.sectionName || ""))
           ),
           totalAssignedSections: allFacultySections.length,
           submittedSections: submittedCount,
           workflowState: getWorkflowState(faculty.sections),
+          facultyPriorityCount,
         };
       })
       .sort((left, right) =>
+        right.facultyPriorityCount - left.facultyPriorityCount ||
         String(left.facultyName || "").localeCompare(String(right.facultyName || ""))
       );
   }, [allRows, rows]);
@@ -116,7 +185,14 @@ function FacultyStatusTable({
                   const rowsForFaculty = [
                     <tr key={faculty.facultyId} className="border-b border-slate-200 align-top">
                       <td className="px-6 py-5">
-                        <p className="font-semibold text-slate-900">{faculty.facultyName}</p>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <p className="font-semibold text-slate-900">{faculty.facultyName}</p>
+                          {faculty.facultyPriorityCount > 0 ? (
+                            <span className="rounded-full bg-red-100 px-3 py-1 text-xs font-bold text-red-700">
+                              {faculty.facultyPriorityCount} priority section{faculty.facultyPriorityCount > 1 ? "s" : ""}
+                            </span>
+                          ) : null}
+                        </div>
                       </td>
                       <td className="px-6 py-5">
                         <span className="rounded-full bg-slate-100 px-3 py-1 text-sm font-semibold text-slate-700">
@@ -158,6 +234,7 @@ function FacultyStatusTable({
                         <div className="flex flex-col gap-3">
                           {faculty.sections.map((section) => {
                             const isActive = selectedReviewKey === section.reviewKey;
+                            const priorityLabel = buildPriorityLabel(section.prioritySummary);
 
                             return (
                               <div
@@ -165,12 +242,21 @@ function FacultyStatusTable({
                                 className={`flex w-full items-center justify-between gap-4 rounded-2xl border px-5 py-4 ${
                                   isActive
                                     ? "border-[#003366] bg-blue-50"
+                                    : section.needsPriorityReview
+                                    ? "border-red-200 bg-red-50"
                                     : "border-slate-200 bg-white"
                                 }`}
                               >
-                                <p className="min-w-0 flex-1 text-sm font-semibold text-slate-800">
-                                  {section.sectionName}
-                                </p>
+                                <div className="min-w-0 flex-1">
+                                  <p className="text-sm font-semibold text-slate-800">
+                                    {section.sectionName}
+                                  </p>
+                                  {section.needsPriorityReview ? (
+                                    <p className="mt-1 text-xs font-medium text-red-700">
+                                      Check first{priorityLabel ? ` • ${priorityLabel}` : ""}
+                                    </p>
+                                  ) : null}
+                                </div>
                                 <button
                                   type="button"
                                   onClick={() =>
@@ -178,7 +264,11 @@ function FacultyStatusTable({
                                       isActive ? null : section
                                     )
                                   }
-                                  className="rounded-xl bg-[#003366] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#00264d]"
+                                  className={`rounded-xl px-4 py-2 text-sm font-semibold text-white transition ${
+                                    section.needsPriorityReview
+                                      ? "bg-red-600 hover:bg-red-700"
+                                      : "bg-[#003366] hover:bg-[#00264d]"
+                                  }`}
                                 >
                                   Review Section
                                 </button>

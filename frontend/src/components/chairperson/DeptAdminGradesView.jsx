@@ -182,6 +182,18 @@ const parseStoredGrade = (rawGrade) => {
 };
 
 const normalizeText = (value = '') => String(value || '').trim().toLowerCase();
+const parseStatusTimestamp = (value) => {
+    if (!value) return 0;
+    const parsed = new Date(value).getTime();
+    return Number.isFinite(parsed) ? parsed : 0;
+};
+const SECTION_STATUS_PRIORITY = {
+    pending: 0,
+    returned: 1,
+    submitted: 2,
+    approved: 3,
+    forwarded: 4,
+};
 const hasEncodedValue = (value) => String(value ?? '').trim() !== '';
 const getRecordStudentNumber = (record) => (
     record?.student_no ||
@@ -701,6 +713,8 @@ const DeptAdminGradesView = ({ loggedInEmail = '', loggedInName = '', userRole =
                     rawStudentEntries: [],
                     ipfsCid: g.ipfs_cid || g.IpfsCID || g.ipfsCid || null,
                     earliestEncodedAt: g.date || g.Date || null,
+                    latestStatusTimestamp: 0,
+                    latestStatusPriority: 0,
                 };
             }
             
@@ -764,10 +778,26 @@ const DeptAdminGradesView = ({ loggedInEmail = '', loggedInName = '', userRole =
                 grade: groups[key].grades[studentKey],
             });
             
-            if (status.includes('issued') || status.includes('submitted') || status === '') groups[key].reviewStatus = 'submitted';
-            if (status.includes('approved')) groups[key].reviewStatus = 'approved';
-            if (status.includes('finalized') || status.includes('forwarded')) groups[key].reviewStatus = 'forwarded';
-            if (status.includes('returned') || status.includes('rejected')) groups[key].reviewStatus = 'returned';
+            let normalizedReviewStatus = 'pending';
+            if (status.includes('finalized') || status.includes('forwarded')) normalizedReviewStatus = 'forwarded';
+            else if (status.includes('approved')) normalizedReviewStatus = 'approved';
+            else if (status.includes('issued') || status.includes('submitted') || status === '') normalizedReviewStatus = 'submitted';
+            else if (status.includes('returned') || status.includes('rejected')) normalizedReviewStatus = 'returned';
+
+            const incomingTimestamp = parseStatusTimestamp(g.date || g.Date);
+            const incomingPriority = SECTION_STATUS_PRIORITY[normalizedReviewStatus] || 0;
+            const shouldReplaceStatus =
+                incomingTimestamp > (groups[key].latestStatusTimestamp || 0) ||
+                (
+                    incomingTimestamp === (groups[key].latestStatusTimestamp || 0) &&
+                    incomingPriority >= (groups[key].latestStatusPriority || 0)
+                );
+
+            if (shouldReplaceStatus) {
+                groups[key].reviewStatus = normalizedReviewStatus;
+                groups[key].latestStatusTimestamp = incomingTimestamp;
+                groups[key].latestStatusPriority = incomingPriority;
+            }
         });
         return Object.values(groups).map(g => {
             const matchedAssignment = resolveAssignmentForSectionGroup(
