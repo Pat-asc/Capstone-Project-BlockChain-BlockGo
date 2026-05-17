@@ -1,6 +1,7 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import plvlogo from '../../assets/plvlogo.png';
 import { fetchFacultySections, fetchFacultyStudents, fetchAllGrades, batchUploadGrades, getSystemSetting, issueGrade, submitSectionGrades } from '../../services/api';
+import Modal from '../../services/Modal';
 import FacultyHeader from './FacultyHeader';
 import YearTabs from './YearTabs';
 import ProgramCard from './ProgramCard';
@@ -56,7 +57,16 @@ const NON_ACTIVE_STATUSES = [
   "withdrawn",
   "incomplete",
 ];
+const RETURNED_SECTION_STATUSES = ["returned", "rejected"];
 const LOCKED_SECTION_STATUSES = ["submitted", "approved", "forwarded", "finalized"];
+const KNOWN_SECTION_STATUSES = [
+  "draft",
+  "submitted",
+  "approved",
+  "forwarded",
+  "finalized",
+  "returned",
+];
 const createDefaultSectionTermStatuses = () => ({
   midterm: "draft",
   finals: "draft",
@@ -64,7 +74,8 @@ const createDefaultSectionTermStatuses = () => ({
 const normalizeEncodingTerm = (term) => (term === "finals" ? "finals" : "midterm");
 const normalizeSectionStatusValue = (status) => {
   const normalized = normalizeText(status);
-  return LOCKED_SECTION_STATUSES.includes(normalized) ? normalized : "draft";
+  if (RETURNED_SECTION_STATUSES.includes(normalized)) return "returned";
+  return KNOWN_SECTION_STATUSES.includes(normalized) ? normalized : "draft";
 };
 const normalizeSectionStatusEntry = (entry) => {
   if (typeof entry === "string") {
@@ -84,14 +95,24 @@ const isLockedSectionStatus = (status) =>
 const mergeSectionTermStatuses = (previousEntry, nextEntry) => {
   const previous = normalizeSectionStatusEntry(previousEntry);
   const next = normalizeSectionStatusEntry(nextEntry);
+  const shouldOverrideLockedStatus = (nextStatus) =>
+    nextStatus === "returned" || nextStatus === "draft";
 
   return {
-    midterm: isLockedSectionStatus(previous.midterm) ? previous.midterm : next.midterm,
-    finals: isLockedSectionStatus(previous.finals) ? previous.finals : next.finals,
+    midterm:
+      isLockedSectionStatus(previous.midterm) && !shouldOverrideLockedStatus(next.midterm)
+        ? previous.midterm
+        : next.midterm,
+    finals:
+      isLockedSectionStatus(previous.finals) && !shouldOverrideLockedStatus(next.finals)
+        ? previous.finals
+        : next.finals,
   };
 };
 const buildFacultyGradeSnapshotKey = (facultyEmail = "") =>
   `facultySectionGrades:${normalizeText(facultyEmail || "faculty")}`;
+const buildFacultyBulkUploadKey = (facultyEmail = "") =>
+  `facultyBulkUploads:${normalizeText(facultyEmail || "faculty")}`;
 const getFacultyResetToken = () => localStorage.getItem("facultyLoadResetAt") || "";
 const loadResetAwareLocalData = (storageKey) => {
   try {
@@ -211,11 +232,13 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
   const [uploadResult, setUploadResult] = useState(null);
   const [isLoadingData, setIsLoadingData] = useState(true);
   const [bulkUploadedSections, setBulkUploadedSections] = useState({});
+  const [submitConfirmSection, setSubmitConfirmSection] = useState(null);
   const hasHydratedFacultyDataRef = useRef(false);
 
   const [sections, setSections] = useState({});
   const sectionStatusStorageKey = `facultySectionStatuses:${normalizeText(facultyData?.email || "faculty")}`;
   const facultyGradeSnapshotStorageKey = buildFacultyGradeSnapshotKey(facultyData?.email || "");
+  const facultyBulkUploadStorageKey = buildFacultyBulkUploadKey(facultyData?.email || "");
 
   const [encodingStart, setEncodingStart] = useState(null);
   const [encodingEnd, setEncodingEnd] = useState(null);
@@ -305,6 +328,7 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
           metadata: {
             subjectCode: sectionValue.subjectCode || "",
             sectionCourse: sectionValue.sectionCourse || "",
+            canonicalSection: sectionValue.canonicalSection || "",
             schoolYear: sectionValue.schoolYear || "",
             semester: sectionValue.semester || "",
           },
@@ -331,6 +355,16 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
       console.warn("Failed to persist faculty grade snapshots.", error);
     }
   }, [facultyGradeSnapshotStorageKey, sections]);
+
+  useEffect(() => {
+    if (!hasHydratedFacultyDataRef.current) return;
+
+    try {
+      saveResetAwareLocalData(facultyBulkUploadStorageKey, bulkUploadedSections);
+    } catch (error) {
+      console.warn("Failed to persist faculty bulk upload flags.", error);
+    }
+  }, [bulkUploadedSections, facultyBulkUploadStorageKey]);
 
   const loadFacultyData = useCallback(async (isBackground = false) => {
     if (!isBackground) setIsLoadingData(true);
@@ -365,6 +399,14 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
           return {};
         }
       })();
+      const savedBulkUploadedSections = (() => {
+        try {
+          return loadResetAwareLocalData(facultyBulkUploadStorageKey) || {};
+        } catch (error) {
+          console.warn("Failed to parse saved faculty bulk upload flags.", error);
+          return {};
+        }
+      })();
       const facultyLoadResetAt = parseTimestamp(
         localStorage.getItem("facultyLoadResetAt")
       );
@@ -384,6 +426,43 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
       const newSections = {};
       const nextSectionStatuses = {};
       const nextBulkUploadedSections = {};
+
+      const deriveSectionReviewState = (records = []) => {
+        const sortedRecords = [...records].sort((left, right) => {
+          const leftTimestamp = parseTimestamp(left.date || left.Date);
+          const rightTimestamp = parseTimestamp(right.date || right.Date);
+          return leftTimestamp - rightTimestamp;
+        });
+        const meaningfulStatusRecords = sortedRecords.filter((record) => {
+          const normalizedStatus = normalizeSectionStatusValue(
+            record.status || record.Status
+          );
+          return normalizedStatus !== "draft";
+        });
+
+        const latestReturnedRecord = [...meaningfulStatusRecords]
+          .reverse()
+          .find((record) =>
+            RETURNED_SECTION_STATUSES.includes(
+              normalizeText(record.status || record.Status)
+            )
+          );
+
+        const latestRecord =
+          meaningfulStatusRecords[meaningfulStatusRecords.length - 1] || null;
+        const latestStatus = normalizeSectionStatusValue(
+          latestRecord?.status || latestRecord?.Status
+        );
+        const reviewNote =
+          latestReturnedRecord?.note ||
+          latestReturnedRecord?.Note ||
+          "";
+
+        return {
+          status: latestStatus,
+          note: reviewNote,
+        };
+      };
 
       const parseSavedGrade = (rawGrade) => {
         if (!rawGrade) {
@@ -454,6 +533,13 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
         grade.Course ||
         ''
       );
+      const getGradeRecordSectionKey = (grade) => (
+        grade.record_section ||
+        grade.recordSection ||
+        grade.section ||
+        grade.Section ||
+        ''
+      );
 
       actualSections.forEach(sec => {
         const matchedAssignment =
@@ -483,31 +569,33 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
         const savedSectionSnapshot = savedGradeSnapshots[sectionKey] || {};
         const sectionGrades = actualGrades.filter((grade) => {
           const gradeSubjectKey = normalizeText(getGradeSubjectKey(grade));
-          const gradeSectionKey = normalizeText(grade.section || grade.Section || "");
-          const subjectCandidates = [
-            sec.subject,
-            sec.department,
-            `${sec.department}-${sec.section}`,
-            matchedAssignment?.subjectCode,
-            matchedAssignment?.subjectTitle,
-            matchedAssignment?.sectionName,
+          const gradeRecordSectionKey = normalizeText(getGradeRecordSectionKey(grade));
+          const gradeDisplaySectionKey = normalizeText(grade.section || grade.Section || "");
+          const expectedSubjectCode = normalizeText(
+            matchedAssignment?.subjectCode || sec.subject
+          );
+          const expectedSectionKeys = [
             sectionKey,
-          ]
-            .map((value) => normalizeText(value))
-            .filter(Boolean);
-
-          const sectionCandidates = [
+            matchedAssignment?.sectionName,
             sec.section,
-            matchedAssignment?.sectionName,
-            sectionKey,
           ]
             .map((value) => normalizeText(value))
             .filter(Boolean);
 
-          return subjectCandidates.includes(gradeSubjectKey) || sectionCandidates.includes(gradeSectionKey);
+          const sectionMatches =
+            expectedSectionKeys.includes(gradeRecordSectionKey) ||
+            expectedSectionKeys.includes(gradeDisplaySectionKey);
+          const subjectMatches =
+            !expectedSubjectCode || gradeSubjectKey === expectedSubjectCode;
+
+          return sectionMatches && subjectMatches;
         });
-        nextBulkUploadedSections[sectionKey] = sectionGrades.length > 0;
-        nextSectionStatuses[sectionKey] = createDefaultSectionTermStatuses();
+        const sectionReviewState = deriveSectionReviewState(sectionGrades);
+        nextBulkUploadedSections[sectionKey] = !!savedBulkUploadedSections[sectionKey];
+        nextSectionStatuses[sectionKey] = {
+          ...createDefaultSectionTermStatuses(),
+          [normalizeEncodingTerm(encodingTerm)]: sectionReviewState.status,
+        };
         const backendStudents = actualStudents.filter(s => 
           s.department === sec.department && 
           (String(s.section) === String(sec.section) || String(s.sectionNum) === String(sec.section)) && 
@@ -609,12 +697,14 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
           subjectCode: matchedAssignment?.subjectCode || sec.subject || `${sec.department}-${sec.section}`, 
           subjectTitle: matchedAssignment?.subjectTitle || sec.subject || `Assigned Subject (${sec.department})`, 
           sectionCourse: sec.department,
+          canonicalSection: matchedAssignment?.sectionName || sec.section || sectionKey,
           units: matchedAssignment?.units || "Not Available",
           schedule: getOptionalAssignmentValue(matchedAssignment?.schedule),
           day: getOptionalAssignmentValue(matchedAssignment?.day),
           date: getOptionalAssignmentValue(matchedAssignment?.date),
           schoolYear: matchedAssignment?.schoolYear || "Not Available",
           semester: matchedAssignment?.semester || encodingSemester || "Not Available",
+          reviewNote: sectionReviewState.note,
           students: enrolledStudents
         };
       });
@@ -667,6 +757,7 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
                 customGrades: previousStudent.customGrades || student.customGrades || {},
               };
             }),
+            reviewNote: sectionValue.reviewNote,
           };
         });
 
@@ -691,7 +782,7 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
       hasHydratedFacultyDataRef.current = true;
       if (!isBackground) setIsLoadingData(false);
     }
-  }, [facultyData.email]);
+  }, [facultyBulkUploadStorageKey, facultyData.email, facultyGradeSnapshotStorageKey]);
 
   useEffect(() => {
     loadFacultyData();
@@ -702,6 +793,7 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
       setSectionStatus({});
       localStorage.removeItem(sectionStatusStorageKey);
       localStorage.removeItem(facultyGradeSnapshotStorageKey);
+      localStorage.removeItem(facultyBulkUploadStorageKey);
       loadFacultyData();
     };
     const handleStorageChanged = (event) => {
@@ -721,7 +813,7 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
       window.removeEventListener('storage', handleStorageChanged);
       window.removeEventListener('focus', handleWindowFocus);
     };
-  }, [facultyGradeSnapshotStorageKey, loadFacultyData, sectionStatusStorageKey]);
+  }, [facultyBulkUploadStorageKey, facultyGradeSnapshotStorageKey, loadFacultyData, sectionStatusStorageKey]);
 
   const getSectionTermStatus = useCallback(
     (sectionName, term = encodingTerm) =>
@@ -813,7 +905,6 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
   }, [sections, encodingTerm, getSectionTermStatus, bulkUploadedSections]);
 
   const handleStudentStatusChange = useCallback((sectionName, index, value) => {
-    if (bulkUploadedSections[sectionName]) return;
     if (isLockedSectionStatus(getSectionTermStatus(sectionName))) return;
 
     const updated = JSON.parse(JSON.stringify(sections));
@@ -827,16 +918,15 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
 
     setSections(updated);
     setRowSaveState(prev => ({ ...prev, [sectionName]: { ...(prev[sectionName] || {}), [index]: 'idle' } }));
-  }, [sections, getSectionTermStatus, bulkUploadedSections]);
+  }, [sections, getSectionTermStatus]);
 
   const toggleStudentFlag = useCallback((sectionName, index) => {
-    if (bulkUploadedSections[sectionName]) return;
     if (isLockedSectionStatus(getSectionTermStatus(sectionName))) return;
 
     const updated = JSON.parse(JSON.stringify(sections));
     updated[sectionName].students[index].flagged = !updated[sectionName].students[index].flagged;
     setSections(updated);
-  }, [sections, getSectionTermStatus, bulkUploadedSections]);
+  }, [sections, getSectionTermStatus]);
 
   const handleCustomGradeChange = useCallback((sectionName, index, colId, value) => {
     if (isLockedSectionStatus(getSectionTermStatus(sectionName))) return;
@@ -854,6 +944,10 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
   const handleExportPDFClassGrades = (sectionName) => {
     const sectionData = sections[sectionName];
     if (!sectionData || !sectionData.students) return;
+    if (!isLockedSectionStatus(getSectionTermStatus(sectionName))) {
+      alert("Export PDF is available only after the grades for this section have been submitted to the Chairperson.");
+      return;
+    }
     
     try {
         const { jsPDF } = window.jspdf;
@@ -1011,12 +1105,13 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
     const sectionData = sections[sectionName];
     const semester = encodingSemester; 
     const schoolYear = "2024";
-    const course = sectionData.sectionCourse || sectionData.subjectCode || sectionName;
+    const course = sectionData.subjectCode || sectionData.sectionCourse || sectionName;
+    const canonicalSection = sectionData.canonicalSection || sectionName;
 
     setUploadingSection(sectionName);
 
     try {
-      const res = await batchUploadGrades(file, semester, schoolYear, course, facultyData.email, encodingTerm, sectionName);
+      const res = await batchUploadGrades(file, semester, schoolYear, course, facultyData.email, encodingTerm, canonicalSection);
       if (res.status === 'Success' || res.status === 'Partial Success') {
         setUploadResult({ 
           type: 'success', 
@@ -1040,10 +1135,6 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
   };
 
   const handleSaveRow = (sectionName, index) => {
-    if (bulkUploadedSections[sectionName]) {
-      alert("Manual encoding is locked for this section after bulk upload. To edit grades, upload an updated grading sheet.");
-      return;
-    }
     const errors = validationErrors[sectionName]?.[index] || {};
     if (errors.midterm || errors.finals) return;
     setRowSaveState(prev => ({ ...prev, [sectionName]: { ...(prev[sectionName] || {}), [index]: 'saving' } }));
@@ -1053,11 +1144,12 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
       const sectionData = sections[sectionName];
       const finalAverage = calculateFinalAverage(student);
       const resolvedStudentId = student.studentNo || student.id || "";
+      const canonicalSection = sectionData.canonicalSection || sectionName;
       const gradePayload = {
           student_id: resolvedStudentId,
           student_name: student.name || [student.lastName, student.firstName].filter(Boolean).join(", "),
           student_hash: student.email || resolvedStudentId,
-          section: sectionName,
+          section: canonicalSection,
           course: sectionData.sectionCourse || sectionData.subjectCode || sectionName,
           subject_code: sectionData.subjectCode,
           subject_name: sectionData.subjectTitle || sectionData.subjectCode,
@@ -1089,10 +1181,6 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
   };
 
   const handleSaveAll = async (sectionName) => {
-    if (bulkUploadedSections[sectionName]) {
-      alert("Manual encoding is locked for this section after bulk upload. To edit grades, upload an updated grading sheet.");
-      return;
-    }
     const students = sections[sectionName].students;
     const saving = {};
     students.forEach((_, i) => { saving[i] = 'saving'; });
@@ -1100,6 +1188,7 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
     
     try {
       const sectionData = sections[sectionName];
+      const canonicalSection = sectionData.canonicalSection || sectionName;
       const promises = students.map(student => {
           const finalAverage = calculateFinalAverage(student);
           const resolvedStudentId = student.studentNo || student.id || "";
@@ -1107,7 +1196,7 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
               student_id: resolvedStudentId,
               student_name: student.name || [student.lastName, student.firstName].filter(Boolean).join(", "),
               student_hash: student.email || resolvedStudentId,
-              section: sectionName,
+              section: canonicalSection,
               course: sectionData.sectionCourse || sectionData.subjectCode || sectionName,
               subject_code: sectionData.subjectCode,
               subject_name: sectionData.subjectTitle || sectionData.subjectCode,
@@ -1143,7 +1232,7 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
     }
   };
 
-  const handleSubmit = async (sectionName) => {
+  const requestSubmitToChairperson = (sectionName) => {
     const students = sections[sectionName].students;
     const hasIncomplete = students.some(s =>
       (s.standing || STUDENT_STATUS_ACTIVE) === STUDENT_STATUS_ACTIVE &&
@@ -1159,13 +1248,16 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
       return;
     }
 
+    setSubmitConfirmSection(sectionName);
+  };
+
+  const handleSubmit = async (sectionName) => {
     try {
-      if (!bulkUploadedSections[sectionName]) {
-        await handleSaveAll(sectionName);
-      }
+      await handleSaveAll(sectionName);
       
       await submitSectionGrades(sections[sectionName].sectionCourse, sectionName);
       updateSectionTermStatus(sectionName, encodingTerm, 'submitted');
+      setSubmitConfirmSection(null);
     } catch (e) { alert("Error submitting section: " + e.message); }
   };
 
@@ -1184,7 +1276,7 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
   const isFinalized = currentStatus === 'finalized' || currentStatus === 'forwarded';
   const isSubmittedToChairperson = isLockedSectionStatus(currentStatus);
   const isBulkUploadedSection = activeSection ? !!bulkUploadedSections[activeSection] : false;
-  const isManualEncodingLocked = isSubmittedToChairperson || isBulkUploadedSection;
+  const isGradeEncodingLocked = isSubmittedToChairperson || isBulkUploadedSection;
   const isMidtermLocked = encodingTerm !== 'midterm';
   const isFinalsLocked = encodingTerm !== 'finals';
 
@@ -1283,8 +1375,19 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
                     sectionData={sectionData}
                     onClick={() => setActiveSection(sectionName)}
                     progress={progressPct}
-                    reviewStatus={secStatus === 'finalized' || secStatus === 'forwarded' ? 'forwarded' : secStatus === 'submitted' || secStatus === 'approved' ? 'submitted' : 'pending'}
-                    onSubmit={() => handleSubmit(sectionName)}
+                    reviewStatus={
+                      secStatus === 'returned'
+                        ? 'returned'
+                        : secStatus === 'approved'
+                        ? 'approved'
+                        : secStatus === 'finalized' || secStatus === 'forwarded'
+                        ? 'forwarded'
+                        : secStatus === 'submitted'
+                        ? 'submitted'
+                        : 'pending'
+                    }
+                    reviewNote={sectionData.reviewNote || ""}
+                    onSubmit={() => requestSubmitToChairperson(sectionName)}
                     onUpload={(e) => handleFileUpload(sectionName, e)}
                     isUploading={uploadingSection === sectionName}
                     isClosed={isClosed}
@@ -1312,12 +1415,15 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
                 {currentStatus && (
                   <span className={`ml-3 rounded-full px-3 py-1 text-xs font-bold ${
                     currentStatus === 'draft' ? 'bg-yellow-100 text-yellow-800' :
+                    currentStatus === 'returned' ? 'bg-red-100 text-red-700' :
                     currentStatus === 'submitted' ? 'bg-blue-100 text-blue-800' :
                     currentStatus === 'approved' ? 'bg-emerald-100 text-emerald-800' :
                     'bg-green-100 text-green-800'
                   }`}>
                     {currentStatus === 'draft'
                       ? 'Draft Saved'
+                      : currentStatus === 'returned'
+                      ? 'Returned'
                       : currentStatus === 'submitted'
                       ? 'Submitted'
                       : currentStatus === 'approved'
@@ -1349,11 +1455,12 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
                     >
                       Grading Sheet Template
                     </button>
-
-                    <button onClick={() => handleExportPDFClassGrades(activeSection)} className="rounded-lg border border-emerald-600 bg-white px-4 py-2.5 text-sm font-bold text-emerald-700 transition hover:bg-emerald-50">
-                      Export PDF
-                    </button> 
                   </>
+                )}
+                {isSubmittedToChairperson && (
+                  <button onClick={() => handleExportPDFClassGrades(activeSection)} className="rounded-lg border border-emerald-600 bg-white px-4 py-2.5 text-sm font-bold text-emerald-700 transition hover:bg-emerald-50">
+                    Export PDF
+                  </button>
                 )}
               </div>
             </div>
@@ -1363,6 +1470,13 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
                  These grades have already been uploaded to chairperson and are now locked from further encoding.
               </div>
             )}
+
+            {currentStatus === 'returned' && sections[activeSection]?.reviewNote ? (
+              <div className="border-b border-red-200 bg-red-50 p-4 text-sm text-red-700">
+                <p className="font-semibold">Returned by chairperson</p>
+                <p className="mt-1">{sections[activeSection].reviewNote}</p>
+              </div>
+            ) : null}
 
             {!isSubmittedToChairperson && isBulkUploadedSection && (
               <div className="border-b border-amber-200 bg-amber-50 p-4 text-center text-sm font-semibold text-amber-800">
@@ -1406,7 +1520,7 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
                           <div className="relative inline-block">
                             <input
                               className={`w-20 rounded-lg border p-2 text-center outline-none focus:ring-2 focus:ring-[#003366]/20 disabled:bg-slate-100 disabled:text-slate-500 ${errors.midterm ? 'border-red-500 bg-red-50' : 'border-slate-300'}`}
-                              type="number" min="60" max="100" value={stu.midterm ?? ''} disabled={isManualEncodingLocked || isClosed || isMidtermLocked || isStudentLocked}
+                              type="number" min="60" max="100" value={stu.midterm ?? ''} disabled={isGradeEncodingLocked || isClosed || isMidtermLocked || isStudentLocked}
                               onChange={e => handleGradeChange(activeSection, i, 'midterm', e.target.value)} placeholder="60-100"
                             />
                             {errors.midterm && <div className="absolute left-1/2 -translate-x-1/2 -bottom-5 whitespace-nowrap text-[10px] font-bold text-red-600">{errors.midterm}</div>}
@@ -1416,7 +1530,7 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
                           <div className="relative inline-block">
                             <input
                               className={`w-20 rounded-lg border p-2 text-center outline-none focus:ring-2 focus:ring-[#003366]/20 disabled:bg-slate-100 disabled:text-slate-500 ${errors.finals ? 'border-red-500 bg-red-50' : 'border-slate-300'}`}
-                              type="number" min="60" max="100" value={stu.finals ?? ''} disabled={isManualEncodingLocked || isClosed || isFinalsLocked || isStudentLocked}
+                              type="number" min="60" max="100" value={stu.finals ?? ''} disabled={isGradeEncodingLocked || isClosed || isFinalsLocked || isStudentLocked}
                               onChange={e => handleGradeChange(activeSection, i, 'finals', e.target.value)} placeholder="60-100"
                             />
                             {errors.finals && <div className="absolute left-1/2 -translate-x-1/2 -bottom-5 whitespace-nowrap text-[10px] font-bold text-red-600">{errors.finals}</div>}
@@ -1438,7 +1552,7 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
                             className="rounded-lg border border-slate-300 px-3 py-2 text-sm disabled:bg-slate-100 disabled:text-slate-500"
                             value={studentStatus}
                             onChange={e => handleStudentStatusChange(activeSection, i, e.target.value)}
-                            disabled={isManualEncodingLocked || isClosed}
+                            disabled={isSubmittedToChairperson || isClosed}
                           >
                             <option value="active">Active</option>
                             <option value="dropped">Dropped (D)</option>
@@ -1456,7 +1570,7 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
                                 : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                             } disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400`}
                             onClick={() => toggleStudentFlag(activeSection, i)}
-                            disabled={isManualEncodingLocked || isClosed}
+                            disabled={isSubmittedToChairperson || isClosed}
                           >
                             {isFlagged ? 'Flagged' : 'Flag'}
                           </button>
@@ -1470,6 +1584,37 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
           </div>
         </div>
       )}
+
+      <Modal
+        isOpen={!!submitConfirmSection}
+        onClose={() => setSubmitConfirmSection(null)}
+        title="Submit Grades to Chairperson"
+      >
+        <div className="flex flex-col gap-4">
+          <p className="text-sm text-slate-600">
+            Are you sure the encoded grades for <span className="font-semibold text-slate-800">{submitConfirmSection || 'this section'}</span> are final?
+          </p>
+          <p className="text-sm text-red-600">
+            Once submitted to the Chairperson, these grades cannot be changed or edited anymore.
+          </p>
+          <div className="mt-2 flex justify-end gap-3">
+            <button
+              type="button"
+              onClick={() => setSubmitConfirmSection(null)}
+              className="rounded-xl border border-slate-300 bg-white px-5 py-2.5 text-sm font-bold text-slate-700 transition hover:bg-slate-50"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={() => handleSubmit(submitConfirmSection)}
+              className="rounded-xl bg-[#003366] px-5 py-2.5 text-sm font-bold text-white transition hover:bg-[#00264d]"
+            >
+              Yes, Submit Final Grades
+            </button>
+          </div>
+        </div>
+      </Modal>
 
       {uploadResult && (
         <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">

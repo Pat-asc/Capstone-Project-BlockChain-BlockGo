@@ -305,7 +305,7 @@ const Login = ({ onLogin }) => {
           {currentView === 'signUp' && (
             <form className="login-form" 
               onSubmit={signupStep === 1 ? handleSendCode : handleSignupSubmit} 
-              style={{ maxHeight: '55vh', overflowY: 'auto', paddingRight: '10px' }}
+              style={{ maxHeight: 'min(55vh, 32rem)', overflowY: 'auto', paddingRight: '10px' }}
             >
               <>
                 {/* Signup Fields */}

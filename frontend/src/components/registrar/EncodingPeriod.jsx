@@ -11,6 +11,11 @@ function EncodingPeriod({ onResetEncodingSeason }) {
   const [statusMessage, setStatusMessage] = useState("");
   const [isResettingSeason, setIsResettingSeason] = useState(false);
 
+  const isSuccessStatusMessage =
+    statusMessage === "Encoding period saved successfully." ||
+    statusMessage ===
+      "Encoding season reset successfully. Faculty assigned sections were cleared, saved sections were kept, and the encoding period was closed.";
+
   useEffect(() => {
     const loadSavedPeriod = async () => {
       try {
@@ -136,7 +141,13 @@ function EncodingPeriod({ onResetEncodingSeason }) {
         </div>
 
         {statusMessage && (
-          <p className="mt-4 rounded-xl bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-600">
+          <p
+            className={`mt-4 rounded-xl px-4 py-3 text-sm font-semibold ${
+              isSuccessStatusMessage
+                ? "border border-green-200 bg-green-50 text-green-700"
+                : "border border-slate-200 bg-slate-50 text-slate-600"
+            }`}
+          >
             {statusMessage}
           </p>
         )}

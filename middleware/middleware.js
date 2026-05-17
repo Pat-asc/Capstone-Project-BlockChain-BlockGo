@@ -1373,7 +1373,13 @@ const handleBatchUpload = async (req, res) => {
         console.log(`[BatchUpload] Dispatching upload to worker thread for ${facultyId}`);
 
         const worker = new Worker(workerPath, {
-            workerData: { mapperPath, filePath, facultyId, INTERNAL_API_KEY }
+            workerData: {
+                mapperPath,
+                filePath,
+                facultyId,
+                INTERNAL_API_KEY,
+                term: req.body.term || ''
+            }
         });
 
         worker.on('message', (message) => {

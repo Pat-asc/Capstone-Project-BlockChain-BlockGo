@@ -1272,7 +1272,7 @@ const DeptAdminGradesView = ({ loggedInEmail = '', loggedInName = '', userRole =
             
             for (const g of recordsToReturn) {
                 if (typeof returnGrade === 'function') {
-                    await returnGrade(g.id, loggedInEmail, notes);
+                    await returnGrade(g.id, notes, loggedInEmail);
                 }
             }
             addNotification("Section returned to faculty successfully!", "success");

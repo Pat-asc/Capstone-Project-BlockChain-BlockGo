@@ -38,13 +38,11 @@ const RegistrarGradesView = ({
     latestChatNotice = null,
     onOpenChat,
 }) => {
-    const systemAdminTabs = ['grades', 'Requests', 'assignStudents', 'assignAdmins', 'assignFaculties', 'bulkEnroll', 'revokeAccounts'];
+    const systemAdminTabs = ['grades', 'Requests', 'assigning', 'bulkEnroll', 'revokeAccounts'];
     const systemAdminMenuItems = [
         { id: 'grades', label: 'Grades Ledger' },
         { id: 'Requests', label: 'Pending Requests' },
-        { id: 'assignStudents', label: 'Assign Students' },
-        { id: 'assignAdmins', label: 'Assign Admins' },
-        { id: 'assignFaculties', label: 'Assign Faculty' },
+        { id: 'assigning', label: 'Assigning' },
         { id: 'bulkEnroll', label: 'Register Students' },
         { id: 'revokeAccounts', label: 'Account Revocation' },
     ];
@@ -52,6 +50,7 @@ const RegistrarGradesView = ({
     const [loading, setLoading] = useState(true);
     const [errorMsg, setErrorMsg] = useState(null); 
     const [mainTab, setMainTab] = useState('dashboard'); 
+    const [assignmentTab, setAssignmentTab] = useState('students');
     
     const [pendingRequests, setPendingRequests] = useState([]);
     const [requestSearchTerm, setRequestSearchTerm] = useState('');
@@ -223,6 +222,24 @@ const RegistrarGradesView = ({
         ) || null;
     }, [filteredFacultyDepartments, selectedFacultyDepartment]);
 
+    const assignmentWorkflowTabs = [
+        {
+            id: 'students',
+            label: 'Assign Students',
+            count: approvedStudents.length,
+        },
+        {
+            id: 'chairpersons',
+            label: 'Assign Chairperson',
+            count: approvedAdmins.length,
+        },
+        {
+            id: 'faculty',
+            label: 'Assign Faculty',
+            count: approvedFaculties.length,
+        },
+    ];
+
     useEffect(() => {
         const applyEncodingPeriod = (value) => {
             if (!value) return;
@@ -362,9 +379,11 @@ const RegistrarGradesView = ({
             loadGrades(true);
             if (mainTab === 'Requests') loadRequests();
             if (mainTab === 'finalization') loadStagedGrades();
-            if (mainTab === 'assignStudents') loadApprovedStudents();
-            if (mainTab === 'assignAdmins') loadApprovedAdmins();
-            if (mainTab === 'assignFaculties') loadApprovedFaculties();
+            if (mainTab === 'assigning') {
+                loadApprovedStudents();
+                loadApprovedAdmins();
+                loadApprovedFaculties();
+            }
             if (mainTab === 'revokeAccounts') {
                 loadApprovedAdmins();
                 loadApprovedFaculties();
@@ -376,9 +395,12 @@ const RegistrarGradesView = ({
     }, [mainTab, loadGrades, loadRequests, loadStagedGrades, loadApprovedStudents, loadApprovedAdmins, loadApprovedFaculties]);
 
     useEffect(() => {
-        if (mainTab === 'assignStudents') loadApprovedStudents();
-        if (mainTab === 'assignAdmins') loadApprovedAdmins();
-        if (mainTab === 'assignFaculties') loadApprovedFaculties();
+        if (mainTab === 'assigning') {
+            setAssignmentTab('students');
+            loadApprovedStudents();
+            loadApprovedAdmins();
+            loadApprovedFaculties();
+        }
         if (mainTab === 'grades') loadApprovedFaculties();
         if (mainTab === 'revokeAccounts') {
             loadApprovedAdmins();
@@ -856,40 +878,12 @@ const RegistrarGradesView = ({
                     {mainTab === 'bulkEnroll' && (
                         <div className="space-y-4">
                             <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                                <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                                <div className="flex flex-col gap-4">
                                     <div className="max-w-2xl">
                                         <h3 className="text-xl font-bold text-[#003366]">Register Students</h3>
                                         <p className="mt-1 text-sm text-slate-500">
                                             Required columns: student ID, first name, last name, middle name, sex, email, number, address, and birthday. Student ID must use `xx-xxxx`, and birthday must use `MM/DD/YYYY`.
                                         </p>
-                                        <p className="mt-2 text-sm text-slate-500">
-                                            Use `Upload Students` for first-time student creation. Use `Update Student Info` if you need to change email, number, address, or other profile data for existing students.
-                                        </p>
-                                    </div>
-                                    <div className="flex flex-wrap gap-3">
-                                        <button
-                                            type="button"
-                                            onClick={handleBulkEnroll}
-                                            disabled={bulkEnrollLoading}
-                                            className="inline-flex items-center justify-center rounded-xl bg-[#003366] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#00264d]"
-                                        >
-                                            {bulkEnrollLoading ? 'Uploading...' : 'Upload Students'}
-                                        </button>
-                                        <button
-                                            type="button"
-                                            onClick={handleBulkUpdateInfo}
-                                            disabled={bulkEnrollLoading}
-                                            className="inline-flex items-center justify-center rounded-xl border border-[#003366] bg-white px-5 py-3 text-sm font-semibold text-[#003366] transition hover:bg-slate-50"
-                                        >
-                                            {bulkEnrollLoading ? 'Uploading...' : 'Update Student Info'}
-                                        </button>
-                                        <button
-                                            type="button"
-                                            onClick={handleDownloadBulkEnrollmentTemplate}
-                                            className={downloadTemplateButtonClass}
-                                        >
-                                            Download Template
-                                        </button>
                                     </div>
                                 </div>
                                 {bulkEnrollResult ? (
@@ -913,6 +907,31 @@ const RegistrarGradesView = ({
                                         ) : null}
                                     </div>
                                 ) : null}
+                                <div className="mt-5 flex flex-wrap gap-3 border-t border-slate-200 pt-4">
+                                    <button
+                                        type="button"
+                                        onClick={handleDownloadBulkEnrollmentTemplate}
+                                        className={downloadTemplateButtonClass}
+                                    >
+                                        Download Template
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={handleBulkEnroll}
+                                        disabled={bulkEnrollLoading}
+                                        className="inline-flex items-center justify-center rounded-xl bg-[#003366] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#00264d]"
+                                    >
+                                        {bulkEnrollLoading ? 'Uploading...' : 'Upload Students'}
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={handleBulkUpdateInfo}
+                                        disabled={bulkEnrollLoading}
+                                        className="inline-flex items-center justify-center rounded-xl border border-[#003366] bg-white px-5 py-3 text-sm font-semibold text-[#003366] transition hover:bg-slate-50"
+                                    >
+                                        {bulkEnrollLoading ? 'Uploading...' : 'Update Student Info'}
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     )}
@@ -1182,158 +1201,195 @@ const RegistrarGradesView = ({
                             </table></div>
                         </div>
                     )}
-                    {mainTab === 'assignStudents' && (
-                        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-                            <div className="space-y-4 p-4">
-                                {approvedStudents.length === 0 ? (
-                                    <div className="rounded-2xl border border-dashed border-slate-200 p-8 text-center text-slate-500">
-                                        No approved students waiting for assignment.
-                                    </div>
-                                ) : approvedStudents.map((student) => (
-                                    <div key={student.id} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                                        <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-                                            <div className="space-y-2">
-                                                <div>
-                                                    <p className="text-base font-bold text-slate-800">{student.fullname}</p>
-                                                    <p className="text-sm text-slate-500">Student No. {student.studentno}</p>
-                                                </div>
-                                                <span className={`inline-block rounded-full px-3 py-1 text-xs font-bold ${student.assignmentStatus === 'Unassigned' ? 'bg-yellow-100 text-yellow-800' : 'bg-blue-100 text-blue-800'}`}>{student.assignmentStatus}</span>
-                                            </div>
-
-                                            <div className="grid flex-1 gap-3 lg:max-w-3xl lg:grid-cols-[minmax(0,1.8fr)_minmax(0,1fr)_auto]">
-                                                <label className="block">
-                                                    <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Department</span>
-                                                    <select defaultValue="" onChange={(e) => setStudentAssignments(prev => ({...prev, [student.id]: {...prev[student.id], department: e.target.value}}))} className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-[#003366]">
-                                                        <option value="" disabled>Select department</option>
-                                                        {departments.map(d => <option key={d} value={d}>{d}</option>)}
-                                                    </select>
-                                                </label>
-                                                <div className="grid gap-3 sm:grid-cols-2">
-                                                    <label className="block">
-                                                        <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Year</span>
-                                                        <select defaultValue="" onChange={(e) => setStudentAssignments(prev => ({...prev, [student.id]: {...prev[student.id], yearLevel: e.target.value}}))} className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-[#003366]">
-                                                            <option value="" disabled>Select year</option>
-                                                            <option value="1">1st</option><option value="2">2nd</option><option value="3">3rd</option><option value="4">4th</option>
-                                                        </select>
-                                                    </label>
-                                                    <label className="block">
-                                                        <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Section</span>
-                                                        <select defaultValue="" onChange={(e) => setStudentAssignments(prev => ({...prev, [student.id]: {...prev[student.id], sectionNum: e.target.value}}))} className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-[#003366]">
-                                                            <option value="" disabled>Select section</option>
-                                                            {[...Array(15)].map((_, i) => <option key={i+1} value={i+1}>{i+1}</option>)}
-                                                        </select>
-                                                    </label>
-                                                </div>
-                                                <div className="flex flex-col gap-2 sm:flex-row lg:flex-col">
-                                                    <button onClick={() => submitStudentAssignment(student.id)} className="rounded-lg bg-[#003366] px-4 py-2 text-sm font-bold text-white hover:bg-[#00264d]">Assign</button>
-                                                    <button onClick={() => handleDropStudent(student.id, student.fullname)} className="rounded-lg bg-red-500 px-4 py-2 text-sm font-bold text-white hover:bg-red-600">Drop</button>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                ))}
+                    {mainTab === 'assigning' && (
+                        <div className="space-y-5">
+                            <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
+                                <div className="grid gap-3 lg:grid-cols-3">
+                                    {assignmentWorkflowTabs.map((tab, index) => (
+                                        <button
+                                            key={tab.id}
+                                            type="button"
+                                            onClick={() => setAssignmentTab(tab.id)}
+                                            className={`rounded-2xl border px-4 py-4 text-left transition ${
+                                                assignmentTab === tab.id
+                                                    ? 'border-[#003366] bg-[#003366] text-white shadow-sm'
+                                                    : 'border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100'
+                                            }`}
+                                        >
+                                            <p className="mt-2 text-base font-bold">{tab.label}</p>
+                                            <p className={`mt-1 text-sm leading-5 ${assignmentTab === tab.id ? 'text-slate-100' : 'text-slate-500'}`}>
+                                                {tab.description}
+                                            </p>
+                                        </button>
+                                    ))}
+                                </div>
                             </div>
-                        </div>
-                    )}
-                    {mainTab === 'assignAdmins' && (
-                        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-                            <div className="space-y-4 p-4">
-                                {approvedAdmins.length === 0 ? (
-                                    <div className="rounded-2xl border border-dashed border-slate-200 p-8 text-center text-slate-500">
-                                        No approved department admins waiting for assignment.
-                                    </div>
-                                ) : approvedAdmins.map((admin) => (
-                                    <div key={admin.id} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                                        <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-                                            <div className="space-y-2 lg:max-w-sm">
-                                                <div>
-                                                    <p className="text-base font-bold text-slate-800">{admin.fullname}</p>
-                                                    <p className="text-sm capitalize text-slate-500">{admin.role}</p>
-                                                    <p className="text-sm text-slate-500 break-all">{admin.email}</p>
-                                                </div>
-                                                <div>
-                                                    <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Current Department</span>
-                                                    <span className={`inline-block rounded-full px-3 py-1 text-xs font-bold ${admin.department === 'Unassigned' ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}`}>{admin.department}</span>
-                                                </div>
-                                            </div>
 
-                                            <div className="grid flex-1 gap-3 lg:max-w-2xl lg:grid-cols-[minmax(0,1fr)_auto]">
-                                                <label className="block">
-                                                    <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Assign New Department</span>
-                                                    <select defaultValue="" onChange={(e) => setAdminAssignments(prev => ({...prev, [admin.id]: {department: e.target.value}}))} className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-[#003366]">
-                                                        <option value="" disabled>Select department</option>
-                                                        {departments.map(d => <option key={d} value={d}>{d}</option>)}
-                                                    </select>
-                                                </label>
-                                                <div className="flex items-end">
-                                                    <button onClick={() => submitAdminAssignment(admin.id)} className="w-full rounded-lg bg-[#003366] px-4 py-2 text-sm font-bold text-white hover:bg-[#00264d] lg:w-auto">Assign</button>
-                                                </div>
+                            {assignmentTab === 'students' && (
+                                <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
+                                    <div className="border-b border-slate-200 px-5 py-4">
+                                        <h4 className="text-lg font-bold text-[#003366]">Assign Students</h4>
+                                    </div>
+                                    <div className="space-y-4 p-4">
+                                        {approvedStudents.length === 0 ? (
+                                            <div className="rounded-2xl border border-dashed border-slate-200 p-8 text-center text-slate-500">
+                                                No approved students waiting for assignment.
                                             </div>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    )}
-                    {mainTab === 'assignFaculties' && (
-                        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-                            <div className="space-y-4 p-4">
-                                {approvedFaculties.length === 0 ? (
-                                    <div className="rounded-2xl border border-dashed border-slate-200 p-8 text-center text-slate-500">
-                                        No approved faculty members waiting for assignment.
-                                    </div>
-                                ) : approvedFaculties.map((faculty) => (
-                                    <div key={faculty.id} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                                        <div className="flex flex-col gap-4">
-                                            <div className="flex flex-col gap-2 lg:flex-row lg:items-start lg:justify-between">
-                                                <div className="space-y-2">
-                                                    <div>
-                                                        <p className="text-base font-bold text-slate-800">{faculty.fullname}</p>
-                                                        <p className="text-sm text-slate-500 break-all">{faculty.email}</p>
+                                        ) : approvedStudents.map((student) => (
+                                            <div key={student.id} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                                                <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                                                    <div className="space-y-2">
+                                                        <div>
+                                                            <p className="text-base font-bold text-slate-800">{student.fullname}</p>
+                                                            <p className="text-sm text-slate-500">Student No. {student.studentno}</p>
+                                                        </div>
+                                                        <span className={`inline-block rounded-full px-3 py-1 text-xs font-bold ${student.assignmentStatus === 'Unassigned' ? 'bg-yellow-100 text-yellow-800' : 'bg-blue-100 text-blue-800'}`}>{student.assignmentStatus}</span>
                                                     </div>
-                                                    <div>
-                                                        <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Current Assignment</span>
-                                                        {(!faculty.department || faculty.department === 'Unassigned')
-                                                            ? <span className="inline-block rounded-full bg-red-100 px-3 py-1 text-xs font-bold text-red-800">Unassigned</span>
-                                                            : <span className="inline-block rounded-lg bg-green-100 px-3 py-1 text-xs font-bold text-green-800">{faculty.department} - {faculty.yearLevel}{faculty.section}</span>}
+
+                                                    <div className="grid flex-1 gap-3 lg:max-w-3xl lg:grid-cols-[minmax(0,1.8fr)_minmax(0,1fr)_auto]">
+                                                        <label className="block">
+                                                            <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Department</span>
+                                                            <select defaultValue="" onChange={(e) => setStudentAssignments(prev => ({...prev, [student.id]: {...prev[student.id], department: e.target.value}}))} className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-[#003366]">
+                                                                <option value="" disabled>Select department</option>
+                                                                {departments.map(d => <option key={d} value={d}>{d}</option>)}
+                                                            </select>
+                                                        </label>
+                                                        <div className="grid gap-3 sm:grid-cols-2">
+                                                            <label className="block">
+                                                                <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Year</span>
+                                                                <select defaultValue="" onChange={(e) => setStudentAssignments(prev => ({...prev, [student.id]: {...prev[student.id], yearLevel: e.target.value}}))} className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-[#003366]">
+                                                                    <option value="" disabled>Select year</option>
+                                                                    <option value="1">1st</option><option value="2">2nd</option><option value="3">3rd</option><option value="4">4th</option>
+                                                                </select>
+                                                            </label>
+                                                            <label className="block">
+                                                                <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Section</span>
+                                                                <select defaultValue="" onChange={(e) => setStudentAssignments(prev => ({...prev, [student.id]: {...prev[student.id], sectionNum: e.target.value}}))} className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-[#003366]">
+                                                                    <option value="" disabled>Select section</option>
+                                                                    {[...Array(15)].map((_, i) => <option key={i+1} value={i+1}>{i+1}</option>)}
+                                                                </select>
+                                                            </label>
+                                                        </div>
+                                                        <div className="flex flex-col gap-2 sm:flex-row lg:flex-col">
+                                                            <button onClick={() => submitStudentAssignment(student.id)} className="rounded-lg bg-[#003366] px-4 py-2 text-sm font-bold text-white hover:bg-[#00264d]">Assign</button>
+                                                            <button onClick={() => handleDropStudent(student.id, student.fullname)} className="rounded-lg bg-red-500 px-4 py-2 text-sm font-bold text-white hover:bg-red-600">Drop</button>
+                                                        </div>
                                                     </div>
                                                 </div>
                                             </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
 
-                                            <div className="grid gap-3 xl:grid-cols-[minmax(0,1.8fr)_minmax(0,0.9fr)_minmax(0,0.9fr)_minmax(0,1fr)_auto]">
-                                                <label className="block">
-                                                    <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Department</span>
-                                                    <select defaultValue="" onChange={(e) => setFacultyAssignments(prev => ({...prev, [faculty.id]: {...prev[faculty.id], department: e.target.value}}))} className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-[#003366]">
-                                                        <option value="" disabled>Select department</option>
-                                                        {departments.map(d => <option key={d} value={d}>{d}</option>)}
-                                                    </select>
-                                                </label>
-                                                <label className="block">
-                                                    <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Section</span>
-                                                    <select defaultValue="" onChange={(e) => setFacultyAssignments(prev => ({...prev, [faculty.id]: {...prev[faculty.id], section: e.target.value}}))} className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-[#003366]">
-                                                        <option value="" disabled>Select section</option>
-                                                        {[...Array(15)].map((_, i) => <option key={i+1} value={i+1}>{i+1}</option>)}
-                                                    </select>
-                                                </label>
-                                                <label className="block">
-                                                    <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Year</span>
-                                                    <select defaultValue="" onChange={(e) => setFacultyAssignments(prev => ({...prev, [faculty.id]: {...prev[faculty.id], yearLevel: e.target.value}}))} className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-[#003366]">
-                                                        <option value="" disabled>Select year</option>
-                                                        <option value="1">1st</option><option value="2">2nd</option><option value="3">3rd</option><option value="4">4th</option>
-                                                    </select>
-                                                </label>
-                                                <label className="block">
-                                                    <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Subject</span>
-                                                    <input type="text" placeholder="Subject Code" onChange={(e) => setFacultyAssignments(prev => ({...prev, [faculty.id]: {...prev[faculty.id], subject: e.target.value}}))} className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-[#003366]" />
-                                                </label>
-                                                <div className="flex items-end">
-                                                    <button onClick={() => submitFacultyAssignment(faculty.id)} className="w-full rounded-lg bg-[#003366] px-4 py-2 text-sm font-bold text-white hover:bg-[#00264d] xl:w-auto">Assign</button>
+                            {assignmentTab === 'chairpersons' && (
+                                <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
+                                    <div className="border-b border-slate-200 px-5 py-4">
+                                        <h4 className="text-lg font-bold text-[#003366]">Assign Chairperson</h4>
+                                    </div>
+                                    <div className="space-y-4 p-4">
+                                        {approvedAdmins.length === 0 ? (
+                                            <div className="rounded-2xl border border-dashed border-slate-200 p-8 text-center text-slate-500">
+                                                No approved department admins waiting for assignment.
+                                            </div>
+                                        ) : approvedAdmins.map((admin) => (
+                                            <div key={admin.id} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                                                <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                                                    <div className="space-y-2 lg:max-w-sm">
+                                                        <div>
+                                                            <p className="text-base font-bold text-slate-800">{admin.fullname}</p>
+                                                            <p className="text-sm capitalize text-slate-500">{admin.role}</p>
+                                                            <p className="break-all text-sm text-slate-500">{admin.email}</p>
+                                                        </div>
+                                                        <div>
+                                                            <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Current Department</span>
+                                                            <span className={`inline-block rounded-full px-3 py-1 text-xs font-bold ${admin.department === 'Unassigned' ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}`}>{admin.department}</span>
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="grid flex-1 gap-3 lg:max-w-2xl lg:grid-cols-[minmax(0,1fr)_auto]">
+                                                        <label className="block">
+                                                            <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Assign New Department</span>
+                                                            <select defaultValue="" onChange={(e) => setAdminAssignments(prev => ({...prev, [admin.id]: {department: e.target.value}}))} className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-[#003366]">
+                                                                <option value="" disabled>Select department</option>
+                                                                {departments.map(d => <option key={d} value={d}>{d}</option>)}
+                                                            </select>
+                                                        </label>
+                                                        <div className="flex items-end">
+                                                            <button onClick={() => submitAdminAssignment(admin.id)} className="w-full rounded-lg bg-[#003366] px-4 py-2 text-sm font-bold text-white hover:bg-[#00264d] lg:w-auto">Assign</button>
+                                                        </div>
+                                                    </div>
                                                 </div>
                                             </div>
-                                        </div>
+                                        ))}
                                     </div>
-                                ))}
-                            </div>
+                                </div>
+                            )}
+
+                            {assignmentTab === 'faculty' && (
+                                <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
+                                    <div className="border-b border-slate-200 px-5 py-4">
+                                        <h4 className="text-lg font-bold text-[#003366]">Assign Faculty</h4>
+                                    </div>
+                                    <div className="space-y-4 p-4">
+                                        {approvedFaculties.length === 0 ? (
+                                            <div className="rounded-2xl border border-dashed border-slate-200 p-8 text-center text-slate-500">
+                                                No approved faculty members waiting for assignment.
+                                            </div>
+                                        ) : approvedFaculties.map((faculty) => (
+                                            <div key={faculty.id} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                                                <div className="flex flex-col gap-4">
+                                                    <div className="flex flex-col gap-2 lg:flex-row lg:items-start lg:justify-between">
+                                                        <div className="space-y-2">
+                                                            <div>
+                                                                <p className="text-base font-bold text-slate-800">{faculty.fullname}</p>
+                                                                <p className="break-all text-sm text-slate-500">{faculty.email}</p>
+                                                            </div>
+                                                            <div>
+                                                                <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Current Assignment</span>
+                                                                {(!faculty.department || faculty.department === 'Unassigned')
+                                                                    ? <span className="inline-block rounded-full bg-red-100 px-3 py-1 text-xs font-bold text-red-800">Unassigned</span>
+                                                                    : <span className="inline-block rounded-lg bg-green-100 px-3 py-1 text-xs font-bold text-green-800">{faculty.department} - {faculty.yearLevel}{faculty.section}</span>}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="grid gap-3 xl:grid-cols-[minmax(0,1.8fr)_minmax(0,0.9fr)_minmax(0,0.9fr)_minmax(0,1fr)_auto]">
+                                                        <label className="block">
+                                                            <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Department</span>
+                                                            <select defaultValue="" onChange={(e) => setFacultyAssignments(prev => ({...prev, [faculty.id]: {...prev[faculty.id], department: e.target.value}}))} className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-[#003366]">
+                                                                <option value="" disabled>Select department</option>
+                                                                {departments.map(d => <option key={d} value={d}>{d}</option>)}
+                                                            </select>
+                                                        </label>
+                                                        <label className="block">
+                                                            <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Section</span>
+                                                            <select defaultValue="" onChange={(e) => setFacultyAssignments(prev => ({...prev, [faculty.id]: {...prev[faculty.id], section: e.target.value}}))} className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-[#003366]">
+                                                                <option value="" disabled>Select section</option>
+                                                                {[...Array(15)].map((_, i) => <option key={i+1} value={i+1}>{i+1}</option>)}
+                                                            </select>
+                                                        </label>
+                                                        <label className="block">
+                                                            <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Year</span>
+                                                            <select defaultValue="" onChange={(e) => setFacultyAssignments(prev => ({...prev, [faculty.id]: {...prev[faculty.id], yearLevel: e.target.value}}))} className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-[#003366]">
+                                                                <option value="" disabled>Select year</option>
+                                                                <option value="1">1st</option><option value="2">2nd</option><option value="3">3rd</option><option value="4">4th</option>
+                                                            </select>
+                                                        </label>
+                                                        <label className="block">
+                                                            <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Subject</span>
+                                                            <input type="text" placeholder="Subject Code" onChange={(e) => setFacultyAssignments(prev => ({...prev, [faculty.id]: {...prev[faculty.id], subject: e.target.value}}))} className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-[#003366]" />
+                                                        </label>
+                                                        <div className="flex items-end">
+                                                            <button onClick={() => submitFacultyAssignment(faculty.id)} className="w-full rounded-lg bg-[#003366] px-4 py-2 text-sm font-bold text-white hover:bg-[#00264d] xl:w-auto">Assign</button>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     )}
                     {mainTab === 'revokeAccounts' && (
@@ -1343,27 +1399,6 @@ const RegistrarGradesView = ({
                                 <p className="mt-2 text-sm text-slate-600">
                                     Registrar accounts cannot be revoked from this screen. Student drops and faculty revocations remove system access and call the Fabric revocation flow.
                                 </p>
-                            </div>
-
-                            <div className="rounded-2xl border border-slate-200 bg-white shadow-sm">
-                                <div className="border-b border-slate-200 px-5 py-4">
-                                    <h4 className="text-base font-bold text-[#003366]">Registrar</h4>
-                                    <p className="mt-1 text-sm text-slate-500">Registrar access is protected and cannot be revoked here.</p>
-                                </div>
-                                <div className="p-4">
-                                    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                                        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-                                            <div>
-                                                <p className="text-base font-bold text-slate-800">PLV Registrar Office</p>
-                                                <p className="text-sm text-slate-500">Registrar</p>
-                                                <p className="mt-2 text-sm text-slate-600">Institution-wide registrar tools</p>
-                                            </div>
-                                            <span className="inline-flex items-center justify-center rounded-full bg-slate-200 px-3 py-1 text-xs font-bold text-slate-700">
-                                                Non-revocable
-                                            </span>
-                                        </div>
-                                    </div>
-                                </div>
                             </div>
 
                             <div className="rounded-2xl border border-slate-200 bg-white shadow-sm">

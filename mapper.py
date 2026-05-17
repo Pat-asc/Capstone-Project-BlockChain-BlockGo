@@ -26,7 +26,12 @@ class GradeMapper:
         self.ipfs_url = os.getenv('IPFS_API_URL', ipfs_api_url)
         self.ipfs_client = None
         self.detected_metadata = {}
+        self.active_term = "midterm"
         self.encryption_key = os.getenv('IPFS_ENCRYPTION_KEY', 'default-encryption-key-32chars!!!').ljust(32)[:32].encode()
+
+    def set_active_term(self, term=None):
+        normalized = str(term or "").strip().lower()
+        self.active_term = "finals" if normalized == "finals" else "midterm"
 
     def encrypt_file(self, file_path):
         """Encrypt file with AES-256-CBC (Matching .NET Implementation)"""
@@ -281,8 +286,8 @@ class GradeMapper:
             for row in data_rows:
                 student_id = self._get_mapped_value(row, column_map, 'student_id')
                 grade = self._get_mapped_value(row, column_map, 'grade')
-                midterm = self._get_mapped_value(row, column_map, 'midterm')
-                finals = self._get_mapped_value(row, column_map, 'finals')
+                midterm = self._get_mapped_value(row, column_map, 'midterm') if self.active_term == 'midterm' else ""
+                finals = self._get_mapped_value(row, column_map, 'finals') if self.active_term == 'finals' else ""
 
                 if not student_id or (not grade and not midterm and not finals):
                     continue
@@ -292,7 +297,10 @@ class GradeMapper:
                     if col == 'student_id':
                         new_row[col] = student_id
                     elif col == 'grade':
-                        new_row[col] = grade
+                        if self.active_term == 'midterm':
+                            new_row[col] = grade if grade and not midterm else ""
+                        else:
+                            new_row[col] = grade if grade and not finals else ""
                     elif col == 'midterm':
                         new_row[col] = midterm
                     elif col == 'finals':
@@ -394,12 +402,14 @@ def main():
     file_path = sys.argv[1]
     faculty_id = sys.argv[2]
     api_key = sys.argv[3] if len(sys.argv) > 3 else None
+    active_term = sys.argv[4] if len(sys.argv) > 4 else "midterm"
 
     if not Path(file_path).exists():
         print(f"File not found: {file_path}")
         sys.exit(1)
     
     mapper = GradeMapper(api_key=api_key)
+    mapper.set_active_term(active_term)
     
     print("Uploading grading sheet to IPFS...")
     ipfs_cid = mapper.upload_to_ipfs(file_path)

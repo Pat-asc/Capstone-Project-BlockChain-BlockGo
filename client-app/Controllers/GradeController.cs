@@ -415,7 +415,8 @@ namespace BlockGo.Controllers
 
                 using var cmd = new NpgsqlCommand(@"
                     UPDATE pending_grade_records
-                    SET status = 'Issued',
+                    SET status = 'Submitted',
+                        note = '',
                         date = @date,
                         section = CASE
                             WHEN COALESCE(NULLIF(TRIM(section), ''), '') = ''
@@ -446,15 +447,17 @@ namespace BlockGo.Controllers
                         )
                     WHERE LOWER(TRIM(faculty_id)) = LOWER(TRIM(@faculty))
                       AND (
-                        LOWER(TRIM(COALESCE(section, ''))) = LOWER(TRIM(@section))
-                        OR (@compactSection <> '' AND LOWER(TRIM(COALESCE(section, ''))) = LOWER(TRIM(@compactSection)))
-                        OR LOWER(TRIM(COALESCE(subject_code, ''))) = LOWER(TRIM(@section))
-                        OR (@subjectCode <> '' AND LOWER(TRIM(COALESCE(subject_code, ''))) = LOWER(TRIM(@subjectCode)))
-                        OR LOWER(TRIM(COALESCE(course, ''))) = LOWER(TRIM(@section))
-                        OR (COALESCE(section, '') <> '' AND @section ILIKE '%' || section || '%')
-                        OR (COALESCE(section, '') <> '' AND section ILIKE '%' || @section || '%')
-                        OR (@compactSection <> '' AND COALESCE(section, '') <> '' AND section ILIKE '%' || @compactSection || '%')
-                        OR (COALESCE(subject_code, '') <> '' AND @section ILIKE '%' || subject_code || '%')
+                        (
+                            LOWER(TRIM(COALESCE(section, ''))) = LOWER(TRIM(@section))
+                            OR (@compactSection <> '' AND LOWER(TRIM(COALESCE(section, ''))) = LOWER(TRIM(@compactSection)))
+                            OR (COALESCE(section, '') <> '' AND section ILIKE '%' || @section || '%')
+                            OR (@compactSection <> '' AND COALESCE(section, '') <> '' AND section ILIKE '%' || @compactSection || '%')
+                        )
+                        AND (
+                            @subjectCode = ''
+                            OR LOWER(TRIM(COALESCE(subject_code, ''))) = LOWER(TRIM(@subjectCode))
+                            OR (COALESCE(subject_code, '') <> '' AND @section ILIKE '%' || subject_code || '%')
+                        )
                       )", conn);
                 cmd.Parameters.AddWithValue("faculty", effectiveFacultyId);
                 cmd.Parameters.AddWithValue("section", section);
@@ -558,13 +561,21 @@ namespace BlockGo.Controllers
                 : getVal("midterm_grade", "midterm_rating", "midterm");
         }
 
-        private static string? GetUploadedMidtermGrade(GetValDelegate getVal)
+        private static string? GetUploadedMidtermGrade(GetValDelegate getVal, string? term)
         {
+            if (string.Equals(term, "finals", StringComparison.OrdinalIgnoreCase))
+            {
+                return null;
+            }
             return getVal("midterm_grade", "midterm", "midterm_rating");
         }
 
-        private static string? GetUploadedFinalGrade(GetValDelegate getVal)
+        private static string? GetUploadedFinalGrade(GetValDelegate getVal, string? term)
         {
+            if (!string.Equals(term, "finals", StringComparison.OrdinalIgnoreCase))
+            {
+                return null;
+            }
             return getVal("final_rating", "final_grade", "finals_grade", "final", "finals");
         }
 
@@ -896,8 +907,8 @@ namespace BlockGo.Controllers
                                 Section = !string.IsNullOrWhiteSpace(section) ? section : (GetVal("section", "class_section", "sec") ?? ""),
                                 Grade = BuildUploadedGradePayload(
                                     GetUploadedTermGrade(GetVal, term),
-                                    GetUploadedMidtermGrade(GetVal),
-                                    GetUploadedFinalGrade(GetVal),
+                                    GetUploadedMidtermGrade(GetVal, term),
+                                    GetUploadedFinalGrade(GetVal, term),
                                     term),
                                 SubjectCode = GetVal("subject_code", "course_code", "code", "subject") ?? course ?? "Unknown",
                                 SubjectName = GetVal("subject_name", "descriptive_title", "course") ?? course ?? "Unknown",
@@ -961,8 +972,8 @@ namespace BlockGo.Controllers
                                     Section = !string.IsNullOrWhiteSpace(section) ? section : (GetVal("section", "class_section", "sec") ?? ""),
                                     Grade = BuildUploadedGradePayload(
                                         GetUploadedTermGrade(GetVal, term),
-                                        GetUploadedMidtermGrade(GetVal),
-                                        GetUploadedFinalGrade(GetVal),
+                                        GetUploadedMidtermGrade(GetVal, term),
+                                        GetUploadedFinalGrade(GetVal, term),
                                         term),
                                     SubjectCode = GetVal("subject_code", "course_code", "code", "subject") ?? course ?? "Unknown",
                                     SubjectName = GetVal("subject_name", "descriptive_title", "course") ?? course ?? "Unknown",

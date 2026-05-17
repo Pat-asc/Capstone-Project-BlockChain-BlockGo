@@ -740,7 +740,7 @@ function AcademicAssignment({ chairpersonDepartment = "" }) {
                   disabled={!facultyLoadingPreview.length}
                   className="rounded-xl bg-[#003366] px-4 py-2 text-sm font-semibold text-white hover:bg-[#00264d] disabled:cursor-not-allowed disabled:bg-slate-300"
                 >
-                  Assign Previewed Loading
+                  Assign Sections
                 </button>
               </div>
             </div>
