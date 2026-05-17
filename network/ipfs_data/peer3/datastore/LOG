@@ -10155,4 +10155,136 @@
 12:15:34.186598 version@stat F·[2 1] S·16KiB[2KiB 14KiB] Sc·[0.50 0.00]
 12:15:38.137939 db@janitor F·5 G·0
 12:15:38.138211 db@open done T·3.956901335s
+<<<<<<< HEAD
 >>>>>>> 534ac787f83766b69b61f0ca8a8b27576563df10
+=======
+12:59:06.648201 table@compaction L0·2 -> L1·1 S·16KiB Q·16211
+12:59:06.717261 table@build created L1@2233 N·13 S·14KiB "/F5..I5Q,v16206":"/pr..000,v6310"
+12:59:06.717574 version@stat F·[0 1] S·14KiB[0B 14KiB] Sc·[0.00 0.00]
+12:59:06.903499 table@compaction committed F-2 S-2KiB Ke·0 D·11 T·254.951544ms
+12:59:06.905127 table@remove removed @2214
+12:59:06.906575 table@remove removed @2195
+12:59:06.907855 table@remove removed @2180
+>>>>>>> 95b3528ebdaa7bac185da5732102b1d7ed6be347
+=============== May 17, 2026 (UTC) ===============
+16:16:59.962121 log@legend F·NumFile S·FileSize N·Entry C·BadEntry B·BadBlock Ke·KeyError D·DroppedEntry L·Level Q·SeqNum T·TimeElapsed
+16:16:59.968787 CURRENT: corrupted content: "<<<<<<< HEAD\r\nMANIFEST-002252\r\n=======\r\nMANIFEST-002232\r\n>>>>>>> 534ac787f83766b69b61f0ca8a8b27576563df10\r\n"
+16:16:59.980973 CURRENT.bak: missing target file: MANIFEST-002269
+=============== May 17, 2026 (UTC) ===============
+16:16:59.999576 log@legend F·NumFile S·FileSize N·Entry C·BadEntry B·BadBlock Ke·KeyError D·DroppedEntry L·Level Q·SeqNum T·TimeElapsed
+16:17:00.002552 table@recovery F·2
+16:17:00.002893 table@recovery recovering @2233
+16:17:00.006619 table@recovery recovered @2233 Gk·13 Ck·0 Cb·0 S·14725 Q·16207
+16:17:00.007419 table@recovery recovering @2253
+16:17:00.011765 table@recovery recovered @2253 Gk·15 Ck·0 Cb·0 S·14820 Q·16219
+16:17:00.012596 table@recovery recovered F·2 N·28 Gk·28 Ck·0 Q·16219
+16:17:00.044704 version@stat F·[2] S·28KiB[28KiB] Sc·[0.50]
+16:17:00.049640 db@open opening
+16:17:00.051694 journal@recovery F·2
+16:17:00.052382 journal@recovery recovering @2231
+16:17:00.055665 journal error: leveldb: batch corrupted: invalid sequence number (skipped)
+16:17:00.055951 journal error: leveldb: batch corrupted: invalid sequence number (skipped)
+16:17:00.056306 journal error: leveldb: batch corrupted: invalid sequence number (skipped)
+16:17:00.057184 journal@recovery recovering @2251
+16:17:00.058935 version@stat F·[2] S·28KiB[28KiB] Sc·[0.50]
+16:17:00.073780 memdb@flush created L0@2255 N·7 S·1KiB "/F5..I5Q,v16227":"/pr..100,d16222"
+16:17:00.076569 version@stat F·[3] S·30KiB[30KiB] Sc·[0.75]
+16:17:00.085597 db@janitor F·7 G·2
+16:17:00.085941 db@janitor removing manifest-2232
+16:17:00.087801 db@janitor removing manifest-2252
+16:17:00.089603 db@open done T·39.692326ms
+16:17:00.139679 db@close closing
+16:17:00.141575 db@close done T·1.888561ms
+=============== May 17, 2026 (UTC) ===============
+16:17:00.239694 log@legend F·NumFile S·FileSize N·Entry C·BadEntry B·BadBlock Ke·KeyError D·DroppedEntry L·Level Q·SeqNum T·TimeElapsed
+16:17:00.247542 version@stat F·[3] S·30KiB[30KiB] Sc·[0.75]
+16:17:00.248383 db@open opening
+16:17:00.250590 journal@recovery F·1
+16:17:00.250995 journal@recovery recovering @2256
+16:17:00.255417 version@stat F·[3] S·30KiB[30KiB] Sc·[0.75]
+16:17:00.292646 db@janitor F·5 G·0
+16:17:00.293180 db@open done T·44.525265ms
+16:17:00.326890 db@close closing
+16:17:00.328459 db@close done T·1.565393ms
+=============== May 17, 2026 (UTC) ===============
+16:17:00.420099 log@legend F·NumFile S·FileSize N·Entry C·BadEntry B·BadBlock Ke·KeyError D·DroppedEntry L·Level Q·SeqNum T·TimeElapsed
+16:17:00.428226 version@stat F·[3] S·30KiB[30KiB] Sc·[0.75]
+16:17:00.429083 db@open opening
+16:17:00.431299 journal@recovery F·1
+16:17:00.431948 journal@recovery recovering @2257
+16:17:00.437123 version@stat F·[3] S·30KiB[30KiB] Sc·[0.75]
+16:17:00.487790 db@janitor F·5 G·0
+16:17:00.488587 db@open done T·59.131641ms
+16:17:00.551135 db@close closing
+16:17:00.554224 db@close done T·3.080114ms
+=============== May 17, 2026 (UTC) ===============
+16:17:00.667689 log@legend F·NumFile S·FileSize N·Entry C·BadEntry B·BadBlock Ke·KeyError D·DroppedEntry L·Level Q·SeqNum T·TimeElapsed
+16:17:00.675661 version@stat F·[3] S·30KiB[30KiB] Sc·[0.75]
+16:17:00.676755 db@open opening
+16:17:00.678957 journal@recovery F·1
+16:17:00.679314 journal@recovery recovering @2259
+16:17:00.683780 version@stat F·[3] S·30KiB[30KiB] Sc·[0.75]
+16:17:00.720415 db@janitor F·5 G·0
+16:17:00.720883 db@open done T·43.818681ms
+16:17:00.752451 db@close closing
+16:17:00.754201 db@close done T·1.739878ms
+=============== May 17, 2026 (UTC) ===============
+16:17:00.842035 log@legend F·NumFile S·FileSize N·Entry C·BadEntry B·BadBlock Ke·KeyError D·DroppedEntry L·Level Q·SeqNum T·TimeElapsed
+16:17:00.849479 version@stat F·[3] S·30KiB[30KiB] Sc·[0.75]
+16:17:00.850345 db@open opening
+16:17:00.852056 journal@recovery F·1
+16:17:00.852646 journal@recovery recovering @2261
+16:17:00.858465 version@stat F·[3] S·30KiB[30KiB] Sc·[0.75]
+16:17:00.895714 db@janitor F·5 G·0
+16:17:00.896102 db@open done T·45.532632ms
+16:17:00.928368 db@close closing
+16:17:00.930319 db@close done T·1.939884ms
+=============== May 17, 2026 (UTC) ===============
+16:17:01.027180 log@legend F·NumFile S·FileSize N·Entry C·BadEntry B·BadBlock Ke·KeyError D·DroppedEntry L·Level Q·SeqNum T·TimeElapsed
+16:17:01.034506 version@stat F·[3] S·30KiB[30KiB] Sc·[0.75]
+16:17:01.035310 db@open opening
+16:17:01.037192 journal@recovery F·1
+16:17:01.037851 journal@recovery recovering @2263
+16:17:01.042253 version@stat F·[3] S·30KiB[30KiB] Sc·[0.75]
+16:17:01.079153 db@janitor F·5 G·0
+16:17:01.079640 db@open done T·44.098831ms
+16:17:01.113749 db@close closing
+16:17:01.115972 db@close done T·2.230412ms
+=============== May 17, 2026 (UTC) ===============
+16:17:01.212873 log@legend F·NumFile S·FileSize N·Entry C·BadEntry B·BadBlock Ke·KeyError D·DroppedEntry L·Level Q·SeqNum T·TimeElapsed
+16:17:01.221422 version@stat F·[3] S·30KiB[30KiB] Sc·[0.75]
+16:17:01.222248 db@open opening
+16:17:01.224389 journal@recovery F·1
+16:17:01.229541 journal@recovery recovering @2265
+16:17:01.233709 version@stat F·[3] S·30KiB[30KiB] Sc·[0.75]
+16:17:01.274257 db@janitor F·5 G·0
+16:17:01.274640 db@open done T·52.117829ms
+16:17:01.313704 db@close closing
+16:17:01.315789 db@close done T·2.065937ms
+=============== May 17, 2026 (UTC) ===============
+16:17:01.424146 log@legend F·NumFile S·FileSize N·Entry C·BadEntry B·BadBlock Ke·KeyError D·DroppedEntry L·Level Q·SeqNum T·TimeElapsed
+16:17:01.432202 version@stat F·[3] S·30KiB[30KiB] Sc·[0.75]
+16:17:01.432973 db@open opening
+16:17:01.434905 journal@recovery F·1
+16:17:01.435489 journal@recovery recovering @2267
+16:17:01.440584 version@stat F·[3] S·30KiB[30KiB] Sc·[0.75]
+16:17:01.477068 db@janitor F·5 G·0
+16:17:01.477435 db@open done T·44.226587ms
+16:17:01.507817 db@close closing
+16:17:01.509537 db@close done T·1.735418ms
+=============== May 17, 2026 (UTC) ===============
+16:17:12.679677 log@legend F·NumFile S·FileSize N·Entry C·BadEntry B·BadBlock Ke·KeyError D·DroppedEntry L·Level Q·SeqNum T·TimeElapsed
+16:17:12.748494 version@stat F·[3] S·30KiB[30KiB] Sc·[0.75]
+16:17:12.752305 db@open opening
+16:17:12.763854 journal@recovery F·1
+16:17:12.765298 journal@recovery recovering @2269
+16:17:12.785942 version@stat F·[3] S·30KiB[30KiB] Sc·[0.75]
+16:17:12.927389 db@janitor F·5 G·0
+16:17:12.928459 db@open done T·173.116518ms
+17:01:42.718756 table@compaction L0·3 -> L1·0 S·30KiB Q·16231
+17:01:42.735933 table@build created L1@2273 N·13 S·14KiB "/F5..I5Q,v16227":"/pr..000,v6310"
+17:01:42.736658 version@stat F·[0 1] S·14KiB[0B 14KiB] Sc·[0.00 0.00]
+17:01:42.741323 table@compaction committed F-2 S-15KiB Ke·0 D·22 T·21.748817ms
+17:01:42.743740 table@remove removed @2255
+17:01:42.748252 table@remove removed @2253
+17:01:42.754738 table@remove removed @2233

@@ -82,9 +82,9 @@ const createDefaultSectionTermStatuses = () => ({
 const normalizeEncodingTerm = (term) => (term === "finals" ? "finals" : "midterm");
 const normalizeSectionStatusValue = (status) => {
   const normalized = normalizeText(status);
-  if (normalized === "issued") return "submitted";
-  if (normalized === "departmentapproved") return "approved";
-  if (normalized === "finalized") return "forwarded";
+  if (normalized.includes("issued") || normalized.includes("submitted")) return "submitted";
+  if (normalized.includes("departmentapproved") || normalized.includes("approved")) return "approved";
+  if (normalized.includes("finalized") || normalized.includes("forwarded")) return "forwarded";
   if (RETURNED_SECTION_STATUSES.includes(normalized)) return "returned";
   return KNOWN_SECTION_STATUSES.includes(normalized) ? normalized : "draft";
 };
@@ -501,10 +501,22 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
         if (typeof rawGrade === 'string' && rawGrade.trim().startsWith('{')) {
           try {
             const parsed = JSON.parse(rawGrade);
+            
+            let computedRaw = parsed.finalAverage || parsed.final || parsed.grade || '';
+            const mid = parseFloat(parsed.midterm);
+            const fin = parseFloat(parsed.finals);
+            if (!isNaN(mid) && !isNaN(fin)) {
+                computedRaw = ((mid + fin) / 2).toFixed(2);
+            } else if (!isNaN(mid)) {
+                computedRaw = mid.toFixed(2);
+            } else if (!isNaN(fin)) {
+                computedRaw = fin.toFixed(2);
+            }
+
             return {
               midterm: parseGradeValue(parsed.midterm),
               finals: parseGradeValue(parsed.finals),
-              finalAverage: parseGradeValue(parsed.finalAverage || parsed.final || parsed.grade),
+              finalAverage: parseGradeValue(computedRaw),
               standing: parsed.standing || STUDENT_STATUS_ACTIVE,
               flagged: !!parsed.flagged,
             };
@@ -1275,8 +1287,12 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
   const handleSubmit = async (sectionName) => {
     try {
       await handleSaveAll(sectionName);
+      const sectionData = sections[sectionName];
       
-      await submitSectionGrades(sections[sectionName].sectionCourse, sectionName);
+      await submitSectionGrades(
+        sectionData.sectionCourse,
+        sectionData.canonicalSection || sectionName
+      );
       updateSectionTermStatus(sectionName, encodingTerm, 'submitted');
       setSubmitConfirmSection(null);
     } catch (e) { alert("Error submitting section: " + e.message); }
@@ -1535,45 +1551,63 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
 
                     return (
                       <tr key={`${stu.id}-${i}`} className={`border-b border-slate-100 hover:bg-slate-50 ${hasError ? 'bg-red-50' : rowState === 'saved' ? 'bg-green-50' : ''} ${isFlagged ? 'bg-amber-50' : ''}`}>
-                        <td className="p-4 font-semibold text-slate-700">{stu.id}</td>
+                        <td className="p-4 font-semibold text-slate-700">{stu.studentNo || stu.id}</td>
                         <td className="p-4 font-medium text-slate-800">{stu.name}</td>
+                        
                         <td className="p-4 text-center">
                           <div className="relative inline-block">
                             <input
-                              className={`w-20 rounded-lg border p-2 text-center outline-none focus:ring-2 focus:ring-[#003366]/20 disabled:bg-slate-100 disabled:text-slate-500 ${errors.midterm ? 'border-red-500 bg-red-50' : 'border-slate-300'}`}
-                              type="number" min="60" max="100" value={stu.midterm ?? ''} disabled={isGradeEncodingLocked || isClosed || isMidtermLocked || isStudentLocked}
-                              onChange={e => handleGradeChange(activeSection, i, 'midterm', e.target.value)} placeholder="60-100"
+                              type="number"
+                              min="60"
+                              max="100"
+                              value={stu.midterm}
+                              onChange={(e) => handleGradeChange(activeSection, i, 'midterm', e.target.value)}
+                              disabled={isGradeEncodingLocked || isMidtermLocked || isStudentLocked}
+                              className={`h-10 w-20 rounded-xl border px-2 text-center outline-none focus:ring-2 focus:ring-[#003366]/20 ${
+                                errors.midterm ? 'border-red-500 bg-red-50' : 'border-slate-300 bg-white'
+                              } disabled:bg-slate-100 disabled:text-slate-400`}
+                              placeholder="60-100"
                             />
                             {errors.midterm && <div className="absolute left-1/2 -translate-x-1/2 -bottom-5 whitespace-nowrap text-[10px] font-bold text-red-600">{errors.midterm}</div>}
                           </div>
                         </td>
+
                         <td className="p-4 text-center">
                           <div className="relative inline-block">
                             <input
-                              className={`w-20 rounded-lg border p-2 text-center outline-none focus:ring-2 focus:ring-[#003366]/20 disabled:bg-slate-100 disabled:text-slate-500 ${errors.finals ? 'border-red-500 bg-red-50' : 'border-slate-300'}`}
-                              type="number" min="60" max="100" value={stu.finals ?? ''} disabled={isGradeEncodingLocked || isClosed || isFinalsLocked || isStudentLocked}
-                              onChange={e => handleGradeChange(activeSection, i, 'finals', e.target.value)} placeholder="60-100"
+                              type="number"
+                              min="60"
+                              max="100"
+                              value={stu.finals}
+                              onChange={(e) => handleGradeChange(activeSection, i, 'finals', e.target.value)}
+                              disabled={isGradeEncodingLocked || isFinalsLocked || isStudentLocked}
+                              className={`h-10 w-20 rounded-xl border px-2 text-center outline-none focus:ring-2 focus:ring-[#003366]/20 ${
+                                errors.finals ? 'border-red-500 bg-red-50' : 'border-slate-300 bg-white'
+                              } disabled:bg-slate-100 disabled:text-slate-400`}
+                              placeholder="60-100"
                             />
                             {errors.finals && <div className="absolute left-1/2 -translate-x-1/2 -bottom-5 whitespace-nowrap text-[10px] font-bold text-red-600">{errors.finals}</div>}
                           </div>
                         </td>
+
                         <td className="p-4 text-center text-lg font-bold text-[#003366]">{finalGradeText}</td>
-                        <td className="p-4 text-center font-bold text-[#003366]">{gradeEquivalent}</td>
+                        <td className="p-4 text-center font-bold text-slate-700">{gradeEquivalent}</td>
                         <td className="p-4 text-center">
-                          <span className={`inline-block rounded-full px-3 py-1 text-xs font-bold ${
-                              academicStatus === 'Passed' ? 'bg-green-100 text-green-700' :
-                              academicStatus === 'Failed' ? 'bg-red-100 text-red-700' :
-                              'bg-slate-100 text-slate-700'
+                          <span className={`inline-flex rounded-full px-3 py-1 text-[10px] font-bold uppercase ${
+                            academicStatus === 'Passed' ? 'bg-green-100 text-green-700' :
+                            academicStatus === 'Failed' ? 'bg-red-100 text-red-700' :
+                            'bg-slate-100 text-slate-700'
                           }`}>
                             {academicStatus}
                           </span>
                         </td>
+                        
                         <td className="p-4 text-center">
                           <select
-                            className="rounded-lg border border-slate-300 px-3 py-2 text-sm disabled:bg-slate-100 disabled:text-slate-500"
                             value={studentStatus}
-                            onChange={e => handleStudentStatusChange(activeSection, i, e.target.value)}
-                            disabled={isSubmittedToChairperson || isClosed}
+                            onChange={(e) => handleStudentStatusChange(activeSection, i, e.target.value)}
+                            disabled={isGradeEncodingLocked}
+                            className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium outline-none text-slate-700 disabled:bg-slate-100 disabled:text-slate-400"
                           >
                             <option value="active">Active</option>
                             <option value="dropped">Dropped (D)</option>
@@ -1582,35 +1616,63 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
                             <option value="incomplete">Incomplete (INC)</option>
                           </select>
                         </td>
+
                         <td className="p-4 text-center">
                           <button
                             type="button"
-                            className={`rounded-lg px-3 py-2 text-sm font-bold transition ${
-                              isFlagged
-                                ? 'bg-amber-100 text-amber-700 hover:bg-amber-200'
-                                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                            } disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400`}
                             onClick={() => toggleStudentFlag(activeSection, i)}
-                            disabled={isSubmittedToChairperson || isClosed}
+                            disabled={isGradeEncodingLocked}
+                            className={`rounded-lg px-3 py-2 text-sm font-bold transition ${
+                              isFlagged ? 'bg-amber-100 text-amber-700 hover:bg-amber-200' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                            } disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400`}
                           >
                             {isFlagged ? 'Flagged' : 'Flag'}
                           </button>
                         </td>
+
                       </tr>
                     );
                   })}
+                  {sections[activeSection].students.length === 0 && (
+                    <tr>
+                      <td colSpan="9" className="p-8 text-center text-slate-500 bg-slate-50 rounded-b-xl text-base">
+                        No students are assigned to this section yet.
+                      </td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
+            </div>
+            
+            <div className="flex flex-wrap items-center justify-between gap-4 border-t border-slate-200 bg-slate-50 p-4">
+              <div className="flex items-center gap-3">
+                <div className="h-3 w-3 rounded-full bg-red-50 border border-red-200" title="Has Error" /> <span className="text-xs text-slate-500">Error</span>
+                <div className="h-3 w-3 rounded-full bg-amber-50 border border-amber-200" title="Flagged" /> <span className="text-xs text-slate-500">Flagged</span>
+                <div className="h-3 w-3 rounded-full bg-green-50 border border-green-200" title="Saved" /> <span className="text-xs text-slate-500">Saved</span>
+              </div>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => handleSaveAll(activeSection)}
+                  disabled={isGradeEncodingLocked || hasValidationErrors(activeSection) || isClosed}
+                  className="rounded-xl border border-[#003366] bg-white px-5 py-2.5 text-sm font-bold text-[#003366] transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:border-slate-300 disabled:text-slate-400"
+                >
+                  Save Draft
+                </button>
+                <button
+                  onClick={() => requestSubmitToChairperson(activeSection)}
+                  disabled={isSubmittedToChairperson || hasValidationErrors(activeSection) || isClosed}
+                  className="rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-bold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-slate-300"
+                >
+                  Submit to Chairperson
+                </button>
+              </div>
             </div>
           </div>
         </div>
       )}
 
-      <Modal
-        isOpen={!!submitConfirmSection}
-        onClose={() => setSubmitConfirmSection(null)}
-        title="Submit Grades to Chairperson"
-      >
+      </div>
+      <Modal isOpen={!!submitConfirmSection} onClose={() => setSubmitConfirmSection(null)} title="Submit Grades to Chairperson">
         <div className="flex flex-col gap-4">
           <p className="text-sm text-slate-600">
             Are you sure the encoded grades for <span className="font-semibold text-slate-800">{submitConfirmSection || 'this section'}</span> are final?
@@ -1644,22 +1706,22 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
               {uploadResult.title}
             </h2>
             <p className="mb-4 font-semibold text-slate-700">{uploadResult.message}</p>
-            
             {uploadResult.details && (
               <div className="mb-5 flex-grow overflow-y-auto rounded-xl bg-slate-900 p-4 text-sm text-green-400">
                 <pre className="whitespace-pre-wrap font-mono">{uploadResult.details}</pre>
               </div>
             )}
-            
             <div className="text-right">
-              <button className="rounded-xl bg-slate-200 px-5 py-2 font-bold text-slate-800 transition hover:bg-slate-300" onClick={() => setUploadResult(null)}>
+              <button
+                className="rounded-xl bg-slate-200 px-5 py-2 font-bold text-slate-800 transition hover:bg-slate-300"
+                onClick={() => setUploadResult(null)}
+              >
                 Close
               </button>
             </div>
           </div>
         </div>
       )}
-      </div>
     </div>
   );
 };

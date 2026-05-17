@@ -114,6 +114,15 @@ const getPublishedSectionsFromStorage = () => {
   return publishedSectionKeys;
 };
 
+const isFinalSectionComplete = (section = {}) =>
+  section.term === "finals" &&
+  (section.students || []).length > 0 &&
+  (section.students || []).every((student) => {
+    const studentId = getStudentId(student);
+    const finalGrade = computeFinal(section.grades, studentId, "finals");
+    return finalGrade !== "-" && !Number.isNaN(Number(finalGrade));
+  });
+
 const getGradesForAssignment = ({ allGrades = {}, gradeKey, assignmentKey }) => {
   const normalizedAssignmentKey = String(assignmentKey || "");
   const gradeBuckets = [
@@ -381,15 +390,32 @@ function GradeFinalization({ allGrades = {} }) {
     [forwardedSections]
   );
 
+  const areAllFinalSectionsComplete =
+    allFinalSections.length > 0 &&
+    allFinalSections.every((section) => isFinalSectionComplete(section));
   const areAllFinalSectionsPublished =
     allFinalSections.length > 0 &&
     allFinalSections.every((section) =>
       publishedSectionKeys.has(buildPublishedSectionKey(section))
     );
-  const hasFinalSectionsReady = allFinalSections.length > 0;
+  const hasFinalSectionsReady = areAllFinalSectionsComplete;
 
   const handlePublishSections = (sections = []) => {
     const finalSections = sections.filter((section) => section.term === "finals");
+    const incompleteFinalSections = finalSections.filter(
+      (section) => !isFinalSectionComplete(section)
+    );
+
+    if (!finalSections.length) {
+      alert("Wala pang final grades na puwedeng i-distribute sa students.");
+      return;
+    }
+
+    if (incompleteFinalSections.length) {
+      alert("Hindi pa puwedeng i-distribute. Kumpletuhin muna ang final grades ng lahat ng students sa final sections.");
+      return;
+    }
+
     const unpublishedFinalSections = finalSections.filter(
       (section) => !publishedSectionKeys.has(buildPublishedSectionKey(section))
     );
@@ -535,6 +561,11 @@ function GradeFinalization({ allGrades = {} }) {
           const departmentFinalSections = departmentSections.filter(
             (section) => section.term === "finals"
           );
+          const isDepartmentReady =
+            departmentFinalSections.length > 0 &&
+            departmentFinalSections.every((section) =>
+              isFinalSectionComplete(section)
+            );
           const isDepartmentPublished =
             departmentFinalSections.length > 0 &&
             departmentFinalSections.every((section) =>
@@ -563,7 +594,7 @@ function GradeFinalization({ allGrades = {} }) {
                 >
                   {isDepartmentPublished
                     ? "Final grades published"
-                    : departmentFinalSections.length
+                    : isDepartmentReady
                     ? "Final grades ready to publish"
                     : "Waiting for finals"}
                 </span>
@@ -653,7 +684,7 @@ function GradeFinalization({ allGrades = {} }) {
                                 {faculty.sections.map((section) => {
                                   const publishedAt =
                                     publishedAtByKey[section.reviewKey];
-                                  const canPublish = section.term === "finals";
+                                  const canPublish = isFinalSectionComplete(section);
                                   const isSubjectExpanded =
                                     !!expandedSubjectKeys[section.reviewKey];
 

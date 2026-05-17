@@ -358,7 +358,8 @@ class GradeMapper:
                     'facultyId': faculty_id,
                     'semester': self.detected_metadata.get('semester', ''),
                     'schoolYear': self.detected_metadata.get('schoolYear', ''),
-                    'course': self.detected_metadata.get('course', '')
+                    'course': self.detected_metadata.get('course', ''),
+                    'term': self.active_term
                 }
                 data = {key: value for key, value in data.items() if value}
                 headers = {

@@ -120,10 +120,22 @@ try
     builder.Services.AddMemoryCache();
     builder.Services.AddEndpointsApiExplorer();
     builder.Services.AddSwaggerGen();
-    builder.Services.AddSignalR(options =>
+    var signalRBuilder = builder.Services.AddSignalR(options =>
     {
         options.MaximumReceiveMessageSize = 8 * 1024 * 1024;
     });
+
+    var redisConnectionString = Environment.GetEnvironmentVariable("REDIS_CONNECTION_STRING")
+        ?? builder.Configuration["Redis:ConnectionString"];
+    if (!string.IsNullOrWhiteSpace(redisConnectionString))
+    {
+        signalRBuilder.AddStackExchangeRedis(redisConnectionString);
+        Log.Information("SignalR Redis backplane enabled.");
+    }
+    else
+    {
+        Log.Warning("SignalR Redis backplane disabled because Redis connection string is not configured.");
+    }
 
     builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
     builder.Services.AddProblemDetails();

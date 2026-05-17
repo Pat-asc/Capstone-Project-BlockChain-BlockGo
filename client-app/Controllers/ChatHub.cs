@@ -167,9 +167,33 @@ namespace Client_app.Controllers
             if (!string.IsNullOrEmpty(senderEmail) && !string.IsNullOrEmpty(otherUserEmail))
             {
                 var history = await GetMergedHistoryAsync(senderEmail, otherUserEmail);
-                await MarkConversationSeenAsync(senderEmail, otherUserEmail, history);
                 await Clients.Caller.SendAsync("ChatHistory", history);
             }
+        }
+
+        public async Task MarkConversationSeen(string otherUserEmail)
+        {
+            var viewerEmail = Context.User?.Identity?.Name ?? string.Empty;
+
+            if (string.IsNullOrEmpty(viewerEmail) || string.IsNullOrEmpty(otherUserEmail)) return;
+
+            var history = await GetMergedHistoryAsync(viewerEmail, otherUserEmail);
+            await MarkConversationSeenAsync(viewerEmail, otherUserEmail, history);
+        }
+
+        public async Task SetTyping(string receiverEmail, bool isTyping)
+        {
+            var senderEmail = Context.User?.Identity?.Name;
+            if (string.IsNullOrEmpty(senderEmail) || string.IsNullOrEmpty(receiverEmail)) return;
+
+            await EnsureCanSendAsync(receiverEmail);
+
+            await Clients.Group($"private_{receiverEmail}").SendAsync("UserTyping", new
+            {
+                Sender = senderEmail,
+                Receiver = receiverEmail,
+                IsTyping = isTyping
+            });
         }
 
         private async Task SaveAndBroadcastAsync(ChatMessage chatMessage)
@@ -586,7 +610,7 @@ namespace Client_app.Controllers
             var viewer = NormalizeRole(viewerRole);
             var target = NormalizeRole(targetRole);
 
-            if (viewer == "faculty") return target == "department_admin" || target == "faculty";
+            if (viewer == "faculty") return target == "registrar" || target == "department_admin" || target == "faculty";
             if (viewer == "department_admin") return target == "registrar" || target == "faculty";
             if (viewer == "registrar") return target == "department_admin" || target == "faculty" || target == "student";
             return target == "registrar";

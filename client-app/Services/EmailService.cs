@@ -49,10 +49,13 @@ namespace Client_app.Services
                 };
 
                 using var mailMessage = new MailMessage { Subject = subject, Body = body, IsBodyHtml = isHtml };
-                mailMessage.From = new MailAddress(smtpUser, "PLV BlockGo");
+                mailMessage.From = new MailAddress(smtpUser, "PLV BlockGO");
                 mailMessage.To.Add(toEmail);
 
-                if (isHtml && !string.IsNullOrWhiteSpace(inlineImagePath) && System.IO.File.Exists(inlineImagePath))
+                if (isHtml &&
+                    !string.IsNullOrWhiteSpace(inlineImagePath) &&
+                    System.IO.File.Exists(inlineImagePath) &&
+                    new System.IO.FileInfo(inlineImagePath).Length > 0)
                 {
                     var contentId = (inlineImageContentId ?? "plv-logo").Trim('<', '>');
                     var htmlView = AlternateView.CreateAlternateViewFromString(body, null, MediaTypeNames.Text.Html);

@@ -1751,7 +1751,7 @@ namespace Client_app.Controllers
                 try
                 {
                     var fullPath = Path.GetFullPath(candidate!);
-                    if (System.IO.File.Exists(fullPath)) return fullPath;
+                    if (System.IO.File.Exists(fullPath) && new FileInfo(fullPath).Length > 0) return fullPath;
                 }
                 catch
                 {
@@ -1797,7 +1797,7 @@ namespace Client_app.Controllers
                         {content.Replace("\n", "<br />")}
                     </div>
                     <div style='text-align: center; padding-top: 20px; border-top: 1px solid #ddd; font-size: 0.9em; color: #777;'>
-                        <p>&copy; {year} PLV BlockGo. All rights reserved.</p>
+                        <p>&copy; {year} PLV BlockGO. All rights reserved.</p>
                     </div>
                 </div>
             </body>

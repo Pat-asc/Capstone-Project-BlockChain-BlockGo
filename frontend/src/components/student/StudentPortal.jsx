@@ -28,21 +28,35 @@ const StudentPortal = ({ studentData, onLogout }) => {
     ''
   ), []);
 
-  const getGradeValue = useCallback((grade) => {
-    const rawGrade = grade.grade || grade.Grade || '';
-    if (typeof rawGrade === 'number') return rawGrade;
-    if (typeof rawGrade !== 'string') return '';
+  const parseGradePayload = useCallback((grade) => {
+    const rawGrade = grade.grade || grade.Grade;
 
-    if (rawGrade.trim().startsWith('{')) {
-      try {
-        const parsed = JSON.parse(rawGrade);
-        return parsed.finalAverage || parsed.final || parsed.grade || '';
-      } catch (e) {
-        return rawGrade;
-      }
+    if (!rawGrade) {
+        return { midterm: '---', finals: '---', finalAverage: '---' };
     }
 
-    return rawGrade;
+    if (typeof rawGrade === 'object') {
+        return {
+            midterm: rawGrade.midterm || '---',
+            finals: rawGrade.finals || '---',
+            finalAverage: rawGrade.finalAverage || rawGrade.final || rawGrade.grade || '---'
+        };
+    }
+
+    if (typeof rawGrade === 'string' && rawGrade.trim().startsWith('{')) {
+        try {
+            const parsed = JSON.parse(rawGrade);
+            return {
+                midterm: parsed.midterm || '---',
+                finals: parsed.finals || '---',
+                finalAverage: parsed.finalAverage || parsed.final || parsed.grade || '---'
+            };
+        } catch (error) {
+            console.error("Failed to parse grade JSON:", error);
+        }
+    }
+
+    return { midterm: '---', finals: '---', finalAverage: rawGrade };
   }, []);
 
   const loadGrades = useCallback(async (isBackground = false) => {
@@ -112,30 +126,47 @@ const StudentPortal = ({ studentData, onLogout }) => {
     return () => window.removeEventListener('blockgo:system-setting-changed', handleSystemSettingChanged);
   }, []);
 
-  // 2. Calculate Semester Totals
   const totalUnits = grades.length * 3; // Assuming 3 units per subject block for now
   
-  const totalWeight = grades.reduce((sum, sub) => sum + ((parseFloat(getGradeValue(sub)) || 0) * 3), 0);
+  const totalWeight = grades.reduce((sum, sub) => sum + ((parseFloat(parseGradePayload(sub).finalAverage) || 0) * 3), 0);
 
   const calculatedGWA = totalUnits > 0 ? (totalWeight / totalUnits).toFixed(2) : "0.00";
 
-  // 3. Status logic: Dean's List eligibility check
-  const isDeansLister = grades.length > 0 && Number(calculatedGWA) <= 1.75 && grades.every(s => parseFloat(getGradeValue(s)) <= 2.25);
-  const failedSubjectsCount = grades.filter(s => parseFloat(getGradeValue(s)) > 3.0 || parseFloat(getGradeValue(s)) === 5.0).length;
+  const isDeansLister = grades.length > 0 && Number(calculatedGWA) <= 1.75 && grades.every(s => parseFloat(parseGradePayload(s).finalAverage) <= 2.25);
+  const failedSubjectsCount = grades.filter(s => parseFloat(parseGradePayload(s).finalAverage) > 3.0 || parseFloat(parseGradePayload(s).finalAverage) === 5.0).length;
 
-  // Map the raw blockchain array to the structure expected by the new StudentGradesTable
   let mappedSubjects = grades.map(g => {
-    const finalGrade = getGradeValue(g);
+    const parsed = parseGradePayload(g);
+    
+    let rawAverage = "---";
+    const mid = parseFloat(parsed.midterm);
+    const fin = parseFloat(parsed.finals);
+    
+    if (!isNaN(mid) && !isNaN(fin)) {
+        rawAverage = ((mid + fin) / 2).toFixed(2);
+    } else if (!isNaN(mid)) {
+        rawAverage = mid.toFixed(2);
+    } else if (!isNaN(fin)) {
+        rawAverage = fin.toFixed(2);
+    }
+
+    let computedRemarks = "Pending";
+    if (!isNaN(parseFloat(parsed.finalAverage))) {
+        computedRemarks = parseFloat(parsed.finalAverage) <= 3.0 ? "Passed" : "Failed";
+    }
+
     return {
       code: g.subject_code || g.subjectCode || g.SubjectCode || 'N/A',
       name: g.subject_name || g.subjectName || g.SubjectName || g.course || g.Course || 'N/A',
-      units: 3, // Assuming 3 units per subject block for now
-      midterm: finalGrade,
-      finals: finalGrade,
+      units: 3,
+      midterm: parsed.midterm,
+      finals: parsed.finals,
+      finalGrade: rawAverage !== "---" ? rawAverage : parsed.finalAverage,
+      equivalent: parsed.finalAverage,
+      remarks: computedRemarks
     };
   });
 
-  // If no grades on blockchain but the student is enrolled in subjects, show them as 'PENDING'
   if (mappedSubjects.length === 0 && studentData.enrolledSubjects && studentData.enrolledSubjects.length > 0) {
       mappedSubjects = studentData.enrolledSubjects.map(subName => ({
           code: 'PENDING',
