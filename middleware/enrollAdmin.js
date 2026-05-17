@@ -8,17 +8,28 @@ const crypto = require('crypto');
 
 require('dotenv').config({ path: path.resolve(__dirname, '../network/.env'), override: true });
 
-async function getWallet() {
-    let couchUrl = process.env.COUCHDB_WALLET_URL;
-    if (!couchUrl && process.env.COUCHDB_USER && process.env.COUCHDB_PASS) {
-        couchUrl = `http://${process.env.COUCHDB_USER}:${process.env.COUCHDB_PASS}@127.0.0.1:5990`;
+async function getWallet(role = 'registrar') {
+    const normalizedRole = String(role).toLowerCase();
+    let couchUrl;
+    const user = process.env.COUCHDB_USER || 'capstone';
+    const pass = process.env.COUCHDB_PASS || 'pass123';
+    const host = '127.0.0.1';
+
+    if (normalizedRole === 'faculty') {
+        couchUrl = process.env.COUCHDB_WALLET_FACULTY_URL || `http://${user}:${pass}@${host}:6990`;
+    } else if (normalizedRole === 'department_admin' || normalizedRole === 'department') {
+        couchUrl = process.env.COUCHDB_WALLET_DEPARTMENT_URL || `http://${user}:${pass}@${host}:7990`;
+    } else {
+        couchUrl = process.env.COUCHDB_WALLET_REGISTRAR_URL || process.env.COUCHDB_WALLET_URL || `http://${user}:${pass}@${host}:5990`;
     }
 
     if (couchUrl) {
-        console.log(`\nConnecting to CouchDB wallet...`);
+        const walletSuffix = normalizedRole === 'faculty' ? 'faculty' : (normalizedRole === 'department_admin' || normalizedRole === 'department') ? 'department' : 'registrar';
+        const walletName = `fabric_wallet_${walletSuffix}`;
+        console.log(`\nConnecting to CouchDB wallet at ${couchUrl} [${walletName}]...`);
         try {
-            const wallet = await Wallets.newCouchDBWallet(couchUrl, 'fabric_wallet');
-            console.log('CouchDB wallet connection successful.');
+            const wallet = await Wallets.newCouchDBWallet(couchUrl, walletName);
+            console.log(`CouchDB wallet connection successful for ${walletName}.`);
             
             const encryptionKey = process.env.WALLET_ENCRYPTION_KEY;
             if (encryptionKey) {
@@ -280,11 +291,6 @@ async function main() {
 
     } catch (error) {
         console.error(`\nEnrollment script failed: ${error}`);
-        process.exit(1);
-    }
-    console.log('\n--- Enrollment Script Finished ---');
-}
-main();ollment script failed: ${error}`);
         process.exit(1);
     }
     console.log('\n--- Enrollment Script Finished ---');

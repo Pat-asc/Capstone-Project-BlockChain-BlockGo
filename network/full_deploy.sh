@@ -669,8 +669,12 @@ docker exec -e PGPASSWORD="$POSTGRES_PASS" postgres psql -U $POSTGRES_USER -d $P
 docker exec -e PGPASSWORD="$POSTGRES_PASS" postgres psql -U $POSTGRES_USER -d $POSTGRES_DB -c "CREATE EXTENSION IF NOT EXISTS pgcrypto;"
 
 log_info "Bootstrapping root registrar account..."
-# Give middleware a few seconds to fully initialize its DB connection pool
-sleep 5
+sleep 5 # Give Postgres a moment to accept connections
+
+log_info "Running enrollAdmin.js to ensure Wallets & Root Admin are fully seeded..."
+(cd ../middleware && npm install --no-audit --no-fund && node enrollAdmin.js)
+
+# Fallback check over HTTP
 curl -s http://127.0.0.1:4000/api/bootstrap || true
 
 log_info "============================================================"
