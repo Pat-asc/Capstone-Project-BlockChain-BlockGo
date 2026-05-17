@@ -615,7 +615,7 @@ namespace Client_app.Controllers
                     }
                 }
 
-                string query = "UPDATE StudentProfiles SET department = @dept, section = @section, assignment_status = 'Pending Department Approval' WHERE user_id = @id";
+                string query = "UPDATE StudentProfiles SET department = @dept, section = @section, assignment_status = 'Enrolled' WHERE user_id = @id";
                 using var cmd = new NpgsqlCommand(query, conn);
                 cmd.Parameters.AddWithValue("dept", (object?)request.Department?.Trim() ?? DBNull.Value);
                 cmd.Parameters.AddWithValue("section", (object?)request.Section?.Trim() ?? DBNull.Value);
@@ -625,13 +625,13 @@ namespace Client_app.Controllers
                 if (rows == 0) return NotFound(new { status = "Error", message = "Student profile not found." });
 
                 var emailSubject = "PLV Enrollment Update: Department Assignment";
-                var emailContent = $"<p>Hello {userName},</p><p>The Registrar has assigned you to the <strong>{request.Department}</strong> department, section <strong>{request.Section}</strong>. Your enrollment is now pending final approval from the department head.</p>";
+                var emailContent = $"<p>Hello {userName},</p><p>The Registrar has officially enrolled you in the <strong>{request.Department}</strong> department, section <strong>{request.Section}</strong>.</p>";
                 _ = _emailService.SendEmailAsync(userEmail, emailSubject, CreateHtmlEmail(emailSubject, emailContent), true);
 
                 _cache.Remove("approved_students");
 
                 await NotifyAcademicDataChangedAsync("student_assigned", request.Department, userEmail);
-                return Ok(new { status = "Success", message = "Student assigned. Awaiting department/faculty approval." });
+                return Ok(new { status = "Success", message = "Student assigned and automatically enrolled." });
             }
             catch (Exception ex)
             {
@@ -894,7 +894,12 @@ namespace Client_app.Controllers
                 using (var cmd = new NpgsqlCommand(@"
                     SELECT u.id, fp.full_name, u.email, fp.department, fp.section, fp.year_level 
                     FROM Users u JOIN FacultyProfiles fp ON u.id = fp.user_id 
-                    WHERE u.role = 'faculty' AND u.status = 'APPROVED'", conn))
+                    WHERE u.role = 'faculty' AND u.status = 'APPROVED'
+                    UNION
+                    SELECT u.id, ap.full_name, u.email, ap.department, 'Unassigned' as section, 'Unassigned' as year_level 
+                    FROM Users u JOIN AdminProfiles ap ON u.id = ap.user_id 
+                    WHERE LOWER(REPLACE(REPLACE(u.role, ' ', '_'), '-', '_')) IN ('department_admin', 'dept_admin', 'deptadmin', 'department', 'admin', 'chairperson') 
+                      AND u.status = 'APPROVED'", conn))
                 using (var reader = await cmd.ExecuteReaderAsync())
                 {
                     while (await reader.ReadAsync())
@@ -931,7 +936,12 @@ namespace Client_app.Controllers
                 await conn.OpenAsync();
 
                 string userEmail = "", userName = "Faculty";
-                using (var cmdEmail = new NpgsqlCommand("SELECT u.email, fp.full_name FROM Users u JOIN FacultyProfiles fp ON u.id = fp.user_id WHERE u.id = @id", conn))
+                using (var cmdEmail = new NpgsqlCommand(@"
+                    SELECT u.email, COALESCE(fp.full_name, ap.full_name) 
+                    FROM Users u 
+                    LEFT JOIN FacultyProfiles fp ON u.id = fp.user_id 
+                    LEFT JOIN AdminProfiles ap ON u.id = ap.user_id 
+                    WHERE u.id = @id", conn))
                 {
                     cmdEmail.Parameters.AddWithValue("id", id); 
                     using var reader = await cmdEmail.ExecuteReaderAsync();

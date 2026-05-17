@@ -1614,6 +1614,21 @@ namespace BlockGo.Controllers
             if (string.IsNullOrEmpty(invokerId)) 
                 return BadRequest(new { status = "Error", message = "invokerId query parameter is required." });
             
+            var jwtRole = User.Claims.FirstOrDefault(c => c.Type == "dbRole")?.Value ?? User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Role)?.Value;
+            var isRegistrar = jwtRole == "registrar" || jwtRole == "admin" || jwtRole == "RegistrarMSP";
+            
+            if (!isRegistrar)
+            {
+                using var connIntercept = new NpgsqlConnection(_connectionString);
+                await connIntercept.OpenAsync();
+                using var cmdApprove = new NpgsqlCommand("UPDATE pending_grade_records SET status = 'DepartmentApproved' WHERE id = @id", connIntercept);
+                cmdApprove.Parameters.AddWithValue("id", recordId);
+                await cmdApprove.ExecuteNonQueryAsync();
+                
+                await NotifyAcademicDataChangedAsync("grade_forwarded", null, invokerId);
+                return Ok(new { status = "Success", message = "Section forwarded to Registrar successfully." });
+            }
+            
             try
             {
                 using var conn = new NpgsqlConnection(_connectionString);

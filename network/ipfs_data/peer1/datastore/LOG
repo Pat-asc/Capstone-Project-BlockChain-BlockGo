@@ -9477,3 +9477,20 @@
 06:20:31.775750 db@open done T·1.083561221s
 06:20:32.033290 db@close closing
 06:20:32.034652 db@close done T·1.343802ms
+=============== May 17, 2026 (UTC) ===============
+06:21:32.230684 log@legend F·NumFile S·FileSize N·Entry C·BadEntry B·BadBlock Ke·KeyError D·DroppedEntry L·Level Q·SeqNum T·TimeElapsed
+06:21:32.237484 version@stat F·[3 1] S·18KiB[3KiB 14KiB] Sc·[0.75 0.00]
+06:21:32.238114 db@open opening
+06:21:32.239651 journal@recovery F·1
+06:21:32.240166 journal@recovery recovering @2169
+06:21:32.245150 version@stat F·[3 1] S·18KiB[3KiB 14KiB] Sc·[0.75 0.00]
+06:21:32.811636 db@janitor F·6 G·0
+06:21:32.811894 db@open done T·573.56828ms
+07:03:35.459603 table@compaction L0·3 -> L1·1 S·18KiB Q·6431
+07:03:35.574141 table@build created L1@2173 N·57 S·14KiB "/F5..3OY,v6426":"/pr..101,v1803"
+07:03:35.601019 version@stat F·[0 1] S·14KiB[0B 14KiB] Sc·[0.00 0.00]
+07:03:35.666093 table@compaction committed F-3 S-3KiB Ke·0 D·11 T·142.49462ms
+07:03:35.691788 table@remove removed @2154
+07:03:35.706820 table@remove removed @2135
+07:03:35.708314 table@remove removed @2116
+07:03:35.709953 table@remove removed @2115
