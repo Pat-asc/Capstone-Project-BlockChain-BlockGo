@@ -8,6 +8,7 @@ import {
   syncSectionedStudentsToStorage,
 } from "../../utils/studentSectioningHelpers";
 import { downloadTemplateButtonClass } from "../shared/downloadButtonStyles";
+import { pushSectioningSharedState } from "../../utils/sharedClientState";
 
 const buildRegistrarSectioningName = () => "Registrar Sectioning Office";
 const CURRENT_YEAR = new Date().getFullYear();
@@ -122,6 +123,37 @@ function StudentListImport({ selectedProgram = "", onImportComplete }) {
       document.removeEventListener("mousedown", handleOutsideClick);
     };
   }, [isYearPickerOpen]);
+
+  useEffect(() => {
+    const handleSharedStateChanged = (event) => {
+      const keys = event.detail?.keys || [];
+
+      try {
+        if (keys.includes(STUDENT_BATCHES_KEY)) {
+          const saved = localStorage.getItem(STUDENT_BATCHES_KEY);
+          setSubmissionBatches(saved ? JSON.parse(saved) : []);
+        }
+
+        if (keys.includes(STUDENT_SUBMISSION_LOGS_KEY)) {
+          const saved = localStorage.getItem(STUDENT_SUBMISSION_LOGS_KEY);
+          setSubmissionLogs(saved ? JSON.parse(saved) : []);
+        }
+      } catch (error) {
+        console.warn("Failed to refresh imported students from shared state.", error);
+      }
+    };
+
+    window.addEventListener(
+      "blockgo:shared-client-state-changed",
+      handleSharedStateChanged
+    );
+
+    return () =>
+      window.removeEventListener(
+        "blockgo:shared-client-state-changed",
+        handleSharedStateChanged
+      );
+  }, []);
 
   const yearOptions = useMemo(
     () => Array.from({ length: 12 }, (_, index) => String(yearPickerAnchor + index)),
@@ -282,6 +314,7 @@ function StudentListImport({ selectedProgram = "", onImportComplete }) {
         JSON.stringify(updatedLogs)
       );
       syncSectionedStudentsToStorage(updatedBatches);
+      pushSectioningSharedState();
       onImportComplete?.(updatedBatches);
 
       setSelectedFile(null);

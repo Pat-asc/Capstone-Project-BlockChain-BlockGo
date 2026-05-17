@@ -33,11 +33,12 @@ const normalizeSectionValue = (value = "") =>
 
 const buildFullName = (student = {}) =>
   [
+    student.firstName,
+    getStudentMiddleName(student),
     student.lastName,
-    [student.firstName, getStudentMiddleName(student)].filter(Boolean).join(" "),
   ]
     .filter(Boolean)
-    .join(", ") ||
+    .join(" ") ||
   student.fullname ||
   student.name ||
   `Student ${student.studentId || ""}`.trim();
@@ -45,7 +46,7 @@ const buildFullName = (student = {}) =>
 const buildEnrollmentFile = (students = [], sectionCode = "section") => {
   const rows = students.map((student) => [
     student.studentId || "",
-    "",
+    student.email || student.studentEmail || "",
     buildFullName(student),
     "",
   ]);

@@ -1,3 +1,5 @@
+import { saveSharedClientState } from "../services/api";
+
 export const STUDENT_PUBLISHED_GRADES_KEY = "studentPublishedGrades";
 
 export const normalizeStudentId = (studentId = "") =>
@@ -41,6 +43,9 @@ export const upsertPublishedStudentGrades = (records = []) => {
   localStorage.setItem(
     STUDENT_PUBLISHED_GRADES_KEY,
     JSON.stringify(publishedGrades)
+  );
+  saveSharedClientState(STUDENT_PUBLISHED_GRADES_KEY, publishedGrades).catch(
+    (error) => console.warn("Shared published grades sync failed:", error)
   );
 
   return publishedGrades;

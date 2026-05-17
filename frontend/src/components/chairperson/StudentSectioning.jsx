@@ -13,6 +13,7 @@ import {
   fetchApprovedStudents,
   fetchDepartmentSections,
 } from "../../services/api";
+import { pushSectioningSharedState } from "../../utils/sharedClientState";
 
 const buildStudentName = (student) => {
   const firstAndMiddle = [
@@ -376,6 +377,7 @@ function StudentSectioning({
 
           localStorage.setItem(STUDENT_BATCHES_KEY, JSON.stringify(nextBatches));
           syncSectionedStudentsToStorage(nextBatches);
+          pushSectioningSharedState();
           onSectioningSaved?.();
           return nextBatches;
         });
@@ -710,6 +712,31 @@ function StudentSectioning({
     localStorage.setItem(STUDENT_BATCHES_KEY, JSON.stringify(batches));
   }, [batches]);
 
+  useEffect(() => {
+    const handleSharedStateChanged = (event) => {
+      const keys = event.detail?.keys || [];
+      if (!keys.includes(STUDENT_BATCHES_KEY)) return;
+
+      try {
+        const saved = localStorage.getItem(STUDENT_BATCHES_KEY);
+        setBatches(saved ? JSON.parse(saved) : []);
+      } catch (error) {
+        console.warn("Failed to refresh chairperson batches from shared state.", error);
+      }
+    };
+
+    window.addEventListener(
+      "blockgo:shared-client-state-changed",
+      handleSharedStateChanged
+    );
+
+    return () =>
+      window.removeEventListener(
+        "blockgo:shared-client-state-changed",
+        handleSharedStateChanged
+      );
+  }, []);
+
   const updateSelectedBatch = (updater) => {
     if (!activeBatchKey) return;
 
@@ -724,6 +751,7 @@ function StudentSectioning({
     setBatches(nextBatches);
     localStorage.setItem(STUDENT_BATCHES_KEY, JSON.stringify(nextBatches));
     syncSectionedStudentsToStorage(nextBatches);
+    pushSectioningSharedState();
     onSectioningSaved?.();
   };
 
@@ -1295,6 +1323,7 @@ function StudentSectioning({
       JSON.stringify(nextGraduatingStudents)
     );
     syncSectionedStudentsToStorage(nextBatches);
+    pushSectioningSharedState();
     onSectioningSaved?.();
   };
 
@@ -1307,6 +1336,7 @@ function StudentSectioning({
       JSON.stringify(nextAssignments)
     );
     syncSectionedStudentsToStorage(nextBatches);
+    pushSectioningSharedState();
     onSectioningSaved?.();
   };
 

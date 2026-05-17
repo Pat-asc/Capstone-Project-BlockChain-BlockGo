@@ -13,6 +13,7 @@ import {
 } from "../../utils/studentSectioningHelpers";
 import { downloadTemplateButtonClass } from "../shared/downloadButtonStyles";
 import { syncSectioningBatchToBackend } from "../../utils/registrarSectioningBackendSync";
+import { pushSectioningSharedState } from "../../utils/sharedClientState";
 
 const buildStudentName = (student) => {
   const firstAndMiddle = [
@@ -534,6 +535,31 @@ function RegistrarStudentSectioning({
   }, [batches]);
 
   useEffect(() => {
+    const handleSharedStateChanged = (event) => {
+      const keys = event.detail?.keys || [];
+      if (!keys.includes(STUDENT_BATCHES_KEY)) return;
+
+      try {
+        const saved = localStorage.getItem(STUDENT_BATCHES_KEY);
+        setBatches(saved ? JSON.parse(saved) : []);
+      } catch (error) {
+        console.warn("Failed to refresh sectioning batches from shared state.", error);
+      }
+    };
+
+    window.addEventListener(
+      "blockgo:shared-client-state-changed",
+      handleSharedStateChanged
+    );
+
+    return () =>
+      window.removeEventListener(
+        "blockgo:shared-client-state-changed",
+        handleSharedStateChanged
+      );
+  }, []);
+
+  useEffect(() => {
     if (!isBatchYearPickerOpen) return;
 
     const handleOutsideClick = (event) => {
@@ -562,6 +588,7 @@ function RegistrarStudentSectioning({
     setBatches(nextBatches);
     localStorage.setItem(STUDENT_BATCHES_KEY, JSON.stringify(nextBatches));
     syncSectionedStudentsToStorage(nextBatches);
+    pushSectioningSharedState();
     onSectioningSaved?.();
   };
 
@@ -1184,6 +1211,7 @@ function RegistrarStudentSectioning({
       JSON.stringify(nextGraduatingStudents)
     );
     syncSectionedStudentsToStorage(nextBatches);
+    pushSectioningSharedState();
     onSectioningSaved?.();
   };
 
@@ -1196,6 +1224,7 @@ function RegistrarStudentSectioning({
       JSON.stringify(nextAssignments)
     );
     syncSectionedStudentsToStorage(nextBatches);
+    pushSectioningSharedState();
     onSectioningSaved?.();
   };
 

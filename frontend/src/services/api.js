@@ -417,6 +417,17 @@ export const fetchFacultySections = async (email) => {
     return await fetchWithAuth(`/Auth/faculty/${encodeURIComponent(email)}/assigned-sections`);
 };
 
+export const fetchSharedClientState = async (key) => {
+    return await fetchWithAuth(`/Auth/shared-state/${encodeURIComponent(key)}`);
+};
+
+export const saveSharedClientState = async (key, value) => {
+    return await fetchWithAuth(`/Auth/shared-state/${encodeURIComponent(key)}`, {
+        method: 'PUT',
+        body: JSON.stringify({ value })
+    });
+};
+
 export const fetchFacultyStudents = async (email) => {
     return await fetchWithAuth(`/Auth/faculty/${encodeURIComponent(email)}/students`);
 };

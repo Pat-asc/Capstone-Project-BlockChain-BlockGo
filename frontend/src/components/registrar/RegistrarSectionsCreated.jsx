@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   AVAILABLE_YEAR_LEVELS,
   STUDENT_BATCHES_KEY,
@@ -10,6 +10,7 @@ import {
   syncSectionedStudentsToStorage,
 } from "../../utils/studentSectioningHelpers";
 import { syncSectioningBatchesToBackend } from "../../utils/registrarSectioningBackendSync";
+import { pushSectioningSharedState } from "../../utils/sharedClientState";
 
 const GRADUATING_STUDENTS_KEY = "graduatingStudents";
 const IRREGULAR_SUBJECTS_KEY = "irregularSubjectAssignments";
@@ -111,7 +112,33 @@ function RegistrarSectionsCreated() {
     setBatches(nextBatches);
     localStorage.setItem(STUDENT_BATCHES_KEY, JSON.stringify(nextBatches));
     syncSectionedStudentsToStorage(nextBatches);
+    pushSectioningSharedState();
   };
+
+  useEffect(() => {
+    const handleSharedStateChanged = (event) => {
+      const keys = event.detail?.keys || [];
+      if (!keys.includes(STUDENT_BATCHES_KEY)) return;
+
+      try {
+        const saved = localStorage.getItem(STUDENT_BATCHES_KEY);
+        setBatches(saved ? JSON.parse(saved) : []);
+      } catch (error) {
+        console.warn("Failed to refresh created sections from shared state.", error);
+      }
+    };
+
+    window.addEventListener(
+      "blockgo:shared-client-state-changed",
+      handleSharedStateChanged
+    );
+
+    return () =>
+      window.removeEventListener(
+        "blockgo:shared-client-state-changed",
+        handleSharedStateChanged
+      );
+  }, []);
 
   const markDepartmentChanged = (department) => {
     if (!department) return;
@@ -127,6 +154,7 @@ function RegistrarSectionsCreated() {
 
     localStorage.setItem(STUDENT_BATCHES_KEY, JSON.stringify(batches));
     syncSectionedStudentsToStorage(batches);
+    pushSectioningSharedState();
     try {
       await syncSectioningBatchesToBackend(
         batches.filter((batch) => batch.program === selectedDepartment)

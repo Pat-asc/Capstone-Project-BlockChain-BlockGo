@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import * as signalR from '@microsoft/signalr';
 import { getChatHubUrl } from '../../services/api';
+import { pullSharedClientState } from '../../utils/sharedClientState';
 
 const roleKeyFromRoleString = (role) => {
   const r = (role || '').toLowerCase();
@@ -426,7 +427,11 @@ const Chat = ({
 
     conn.on('AcademicDataChanged', (payload) => {
       console.log('[Chat] AcademicDataChanged:', payload);
-      window.dispatchEvent(new CustomEvent('blockgo:academic-data-changed', { detail: payload }));
+      pullSharedClientState()
+        .catch((error) => console.warn('[Chat] Shared state pull failed:', error))
+        .finally(() => {
+          window.dispatchEvent(new CustomEvent('blockgo:academic-data-changed', { detail: payload }));
+        });
     });
 
     conn.on('ChatContacts', (contacts) => {
@@ -525,6 +530,7 @@ const Chat = ({
         setConnection(conn);
         conn.invoke('JoinChat', userRole || '').catch(e => console.error('[Chat] JoinChat failed:', e));
         conn.invoke('GetChatContacts').catch(e => console.error('[Chat] GetChatContacts failed:', e));
+        pullSharedClientState().catch((error) => console.warn('[Chat] Initial shared state pull failed:', error));
       })
       .catch((err) => console.error('SignalR connection failed:', err));
 

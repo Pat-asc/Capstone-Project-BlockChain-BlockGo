@@ -12,6 +12,7 @@ import {
   fetchApprovedFaculties,
 } from "../../services/api";
 import { downloadTemplateButtonClass } from "../shared/downloadButtonStyles";
+import { pushAssignmentsSharedState } from "../../utils/sharedClientState";
 
 const SEMESTER_OPTIONS = ["1st Semester", "2nd Semester", "Summer"];
 const DAY_OPTIONS = [
@@ -106,6 +107,31 @@ function AcademicAssignment({ chairpersonDepartment = "" }) {
     const saved = localStorage.getItem("registrarAssignments");
     return saved ? JSON.parse(saved) : [];
   });
+
+  useEffect(() => {
+    const handleSharedStateChanged = (event) => {
+      const keys = event.detail?.keys || [];
+      if (!keys.includes("registrarAssignments")) return;
+
+      try {
+        const saved = localStorage.getItem("registrarAssignments");
+        setSavedAssignments(saved ? JSON.parse(saved) : []);
+      } catch (error) {
+        console.warn("Failed to refresh assignments from shared state.", error);
+      }
+    };
+
+    window.addEventListener(
+      "blockgo:shared-client-state-changed",
+      handleSharedStateChanged
+    );
+
+    return () =>
+      window.removeEventListener(
+        "blockgo:shared-client-state-changed",
+        handleSharedStateChanged
+      );
+  }, []);
 
   const studentSections =
     JSON.parse(localStorage.getItem("studentSections")) || [];
@@ -308,6 +334,7 @@ function AcademicAssignment({ chairpersonDepartment = "" }) {
         "registrarAssignments",
         JSON.stringify(updatedAssignments)
       );
+      pushAssignmentsSharedState();
       syncFacultyLoadToBackend(newAssignment);
 
       alert("Section distributed to faculty successfully.");
@@ -612,6 +639,7 @@ function AcademicAssignment({ chairpersonDepartment = "" }) {
 
     setSavedAssignments(updatedAssignments);
     localStorage.setItem("registrarAssignments", JSON.stringify(updatedAssignments));
+    pushAssignmentsSharedState();
     importedAssignments.forEach(syncFacultyLoadToBackend);
     setFacultyLoadingFile(null);
     setFacultyLoadingPreview([]);
@@ -631,6 +659,7 @@ function AcademicAssignment({ chairpersonDepartment = "" }) {
       "registrarAssignments",
       JSON.stringify(updatedAssignments)
     );
+    pushAssignmentsSharedState();
   };
 
   const assignmentRows = useMemo(

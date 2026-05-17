@@ -2553,5 +2553,113 @@ namespace Client_app.Controllers
             }
             catch (Exception ex) { return StatusCode(500, new { status = "Error", message = ex.Message }); }
         }
+
+        private static readonly HashSet<string> AllowedSharedClientStateKeys = new(StringComparer.OrdinalIgnoreCase)
+        {
+            "chairpersonStudentBatches",
+            "chairpersonSubmissionLogs",
+            "studentMasterlist",
+            "studentSections",
+            "registrarAssignments",
+            "chairpersonSectionReviews",
+            "studentPublishedGrades",
+            "graduatingStudents",
+            "irregularSubjectAssignments",
+            "encodingPeriod",
+            "facultyLoadResetAt",
+            "STUDENT_BATCHES_KEY",
+            "STUDENT_SUBMISSION_LOGS_KEY"
+        };
+
+        public class SharedClientStateRequest
+        {
+            public JsonElement Value { get; set; }
+        }
+
+        private static bool IsAllowedSharedClientStateKey(string key) =>
+            !string.IsNullOrWhiteSpace(key) && AllowedSharedClientStateKeys.Contains(key);
+
+        private static async Task EnsureSharedClientStateTableAsync(NpgsqlConnection conn)
+        {
+            using var cmd = new NpgsqlCommand(@"
+                CREATE TABLE IF NOT EXISTS shared_client_state (
+                    key VARCHAR(120) PRIMARY KEY,
+                    value JSONB NOT NULL,
+                    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    updated_by VARCHAR(255)
+                );", conn);
+            await cmd.ExecuteNonQueryAsync();
+        }
+
+        [Authorize]
+        [HttpGet("shared-state/{key}")]
+        public async Task<IActionResult> GetSharedClientState(string key)
+        {
+            if (!IsAllowedSharedClientStateKey(key))
+                return BadRequest(new { status = "Error", message = "Shared state key is not allowed." });
+
+            try
+            {
+                using var conn = new NpgsqlConnection(_connectionString);
+                await conn.OpenAsync();
+                await EnsureSharedClientStateTableAsync(conn);
+
+                using var cmd = new NpgsqlCommand("SELECT value::text, updated_at FROM shared_client_state WHERE key = @key", conn);
+                cmd.Parameters.AddWithValue("key", key);
+                using var reader = await cmd.ExecuteReaderAsync();
+
+                if (!await reader.ReadAsync())
+                    return Ok(new { status = "Success", key, value = (object?)null, updatedAt = (DateTime?)null });
+
+                var rawValue = reader.GetString(0);
+                var value = JsonSerializer.Deserialize<JsonElement>(rawValue);
+                return Ok(new
+                {
+                    status = "Success",
+                    key,
+                    value,
+                    updatedAt = reader.GetDateTime(1)
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = "Error", message = ex.Message });
+            }
+        }
+
+        [Authorize]
+        [HttpPut("shared-state/{key}")]
+        public async Task<IActionResult> SaveSharedClientState(string key, [FromBody] SharedClientStateRequest request)
+        {
+            if (!IsAllowedSharedClientStateKey(key))
+                return BadRequest(new { status = "Error", message = "Shared state key is not allowed." });
+
+            try
+            {
+                using var conn = new NpgsqlConnection(_connectionString);
+                await conn.OpenAsync();
+                await EnsureSharedClientStateTableAsync(conn);
+
+                var valueJson = request.Value.GetRawText();
+                using var cmd = new NpgsqlCommand(@"
+                    INSERT INTO shared_client_state (key, value, updated_at, updated_by)
+                    VALUES (@key, @value::jsonb, CURRENT_TIMESTAMP, @updatedBy)
+                    ON CONFLICT (key)
+                    DO UPDATE SET value = EXCLUDED.value,
+                                  updated_at = EXCLUDED.updated_at,
+                                  updated_by = EXCLUDED.updated_by;", conn);
+                cmd.Parameters.AddWithValue("key", key);
+                cmd.Parameters.AddWithValue("value", valueJson);
+                cmd.Parameters.AddWithValue("updatedBy", (object?)User.Identity?.Name ?? DBNull.Value);
+                await cmd.ExecuteNonQueryAsync();
+
+                await NotifyAcademicDataChangedAsync("shared_client_state_updated", null, User.Identity?.Name);
+                return Ok(new { status = "Success", key });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = "Error", message = ex.Message });
+            }
+        }
     }
 }

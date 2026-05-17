@@ -3,7 +3,7 @@ import { fetchAllGrades, finalizeGrade, fetchPendingRequests, approveRegistratio
 import RegistrarHeader from './RegistrarHeader';
 import RegistrarSidebar from './RegistrarSidebar';
 import RegistrarDashboard from './RegistrarDashboard';
-import StudentListImport from '../student/StudentListImport';
+import StudentListImport from './StudentListImport';
 import EncodingPeriod from './EncodingPeriod';
 import SystemLogs from './SystemLogs';
 import PdfReportViewer from '../shared/PdfReportViewer';

@@ -59,6 +59,7 @@ const FacultyPortal = ({ onLogout, allGrades, setAllGrades }) => {
   const [activeTab, setActiveTab] = useState("All Sections");
   const [selectedProgram, setSelectedProgram] = useState("");
   const [selectedSection, setSelectedSection] = useState(null);
+  const [sharedDataVersion, setSharedDataVersion] = useState(0);
 
   const [systemSettings, setSystemSettings] = useState({
     semester: "2nd Semester",
@@ -126,6 +127,27 @@ const FacultyPortal = ({ onLogout, allGrades, setAllGrades }) => {
     };
   }, []);
 
+  useEffect(() => {
+    const refreshSharedData = (event) => {
+      const keys = event.detail?.keys || [];
+      if (
+        keys.includes("registrarAssignments") ||
+        keys.includes("studentSections") ||
+        keys.includes("irregularSubjectAssignments")
+      ) {
+        setSharedDataVersion((current) => current + 1);
+      }
+    };
+
+    window.addEventListener("blockgo:shared-client-state-changed", refreshSharedData);
+
+    return () =>
+      window.removeEventListener(
+        "blockgo:shared-client-state-changed",
+        refreshSharedData
+      );
+  }, []);
+
   const systemTerm =
     encodingData?.term === "finals" || encodingData?.term === "midterm"
       ? encodingData.term
@@ -134,17 +156,17 @@ const FacultyPortal = ({ onLogout, allGrades, setAllGrades }) => {
   const assignments = useMemo(() => {
     const saved = localStorage.getItem("registrarAssignments");
     return saved ? JSON.parse(saved) : [];
-  }, []);
+  }, [sharedDataVersion]);
 
   const studentSections = useMemo(() => {
     const saved = localStorage.getItem("studentSections");
     return saved ? JSON.parse(saved) : [];
-  }, []);
+  }, [sharedDataVersion]);
 
   const irregularSubjectAssignments = useMemo(() => {
     const saved = localStorage.getItem("irregularSubjectAssignments");
     return saved ? JSON.parse(saved) : [];
-  }, []);
+  }, [sharedDataVersion]);
 
   const myAssignments = useMemo(() => {
     return assignments.filter(

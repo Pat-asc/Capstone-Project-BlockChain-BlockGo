@@ -37,7 +37,7 @@ function ChairpersonPortal({ onLogout, allGrades = {} }) {
   const [activeTab, setActiveTab] = useState("sectioning");
   const [reviewData, setReviewData] = useState(loadSavedReviewData);
   const [selectedReviewKey, setSelectedReviewKey] = useState("");
-  const [, setStudentDataVersion] = useState(0);
+  const [studentDataVersion, setStudentDataVersion] = useState(0);
   const [encodingPeriod, setEncodingPeriod] = useState({
     semester: "2nd Semester",
     term: "midterm",
@@ -70,6 +70,28 @@ function ChairpersonPortal({ onLogout, allGrades = {} }) {
       window.removeEventListener("blockgo:chairperson-review-changed", refreshReviewData);
       window.removeEventListener("storage", handleStorage);
     };
+  }, []);
+
+  useEffect(() => {
+    const refreshPortalData = (event) => {
+      const keys = event.detail?.keys || [];
+      if (
+        keys.includes(STUDENT_BATCHES_KEY) ||
+        keys.includes("registrarAssignments") ||
+        keys.includes("studentMasterlist") ||
+        keys.includes(CHAIRPERSON_REVIEW_KEY)
+      ) {
+        setStudentDataVersion((current) => current + 1);
+      }
+    };
+
+    window.addEventListener("blockgo:shared-client-state-changed", refreshPortalData);
+
+    return () =>
+      window.removeEventListener(
+        "blockgo:shared-client-state-changed",
+        refreshPortalData
+      );
   }, []);
 
   useEffect(() => {
@@ -112,17 +134,17 @@ function ChairpersonPortal({ onLogout, allGrades = {} }) {
   const assignments = useMemo(() => {
     const saved = localStorage.getItem("registrarAssignments");
     return saved ? JSON.parse(saved) : [];
-  }, []);
+  }, [studentDataVersion]);
 
-  const importedStudents = (() => {
+  const importedStudents = useMemo(() => {
     const saved = localStorage.getItem("studentMasterlist");
     return saved ? JSON.parse(saved) : [];
-  })();
+  }, [studentDataVersion]);
 
-  const forwardedBatches = (() => {
+  const forwardedBatches = useMemo(() => {
     const saved = localStorage.getItem(STUDENT_BATCHES_KEY);
     return saved ? JSON.parse(saved) : [];
-  })();
+  }, [studentDataVersion]);
 
   const availableDepartments = useMemo(() => {
     const departments = new Set();
