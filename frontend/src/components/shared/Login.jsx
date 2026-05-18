@@ -7,34 +7,30 @@ import { login, submitRegistrationRequest, sendVerificationCode, forgotPassword,
 
 
 const programs = [
-  "Bachelor of Science in Accountancy",
-  "Bachelor of Science in Business Administration major in Financial Management",
-  "Bachelor of Science in Business Administration major in Marketing Management",
-  "Bachelor of Science in Business Administration major in Human Resource Management",
-  "Bachelor of Science in Entrepreneurship",
+  "Bachelor of Early Childhood Education",
+  "Bachelor of Secondary Education Major in English",
+  "Bachelor of Secondary Education Major in Filipino",
+  "Bachelor of Secondary Education Major in Mathematics",
+  "Bachelor of Secondary Education Major in Science",
+  "Bachelor of Secondary Education Major in Social Studies",
   "Bachelor of Science in Civil Engineering",
   "Bachelor of Science in Electrical Engineering",
-  "Bachelor of Science in Computer Engineering",
   "Bachelor of Science in Information Technology",
-  "Bachelor of Early Childhood Education",
-  "Bachelor of Secondary Education major in English",
-  "Bachelor of Secondary Education major in Filipino",
-  "Bachelor of Secondary Education major in Mathematics",
-  "Bachelor of Secondary Education major in Science",
-  "Bachelor of Secondary Education major in Social Studies",
-  "Bachelor of Physical Education",
   "Bachelor of Arts in Communication",
-  "Bachelor of Arts in Psychology",
+  "Bachelor of Science in Psychology",
   "Bachelor of Science in Social Work",
-  "Bachelor of Science in Public Administration",
-  "Master of Arts in Education",
-  "Master in Public Administration"
+  "Bachelor of Public Administration",
+  "Bachelor of Science in Accountancy",
+  "Bachelor of Science in Business Administration Major in Financial Management",
+  "Bachelor of Science in Business Administration Major in Human Resource Management",
+  "Bachelor of Science in Business Administration Major in Marketing Management"
 ];
 
 const Login = ({ onLogin }) => {
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [currentView, setCurrentView] = useState('signIn');
   const [fullName, setFullName] = useState("");
   const [role, setRole] = useState("student");
@@ -49,6 +45,7 @@ const Login = ({ onLogin }) => {
   const [message, setMessage] = useState('');
   const [resetToken, setResetToken] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
@@ -199,6 +196,70 @@ const Login = ({ onLogin }) => {
     setIsLoading(false);
   };
 
+  const renderPasswordInput = ({
+    label,
+    value,
+    onChange,
+    placeholder,
+    autoComplete,
+    isVisible,
+    onToggle,
+    helperText,
+  }) => (
+    <div className="input-group">
+      <label>{label}</label>
+      <div style={{ position: 'relative' }}>
+        <input
+          type={isVisible ? "text" : "password"}
+          placeholder={placeholder}
+          autoComplete={autoComplete}
+          value={value}
+          onChange={onChange}
+          required
+          style={{ width: '100%', paddingRight: '44px' }}
+        />
+        {value ? (
+          <button
+            type="button"
+            onClick={onToggle}
+            aria-label={isVisible ? "Hide password" : "Show password"}
+            style={{
+              position: 'absolute',
+              right: '12px',
+              top: '50%',
+              transform: 'translateY(-50%)',
+              border: 'none',
+              background: 'transparent',
+              padding: 0,
+              cursor: 'pointer',
+              color: '#64748b',
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            {isVisible ? (
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M3 3l18 18" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+                <path d="M10.58 10.58A2 2 0 0013.41 13.41" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                <path d="M9.88 5.09A10.94 10.94 0 0112 4.91c5.05 0 9.27 3.11 10.5 7.5a10.74 10.74 0 01-3.04 4.57" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                <path d="M6.61 6.62A10.77 10.77 0 001.5 12.41a10.75 10.75 0 004.2 5.42A10.89 10.89 0 0012 19.91c1.8 0 3.5-.43 5-1.2" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            ) : (
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M1.5 12s3.82-7.09 10.5-7.09S22.5 12 22.5 12s-3.82 7.09-10.5 7.09S1.5 12 1.5 12z" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="1.8" />
+              </svg>
+            )}
+          </button>
+        ) : null}
+      </div>
+      {helperText ? (
+        <small style={{ color: '#dc2626', fontSize: '12px' }}>{helperText}</small>
+      ) : null}
+    </div>
+  );
+
   return (
     <div className="login-container">
       <style>
@@ -244,7 +305,7 @@ const Login = ({ onLogin }) => {
           {currentView === 'signUp' && (
             <form className="login-form" 
               onSubmit={signupStep === 1 ? handleSendCode : handleSignupSubmit} 
-              style={{ maxHeight: '55vh', overflowY: 'auto', paddingRight: '10px' }}
+              style={{ maxHeight: 'min(55vh, 32rem)', overflowY: 'auto', paddingRight: '10px' }}
             >
               <>
                 {/* Signup Fields */}
@@ -257,7 +318,7 @@ const Login = ({ onLogin }) => {
                   <select value={role} onChange={(e) => setRole(e.target.value)} style={{ width: '100%', padding: '12px', border: '1px solid #ddd', borderRadius: '8px', boxSizing: 'border-box' }}>
                     <option value="student">Student</option>
                     <option value="faculty">Faculty / Professor</option>
-                    <option value="department_admin">Department Admin</option>
+                    <option value="department_admin">Department Chairperson</option>
                   </select>
                 </div>
                 {role === "student" && (
@@ -322,19 +383,17 @@ const Login = ({ onLogin }) => {
                     disabled={signupStep === 2}
                   />
                 </div>
-        {signupStep === 1 && role !== 'student' && (
-                  <div className="input-group">
-                    <label>Password</label>
-                    <input 
-                      type="password" 
-                      placeholder="Password" 
-                      autoComplete="new-password"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      required 
-                    />
-                  </div>
-                )}
+                {signupStep === 1 && role !== 'student' &&
+                  renderPasswordInput({
+                    label: "Password",
+                    value: password,
+                    onChange: (e) => setPassword(e.target.value),
+                    placeholder: "Password",
+                    autoComplete: "new-password",
+                    isVisible: showPassword,
+                    onToggle: () => setShowPassword((current) => !current),
+                    helperText: "Must be at least 8 characters with uppercase, lowercase, number, and special character.",
+                  })}
                 {signupStep === 2 && (
                   <div className="input-group">
                     <label>Verification Code</label>
@@ -363,21 +422,19 @@ const Login = ({ onLogin }) => {
                   required 
                 />
               </div>
-              <div className="input-group">
-                <label>Password</label>
-                <input 
-                  type="password" 
-                  placeholder="Password" 
-                  autoComplete="current-password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required 
-                />
-              </div>
+              {renderPasswordInput({
+                label: "Password",
+                value: password,
+                onChange: (e) => setPassword(e.target.value),
+                placeholder: "Password",
+                autoComplete: "current-password",
+                isVisible: showPassword,
+                onToggle: () => setShowPassword((current) => !current),
+              })}
               <button type="submit" className="sign-in-btn" disabled={isLoading}>
                 {isLoading ? (<><span className="spinner"></span> Signing In...</>) : 'Sign In'}
               </button>
-              <p className="forgot-password" onClick={() => { setCurrentView('forgotPassword'); setError(''); setMessage(''); }} style={{ cursor: 'pointer', color: '#003366', fontWeight: 'normal', marginTop: '10px', textAlign: 'right' }}>
+              <p className="forgot-password auth-link" onClick={() => { setCurrentView('forgotPassword'); setError(''); setMessage(''); }} style={{ cursor: 'pointer', fontWeight: 'normal', marginTop: '10px', textAlign: 'center' }}>
                 Forgot Password?
               </p>
             </form>
@@ -401,14 +458,24 @@ const Login = ({ onLogin }) => {
           {currentView === 'resetPassword' && (
             <form className="login-form" onSubmit={handleResetSubmit}>
               <p style={{ textAlign: 'center', marginBottom: '15px', color: '#666' }}>Enter your new password below.</p>
-              <div className="input-group">
-                <label>New Password</label>
-                <input type="password" placeholder="New Password" value={password} onChange={(e) => setPassword(e.target.value)} required />
-              </div>
-              <div className="input-group">
-                <label>Confirm Password</label>
-                <input type="password" placeholder="Confirm New Password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} required />
-              </div>
+              {renderPasswordInput({
+                label: "New Password",
+                value: password,
+                onChange: (e) => setPassword(e.target.value),
+                placeholder: "New Password",
+                autoComplete: "new-password",
+                isVisible: showPassword,
+                onToggle: () => setShowPassword((current) => !current),
+              })}
+              {renderPasswordInput({
+                label: "Confirm Password",
+                value: confirmPassword,
+                onChange: (e) => setConfirmPassword(e.target.value),
+                placeholder: "Confirm New Password",
+                autoComplete: "new-password",
+                isVisible: showConfirmPassword,
+                onToggle: () => setShowConfirmPassword((current) => !current),
+              })}
               <button type="submit" className="sign-in-btn" disabled={isLoading}>
                 {isLoading ? (<><span className="spinner"></span> Updating...</>) : 'Update Password'}
               </button>
@@ -416,7 +483,7 @@ const Login = ({ onLogin }) => {
           )}
 
           {currentView !== 'resetPassword' && (
-            <p className="toggle-view" onClick={() => { setCurrentView(currentView === 'signIn' || currentView === 'forgotPassword' ? 'signUp' : 'signIn'); setError(''); setMessage(''); }} style={{ cursor: 'pointer', color: '#003366', fontWeight: 'bold', marginTop: '15px' }}>
+            <p className="toggle-view auth-link" onClick={() => { setCurrentView(currentView === 'signIn' || currentView === 'forgotPassword' ? 'signUp' : 'signIn'); setError(''); setMessage(''); }} style={{ cursor: 'pointer', fontWeight: 'bold', marginTop: '15px' }}>
               {currentView === 'signIn' || currentView === 'forgotPassword' ? "Don't have an account? Request Access" : "Already have an account? Sign In"}
             </p>
           )}

@@ -29,9 +29,13 @@ cleanup_processes() {
     for pid in "${PIDS[@]}"; do
         if ps -p $pid > /dev/null 2>&1; then kill $pid 2>/dev/null || true; fi
     done
-    pkill -f dotnet || true
+    if [ -f .watchdog.pid ]; then
+        kill -9 $(cat .watchdog.pid) 2>/dev/null || true
+        rm -f .watchdog.pid
+    fi
+    pkill -9 -f nginx_failover_watchdog.sh 2>/dev/null || true
     docker compose -f docker-compose-main.yaml -f docker-compose-annex.yaml -f docker-compose-pubad.yaml down -v --remove-orphans 2>/dev/null || true
-    docker rm -f -v couchdb_wallet couchdb_wallet_faculty couchdb_wallet_department blockgo-middleware 2>/dev/null || true
+    docker rm -f -v couchdb_wallet couchdb_wallet_faculty couchdb_wallet_department blockgo-middleware nginx-shield-main-failover nginx-shield-annex-failover nginx-shield-pubad-failover 2>/dev/null || true
     log_info "All processes stopped and volumes wiped."
 }
 
@@ -41,8 +45,29 @@ wait_for_service() {
     local host=$1; local port=$2; local name=$3; local timeout=$4
     local start_time=$(date +%s)
     log_info "Waiting for $name ($host:$port)..."
-    while ! nc -z -w 2 $host $port > /dev/null 2>&1; do
-        if [ $(($(date +%s) - start_time)) -ge $timeout ]; then log_error "$name timeout!"; fi
+    while ! nc -z -w 2 $host $port > /dev/null 2>&1 && ! bash -c "echo > /dev/tcp/$host/$port" > /dev/null 2>&1 && ! curl -s http://$host:$port > /dev/null 2>&1 && ! curl -s -k https://$host:$port > /dev/null 2>&1; do
+        if [ $(($(date +%s) - start_time)) -ge $timeout ]; then 
+            if [ "$port" == "7054" ]; then
+                echo -e "\n--- CA REGISTRAR DOCKER LOGS ---"
+                docker logs ca.registrar.capstone.com || true
+                echo "--------------------------------"
+            fi
+            log_error "$name timeout on $host:$port!"
+        fi
+        sleep 2
+    done
+    log_info "$name is ready!"
+}
+
+wait_for_optional_service() {
+    local host=$1; local port=$2; local name=$3; local timeout=$4
+    local start_time=$(date +%s)
+    log_info "Checking optional $name ($host:$port)..."
+    while ! nc -z -w 2 $host $port > /dev/null 2>&1 && ! bash -c "echo > /dev/tcp/$host/$port" > /dev/null 2>&1; do
+        if [ $(($(date +%s) - start_time)) -ge $timeout ]; then
+            log_warn "$name is not reachable. Continuing because core services do not depend on nginx-shield."
+            return 0
+        fi
         sleep 2
     done
     log_info "$name is ready!"
@@ -111,11 +136,19 @@ spawn_couchdb_wallet() {
 log_info "Phase 1: Initializing CA infrastructure..."
 log_warn "Wiping previous CA databases and crypto material..."
 
-# Purge orphaned local services holding ports for absolute idempotency
-pkill -f dotnet || true
+# Gracefully stop the orphaned watchdog if it's still running
+if [ -f .watchdog.pid ]; then
+    kill -9 $(cat .watchdog.pid) 2>/dev/null || true
+    rm -f .watchdog.pid
+fi
+    pkill -9 -f nginx_failover_watchdog.sh 2>/dev/null || true
 
 docker compose -f docker-compose-main.yaml -f docker-compose-annex.yaml -f docker-compose-pubad.yaml down -v --remove-orphans 2>/dev/null || true
-docker rm -f -v couchdb_wallet couchdb_wallet_faculty couchdb_wallet_department blockgo-middleware 2>/dev/null || true
+docker rm -f -v couchdb_wallet couchdb_wallet_faculty couchdb_wallet_department blockgo-middleware nginx-shield-main-failover nginx-shield-annex-failover nginx-shield-pubad-failover 2>/dev/null || true
+
+# Force remove root-owned files created by containers to prevent CA container crashes
+docker run --rm -v "$(pwd):/tmp/network" alpine sh -c "rm -rf /tmp/network/fabric-ca/registrar/* /tmp/network/fabric-ca/faculty/* /tmp/network/fabric-ca/department/* /tmp/network/${CRYPTO_DIR} /tmp/network/${ARTIFACTS_DIR} /tmp/network/../middleware/wallet" 2>/dev/null || true
+
 rm -rf ./fabric-ca/registrar/* ./fabric-ca/faculty/* ./fabric-ca/department/* 2>/dev/null || true
 rm -rf "$CRYPTO_DIR" "$ARTIFACTS_DIR" 2>/dev/null || true
 rm -rf ../middleware/wallet 2>/dev/null || true
@@ -129,7 +162,7 @@ echo "{}" > "$TMP_DOCKER_CFG/config.json"
 DOCKER_CONFIG=$TMP_DOCKER_CFG docker compose -f docker-compose-main.yaml -f docker-compose-annex.yaml -f docker-compose-pubad.yaml up -d ca.registrar.capstone.com ca.faculty.capstone.com ca.department.capstone.com cli
 rm -rf "$TMP_DOCKER_CFG"
 
-wait_for_service 127.0.0.1 7054 "Registrar CA" 60
+wait_for_service 127.0.0.1 7054 "Registrar CA" 120
 
 # ============================================================
 # PHASE 2: DYNAMIC ENROLLMENT
@@ -393,12 +426,15 @@ IPFS_NODE_COUNT=6
 for i in $(seq 0 $(($IPFS_NODE_COUNT - 1))); do
     IMAGE=$(docker inspect --format='{{.Config.Image}}' "ipfs${i}" 2>/dev/null || echo "ipfs/kubo:latest")
     log_info "Initializing config for ipfs${i} offline..."
-    docker run --rm --volumes-from "ipfs${i}" --entrypoint sh "$IMAGE" -c "ipfs init 2>/dev/null || true; ipfs config --json AutoConf.Enabled false 2>/dev/null || true; ipfs config Routing.Type dht 2>/dev/null || true; ipfs config --json Bootstrap '[]' 2>/dev/null || true; ipfs config --json DNS.Resolvers '{}' 2>/dev/null || true; ipfs config --json Routing.DelegatedRouters '[]' 2>/dev/null || true; ipfs config --json Ipns.DelegatedPublishers '[]' 2>/dev/null || true; ipfs config --json API.HTTPHeaders.Access-Control-Allow-Origin '[\"http://localhost:8080\", \"http://127.0.0.1:8080\"]' 2>/dev/null || true; ipfs config --json API.HTTPHeaders.Access-Control-Allow-Methods '[\"PUT\", \"POST\", \"GET\", \"OPTIONS\"]' 2>/dev/null || true"
+    docker run --rm --volumes-from "ipfs${i}" --entrypoint sh "$IMAGE" -c "ipfs init 2>/dev/null || true; ipfs config --json AutoConf.Enabled false 2>/dev/null || true; ipfs config Routing.Type dht 2>/dev/null || true; ipfs config --json Bootstrap '[]' 2>/dev/null || true; ipfs config --json DNS.Resolvers '{}' 2>/dev/null || true; ipfs config --json Routing.DelegatedRouters '[]' 2>/dev/null || true; ipfs config --json Ipns.DelegatedPublishers '[]' 2>/dev/null || true; ipfs config --json API.HTTPHeaders.Access-Control-Allow-Origin '[\"http://localhost:8080\", \"http://127.0.0.1:8080\", \"http://localhost:8090\", \"http://127.0.0.1:8090\", \"http://localhost:8100\", \"http://127.0.0.1:8100\"]' 2>/dev/null || true; ipfs config --json API.HTTPHeaders.Access-Control-Allow-Methods '[\"PUT\", \"POST\", \"GET\", \"OPTIONS\"]' 2>/dev/null || true"
 done
 
 log_info "Starting IPFS nodes..."
 DOCKER_CONFIG=$TMP_DOCKER_CFG docker compose -f docker-compose-main.yaml -f docker-compose-annex.yaml -f docker-compose-pubad.yaml up -d ipfs0 ipfs1 ipfs2 ipfs3 ipfs4 ipfs5
 wait_for_service 127.0.0.1 5001 "IPFS0 API" 60
+
+log_info "Removing any stray failover containers before final network startup..."
+docker rm -f nginx-shield-main-failover nginx-shield-annex-failover nginx-shield-pubad-failover 2>/dev/null || true
 
 log_info "Starting the rest of the network..."
 DOCKER_CONFIG=$TMP_DOCKER_CFG docker compose -f docker-compose-main.yaml -f docker-compose-annex.yaml -f docker-compose-pubad.yaml up -d --build
@@ -412,6 +448,16 @@ wait_for_service 127.0.0.1 7051 "Peer0 Registrar" 60
 wait_for_service 127.0.0.1 5990 "CouchDB Wallet Registrar" 60
 wait_for_service 127.0.0.1 6990 "CouchDB Wallet Faculty" 60
 wait_for_service 127.0.0.1 7990 "CouchDB Wallet Department" 60
+wait_for_optional_service 127.0.0.1 5000 "Backend Direct Port" 90
+wait_for_optional_service 127.0.0.1 4000 "Middleware Direct Port" 30
+wait_for_optional_service 127.0.0.1 8080 "Nginx Shield Main" 30
+wait_for_optional_service 127.0.0.1 8090 "Nginx Shield Annex" 30
+wait_for_optional_service 127.0.0.1 8100 "Nginx Shield Pubad" 30
+
+chmod +x ./nginx_failover_watchdog.sh
+./nginx_failover_watchdog.sh &
+PIDS+=($!)
+log_info "Nginx failover watchdog started. If 8080, 8090, or 8100 goes down, refreshes on that port will redirect to a live shield."
 
 log_info "Waiting 15 seconds for Raft leader election..."
 sleep 15
@@ -616,7 +662,7 @@ docker exec -e CORE_PEER_ADDRESS=peer0.registrar.capstone.com:7051 \
 # ============================================================
 # PHASE 6: APPS
 # ============================================================
-log_info "Phase 6: Running Database Schema Updates & Mock Data Injection..."
+log_info "Phase 6: Running Database Schema Updates..."
 
 # Wait for postgres
 sleep 20
@@ -631,152 +677,17 @@ wait_for_service $POSTGRES_HOST $POSTGRES_PORT "Postgres" 120
 
 # Run schema migrations (init-db-schema.sql already auto-run, but ensure new columns)
 docker exec -e PGPASSWORD="$POSTGRES_PASS" postgres psql -U $POSTGRES_USER -d $POSTGRES_DB -f /docker-entrypoint-initdb.d/init.sql
+docker exec -e PGPASSWORD="$POSTGRES_PASS" postgres psql -U $POSTGRES_USER -d $POSTGRES_DB -c "CREATE EXTENSION IF NOT EXISTS pgcrypto;"
 
-# Inject MOCK data for testing (Registrar, Faculty, Chairperson, and Students)
-cat << 'EOF' | docker exec -i -e PGPASSWORD="$POSTGRES_PASS" postgres psql -U $POSTGRES_USER -d $POSTGRES_DB
-CREATE EXTENSION IF NOT EXISTS pgcrypto;
+log_info "Bootstrapping root registrar account..."
+sleep 5 # Give Postgres a moment to accept connections
 
--- 1. Create MOCK Registrar
-WITH reg_user AS (
-  INSERT INTO users (username, email, password_hash, role, status, created_at) VALUES 
-  ('registrar', 'registrar@plv.edu.ph', crypt('admin123', gen_salt('bf', 12)), 'registrar', 'APPROVED', NOW())
-  ON CONFLICT (email) DO NOTHING RETURNING id
-)
-INSERT INTO adminprofiles (user_id, full_name, admin_level, department)
-SELECT id, 'System Registrar', 'registrar', 'Registrar' FROM reg_user
-ON CONFLICT (user_id) DO NOTHING;
+log_info "Running enrollAdmin.js to ensure Wallets & Root Admin are fully seeded..."
+(cd ../middleware && npm install --no-audit --no-fund && node enrollAdmin.js)
 
--- 2. Create MOCK Faculty
-WITH fac_user AS (
-  INSERT INTO users (username, email, password_hash, role, status, created_at) VALUES 
-  ('faculty', 'faculty@plv.edu.ph', crypt('faculty123', gen_salt('bf', 12)), 'faculty', 'APPROVED', NOW())
-  ON CONFLICT (email) DO NOTHING RETURNING id
-)
-INSERT INTO facultyprofiles (user_id, full_name, department)
-SELECT id, 'Dr. Juan Dela Cruz', 'Bachelor of Science in Information Technology' FROM fac_user
-ON CONFLICT (user_id) DO NOTHING;
+# Fallback check over HTTP
+curl -s http://127.0.0.1:4000/api/bootstrap || true
 
--- 3. Create MOCK Chairperson
-WITH chair_user AS (
-  INSERT INTO users (username, email, password_hash, role, status, created_at) VALUES 
-  ('chairperson', 'chairperson@plv.edu.ph', crypt('chair123', gen_salt('bf', 12)), 'department_admin', 'APPROVED', NOW())
-  ON CONFLICT (email) DO NOTHING RETURNING id
-)
-INSERT INTO adminprofiles (user_id, full_name, admin_level, department)
-SELECT id, 'Dean Maria Santos', 'department_admin', 'Bachelor of Science in Information Technology' FROM chair_user
-ON CONFLICT (user_id) DO NOTHING;
-
--- 4. Create 10 MOCK students
-WITH mock_users AS (
-  INSERT INTO users (username, email, password_hash, role, status, created_at) VALUES 
-    ('mock-student1', 'mock-student1@plv.edu.ph', crypt('05/15/2005', gen_salt('bf', 12)), 'student', 'APPROVED', NOW()),
-    ('mock-student2', 'mock-student2@plv.edu.ph', crypt('06/20/2004', gen_salt('bf', 12)), 'student', 'APPROVED', NOW()),
-    ('mock-student3', 'mock-student3@plv.edu.ph', crypt('03/10/2005', gen_salt('bf', 12)), 'student', 'APPROVED', NOW()),
-    ('mock-student4', 'mock-student4@plv.edu.ph', crypt('11/25/2003', gen_salt('bf', 12)), 'student', 'APPROVED', NOW()),
-    ('mock-student5', 'mock-student5@plv.edu.ph', crypt('08/05/2004', gen_salt('bf', 12)), 'student', 'APPROVED', NOW()),
-    ('mock-student6', 'mock-student6@plv.edu.ph', crypt('01/12/2005', gen_salt('bf', 12)), 'student', 'APPROVED', NOW()),
-    ('mock-student7', 'mock-student7@plv.edu.ph', crypt('07/30/2003', gen_salt('bf', 12)), 'student', 'APPROVED', NOW()),
-    ('mock-student8', 'mock-student8@plv.edu.ph', crypt('04/18/2004', gen_salt('bf', 12)), 'student', 'APPROVED', NOW()),
-    ('mock-student9', 'mock-student9@plv.edu.ph', crypt('12/22/2005', gen_salt('bf', 12)), 'student', 'APPROVED', NOW()),
-    ('mock-student10', 'mock-student10@plv.edu.ph', crypt('09/08/2003', gen_salt('bf', 12)), 'student', 'APPROVED', NOW())
-  ON CONFLICT (email) DO NOTHING
-  RETURNING id, email
-),
-mock_profiles AS (
-  INSERT INTO studentprofiles (user_id, full_name, student_no, department, date_of_birth, section, year_level, assignment_status)
-  SELECT u.id, 
-         CASE 
-           WHEN u.email LIKE '%1%' THEN 'Juan Dela Cruz' 
-           WHEN u.email LIKE '%2%' THEN 'Maria Santos' 
-           WHEN u.email LIKE '%3%' THEN 'Pedro Reyes' 
-           WHEN u.email LIKE '%4%' THEN 'Ana Lopez' 
-           WHEN u.email LIKE '%5%' THEN 'Jose Garcia' 
-           WHEN u.email LIKE '%6%' THEN 'Luz Mendoza' 
-           WHEN u.email LIKE '%7%' THEN 'Carlo Torres' 
-           WHEN u.email LIKE '%8%' THEN 'Sofia Ramos' 
-           WHEN u.email LIKE '%9%' THEN 'Miguel Lim' 
-           ELSE 'Nina Tan'
-         END,
-         split_part(u.email, '@', 1),
-         CASE 
-           WHEN u.email LIKE '%1%' OR u.email LIKE '%6%' THEN 'Bachelor of Science in Psychology'
-           WHEN u.email LIKE '%2%' OR u.email LIKE '%7%' THEN 'Bachelor of Science in Civil Engineering' 
-           WHEN u.email LIKE '%3%' OR u.email LIKE '%8%' THEN 'Bachelor of Science in Information Technology'
-           ELSE 'Bachelor of Science in Computer Science'
-         END,
-         CASE 
-           WHEN u.email LIKE '%1%' THEN '2005-05-15'::date
-           WHEN u.email LIKE '%2%' THEN '2004-06-20'::date
-           WHEN u.email LIKE '%3%' THEN '2005-03-10'::date
-           WHEN u.email LIKE '%4%' THEN '2003-11-25'::date
-           WHEN u.email LIKE '%5%' THEN '2004-08-05'::date
-           WHEN u.email LIKE '%6%' THEN '2005-01-12'::date
-           WHEN u.email LIKE '%7%' THEN '2003-07-30'::date
-           WHEN u.email LIKE '%8%' THEN '2004-04-18'::date
-           WHEN u.email LIKE '%9%' THEN '2005-12-22'::date
-           ELSE '2003-09-08'::date
-         END,
-         '1',
-         '3',
-         'Enrolled'
-  FROM mock_users u
-  ON CONFLICT (user_id) DO NOTHING
-  RETURNING user_id
-)
-SELECT 'Mock users and profiles injected successfully.' AS result;
-
--- 5. Create 50 BSIT students for Bulk Enroll Testing
-WITH bsit_users AS (
-  INSERT INTO users (username, email, password_hash, role, status, created_at)
-  SELECT 
-    '2023-' || lpad(i::text, 4, '0'),
-    '2023-' || lpad(i::text, 4, '0') || '@plv.edu.ph',
-    crypt('01/01/2005', gen_salt('bf', 12)),
-    'student', 'APPROVED', NOW()
-  FROM generate_series(1, 50) i
-  ON CONFLICT (email) DO NOTHING
-  RETURNING id, email
-),
-bsit_profiles AS (
-  INSERT INTO studentprofiles (user_id, full_name, student_no, department, date_of_birth, section, year_level, assignment_status)
-      SELECT id, 'Student ' || split_part(email, '@', 1), split_part(email, '@', 1), 'Bachelor of Science in Information Technology', '2005-01-01'::date, '1', '1', 'Enrolled'
-  FROM bsit_users
-  ON CONFLICT (user_id) DO NOTHING
-  RETURNING user_id
-)
-SELECT 'BSIT mock students injected successfully.' AS result;
-EOF
-
-# Generate CSV export
-docker exec -e PGPASSWORD="$POSTGRES_PASS" postgres psql -U $POSTGRES_USER -d $POSTGRES_DB -c "
-COPY (
-  SELECT sp.student_no, sp.full_name, u.email, sp.date_of_birth::text AS date_of_birth, sp.department, sp.section, '95' AS grade, sp.department AS course, '2nd Semester' AS semester, '2024' AS school_year
-  FROM studentprofiles sp JOIN users u ON sp.user_id = u.id 
-  WHERE u.email LIKE '%mock-student%'
-) TO STDOUT WITH CSV HEADER;
-" > ./mock_students.csv
-log_info "Mock students CSV generated: ./mock_students.csv"
-
-# Mock cleanup function (called on trap EXIT)
-cleanup_mock_data() {
-  log_info "Cleaning up MOCK data..."
-  docker exec -e PGPASSWORD="$POSTGRES_PASS" postgres psql -U $POSTGRES_USER -d $POSTGRES_DB -c "
-    DELETE FROM adminprofiles WHERE full_name IN ('System Registrar', 'Dean Maria Santos');
-    DELETE FROM facultyprofiles WHERE full_name = 'Dr. Juan Dela Cruz';
-    DELETE FROM studentprofiles WHERE student_no LIKE 'mock-student%' OR student_no LIKE '2023-%';
-    DELETE FROM users WHERE email LIKE '%mock-student%' OR email LIKE '2023-%' OR email IN ('registrar@plv.edu.ph', 'faculty@plv.edu.ph', 'chairperson@plv.edu.ph');
-  "
-}
-
-trap "cleanup_mock_data 2>/dev/null || true; cleanup_processes" SIGINT SIGTERM ERR
-
-log_info "Phase 6: Starting Application Services & Bootstrapping..."
-
-
-log_info "BLOCKGO IS LIVE! http://localhost:8080"
-log_info "Student: http://localhost:8080/student | Faculty: http://localhost:8080/faculty"
-log_info "Chat is embedded in the frontend! | Upload ./mock_students.csv in the frontend to test committing grades to CouchDB."
-
-if [ "$CI" != "true" ]; then
-    while true; do sleep 86400; done
-fi
+log_info "============================================================"
+log_info "BLOCKGO FULL DEPLOYMENT COMPLETE!"
+log_info "============================================================"

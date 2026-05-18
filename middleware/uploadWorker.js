@@ -2,13 +2,14 @@ const { parentPort, workerData } = require('worker_threads');
 const { spawn } = require('child_process');
 const fs = require('fs');
 
-const { mapperPath, filePath, facultyId, INTERNAL_API_KEY } = workerData;
+const { mapperPath, filePath, facultyId, INTERNAL_API_KEY, term } = workerData;
 
 const pythonProcess = spawn('python3', [
     mapperPath,
     filePath,
     facultyId,
-    INTERNAL_API_KEY
+    INTERNAL_API_KEY,
+    term || ''
 ]);
 
 let output = '';

@@ -1,6 +1,7 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import * as signalR from '@microsoft/signalr';
 import { getChatHubUrl } from '../../services/api';
+import { pullSharedClientState } from '../../utils/sharedClientState';
 
 const roleKeyFromRoleString = (role) => {
   const r = (role || '').toLowerCase();
@@ -69,6 +70,7 @@ const normalizeMessage = (payload) => {
     attachmentMime: valueOf(payload, 'attachmentMime', 'AttachmentMime'),
     attachmentSizeBytes: valueOf(payload, 'attachmentSizeBytes', 'AttachmentSizeBytes'),
     attachmentDataBase64: valueOf(payload, 'attachmentDataBase64', 'AttachmentDataBase64'),
+    receivedAt: valueOf(payload, 'receivedAt', 'ReceivedAt') || Date.now(),
   };
 
   normalized.message = getVisibleMessageText(normalized);
@@ -92,10 +94,12 @@ const isSameMessage = (a, b) => {
 };
 
 const getMessageTimeMs = (message) => {
-  const raw = message?.sentAt || message?.timestamp;
+  const raw = message?.sentAt || message?.timestamp || message?.receivedAt;
   if (!raw) return null;
   const time = raw instanceof Date ? raw.getTime() : new Date(raw).getTime();
-  return Number.isFinite(time) ? time : null;
+  if (Number.isFinite(time)) return time;
+  const fallbackTime = Number(raw);
+  return Number.isFinite(fallbackTime) ? fallbackTime : null;
 };
 
 const sortMessagesOldestFirst = (list) =>
@@ -165,6 +169,19 @@ const imageSrcForMessage = (msg) => {
   return `data:${msg.attachmentMime || inferImageMime(msg.attachmentName)};base64,${msg.attachmentDataBase64}`;
 };
 
+const TypingIndicator = () => (
+  <div className="mb-3 flex w-full items-start">
+    <div className="relative rounded-2xl rounded-bl-none bg-slate-100 px-4 py-3 shadow-sm">
+      <div className="absolute -left-2 bottom-2 h-0 w-0 border-y-[8px] border-r-[10px] border-y-transparent border-r-slate-100" />
+      <div className="flex h-5 items-center gap-1" aria-label="Typing">
+        <span className="h-2 w-2 animate-bounce rounded-full bg-slate-500" style={{ animationDelay: '0ms' }} />
+        <span className="h-2 w-2 animate-bounce rounded-full bg-slate-500" style={{ animationDelay: '120ms' }} />
+        <span className="h-2 w-2 animate-bounce rounded-full bg-slate-500" style={{ animationDelay: '240ms' }} />
+      </div>
+    </div>
+  </div>
+);
+
 const Chat = ({
   userEmail,
   userRole,
@@ -195,17 +212,93 @@ const Chat = ({
   const [latestActivity, setLatestActivity] = useState({});
   const [unreadCounts, setUnreadCounts] = useState({});
   const [imagePreview, setImagePreview] = useState(null);
+  const [typingUsers, setTypingUsers] = useState({});
 
   const messagesEndRef = useRef(null);
   const secondaryMessagesRef = useRef(null);
+  const connectionRef = useRef(null);
   const selectedUserRef = useRef(selectedUser);
   const openChatUsersRef = useRef(openChatUsers);
   const historyTargetRef = useRef('');
   const isOpenRef = useRef(isOpen);
+  const seenRequestRef = useRef({});
+  const typingHideTimersRef = useRef({});
+  const typingStopTimersRef = useRef({});
+  const typingLastSentRef = useRef({});
 
   useEffect(() => {
     isOpenRef.current = isOpen;
   }, [isOpen]);
+
+  useEffect(() => {
+    connectionRef.current = connection;
+  }, [connection]);
+
+  useEffect(() => {
+    const hideTimers = typingHideTimersRef.current;
+    const stopTimers = typingStopTimersRef.current;
+
+    return () => {
+      Object.values(hideTimers).forEach(window.clearTimeout);
+      Object.values(stopTimers).forEach(window.clearTimeout);
+    };
+  }, []);
+
+  const isConversationReadable = useCallback((targetEmail) =>
+    Boolean(
+      targetEmail &&
+        isOpenRef.current &&
+        openChatUsersRef.current.includes(targetEmail) &&
+        document.visibilityState !== 'hidden'
+    ), []);
+
+  const markConversationSeen = useCallback((targetEmail, activeConnection = connectionRef.current) => {
+    if (!activeConnection || !isConversationReadable(targetEmail)) return;
+
+    const now = Date.now();
+    if (now - (seenRequestRef.current[targetEmail] || 0) < 1200) return;
+    seenRequestRef.current[targetEmail] = now;
+
+    activeConnection
+      .invoke('MarkConversationSeen', targetEmail)
+      .catch((e) => console.error('[Chat] MarkConversationSeen failed:', e));
+  }, [isConversationReadable]);
+
+  const sendTypingState = useCallback((recipientEmail, isTyping, activeConnection = connectionRef.current) => {
+    if (!activeConnection || !recipientEmail) return;
+    activeConnection
+      .invoke('SetTyping', recipientEmail, Boolean(isTyping))
+      .catch((e) => console.error('[Chat] SetTyping failed:', e));
+  }, []);
+
+  const stopTyping = useCallback((recipientEmail, activeConnection = connectionRef.current) => {
+    if (!recipientEmail) return;
+    window.clearTimeout(typingStopTimersRef.current[recipientEmail]);
+    delete typingStopTimersRef.current[recipientEmail];
+    typingLastSentRef.current[recipientEmail] = 0;
+    sendTypingState(recipientEmail, false, activeConnection);
+  }, [sendTypingState]);
+
+  const updateTyping = useCallback((recipientEmail, value, activeConnection = connectionRef.current) => {
+    if (!recipientEmail || !activeConnection) return;
+
+    window.clearTimeout(typingStopTimersRef.current[recipientEmail]);
+
+    if (!String(value || '').trim()) {
+      stopTyping(recipientEmail, activeConnection);
+      return;
+    }
+
+    const now = Date.now();
+    if (now - (typingLastSentRef.current[recipientEmail] || 0) > 900) {
+      typingLastSentRef.current[recipientEmail] = now;
+      sendTypingState(recipientEmail, true, activeConnection);
+    }
+
+    typingStopTimersRef.current[recipientEmail] = window.setTimeout(() => {
+      stopTyping(recipientEmail, activeConnection);
+    }, 1500);
+  }, [sendTypingState, stopTyping]);
 
   useEffect(() => {
     selectedUserRef.current = selectedUser;
@@ -293,6 +386,10 @@ const Chat = ({
         }
         return prev;
       });
+
+      if (normalized.sender !== userEmail && isConversationReadable(otherUser)) {
+        window.setTimeout(() => markConversationSeen(otherUser, conn), 250);
+      }
     });
 
     conn.on('ChatHistory', (history) => {
@@ -312,6 +409,10 @@ const Chat = ({
         .filter((msg) => isConversationMessage(msg, userEmail, activeUser));
       
       setMessages((prev) => mergeMessages(prev, mapped));
+
+      if (isConversationReadable(activeUser)) {
+        window.setTimeout(() => markConversationSeen(activeUser, conn), 250);
+      }
     });
 
     conn.on('NewRegistrationRequest', (payload) => {
@@ -326,7 +427,11 @@ const Chat = ({
 
     conn.on('AcademicDataChanged', (payload) => {
       console.log('[Chat] AcademicDataChanged:', payload);
-      window.dispatchEvent(new CustomEvent('blockgo:academic-data-changed', { detail: payload }));
+      pullSharedClientState()
+        .catch((error) => console.warn('[Chat] Shared state pull failed:', error))
+        .finally(() => {
+          window.dispatchEvent(new CustomEvent('blockgo:academic-data-changed', { detail: payload }));
+        });
     });
 
     conn.on('ChatContacts', (contacts) => {
@@ -394,12 +499,38 @@ const Chat = ({
       );
     });
 
+    conn.on('UserTyping', (payload) => {
+      const sender = valueOf(payload, 'sender', 'Sender');
+      const receiver = valueOf(payload, 'receiver', 'Receiver');
+      const isTyping = Boolean(valueOf(payload, 'isTyping', 'IsTyping'));
+      if (
+        !sender ||
+        String(receiver || '').toLowerCase() !== String(userEmail || '').toLowerCase() ||
+        String(sender || '').toLowerCase() === String(userEmail || '').toLowerCase()
+      ) {
+        return;
+      }
+
+      window.clearTimeout(typingHideTimersRef.current[sender]);
+
+      if (!isTyping) {
+        setTypingUsers((prev) => ({ ...prev, [sender]: false }));
+        return;
+      }
+
+      setTypingUsers((prev) => ({ ...prev, [sender]: true }));
+      typingHideTimersRef.current[sender] = window.setTimeout(() => {
+        setTypingUsers((prev) => ({ ...prev, [sender]: false }));
+      }, 3500);
+    });
+
     conn.start()
       .then(() => {
         console.log('[Chat] Connected to SignalR');
         setConnection(conn);
         conn.invoke('JoinChat', userRole || '').catch(e => console.error('[Chat] JoinChat failed:', e));
         conn.invoke('GetChatContacts').catch(e => console.error('[Chat] GetChatContacts failed:', e));
+        pullSharedClientState().catch((error) => console.warn('[Chat] Initial shared state pull failed:', error));
       })
       .catch((err) => console.error('SignalR connection failed:', err));
 
@@ -415,7 +546,7 @@ const Chat = ({
       setConnection(null);
       conn.stop();
     };
-  }, [userEmail, userRole, onIncomingMessage, onRegistrationRequest]);
+  }, [userEmail, userRole, onIncomingMessage, onRegistrationRequest, isConversationReadable, markConversationSeen]);
 
   // Load history when selected user changes
   useEffect(() => {
@@ -426,14 +557,51 @@ const Chat = ({
     }
   }, [connection, selectedUser]);
 
-  // Scroll
   useEffect(() => {
-    scrollToBottom();
-  }, [messages, selectedUser]);
+    if (!connection || !isOpen || document.visibilityState === 'hidden') return;
+
+    const visibleIncoming = openChatUsers.filter((email) =>
+      messages.some(
+        (msg) =>
+          msg.sender === email &&
+          msg.receiver === userEmail &&
+          !msg.seenAt &&
+          isConversationMessage(msg, userEmail, email)
+      )
+    );
+
+    visibleIncoming.forEach((email) => markConversationSeen(email));
+  }, [connection, isOpen, messages, openChatUsers, userEmail, markConversationSeen]);
 
   useEffect(() => {
-    scrollSecondaryToBottom();
-  }, [messages, openChatUsers]);
+    if (!connection) return undefined;
+
+    const markOpenConversations = () => {
+      if (document.visibilityState === 'hidden') return;
+      openChatUsersRef.current.forEach((email) => markConversationSeen(email));
+    };
+
+    window.addEventListener('focus', markOpenConversations);
+    document.addEventListener('visibilitychange', markOpenConversations);
+
+    return () => {
+      window.removeEventListener('focus', markOpenConversations);
+      document.removeEventListener('visibilitychange', markOpenConversations);
+    };
+  }, [connection, markConversationSeen]);
+
+  const selectedUserTyping = selectedUser ? typingUsers[selectedUser] : false;
+
+  // Scroll
+  useEffect(() => {
+    const frame = window.requestAnimationFrame(scrollToBottom);
+    return () => window.cancelAnimationFrame(frame);
+  }, [messages.length, selectedUser, selectedUserTyping]);
+
+  useEffect(() => {
+    const frame = window.requestAnimationFrame(scrollSecondaryToBottom);
+    return () => window.cancelAnimationFrame(frame);
+  }, [messages.length, openChatUsers, typingUsers]);
 
   useEffect(() => {
     const totalUnread = Object.values(unreadCounts).reduce((total, count) => total + Number(count || 0), 0);
@@ -451,7 +619,7 @@ const Chat = ({
   }, [onlineUsers, latestActivity]);
 
   const allowedTargetsByViewer = (viewerKey) => {
-    if (viewerKey === 'faculty') return new Set(['department_admin', 'faculty']);
+    if (viewerKey === 'faculty') return new Set(['registrar', 'department_admin', 'faculty']);
     if (viewerKey === 'department_admin') return new Set(['registrar', 'faculty']);
     if (viewerKey === 'registrar') return new Set(['department_admin', 'faculty', 'student']);
     return new Set(['registrar']);
@@ -525,6 +693,7 @@ const Chat = ({
     if (draftValue.trim() && connection && recipientEmail) {
       const msgText = draftValue.trim();
       clearDraft();
+      stopTyping(recipientEmail);
       connection.invoke('SendMessage', recipientEmail, msgText).catch(e => console.error('[Chat] SendMessage failed:', e));
     }
   };
@@ -533,7 +702,6 @@ const Chat = ({
 
   const handlePickFile = () => fileInputRef.current?.click();
   const fileInputRef = useRef(null);
-  const [pendingFileName, setPendingFileName] = useState('');
 
   const handleFileChange = async (e) => {
     const file = e.target.files?.[0];
@@ -546,8 +714,6 @@ const Chat = ({
       alert('File too large (max 5MB)');
       return;
     }
-
-    setPendingFileName(file.name);
 
     const base64 = await new Promise((resolve, reject) => {
       const reader = new FileReader();
@@ -573,8 +739,6 @@ const Chat = ({
     } catch (err) {
       console.error('[Chat] SendFile failed:', err);
       alert(err?.message || 'File could not be sent.');
-    } finally {
-      setPendingFileName('');
     }
   };
 
@@ -639,12 +803,13 @@ const Chat = ({
   }, [onlineCandidates]);
 
   const [facultyTypeFilters, setFacultyTypeFilters] = useState({
+    registrar: true,
     department_admin: true,
     faculty: true,
   });
 
   useEffect(() => {
-    setFacultyTypeFilters({ department_admin: true, faculty: true });
+    setFacultyTypeFilters({ registrar: true, department_admin: true, faculty: true });
   }, [viewerKey]);
 
   const filteredGroupsForUI = useMemo(() => {
@@ -652,6 +817,7 @@ const Chat = ({
 
     return {
       ...grouped,
+      registrar: facultyTypeFilters.registrar ? grouped.registrar : [],
       department_admin: facultyTypeFilters.department_admin ? grouped.department_admin : [],
       faculty: facultyTypeFilters.faculty ? grouped.faculty : [],
     };
@@ -685,6 +851,7 @@ const Chat = ({
   }, [onlineUsers, userEmail]);
 
   const selectRecipient = (email) => {
+    if (selectedUser && selectedUser !== email) stopTyping(selectedUser);
     setSelectedUser(email);
     setNewMessage('');
     setMessageSearch('');
@@ -697,6 +864,7 @@ const Chat = ({
   };
 
   const closeConversation = (email) => {
+    stopTyping(email);
     setOpenChatUsers((prev) => {
       const next = prev.filter((item) => item !== email);
       const fallback = next[next.length - 1] || '';
@@ -728,6 +896,7 @@ const Chat = ({
   };
 
   const closeAllChatWindows = () => {
+    openChatUsers.forEach((email) => stopTyping(email));
     setOpenChatUsers([]);
     setSelectedUser('');
     setNewMessage('');
@@ -782,12 +951,13 @@ const Chat = ({
           <div className="flex h-full items-center justify-center text-center">
             <p className="text-sm text-slate-400">Select a recipient to start chatting.</p>
           </div>
-        ) : filteredMessages.length === 0 ? (
+        ) : filteredMessages.length === 0 && !typingUsers[selectedUser] ? (
           <div className="flex h-full items-center justify-center text-center">
             <p className="text-sm text-slate-400">No messages yet. Start the conversation!</p>
           </div>
         ) : (
-          filteredMessages.map((msg, i) => {
+          <>
+          {filteredMessages.map((msg, i) => {
             const isMine = msg.sender === userEmail;
             const isImage = msg.attachmentName && isImageAttachment(msg) && msg.attachmentDataBase64;
             const imageSrc = isImage ? imageSrcForMessage(msg) : '';
@@ -867,7 +1037,9 @@ const Chat = ({
                 </div>
               </div>
             );
-          })
+          })}
+          {typingUsers[selectedUser] && <TypingIndicator />}
+          </>
         )}
         <div ref={messagesEndRef} />
       </div>
@@ -896,6 +1068,17 @@ const Chat = ({
 
               {viewerKey === 'faculty' && (
                 <div className="flex flex-wrap gap-x-4 gap-y-1 mb-3 text-sm">
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={facultyTypeFilters.registrar}
+                      onChange={(e) =>
+                        setFacultyTypeFilters((p) => ({ ...p, registrar: e.target.checked }))
+                      }
+                    />
+                    <span>Registrar</span>
+                  </label>
+
                   <label className="flex items-center gap-2">
                     <input
                       type="checkbox"
@@ -1008,7 +1191,10 @@ const Chat = ({
         <input
           type="text"
           value={newMessage}
-          onChange={(e) => setNewMessage(e.target.value)}
+          onChange={(e) => {
+            setNewMessage(e.target.value);
+            updateTyping(selectedUser, e.target.value);
+          }}
           onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
           disabled={!selectedUser}
           placeholder={selectedUser ? 'Type a message...' : 'Select a recipient first'}
@@ -1085,12 +1271,13 @@ const Chat = ({
           </div>
 
           <div ref={secondaryMessagesRef} className="flex-1 overflow-y-auto p-4">
-            {secondaryMessages.length === 0 ? (
+            {secondaryMessages.length === 0 && !typingUsers[email] ? (
               <div className="flex h-full items-center justify-center text-center">
                 <p className="text-sm text-slate-400">No messages yet.</p>
               </div>
             ) : (
-              secondaryMessages.map((msg, i) => {
+              <>
+              {secondaryMessages.map((msg, i) => {
                 const isMine = msg.sender === userEmail;
                 const isImage = msg.attachmentName && isImageAttachment(msg) && msg.attachmentDataBase64;
                 const imageSrc = isImage ? imageSrcForMessage(msg) : '';
@@ -1136,11 +1323,18 @@ const Chat = ({
                       )}
                       <div className={`mt-2 text-[11px] opacity-70 ${isMine ? 'text-right' : 'text-left'}`}>
                         {msg.sentAt ? new Date(msg.sentAt).toLocaleTimeString() : 'Sending...'}
+                        {isMine && msg.seenAt ? (
+                          <span className="ml-2 font-semibold opacity-90">Seen</span>
+                        ) : isMine && msg.deliveredAt ? (
+                          <span className="ml-2 font-semibold opacity-90">Delivered</span>
+                        ) : null}
                       </div>
                     </div>
                   </div>
                 );
-              })
+              })}
+              {typingUsers[email] && <TypingIndicator />}
+              </>
             )}
           </div>
 
@@ -1148,7 +1342,10 @@ const Chat = ({
             <input
               type="text"
               value={draft}
-              onChange={(e) => setConversationDrafts((prev) => ({ ...prev, [email]: e.target.value }))}
+              onChange={(e) => {
+                setConversationDrafts((prev) => ({ ...prev, [email]: e.target.value }));
+                updateTyping(email, e.target.value);
+              }}
               onKeyDown={(e) =>
                 e.key === 'Enter' &&
                 sendMessageTo(email, draft, () => setConversationDrafts((prev) => ({ ...prev, [email]: '' })))

@@ -567,6 +567,19 @@ function GradeFinalization({ allGrades = {} }) {
                     ? "Final grades ready to publish"
                     : "Waiting for finals"}
                 </span>
+                {departmentFinalSections.length > 0 && !isDepartmentPublished && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if(window.confirm(`Publish all ready final grades for ${department.department} to student accounts?`)) {
+                        handlePublishSections(departmentFinalSections);
+                      }
+                    }}
+                    className="rounded-xl bg-emerald-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-emerald-700"
+                  >
+                    Publish {department.department}
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={() =>

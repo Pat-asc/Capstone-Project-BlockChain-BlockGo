@@ -10,6 +10,18 @@ import {
   buildAssignmentStorageKey,
   buildReviewKey,
 } from "../utils/chairpersonHelpers";
+import {
+  getSystemSetting,
+  submitFacultySectionToChairperson,
+} from "../services/api";
+
+const notifyChairpersonReviewChanged = (reviewData) => {
+  window.dispatchEvent(
+    new CustomEvent("blockgo:chairperson-review-changed", {
+      detail: { reviewData },
+    })
+  );
+};
 
 const buildStudentRosterSignature = (students = []) =>
   students
@@ -38,12 +50,18 @@ const compareStudentsByName = (left, right) => {
   return leftName.localeCompare(rightName);
 };
 
+const getOptionalAssignmentValue = (value) => {
+  const normalizedValue = String(value || "").trim();
+  return normalizedValue || "Not Available";
+};
+
 const FacultyPortal = ({ onLogout, allGrades, setAllGrades }) => {
   const [activeTab, setActiveTab] = useState("All Sections");
   const [selectedProgram, setSelectedProgram] = useState("");
   const [selectedSection, setSelectedSection] = useState(null);
+  const [sharedDataVersion, setSharedDataVersion] = useState(0);
 
-  const [systemSettings] = useState({
+  const [systemSettings, setSystemSettings] = useState({
     semester: "2nd Semester",
   });
 
@@ -63,9 +81,71 @@ const FacultyPortal = ({ onLogout, allGrades, setAllGrades }) => {
     return saved ? JSON.parse(saved) : {};
   });
 
-  const encodingData = useMemo(() => {
+  const [encodingData, setEncodingData] = useState(() => {
     const saved = localStorage.getItem("encodingPeriod");
     return saved ? JSON.parse(saved) : null;
+  });
+
+  useEffect(() => {
+    const applyEncodingPeriod = (value) => {
+      if (!value) return;
+      const parsed = typeof value === "string" ? JSON.parse(value) : value;
+      localStorage.setItem("encodingPeriod", JSON.stringify(parsed));
+      setEncodingData(parsed);
+      setSystemSettings((current) => ({
+        ...current,
+        semester: parsed?.semester || "2nd Semester",
+      }));
+    };
+
+    const loadEncodingPeriod = async () => {
+      try {
+        const res = await getSystemSetting("encoding_period");
+        if (res.status === "Success" && res.value) {
+          applyEncodingPeriod(res.value);
+        }
+      } catch (error) {
+        console.error(error);
+      }
+    };
+
+    const handleSystemSettingChanged = (event) => {
+      const key = event.detail?.key || event.detail?.Key;
+      const value = event.detail?.value || event.detail?.Value;
+      if (key === "encoding_period") applyEncodingPeriod(value);
+    };
+
+    loadEncodingPeriod();
+    const refreshTimer = window.setInterval(loadEncodingPeriod, 10000);
+    window.addEventListener("blockgo:system-setting-changed", handleSystemSettingChanged);
+    window.addEventListener("focus", loadEncodingPeriod);
+
+    return () => {
+      window.clearInterval(refreshTimer);
+      window.removeEventListener("blockgo:system-setting-changed", handleSystemSettingChanged);
+      window.removeEventListener("focus", loadEncodingPeriod);
+    };
+  }, []);
+
+  useEffect(() => {
+    const refreshSharedData = (event) => {
+      const keys = event.detail?.keys || [];
+      if (
+        keys.includes("registrarAssignments") ||
+        keys.includes("studentSections") ||
+        keys.includes("irregularSubjectAssignments")
+      ) {
+        setSharedDataVersion((current) => current + 1);
+      }
+    };
+
+    window.addEventListener("blockgo:shared-client-state-changed", refreshSharedData);
+
+    return () =>
+      window.removeEventListener(
+        "blockgo:shared-client-state-changed",
+        refreshSharedData
+      );
   }, []);
 
   const systemTerm =
@@ -76,17 +156,17 @@ const FacultyPortal = ({ onLogout, allGrades, setAllGrades }) => {
   const assignments = useMemo(() => {
     const saved = localStorage.getItem("registrarAssignments");
     return saved ? JSON.parse(saved) : [];
-  }, []);
+  }, [sharedDataVersion]);
 
   const studentSections = useMemo(() => {
     const saved = localStorage.getItem("studentSections");
     return saved ? JSON.parse(saved) : [];
-  }, []);
+  }, [sharedDataVersion]);
 
   const irregularSubjectAssignments = useMemo(() => {
     const saved = localStorage.getItem("irregularSubjectAssignments");
     return saved ? JSON.parse(saved) : [];
-  }, []);
+  }, [sharedDataVersion]);
 
   const myAssignments = useMemo(() => {
     return assignments.filter(
@@ -141,8 +221,9 @@ const FacultyPortal = ({ onLogout, allGrades, setAllGrades }) => {
         subjectTitle: assign.subjectTitle,
         sectionCourse: assign.program,
         units: assign.units || 3,
-        schedule: assign.schedule || "TBA",
-        day: assign.day || "TBA",
+        schedule: getOptionalAssignmentValue(assign.schedule),
+        day: getOptionalAssignmentValue(assign.day),
+        date: getOptionalAssignmentValue(assign.date),
         semester: assign.semester,
         schoolYear: assign.schoolYear,
         students: Array.from(rosterById.values()).sort(compareStudentsByName),
@@ -206,6 +287,7 @@ const FacultyPortal = ({ onLogout, allGrades, setAllGrades }) => {
       CHAIRPERSON_REVIEW_KEY,
       JSON.stringify(normalizedReviewData)
     );
+    notifyChairpersonReviewChanged(normalizedReviewData);
   }, [normalizedReviewData]);
 
   const getSectionProgress = (assignmentKey, sectionData) => {
@@ -226,18 +308,27 @@ const FacultyPortal = ({ onLogout, allGrades, setAllGrades }) => {
     return Math.round((encodedCount / sectionData.students.length) * 100);
   };
 
-  const submitSectionToChairperson = (assignmentKey, sectionData) => {
+  const submitSectionToChairperson = async (assignmentKey, sectionData) => {
     const reviewKey = getReviewKey(assignmentKey, sectionData);
+    const submittedAt = new Date().toISOString();
+
+    try {
+      await submitFacultySectionToChairperson({
+        department: sectionData.sectionCourse,
+        section: sectionData.sectionName,
+      });
+    } catch (error) {
+      console.warn("Backend section submission failed; keeping local review queue in sync.", error);
+    }
 
     setReviewData((prev) => {
       const previousRecord = prev[reviewKey] || {};
-
-      return {
+      const nextReviewData = {
         ...prev,
         [reviewKey]: {
           ...previousRecord,
           status: "submitted",
-          lastUpdated: new Date().toISOString(),
+          lastUpdated: submittedAt,
           facultyId: 1,
           facultyName: facultyFullName,
           assignmentKey,
@@ -250,6 +341,11 @@ const FacultyPortal = ({ onLogout, allGrades, setAllGrades }) => {
           studentRosterSignature: buildStudentRosterSignature(sectionData.students),
         },
       };
+
+      localStorage.setItem(CHAIRPERSON_REVIEW_KEY, JSON.stringify(nextReviewData));
+      notifyChairpersonReviewChanged(nextReviewData);
+
+      return nextReviewData;
     });
   };
 
@@ -271,13 +367,18 @@ const FacultyPortal = ({ onLogout, allGrades, setAllGrades }) => {
     }
   );
 
-  const ENCODING_START = encodingData?.startDate
-    ? new Date(`${encodingData.startDate}T00:00:00`)
-    : null;
+  const parseLocalDate = (value, endOfDay = false) => {
+    if (!value) return null;
+    const [year, month, day] = String(value).split("-").map(Number);
+    if (!year || !month || !day) return null;
+    const date = new Date(year, month - 1, day);
+    if (endOfDay) date.setHours(23, 59, 59, 999);
+    else date.setHours(0, 0, 0, 0);
+    return date;
+  };
 
-  const ENCODING_END = encodingData?.endDate
-    ? new Date(`${encodingData.endDate}T23:59:59`)
-    : null;
+  const ENCODING_START = parseLocalDate(encodingData?.startDate);
+  const ENCODING_END = parseLocalDate(encodingData?.endDate, true);
 
   const now = new Date();
 
@@ -317,7 +418,7 @@ const FacultyPortal = ({ onLogout, allGrades, setAllGrades }) => {
   return (
     <div className="min-h-screen bg-slate-100">
       <FacultyHeader
-        facultyData={facultyData}
+        facultyData={{ ...facultyData, semester: systemSettings.semester }}
         totalSections={Object.keys(sections).length}
         onLogout={onLogout}
       />
@@ -368,7 +469,7 @@ const FacultyPortal = ({ onLogout, allGrades, setAllGrades }) => {
                       submitSectionToChairperson(assignmentKey, sectionData)
                     }
                     onClick={() =>
-                      setSelectedSection({ ...sectionData })
+                      setSelectedSection({ ...sectionData, assignmentKey })
                     }
                   />
                 );

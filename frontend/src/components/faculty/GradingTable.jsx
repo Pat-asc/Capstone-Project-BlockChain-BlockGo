@@ -43,6 +43,8 @@ const GradingTable = ({
 }) => {
   const [showBulkUpload, setShowBulkUpload] = useState(false);
   const [studentSearch, setStudentSearch] = useState("");
+  const displaySchedule = selectedSection?.schedule || "Not Available";
+  const displayDay = selectedSection?.day || "Not Available";
   const activeTerm = systemTerm;
   const gradeStorageKey = selectedSection.assignmentKey || selectedSection.sectionName;
   const sortedStudents = [...(selectedSection.students || [])].sort(
@@ -105,6 +107,12 @@ const GradingTable = ({
           [studentId]: {
             ...(prev[activeGradeKey]?.[gradeStorageKey]?.[studentId] || {}),
             standing: value,
+            midterm: value === "active"
+              ? prev[activeGradeKey]?.[gradeStorageKey]?.[studentId]?.midterm || ""
+              : 0,
+            finals: value === "active"
+              ? prev[activeGradeKey]?.[gradeStorageKey]?.[studentId]?.finals || ""
+              : 0,
           },
         },
       },
@@ -134,9 +142,11 @@ const GradingTable = ({
     <div className="px-4 pb-10 pt-6 md:px-6">
       <button
         onClick={onBack}
-        className="mb-4 w-full rounded-xl border border-red-200 bg-white px-4 py-2 font-semibold text-red-500 hover:bg-red-500 hover:text-white sm:w-auto"
+        className="mb-4 flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-2xl font-bold leading-none text-[#003366] shadow-sm transition hover:bg-slate-50"
+        aria-label="Back to sections"
+        title="Back to sections"
       >
-        Back to Sections
+        {"<"}
       </button>
 
       <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-md">
@@ -155,9 +165,9 @@ const GradingTable = ({
             <div className="flex flex-wrap items-center gap-2 text-sm text-slate-600">
               <span>{selectedSection.units} Units</span>
               <span className="text-slate-300">•</span>
-              <span>{selectedSection.schedule}</span>
+              <span>{displaySchedule}</span>
               <span className="text-slate-300">•</span>
-              <span>{selectedSection.day}</span>
+              <span>{displayDay}</span>
             </div>
           </div>
 
@@ -302,7 +312,7 @@ const GradingTable = ({
                           ? "text-green-600"
                           : status === "Failed"
                           ? "text-red-600"
-                          : "text-amber-600"
+                          : "text-slate-500"
                       }`}
                     >
                       {status}
@@ -310,7 +320,7 @@ const GradingTable = ({
                   </div>
 
                   <div>
-                    <p className="mb-1 text-sm text-slate-500">Enrollment Status</p>
+                    <p className="mb-1 text-sm text-slate-500">Student Status</p>
                     <select
                       value={standing}
                       onChange={(e) =>
@@ -320,10 +330,10 @@ const GradingTable = ({
                       className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm disabled:bg-slate-100 disabled:text-slate-400"
                     >
                       <option value="active">Active</option>
-                      <option value="dropped">Dropped</option>
-                      <option value="unofficially_dropped">UD</option>
-                      <option value="withdrawn">W</option>
-                      <option value="incomplete">INC</option>
+                      <option value="dropped">Dropped (D)</option>
+                      <option value="unofficially_dropped">Unofficial Dropped (UD)</option>
+                      <option value="withdrawn">Withdrawn (W)</option>
+                      <option value="incomplete">Incomplete (INC)</option>
                     </select>
                   </div>
                 </div>
@@ -369,7 +379,7 @@ const GradingTable = ({
                   Status
                 </th>
                 <th className="px-6 py-4 text-center text-[15px] font-bold uppercase tracking-wide">
-                  Enrollment Status
+                  Student Status
                 </th>
                 <th className="px-6 py-4 text-center text-[15px] font-bold uppercase tracking-wide">
                   Remarks

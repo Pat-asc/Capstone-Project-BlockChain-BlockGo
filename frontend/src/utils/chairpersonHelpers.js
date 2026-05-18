@@ -3,11 +3,26 @@ export const CHAIRPERSON_REVIEW_KEY = "chairpersonSectionReviews";
 export const normalizeText = (value = "") =>
   String(value).trim().toLowerCase();
 
+const buildStableFacultyKey = (faculty = {}) =>
+  normalizeText(
+    faculty.facultyId ||
+      faculty.id ||
+      faculty.email ||
+      faculty.facultyName ||
+      faculty.name ||
+      ""
+  );
+
 export const buildAssignmentStorageKey = (assignment = {}) =>
   assignment.assignmentKey ||
   assignment.id ||
   [
-    Number(assignment.facultyId),
+    String(
+      assignment.facultyId ||
+        assignment.id ||
+        assignment.facultyName ||
+        ""
+    ).trim(),
     assignment.sectionName,
     assignment.schoolYear,
     assignment.semester,
@@ -18,27 +33,37 @@ export const buildFacultyDirectory = ({ facultyList = [], assignments = [] }) =>
   const map = new Map();
 
   facultyList.forEach((faculty) => {
-    map.set(Number(faculty.id), {
-      facultyId: Number(faculty.id),
-      facultyName: faculty.name,
+    const facultyKey = buildStableFacultyKey(faculty);
+    if (!facultyKey) return;
+
+    map.set(facultyKey, {
+      facultyId: faculty.facultyId || faculty.id || faculty.email || facultyKey,
+      facultyKey,
+      facultyName: faculty.facultyName || faculty.name || faculty.email || "Unnamed Faculty",
       department: faculty.program,
       sections: [],
     });
   });
 
   assignments.forEach((assignment) => {
-    const facultyId = Number(assignment.facultyId);
+    const facultyKey = buildStableFacultyKey(assignment);
+    if (!facultyKey) return;
 
-    if (!map.has(facultyId)) {
-      map.set(facultyId, {
-        facultyId,
-        facultyName: assignment.facultyName || `Faculty ${facultyId}`,
+    if (!map.has(facultyKey)) {
+      map.set(facultyKey, {
+        facultyId: assignment.facultyId || facultyKey,
+        facultyKey,
+        facultyName: assignment.facultyName || `Faculty ${assignment.facultyId || facultyKey}`,
         department: assignment.program,
         sections: [],
       });
     }
 
-    const facultyEntry = map.get(facultyId);
+    const facultyEntry = map.get(facultyKey);
+    facultyEntry.facultyId = assignment.facultyId || facultyEntry.facultyId;
+    facultyEntry.facultyName =
+      assignment.facultyName || facultyEntry.facultyName;
+    facultyEntry.department = assignment.program || facultyEntry.department;
     facultyEntry.sections.push(assignment);
   });
 

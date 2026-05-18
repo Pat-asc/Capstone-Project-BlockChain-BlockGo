@@ -3,9 +3,12 @@ import {
   STUDENT_BATCHES_KEY,
   STUDENT_SUBMISSION_LOGS_KEY,
   buildStudentCsvContent,
+  downloadCsvFile,
   parseStudentIdSpreadsheet,
   syncSectionedStudentsToStorage,
 } from "../../utils/studentSectioningHelpers";
+import { downloadTemplateButtonClass } from "../shared/downloadButtonStyles";
+import { pushSectioningSharedState } from "../../utils/sharedClientState";
 
 const buildRegistrarSectioningName = () => "Registrar Sectioning Office";
 const CURRENT_YEAR = new Date().getFullYear();
@@ -121,6 +124,37 @@ function StudentListImport({ selectedProgram = "", onImportComplete }) {
     };
   }, [isYearPickerOpen]);
 
+  useEffect(() => {
+    const handleSharedStateChanged = (event) => {
+      const keys = event.detail?.keys || [];
+
+      try {
+        if (keys.includes(STUDENT_BATCHES_KEY)) {
+          const saved = localStorage.getItem(STUDENT_BATCHES_KEY);
+          setSubmissionBatches(saved ? JSON.parse(saved) : []);
+        }
+
+        if (keys.includes(STUDENT_SUBMISSION_LOGS_KEY)) {
+          const saved = localStorage.getItem(STUDENT_SUBMISSION_LOGS_KEY);
+          setSubmissionLogs(saved ? JSON.parse(saved) : []);
+        }
+      } catch (error) {
+        console.warn("Failed to refresh imported students from shared state.", error);
+      }
+    };
+
+    window.addEventListener(
+      "blockgo:shared-client-state-changed",
+      handleSharedStateChanged
+    );
+
+    return () =>
+      window.removeEventListener(
+        "blockgo:shared-client-state-changed",
+        handleSharedStateChanged
+      );
+  }, []);
+
   const yearOptions = useMemo(
     () => Array.from({ length: 12 }, (_, index) => String(yearPickerAnchor + index)),
     [yearPickerAnchor]
@@ -167,23 +201,27 @@ function StudentListImport({ selectedProgram = "", onImportComplete }) {
       return;
     }
 
-    const csvContent =
-      "Student ID,Sex,Last Name,First Name,Middle Initial\n" +
-      "26-0001,Male,Dela Cruz,Juan,A\n" +
-      "26-0002,Female,Santos,Maria,L\n";
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
+    const templateRows = [
+      {
+        studentId: "26-0001",
+        sex: "Male",
+        lastName: "Dela Cruz",
+        firstName: "Juan",
+        middleInitial: "A",
+      },
+      {
+        studentId: "26-0002",
+        sex: "Female",
+        lastName: "Santos",
+        firstName: "Maria",
+        middleInitial: "L",
+      },
+    ];
 
-    link.href = url;
-    link.setAttribute(
-      "download",
+    downloadCsvFile(
+      buildStudentCsvContent(templateRows, { includeYearLevel: false }),
       `${selectedProgram}-${selectedBatchYear}-student-list.csv`
     );
-
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
   };
 
   const handleImport = () => {
@@ -276,6 +314,7 @@ function StudentListImport({ selectedProgram = "", onImportComplete }) {
         JSON.stringify(updatedLogs)
       );
       syncSectionedStudentsToStorage(updatedBatches);
+      pushSectioningSharedState();
       onImportComplete?.(updatedBatches);
 
       setSelectedFile(null);
@@ -393,7 +432,7 @@ function StudentListImport({ selectedProgram = "", onImportComplete }) {
 
             <button
               onClick={handleDownloadTemplate}
-              className="rounded-2xl border border-[#003366] px-5 py-3 text-sm font-semibold text-[#003366] transition hover:bg-[#003366] hover:text-white"
+              className={downloadTemplateButtonClass}
             >
               Download Template
             </button>

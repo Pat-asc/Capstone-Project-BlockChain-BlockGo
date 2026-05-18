@@ -3,11 +3,18 @@ import { getSystemSetting, updateSystemSetting } from "../../services/api";
 
 function EncodingPeriod({ onResetEncodingSeason }) {
   const [period, setPeriod] = useState({
+    semester: "2nd Semester",
     startDate: "",
     endDate: "",
     term: "midterm",
   });
   const [statusMessage, setStatusMessage] = useState("");
+  const [isResettingSeason, setIsResettingSeason] = useState(false);
+
+  const isSuccessStatusMessage =
+    statusMessage === "Encoding period saved successfully." ||
+    statusMessage ===
+      "Encoding season reset successfully. Faculty assigned sections were cleared, saved sections were kept, and the encoding period was closed.";
 
   useEffect(() => {
     const loadSavedPeriod = async () => {
@@ -16,6 +23,7 @@ function EncodingPeriod({ onResetEncodingSeason }) {
         if (res.status === "Success" && res.value) {
           const savedPeriod = JSON.parse(res.value);
           setPeriod({
+            semester: savedPeriod?.semester || "2nd Semester",
             startDate: savedPeriod?.startDate || "",
             endDate: savedPeriod?.endDate || "",
             term: savedPeriod?.term || "midterm",
@@ -29,7 +37,7 @@ function EncodingPeriod({ onResetEncodingSeason }) {
     loadSavedPeriod();
   }, []);
 
-  const { startDate, endDate, term } = period;
+  const { semester, startDate, endDate, term } = period;
 
   const updatePeriod = (field, value) => {
     setPeriod((current) => ({ ...current, [field]: value }));
@@ -63,21 +71,50 @@ function EncodingPeriod({ onResetEncodingSeason }) {
 
     try {
       await updateSystemSetting("encoding_period", JSON.stringify(encodingData));
+      localStorage.setItem("encodingPeriod", JSON.stringify(encodingData));
+      window.dispatchEvent(
+        new CustomEvent("blockgo:system-setting-changed", {
+          detail: {
+            key: "encoding_period",
+            value: JSON.stringify(encodingData),
+          },
+        })
+      );
       setStatusMessage("Encoding period saved successfully.");
     } catch (error) {
       setStatusMessage(error.message || "Failed to save encoding period.");
     }
   };
 
-  const handleResetSeason = () => {
+  const handleResetSeason = async () => {
     const shouldReset = window.confirm(
-      "Reset this encoding season? This will clear faculty section assignments, saved grades, and chairperson review statuses."
+      "Reset this encoding season? This will clear assigned faculty sections for the current encoding cycle, but will keep the saved student sections."
     );
 
     if (!shouldReset) return;
 
-    onResetEncodingSeason?.();
-    alert("Encoding season has been reset. Faculty section cards are now cleared.");
+    try {
+      setIsResettingSeason(true);
+      await onResetEncodingSeason?.();
+      setPeriod({
+        semester: "2nd Semester",
+        startDate: "",
+        endDate: "",
+        term: "midterm",
+      });
+      setStatusMessage(
+        "Encoding season reset successfully. Faculty assigned sections were cleared, saved sections were kept, and the encoding period was closed."
+      );
+      alert(
+        "Encoding season has been reset. Faculty assigned sections are now cleared, saved sections were kept, and the encoding period is now closed."
+      );
+    } catch (error) {
+      setStatusMessage(
+        error?.message || "Failed to reset encoding season."
+      );
+    } finally {
+      setIsResettingSeason(false);
+    }
   };
 
   return (
@@ -88,9 +125,6 @@ function EncodingPeriod({ onResetEncodingSeason }) {
             <h3 className="text-xl font-bold text-[#003366]">
               Encoding Period Control
             </h3>
-            <p className="mt-1 text-sm text-slate-500">
-              Set the grade encoding schedule for faculty members.
-            </p>
           </div>
 
           <span
@@ -107,12 +141,33 @@ function EncodingPeriod({ onResetEncodingSeason }) {
         </div>
 
         {statusMessage && (
-          <p className="mt-4 rounded-xl bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-600">
+          <p
+            className={`mt-4 rounded-xl px-4 py-3 text-sm font-semibold ${
+              isSuccessStatusMessage
+                ? "border border-green-200 bg-green-50 text-green-700"
+                : "border border-slate-200 bg-slate-50 text-slate-600"
+            }`}
+          >
             {statusMessage}
           </p>
         )}
 
-        <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-3">
+        <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-4">
+          <div>
+            <label className="mb-2 block text-sm font-medium text-slate-700">
+              Semester
+            </label>
+            <select
+              value={semester}
+              onChange={(e) => updatePeriod("semester", e.target.value)}
+              className="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-[#003366]"
+            >
+              <option value="1st Semester">1st Semester</option>
+              <option value="2nd Semester">2nd Semester</option>
+              <option value="Summer">Summer</option>
+            </select>
+          </div>
+
           <div>
             <label className="mb-2 block text-sm font-medium text-slate-700">
               Encoding Term
@@ -162,9 +217,10 @@ function EncodingPeriod({ onResetEncodingSeason }) {
 
           <button
             onClick={handleResetSeason}
+            disabled={isResettingSeason}
             className="rounded-xl border border-red-200 bg-red-50 px-5 py-3 text-sm font-semibold text-red-700 transition hover:bg-red-100"
           >
-            Reset Encoding Season
+            {isResettingSeason ? "Resetting..." : "Reset Encoding Season"}
           </button>
         </div>
       </div>
@@ -172,7 +228,12 @@ function EncodingPeriod({ onResetEncodingSeason }) {
       <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
         <h3 className="text-lg font-bold text-[#003366]">Current Schedule</h3>
 
-        <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-4">
+        <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-5">
+          <div className="rounded-xl bg-slate-50 p-4">
+            <p className="text-sm text-slate-500">Semester</p>
+            <p className="mt-1 font-semibold text-slate-800">{semester}</p>
+          </div>
+
           <div className="rounded-xl bg-slate-50 p-4">
             <p className="text-sm text-slate-500">Encoding Term</p>
             <p className="mt-1 font-semibold text-slate-800">

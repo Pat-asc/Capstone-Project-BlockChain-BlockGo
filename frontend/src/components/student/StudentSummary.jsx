@@ -1,4 +1,4 @@
-const StudentSummary = ({ totalUnits, gwa, isDeansLister, failedSubjectsCount }) => {
+const StudentSummary = ({ totalUnits, gwa, isDeansLister, failedSubjectsCount, semesterLabel = "Semester Grades" }) => {
   console.log("StudentSummary - failedSubjectsCount:", failedSubjectsCount);
 
   return (
@@ -23,8 +23,7 @@ const StudentSummary = ({ totalUnits, gwa, isDeansLister, failedSubjectsCount })
 
       <div className="flex flex-col gap-4 rounded-xl bg-[#003366] p-4 text-white md:flex-row md:items-center md:justify-between md:p-6">
         <div>
-          <h2 className="text-base font-bold md:text-lg">School Year: 2025-2026</h2>
-          <p className="text-sm opacity-80">1st Semester Grades</p>
+          <h2 className="text-base font-bold md:text-lg">{semesterLabel}</h2>
         </div>
 
         <div className="flex flex-wrap items-center gap-3 md:gap-4">

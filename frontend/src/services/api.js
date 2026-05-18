@@ -96,6 +96,17 @@ export const resetPassword = (token, newPassword) => {
     });
 };
 
+export const hashPassword = async (password) => {
+    return await fetchPublic('/crypto/hash-password', {
+        method: 'POST',
+        body: JSON.stringify({ password })
+    });
+};
+
+export const bootstrapSystem = async () => {
+    return await fetchPublic('/bootstrap');
+};
+
 // ==================== MIDDLEWARE API - STUDENT PROFILE ====================
 export const getStudentProfile = async () => {
     return await fetchWithAuth('/student/profile');
@@ -160,7 +171,65 @@ export const returnGrade = async (id, note, invokerId = '') => {
     });
 };
 
-export const batchUploadGrades = async (file, semester = '', schoolYear = '', course = '', facultyId = '', term = '') => {
+export const enrollFabricIdentity = async ({ username, role, password }) => {
+    return await fetchWithAuth('/enroll', {
+        method: 'POST',
+        body: JSON.stringify({ username, role, password })
+    });
+};
+
+export const registerFabricIdentity = async ({ username, role, password }) => {
+    return await fetchWithAuth('/register', {
+        method: 'POST',
+        body: JSON.stringify({ username, role, password })
+    });
+};
+
+export const revokeFabricIdentity = async ({ username, role, reason = '' }) => {
+    return await fetchWithAuth('/revoke', {
+        method: 'POST',
+        body: JSON.stringify({ username, role, reason })
+    });
+};
+
+export const deleteFabricWallet = async (username) => {
+    return await fetchWithAuth(`/wallet/${encodeURIComponent(username)}`, {
+        method: 'DELETE'
+    });
+};
+
+export const fetchBlockchainGrades = async () => {
+    return await fetchWithAuth('/all-grades');
+};
+
+export const middlewareBatchUploadGrades = async (file) => {
+    const formData = new FormData();
+    formData.append('excel', file);
+
+    return await fetchWithAuth('/batch-upload', {
+        method: 'POST',
+        body: formData
+    });
+};
+
+export const middlewareUploadGrades = async (file) => {
+    const formData = new FormData();
+    formData.append('excel', file);
+
+    return await fetchWithAuth('/upload-grades', {
+        method: 'POST',
+        body: formData
+    });
+};
+
+export const batchIssueGradeToBlockchain = async (grades = []) => {
+    return await fetchWithAuth('/batch-issue-grade', {
+        method: 'POST',
+        body: JSON.stringify(grades)
+    });
+};
+
+export const batchUploadGrades = async (file, semester = '', schoolYear = '', course = '', facultyId = '', term = '', section = '') => {
     const formData = new FormData();
     formData.append('file', file);
 
@@ -172,6 +241,7 @@ export const batchUploadGrades = async (file, semester = '', schoolYear = '', co
     if (course) formData.append('course', course);
     if (resolvedFacultyId) formData.append('facultyId', resolvedFacultyId);
     if (term) formData.append('term', term);
+    if (section) formData.append('section', section);
 
     return await fetchWithAuth(`/Grades/bulk-upload`, {
         method: 'POST',
@@ -182,6 +252,13 @@ export const batchUploadGrades = async (file, semester = '', schoolYear = '', co
 // ==================== MIDDLEWARE API - HEALTH CHECK ====================
 export const getHealthStatus = async () => {
     return await fetchPublic('/health');
+};
+
+export const registerFabricUser = async ({ email, role, password }) => {
+    return await fetchWithAuth('/fabric/register-user', {
+        method: 'POST',
+        body: JSON.stringify({ email, role, password })
+    });
 };
 
 // ==================== C# BACKEND API - REGISTRATION & PROFILES ====================
@@ -198,6 +275,14 @@ export const submitSectionGrades = async (department, section) => {
     return await fetchWithAuth(`/Grades/submit-section?department=${encodeURIComponent(department)}&section=${encodeURIComponent(section)}`, {
         method: 'POST'
     });
+};
+
+export const submitFacultySectionToChairperson = async ({ department, section }) => {
+    return await submitSectionGrades(department, section);
+};
+
+export const fetchChairpersonGradeRecords = async (invokerId = 'chairperson') => {
+    return await fetchAllGrades(invokerId);
 };
 
 export const approveGrade = async (recordId, invokerId) => {
@@ -236,6 +321,12 @@ export const denyRegistrationRequest = async (id) => {
     });
 };
 
+export const cleanupPendingRequests = async () => {
+    return await fetchWithAuth('/Auth/requests/cleanup-pending', {
+        method: 'DELETE'
+    });
+};
+
 export const fetchUserProfile = async (email, role) => {
     return await fetchWithAuth(`/Auth/user-profile?email=${encodeURIComponent(email)}&role=${encodeURIComponent(role)}`);
 };
@@ -262,6 +353,12 @@ export const assignDepartmentAdmin = async (id, assignmentData) => {
     });
 };
 
+export const revokeDepartmentAdmin = async (id) => {
+    return await fetchWithAuth(`/Auth/admins/department/${encodeURIComponent(id)}/revoke`, {
+        method: 'DELETE'
+    });
+};
+
 export const fetchApprovedFaculties = async () => {
     return await fetchWithAuth(`/Auth/faculty/approved`);
 };
@@ -270,6 +367,27 @@ export const assignFaculty = async (id, assignmentData) => {
     return await fetchWithAuth(`/Auth/faculty/${encodeURIComponent(id)}/assign`, {
         method: 'PUT',
         body: JSON.stringify(assignmentData)
+    });
+};
+
+export const revokeFaculty = async (id) => {
+    return await fetchWithAuth(`/Auth/faculty/${encodeURIComponent(id)}/revoke`, {
+        method: 'DELETE'
+    });
+};
+
+export const assignFacultyLoadToBackend = async (assignmentData) => {
+    const facultyId = assignmentData.facultyId;
+
+    if (!facultyId) {
+        throw new Error('Faculty ID is required to assign faculty load.');
+    }
+
+    return await assignFaculty(facultyId, {
+        Department: assignmentData.program || assignmentData.department || '',
+        Section: assignmentData.sectionName || assignmentData.section || '',
+        YearLevel: assignmentData.yearLevel || '',
+        Subject: assignmentData.subjectCode || assignmentData.subject || '',
     });
 };
 
@@ -297,6 +415,17 @@ export const unassignFacultySection = async (email, department, yearLevel, secti
 
 export const fetchFacultySections = async (email) => {
     return await fetchWithAuth(`/Auth/faculty/${encodeURIComponent(email)}/assigned-sections`);
+};
+
+export const fetchSharedClientState = async (key) => {
+    return await fetchWithAuth(`/Auth/shared-state/${encodeURIComponent(key)}`);
+};
+
+export const saveSharedClientState = async (key, value) => {
+    return await fetchWithAuth(`/Auth/shared-state/${encodeURIComponent(key)}`, {
+        method: 'PUT',
+        body: JSON.stringify({ value })
+    });
 };
 
 export const fetchFacultyStudents = async (email) => {
@@ -336,15 +465,32 @@ export const batchEnrollStudentsToSection = async (file, sectionId) => {
     });
 };
 
-export const batchUploadStudents = async (file, defaultDepartment = '') => {
+export const batchUploadStudents = async (file, defaultDepartment = '', mode = 'enroll') => {
     const formData = new FormData();
     formData.append('file', file);
     if (defaultDepartment) formData.append('defaultDepartment', defaultDepartment);
+    formData.append('mode', mode);
 
     return await fetchWithAuth(`/Auth/students/bulk-upload`, {
         method: 'POST',
         body: formData 
     });
+};
+
+export const bulkEnrollStudents = async (file, defaultDepartment = '') => {
+    return await batchUploadStudents(file, defaultDepartment, 'enroll');
+};
+
+export const registrarBulkEnrollStudents = async (file, department = '') => {
+    return await bulkEnrollStudents(file, department);
+};
+
+export const bulkUpdateStudents = async (file, defaultDepartment = '') => {
+    return await batchUploadStudents(file, defaultDepartment, 'update');
+};
+
+export const registrarBulkUpdateStudents = async (file, department = '') => {
+    return await bulkUpdateStudents(file, department);
 };
 
 export const bulkUploadMasterlist = async (file, department = '') => {
@@ -376,8 +522,44 @@ export const uploadToIpfs = async (file) => {
     });
 };
 
+export const fetchGradeRecord = async (recordId) => {
+    return await fetchWithAuth(`/Grades/${encodeURIComponent(recordId)}`);
+};
+
+export const fetchGradeHistory = async (recordId) => {
+    return await fetchWithAuth(`/Grades/history/${encodeURIComponent(recordId)}`);
+};
+
+export const correctGrade = async (payload) => {
+    return await fetchWithAuth('/Grades/correct', {
+        method: 'POST',
+        body: JSON.stringify(payload)
+    });
+};
+
+export const flagGrade = async (recordId, payload = {}) => {
+    return await fetchWithAuth(`/Grades/flag/${encodeURIComponent(recordId)}`, {
+        method: 'POST',
+        body: JSON.stringify(payload)
+    });
+};
+
+export const updateGradeStatus = async (recordId, payload = {}) => {
+    return await fetchWithAuth(`/Grades/status/${encodeURIComponent(recordId)}`, {
+        method: 'POST',
+        body: JSON.stringify(payload)
+    });
+};
+
 export const fetchDepartmentTemplates = async (department) => {
     return await fetchWithAuth(`/GradeTemplate/department/${encodeURIComponent(department)}`);
+};
+
+export const createGradeTemplate = async (payload) => {
+    return await fetchWithAuth(`/GradeTemplate/create`, {
+        method: 'POST',
+        body: JSON.stringify(payload),
+    });
 };
 
 export const reviewTemplate = async (id, status) => {
@@ -386,6 +568,7 @@ export const reviewTemplate = async (id, status) => {
         body: JSON.stringify({ status })
     });
 };
+
 
 export const getSystemSetting = async (key) => {
     return await fetchWithAuth(`/SystemSettings/${encodeURIComponent(key)}`);
@@ -428,6 +611,26 @@ export const fetchSystemLogs = async () => {
 
 export const getAuditLogs = async (recordId) => {
     return await fetchWithAuth(`/Grades/audit-logs/${encodeURIComponent(recordId)}`);
+};
+
+export const fetchRegistrarDashboardOverview = async () => {
+    return await fetchWithAuth('/RegistrarDashboard/overview');
+};
+
+export const queryRegistrarLogs = async (params = {}) => {
+    const query = new URLSearchParams(
+        Object.entries(params).filter(([, value]) => value !== undefined && value !== null && value !== '')
+    ).toString();
+
+    return await fetchWithAuth(`/RegistrarDashboard/logs/query${query ? `?${query}` : ''}`);
+};
+
+export const searchRegistrarRecords = async (params = {}) => {
+    const query = new URLSearchParams(
+        Object.entries(params).filter(([, value]) => value !== undefined && value !== null && value !== '')
+    ).toString();
+
+    return await fetchWithAuth(`/registrar/Search${query ? `?${query}` : ''}`);
 };
 
 export const downloadGradingSheet = async (department, section) => {

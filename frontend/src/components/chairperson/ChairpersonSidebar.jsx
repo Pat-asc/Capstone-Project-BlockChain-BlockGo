@@ -2,13 +2,10 @@ import React from "react";
 
 function ChairpersonSidebar({ activeTab, setActiveTab }) {
   const menuItems = [
-    { id: "dashboard", label: "Dashboard" },
-    { id: "sectioning", label: "Student Sectioning" },
+    { id: "dashboard", label: "Encoding Monitoring" },
+    { id: "sectioning", label: "Department Sections" },
     { id: "assignment", label: "Academic Assignment" },
     { id: "forReview", label: "For Review" },
-    { id: "returned", label: "Returned" },
-    { id: "approved", label: "Approved" },
-    { id: "forwarded", label: "To Registrar" },
   ];
 
   return (
@@ -25,10 +22,10 @@ function ChairpersonSidebar({ activeTab, setActiveTab }) {
             <button
               key={item.id}
               onClick={() => setActiveTab(item.id)}
-              className={`w-full rounded-xl px-4 py-3 text-left text-sm font-medium transition ${
+              className={`w-full rounded-xl border-b-2 px-4 py-3 text-left text-sm font-medium transition ${
                 isActive
-                  ? "bg-[#003366] text-white shadow-sm"
-                  : "text-slate-700 hover:bg-slate-100"
+                  ? "border-yellow-400 bg-[#003366] text-yellow-400 shadow-sm"
+                  : "border-transparent text-slate-700 hover:bg-slate-100"
               }`}
             >
               {item.label}

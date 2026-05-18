@@ -9,7 +9,11 @@
       ],
       "Access-Control-Allow-Origin": [
         "http://localhost:8080",
-        "http://127.0.0.1:8080"
+        "http://127.0.0.1:8080",
+        "http://localhost:8090",
+        "http://127.0.0.1:8090",
+        "http://localhost:8100",
+        "http://127.0.0.1:8100"
       ]
     }
   },
@@ -120,6 +124,7 @@
     "BatchMaxNodes": null,
     "BatchMaxSize": null,
     "CidVersion": null,
+    "FastProvideDAG": null,
     "FastProvideRoot": null,
     "FastProvideWait": null,
     "HashFunction": null,
@@ -144,7 +149,9 @@
     "FuseAllowOther": false,
     "IPFS": "/ipfs",
     "IPNS": "/ipns",
-    "MFS": "/mfs"
+    "MFS": "/mfs",
+    "StoreMode": null,
+    "StoreMtime": null
   },
   "Peering": {
     "Peers": null

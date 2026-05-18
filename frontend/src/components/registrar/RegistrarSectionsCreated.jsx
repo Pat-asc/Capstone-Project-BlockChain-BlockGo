@@ -1,13 +1,16 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   AVAILABLE_YEAR_LEVELS,
   STUDENT_BATCHES_KEY,
   YEAR_LEVEL_PREFIXES,
   downloadStudentCsvFile,
   getDefaultSectionName,
+  getStudentMiddleName,
   parseStudentIdSpreadsheet,
   syncSectionedStudentsToStorage,
 } from "../../utils/studentSectioningHelpers";
+import { syncSectioningBatchesToBackend } from "../../utils/registrarSectioningBackendSync";
+import { pushSectioningSharedState } from "../../utils/sharedClientState";
 
 const GRADUATING_STUDENTS_KEY = "graduatingStudents";
 const IRREGULAR_SUBJECTS_KEY = "irregularSubjectAssignments";
@@ -25,11 +28,16 @@ const getStoredArray = (key) => {
   return saved ? JSON.parse(saved) : [];
 };
 
-const buildStudentName = (student) =>
-  [student.lastName, student.firstName, student.middleInitial]
+const buildStudentName = (student) => {
+  const firstAndMiddle = [
+    student.firstName,
+    getStudentMiddleName(student),
+  ]
     .filter(Boolean)
-    .join(", ")
-    .replace(", ,", ",");
+    .join(" ");
+
+  return [student.lastName, firstAndMiddle].filter(Boolean).join(", ");
+};
 
 const sectionMatchesYearLevel = (section = {}, yearLevel = "1st Year") => {
   const yearPrefix = YEAR_LEVEL_PREFIXES[yearLevel] || "";
@@ -95,7 +103,7 @@ function RegistrarSectionsCreated() {
     sex: "",
     lastName: "",
     firstName: "",
-    middleInitial: "",
+    middleName: "",
   });
   const [promotionSummary, setPromotionSummary] = useState(null);
   const [changedDepartments, setChangedDepartments] = useState(() => new Set());
@@ -104,7 +112,33 @@ function RegistrarSectionsCreated() {
     setBatches(nextBatches);
     localStorage.setItem(STUDENT_BATCHES_KEY, JSON.stringify(nextBatches));
     syncSectionedStudentsToStorage(nextBatches);
+    pushSectioningSharedState();
   };
+
+  useEffect(() => {
+    const handleSharedStateChanged = (event) => {
+      const keys = event.detail?.keys || [];
+      if (!keys.includes(STUDENT_BATCHES_KEY)) return;
+
+      try {
+        const saved = localStorage.getItem(STUDENT_BATCHES_KEY);
+        setBatches(saved ? JSON.parse(saved) : []);
+      } catch (error) {
+        console.warn("Failed to refresh created sections from shared state.", error);
+      }
+    };
+
+    window.addEventListener(
+      "blockgo:shared-client-state-changed",
+      handleSharedStateChanged
+    );
+
+    return () =>
+      window.removeEventListener(
+        "blockgo:shared-client-state-changed",
+        handleSharedStateChanged
+      );
+  }, []);
 
   const markDepartmentChanged = (department) => {
     if (!department) return;
@@ -115,17 +149,27 @@ function RegistrarSectionsCreated() {
     });
   };
 
-  const handleApplyDepartmentChanges = () => {
+  const handleApplyDepartmentChanges = async () => {
     if (!selectedDepartment) return;
 
     localStorage.setItem(STUDENT_BATCHES_KEY, JSON.stringify(batches));
     syncSectionedStudentsToStorage(batches);
-    setChangedDepartments((current) => {
-      const nextDepartments = new Set(current);
-      nextDepartments.delete(selectedDepartment);
-      return nextDepartments;
-    });
-    alert(`${selectedDepartment} section changes applied.`);
+    pushSectioningSharedState();
+    try {
+      await syncSectioningBatchesToBackend(
+        batches.filter((batch) => batch.program === selectedDepartment)
+      );
+      setChangedDepartments((current) => {
+        const nextDepartments = new Set(current);
+        nextDepartments.delete(selectedDepartment);
+        return nextDepartments;
+      });
+      alert(`${selectedDepartment} section changes applied and synced.`);
+    } catch (error) {
+      alert(
+        `Changes were saved locally, but backend sync failed: ${error.message || "Please try applying again."}`
+      );
+    }
   };
 
   const sectionedBatches = useMemo(
@@ -294,7 +338,7 @@ function RegistrarSectionsCreated() {
 
         if (!parsedStudents.length) {
           alert(
-            "The section CSV must contain Student ID, Sex, Last Name, First Name, and Middle Initial columns with valid rows."
+            "The section CSV must contain Student ID, Sex, Last Name, First Name, and Middle Name columns with valid rows."
           );
           return;
         }
@@ -409,7 +453,8 @@ function RegistrarSectionsCreated() {
             sex: removedStudent.sex || "",
             lastName: removedStudent.lastName || "",
             firstName: removedStudent.firstName || "",
-            middleInitial: removedStudent.middleInitial || "",
+            middleName: getStudentMiddleName(removedStudent),
+            middleInitial: removedStudent.middleInitial || getStudentMiddleName(removedStudent),
             yearLevel: restoredSectionExists
               ? removedStudent.yearLevel || activeYearLevel
               : activeYearLevel,
@@ -438,7 +483,7 @@ function RegistrarSectionsCreated() {
       !studentForm.sex ||
       !studentForm.lastName.trim() ||
       !studentForm.firstName.trim() ||
-      !studentForm.middleInitial.trim()
+      !studentForm.middleName.trim()
     ) {
       alert("Complete all student fields before adding.");
       return;
@@ -461,7 +506,8 @@ function RegistrarSectionsCreated() {
           sex: studentForm.sex,
           lastName: studentForm.lastName.trim(),
           firstName: studentForm.firstName.trim(),
-          middleInitial: studentForm.middleInitial.trim().slice(0, 2),
+          middleName: studentForm.middleName.trim(),
+          middleInitial: studentForm.middleName.trim(),
           yearLevel: selectedSection.yearLevel || activeYearLevel,
           sectionCode: selectedSection.sectionCode,
           sectionName:
@@ -476,7 +522,7 @@ function RegistrarSectionsCreated() {
       sex: "",
       lastName: "",
       firstName: "",
-      middleInitial: "",
+      middleName: "",
     });
   };
 
@@ -487,12 +533,8 @@ function RegistrarSectionsCreated() {
       return;
     }
 
-    const studentsToPromote = rolloverBatches.reduce(
-      (total, batch) => total + (batch.students || []).length,
-      0
-    );
     const confirmed = window.confirm(
-      `Promote ${studentsToPromote} student${studentsToPromote === 1 ? "" : "s"} across all available departments to the next academic year?`
+      "Advance all sections across departments to the next academic year?"
     );
     if (!confirmed) return;
 
@@ -640,11 +682,8 @@ function RegistrarSectionsCreated() {
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <h3 className="text-xl font-bold text-[#003366]">
-              Promote Sections
+              Year Level Progression
             </h3>
-            <p className="mt-1 text-sm text-slate-500">
-              Promote year level of sections across departments.
-            </p>
           </div>
           <div className="flex flex-wrap gap-2">
             {hasActiveDepartmentChanges ? (
@@ -671,14 +710,11 @@ function RegistrarSectionsCreated() {
         <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
           <div>
             <h3 className="text-xl font-bold text-[#003366]">Sections Created</h3>
-            <p className="mt-1 text-sm text-slate-500">
-              Select a department and year level, then manage the sections and rosters.
-            </p>
           </div>
         </div>
 
         {departments.length ? (
-          <div className="mt-6 grid grid-cols-1 gap-5 2xl:grid-cols-[280px_1fr]">
+          <div className="mt-6 grid grid-cols-1 gap-5 2xl:grid-cols-[240px_1fr]">
             <aside className="rounded-xl border border-slate-200 bg-slate-50 p-4">
               <p className="text-sm font-bold text-[#003366]">Departments</p>
               <div className="mt-3 space-y-2">
@@ -700,13 +736,16 @@ function RegistrarSectionsCreated() {
                         setSelectedBatchKey("");
                         setSelectedSectionCode("");
                       }}
-                      className={`w-full rounded-xl px-4 py-3 text-left transition ${
+                      className={`w-full rounded-xl px-3 py-2.5 text-left transition ${
                         isActive
                           ? "bg-[#003366] text-white shadow-sm"
                           : "bg-white text-slate-700 hover:bg-slate-100"
                       }`}
+                      title={department}
                     >
-                      <span className="block text-sm font-bold">{department}</span>
+                      <span className="block truncate text-sm font-bold">
+                        {department}
+                      </span>
                       <span
                         className={`mt-1 block text-xs ${
                           isActive ? "text-white/80" : "text-slate-500"
@@ -780,7 +819,7 @@ function RegistrarSectionsCreated() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 gap-5 xl:grid-cols-[320px_1fr]">
+              <div className="grid grid-cols-1 gap-5 xl:grid-cols-[220px_1fr]">
                 <aside className="rounded-xl border border-slate-200 bg-white p-4">
                   <p className="text-sm font-bold text-[#003366]">Sections</p>
                   <div className="mt-3 space-y-3">
@@ -821,8 +860,15 @@ function RegistrarSectionsCreated() {
                                       ? "border-[#003366] bg-[#003366] text-white"
                                       : "border-slate-200 bg-white text-slate-700 hover:bg-slate-100"
                                   }`}
+                                  title={
+                                    section.sectionName ||
+                                    getDefaultSectionName(
+                                      batch.program,
+                                      section.sectionCode
+                                    )
+                                  }
                                 >
-                                  <span className="block font-semibold">
+                                  <span className="block truncate font-semibold">
                                     {section.sectionName ||
                                       getDefaultSectionName(
                                         batch.program,
@@ -1067,7 +1113,7 @@ function RegistrarSectionsCreated() {
                         {[
                           ["lastName", "Last name"],
                           ["firstName", "First name"],
-                          ["middleInitial", "M.I."],
+                          ["middleName", "Middle name"],
                         ].map(([field, placeholder]) => (
                           <input
                             key={field}

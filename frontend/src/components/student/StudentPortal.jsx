@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { fetchAllGrades } from '../../services/api';
+import { fetchAllGrades, getSystemSetting } from '../../services/api';
 import StudentNavbar from './StudentNavbar';
 import StudentInfoCard from './StudentInfoCard';
 import StudentSummary from './StudentSummary';
@@ -8,6 +8,16 @@ import StudentGradesTable from './StudentGradesTable';
 const StudentPortal = ({ studentData, onLogout }) => {
   const [grades, setGrades] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [activeSemester, setActiveSemester] = useState('Semester Grades');
+
+  const rawFullName = studentData.name || '';
+  const firstName = rawFullName.split(' ')[0] || '';
+  const storedMiddleName = studentData.middleName || '';
+  const remainingName = rawFullName.split(' ').slice(1).join(' ').trim();
+  const escapedMiddleName = storedMiddleName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const lastName = storedMiddleName && escapedMiddleName
+    ? remainingName.replace(new RegExp(`^${escapedMiddleName}\\s*`, 'i'), '').trim()
+    : remainingName;
 
   const getStudentKey = useCallback((grade) => (
     grade.student_hash ||
@@ -18,21 +28,35 @@ const StudentPortal = ({ studentData, onLogout }) => {
     ''
   ), []);
 
-  const getGradeValue = useCallback((grade) => {
-    const rawGrade = grade.grade || grade.Grade || '';
-    if (typeof rawGrade === 'number') return rawGrade;
-    if (typeof rawGrade !== 'string') return '';
+  const parseGradePayload = useCallback((grade) => {
+    const rawGrade = grade.grade || grade.Grade;
 
-    if (rawGrade.trim().startsWith('{')) {
-      try {
-        const parsed = JSON.parse(rawGrade);
-        return parsed.finalAverage || parsed.final || parsed.grade || '';
-      } catch (e) {
-        return rawGrade;
-      }
+    if (!rawGrade) {
+        return { midterm: '---', finals: '---', finalAverage: '---' };
     }
 
-    return rawGrade;
+    if (typeof rawGrade === 'object') {
+        return {
+            midterm: rawGrade.midterm || '---',
+            finals: rawGrade.finals || '---',
+            finalAverage: rawGrade.finalAverage || rawGrade.final || rawGrade.grade || '---'
+        };
+    }
+
+    if (typeof rawGrade === 'string' && rawGrade.trim().startsWith('{')) {
+        try {
+            const parsed = JSON.parse(rawGrade);
+            return {
+                midterm: parsed.midterm || '---',
+                finals: parsed.finals || '---',
+                finalAverage: parsed.finalAverage || parsed.final || parsed.grade || '---'
+            };
+        } catch (error) {
+            console.error("Failed to parse grade JSON:", error);
+        }
+    }
+
+    return { midterm: '---', finals: '---', finalAverage: rawGrade };
   }, []);
 
   const loadGrades = useCallback(async (isBackground = false) => {
@@ -69,30 +93,80 @@ const StudentPortal = ({ studentData, onLogout }) => {
     return () => window.removeEventListener('blockgo:academic-data-changed', handleAcademicDataChanged);
   }, [loadGrades]);
 
-  // 2. Calculate Semester Totals
+  useEffect(() => {
+    const applyEncodingPeriod = (value) => {
+      if (!value) return;
+      try {
+        const parsed = typeof value === 'string' ? JSON.parse(value) : value;
+        setActiveSemester(parsed?.semester ? `${parsed.semester} Grades` : 'Semester Grades');
+      } catch (error) {
+        console.error('Failed to parse encoding period for student portal:', error);
+      }
+    };
+
+    const loadEncodingPeriod = async () => {
+      try {
+        const res = await getSystemSetting('encoding_period');
+        if (res.status === 'Success' && res.value) {
+          applyEncodingPeriod(res.value);
+        }
+      } catch (error) {
+        console.error('Failed to load encoding period for student portal:', error);
+      }
+    };
+
+    const handleSystemSettingChanged = (event) => {
+      const key = event.detail?.key || event.detail?.Key;
+      const value = event.detail?.value || event.detail?.Value;
+      if (key === 'encoding_period') applyEncodingPeriod(value);
+    };
+
+    loadEncodingPeriod();
+    window.addEventListener('blockgo:system-setting-changed', handleSystemSettingChanged);
+    return () => window.removeEventListener('blockgo:system-setting-changed', handleSystemSettingChanged);
+  }, []);
+
   const totalUnits = grades.length * 3; // Assuming 3 units per subject block for now
   
-  const totalWeight = grades.reduce((sum, sub) => sum + ((parseFloat(getGradeValue(sub)) || 0) * 3), 0);
+  const totalWeight = grades.reduce((sum, sub) => sum + ((parseFloat(parseGradePayload(sub).finalAverage) || 0) * 3), 0);
 
   const calculatedGWA = totalUnits > 0 ? (totalWeight / totalUnits).toFixed(2) : "0.00";
 
-  // 3. Status logic: Dean's List eligibility check
-  const isDeansLister = grades.length > 0 && Number(calculatedGWA) <= 1.75 && grades.every(s => parseFloat(getGradeValue(s)) <= 2.25);
-  const failedSubjectsCount = grades.filter(s => parseFloat(getGradeValue(s)) > 3.0 || parseFloat(getGradeValue(s)) === 5.0).length;
+  const isDeansLister = grades.length > 0 && Number(calculatedGWA) <= 1.75 && grades.every(s => parseFloat(parseGradePayload(s).finalAverage) <= 2.25);
+  const failedSubjectsCount = grades.filter(s => parseFloat(parseGradePayload(s).finalAverage) > 3.0 || parseFloat(parseGradePayload(s).finalAverage) === 5.0).length;
 
-  // Map the raw blockchain array to the structure expected by the new StudentGradesTable
   let mappedSubjects = grades.map(g => {
-    const finalGrade = getGradeValue(g);
+    const parsed = parseGradePayload(g);
+    
+    let rawAverage = "---";
+    const mid = parseFloat(parsed.midterm);
+    const fin = parseFloat(parsed.finals);
+    
+    if (!isNaN(mid) && !isNaN(fin)) {
+        rawAverage = ((mid + fin) / 2).toFixed(2);
+    } else if (!isNaN(mid)) {
+        rawAverage = mid.toFixed(2);
+    } else if (!isNaN(fin)) {
+        rawAverage = fin.toFixed(2);
+    }
+
+    let computedRemarks = "Pending";
+    if (!isNaN(parseFloat(parsed.finalAverage))) {
+        computedRemarks = parseFloat(parsed.finalAverage) <= 3.0 ? "Passed" : "Failed";
+    }
+
     return {
       code: g.subject_code || g.subjectCode || g.SubjectCode || 'N/A',
-      name: g.subject_name || g.subjectName || g.SubjectName || g.course || g.Course || 'N/A',
-      units: 3, // Assuming 3 units per subject block for now
-      midterm: finalGrade,
-      finals: finalGrade,
+      name: g.subject_name || g.subjectName || g.SubjectName || g.subject_code || g.subjectCode || 'Unknown Subject',
+      units: 3,
+      midterm: parsed.midterm,
+      finals: parsed.finals,
+      finalGrade: rawAverage !== "---" ? rawAverage : parsed.finalAverage,
+      equivalent: parsed.finalAverage,
+      remarks: computedRemarks
     };
   });
 
-  // If no grades on blockchain but the student is enrolled in subjects, show them as 'PENDING'
   if (mappedSubjects.length === 0 && studentData.enrolledSubjects && studentData.enrolledSubjects.length > 0) {
       mappedSubjects = studentData.enrolledSubjects.map(subName => ({
           code: 'PENDING',
@@ -110,14 +184,14 @@ const StudentPortal = ({ studentData, onLogout }) => {
       <div className="mx-auto max-w-7xl">
         <StudentInfoCard 
           studentData={{
-            firstName: studentData.name?.split(' ')[0] || '',
-            lastName: studentData.name?.split(' ').slice(1).join(' ') || '',
-            middleName: '', // Optional, parse if needed
+            firstName,
+            lastName,
+            middleName: storedMiddleName || 'Not provided',
             studentId: studentData.studentNo || 'N/A',
             dateOfBirth: studentData.dateOfBirth || 'Not provided',
             sex: studentData.sex || 'Not provided',
             phone: studentData.phone || 'Not provided',
-            email: studentData.email,
+            email: studentData.studentEmail || studentData.email,
             department: studentData.department,
             section: studentData.section,
             address: studentData.address || 'Not provided'
@@ -129,6 +203,7 @@ const StudentPortal = ({ studentData, onLogout }) => {
           gwa={calculatedGWA} 
           isDeansLister={isDeansLister} 
           failedSubjectsCount={failedSubjectsCount} 
+          semesterLabel={activeSemester}
         />
 
         {failedSubjectsCount >= 2 && (

@@ -8,17 +8,28 @@ const crypto = require('crypto');
 
 require('dotenv').config({ path: path.resolve(__dirname, '../network/.env'), override: true });
 
-async function getWallet() {
-    let couchUrl = process.env.COUCHDB_WALLET_URL;
-    if (!couchUrl && process.env.COUCHDB_USER && process.env.COUCHDB_PASS) {
-        couchUrl = `http://${process.env.COUCHDB_USER}:${process.env.COUCHDB_PASS}@127.0.0.1:5990`;
+async function getWallet(role = 'registrar') {
+    const normalizedRole = String(role).toLowerCase();
+    let couchUrl;
+    const user = process.env.COUCHDB_USER || 'capstone';
+    const pass = process.env.COUCHDB_PASS || 'pass123';
+    const host = '127.0.0.1';
+
+    if (normalizedRole === 'faculty') {
+        couchUrl = process.env.COUCHDB_WALLET_FACULTY_URL || `http://${user}:${pass}@${host}:6990`;
+    } else if (normalizedRole === 'department_admin' || normalizedRole === 'department') {
+        couchUrl = process.env.COUCHDB_WALLET_DEPARTMENT_URL || `http://${user}:${pass}@${host}:7990`;
+    } else {
+        couchUrl = process.env.COUCHDB_WALLET_REGISTRAR_URL || process.env.COUCHDB_WALLET_URL || `http://${user}:${pass}@${host}:5990`;
     }
 
     if (couchUrl) {
-        console.log(`\nConnecting to CouchDB wallet...`);
+        const walletSuffix = normalizedRole === 'faculty' ? 'faculty' : (normalizedRole === 'department_admin' || normalizedRole === 'department') ? 'department' : 'registrar';
+        const walletName = `fabric_wallet_${walletSuffix}`;
+        console.log(`\nConnecting to CouchDB wallet at ${couchUrl} [${walletName}]...`);
         try {
-            const wallet = await Wallets.newCouchDBWallet(couchUrl, 'fabric_wallet');
-            console.log('CouchDB wallet connection successful.');
+            const wallet = await Wallets.newCouchDBWallet(couchUrl, walletName);
+            console.log(`CouchDB wallet connection successful for ${walletName}.`);
             
             const encryptionKey = process.env.WALLET_ENCRYPTION_KEY;
             if (encryptionKey) {
@@ -153,7 +164,7 @@ async function bootstrapRootUser(wallet) {
 
         if (!identityExists) {
             console.log('Root registrar wallet identity not found. Creating...');
-            const { caURL, caName, adminLabel, mspId } = { caURL: 'https://localhost:7054', caName: 'ca-registrar', adminLabel: 'admin-registrar', mspId: 'RegistrarMSP' };
+            const { caURL, caName, adminLabel, mspId } = { caURL: 'https://127.0.0.1:7054', caName: 'ca-registrar', adminLabel: 'admin-registrar', mspId: 'RegistrarMSP' };
             
             const ca = new FabricCAServices(caURL, { verify: false }, caName);
             const adminIdentity = await wallet.get(adminLabel);
@@ -175,7 +186,18 @@ async function bootstrapRootUser(wallet) {
                 if (regErr.toString().includes('is already registered')) {
                     console.log(`Identity ${email} already registered in CA. Forcing password update...`);
                     const identityService = ca.newIdentityService();
-                    await identityService.update(email, { enrollmentSecret: pass }, adminUser);
+                    try {
+                        const forceDeleteUrl = identityService._client.getBaseURL() + '/api/v1/identities/' + email + '?force=true';
+                        await identityService._client.delete(forceDeleteUrl, adminUser);
+                        await ca.register({
+                            enrollmentID: email,
+                            enrollmentSecret: pass,
+                            role: 'admin',
+                            attrs: [{ name: 'role', value: 'registrar', ecert: true }]
+                        }, adminUser);
+                    } catch (e) {
+                        await identityService.update(email, { type: 'admin', secret: pass, max_enrollments: -1, attrs: [{ name: 'role', value: 'registrar', ecert: true }] }, adminUser);
+                    }
                 } else {
                     throw regErr;
                 }
@@ -195,96 +217,30 @@ async function bootstrapRootUser(wallet) {
     }
 }
 
-async function bootstrapMockStudents(wallet) {
-    console.log('\n--- Bootstrapping Mock Students Wallets ---');
-    const ca = new FabricCAServices('https://localhost:7054', { verify: false }, 'ca-registrar');
-    const adminIdentity = await wallet.get('admin-registrar');
-    
-    if (!adminIdentity) {
-        console.warn('admin-registrar not found, skipping mock student wallet generation.');
-        return;
-    }
-    
-    const provider = wallet.getProviderRegistry().getProvider(adminIdentity.type);
-    const adminUser = await provider.getUserContext(adminIdentity, 'admin');
-
-    const mockData = [
-        { email: 'mock-student1@plv.edu.ph', pass: 'mock-student1' },
-        { email: 'mock-student2@plv.edu.ph', pass: 'mock-student2' },
-        { email: 'mock-student3@plv.edu.ph', pass: 'mock-student3' },
-        { email: 'mock-student4@plv.edu.ph', pass: 'mock-student4' },
-        { email: 'mock-student5@plv.edu.ph', pass: 'mock-student5' },
-        { email: 'mock-student6@plv.edu.ph', pass: 'mock-student6' },
-        { email: 'mock-student7@plv.edu.ph', pass: 'mock-student7' },
-        { email: 'mock-student8@plv.edu.ph', pass: 'mock-student8' },
-        { email: 'mock-student9@plv.edu.ph', pass: 'mock-student9' },
-        { email: 'mock-student10@plv.edu.ph', pass: 'mock-student10' }
-    ];
-
-    for (const student of mockData) {
-        const { email, pass } = student;
-        const identityExists = await wallet.get(email);
-        
-        if (!identityExists) {
-            try {
-                await ca.register({
-                    enrollmentID: email,
-                    enrollmentSecret: pass,
-                    role: 'client',
-                    attrs: [
-                        { name: 'role', value: 'student', ecert: true },
-                        { name: 'grade.manage', value: 'false', ecert: true }
-                    ]
-                }, adminUser);
-            } catch (regErr) {
-                if (!regErr.toString().includes('is already registered')) {
-                    console.error(`Failed to register ${email}: ${regErr.message}`);
-                    continue;
-                }
-            }
-
-            try {
-                const enrollment = await ca.enroll({ enrollmentID: email, enrollmentSecret: pass });
-                const x509Identity = { credentials: { certificate: enrollment.certificate, privateKey: enrollment.key.toBytes() }, mspId: 'RegistrarMSP', type: 'X.509' };
-                await wallet.put(email, x509Identity);
-                console.log(`Generated Fabric Wallet for mock student: ${email}`);
-            } catch (enrollErr) {
-                console.error(`Failed to enroll ${email}: ${enrollErr.message}`);
-            }
-        }
-    }
-}
-
 async function main() {
     console.log('--- Running Decentralized CA Admin Enrollment Script ---');
     try {
-        const caAdminSecret = process.env.CA_ADMIN_PASS || 'adminpw';
+        const caAdminSecret = process.env.CA_ADMIN_PASS || process.env.BOOTSTRAP_REGISTRAR_PASS || 'adminpw';
         
         // 1. Registrar Wallet & Admin
         const walletRegistrar = await getWallet('registrar');
-        const caRegistrar = new FabricCAServices('https://localhost:7054', { tlsCACerts: [], verify: false }, 'ca-registrar');
+        const caRegistrar = new FabricCAServices('https://127.0.0.1:7054', { tlsCACerts: [], verify: false }, 'ca-registrar');
         await enrollCAAdmin(caRegistrar, walletRegistrar, 'RegistrarMSP', 'admin', caAdminSecret, 'admin-registrar');
         
         // 2. Faculty Wallet & Admin
         const walletFaculty = await getWallet('faculty');
-        const caFaculty = new FabricCAServices('https://localhost:8054', { tlsCACerts: [], verify: false }, 'ca-faculty');
+        const caFaculty = new FabricCAServices('https://127.0.0.1:8054', { tlsCACerts: [], verify: false }, 'ca-faculty');
         await enrollCAAdmin(caFaculty, walletFaculty, 'FacultyMSP', 'admin', caAdminSecret, 'admin-faculty');
         
         // 3. Department Wallet & Admin
         const walletDept = await getWallet('department');
-        const caDepartment = new FabricCAServices('https://localhost:9054', { tlsCACerts: [], verify: false }, 'ca-department');
+        const caDepartment = new FabricCAServices('https://127.0.0.1:9054', { tlsCACerts: [], verify: false }, 'ca-department');
         await enrollCAAdmin(caDepartment, walletDept, 'DepartmentMSP', 'admin', caAdminSecret, 'admin-department');
 
         await bootstrapRootUser(walletRegistrar);
-        await bootstrapMockStudents(walletRegistrar);
 
     } catch (error) {
         console.error(`\nEnrollment script failed: ${error}`);
-        process.exit(1);
-    }
-    console.log('\n--- Enrollment Script Finished ---');
-}
-main();ollment script failed: ${error}`);
         process.exit(1);
     }
     console.log('\n--- Enrollment Script Finished ---');

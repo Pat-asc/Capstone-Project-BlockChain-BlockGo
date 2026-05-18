@@ -2,16 +2,15 @@ import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import FormulaBuilder from './FormulaBuilder';
+import { createGradeTemplate } from '../../services/api';
 
-// Mock the global fetch API
-global.fetch = jest.fn();
+jest.mock('../../services/api', () => ({
+  createGradeTemplate: jest.fn(),
+}));
 
 describe('FormulaBuilder Component', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    
-    // Mock localStorage for the token
-    Storage.prototype.getItem = jest.fn(() => 'mock-jwt-token');
     
     // Mock window.alert to prevent popups during tests
     window.alert = jest.fn();
@@ -55,10 +54,8 @@ describe('FormulaBuilder Component', () => {
   });
 
   it('successfully submits the payload to the API', async () => {
-    // Setup mock successful fetch response
-    fetch.mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({ message: 'Template submitted for approval successfully!' }),
+    createGradeTemplate.mockResolvedValueOnce({
+      message: 'Template submitted for approval successfully!',
     });
 
     render(<FormulaBuilder />);
@@ -72,8 +69,11 @@ describe('FormulaBuilder Component', () => {
     fireEvent.click(submitBtn);
 
     await waitFor(() => {
-      expect(fetch).toHaveBeenCalledTimes(1);
-      expect(fetch).toHaveBeenCalledWith('/api/GradeTemplate/create', expect.any(Object));
+      expect(createGradeTemplate).toHaveBeenCalledTimes(1);
+      expect(createGradeTemplate).toHaveBeenCalledWith(expect.objectContaining({
+        templateName: 'Test Template',
+        department: 'Bachelor of Science in Information Technology',
+      }));
       expect(window.alert).toHaveBeenCalledWith('Template submitted for approval successfully!');
     });
   });

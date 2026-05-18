@@ -27,20 +27,20 @@ export const YEAR_LEVEL_PREFIXES = {
 };
 
 const PROGRAM_SECTION_PREFIXES = {
-  "Bachelor of Science in Information Technology": "BSIT",
-  "Bachelor of Science in Accountancy": "BSA",
-  "Bachelor of Science in Civil Engineering": "BSCE",
-  "Bachelor of Science in Electrical Engineering": "BSEE",
-  "Bachelor of Arts in Communication": "BAC",
-  "Bachelor of Science in Psychology": "BSP",
-  "Bachelor of Science in Social Work": "BSSW",
-  "Bachelor of Public Administration": "BPA",
   "Bachelor of Early Childhood Education": "BECEd",
   "Bachelor of Secondary Education major in English": "BSEd English",
   "Bachelor of Secondary Education major in Filipino": "BSEd Filipino",
   "Bachelor of Secondary Education major in Mathematics": "BSEd Mathematics",
   "Bachelor of Secondary Education major in Science": "BSEd Science",
   "Bachelor of Secondary Education major in Social Studies": "BSEd Social Studies",
+  "Bachelor of Science in Civil Engineering": "BSCE",
+  "Bachelor of Science in Electrical Engineering": "BSEE",
+  "Bachelor of Science in Information Technology": "BSIT",
+  "Bachelor of Arts in Communication": "BAC",
+  "Bachelor of Science in Psychology": "BSP",
+  "Bachelor of Science in Social Work": "BSSW",
+  "Bachelor of Public Administration": "BPA",
+  "Bachelor of Science in Accountancy": "BSA",
   "Bachelor of Science in Business Administration major in Financial Management":
     "BSBA FM",
   "Bachelor of Science in Business Administration major in Human Resource Management":
@@ -62,7 +62,61 @@ export const getDefaultSectionName = (program = "", sectionCode = "") =>
   `${getProgramSectionPrefix(program)} ${sectionCode}`.trim();
 
 const normalizeHeader = (value = "") =>
-  String(value).trim().toLowerCase().replace(/\s+/g, " ");
+  String(value)
+    .replace(/^\uFEFF/, "")
+    .trim()
+    .toLowerCase()
+    .replace(/[_-]+/g, " ")
+    .replace(/\s+/g, " ");
+
+const getColumnIndex = (headers = [], acceptedHeaders = []) =>
+  acceptedHeaders
+    .map((header) => headers.indexOf(header))
+    .find((index) => index !== -1) ?? -1;
+
+export const parseCsvRows = (text = "") => {
+  const rows = [];
+  let row = [];
+  let field = "";
+  let insideQuotes = false;
+
+  for (let index = 0; index < text.length; index += 1) {
+    const char = text[index];
+    const nextChar = text[index + 1];
+
+    if (char === '"') {
+      if (insideQuotes && nextChar === '"') {
+        field += '"';
+        index += 1;
+      } else {
+        insideQuotes = !insideQuotes;
+      }
+      continue;
+    }
+
+    if (char === "," && !insideQuotes) {
+      row.push(field);
+      field = "";
+      continue;
+    }
+
+    if ((char === "\n" || char === "\r") && !insideQuotes) {
+      if (char === "\r" && nextChar === "\n") index += 1;
+      row.push(field);
+      if (row.some((value) => String(value).trim())) rows.push(row);
+      row = [];
+      field = "";
+      continue;
+    }
+
+    field += char;
+  }
+
+  row.push(field);
+  if (row.some((value) => String(value).trim())) rows.push(row);
+
+  return rows;
+};
 
 const escapeCsvValue = (value = "") => {
   const stringValue = String(value ?? "");
@@ -74,54 +128,69 @@ const escapeCsvValue = (value = "") => {
   return stringValue;
 };
 
+export const buildCsvContent = (rows = []) =>
+  rows.map((row) => row.map(escapeCsvValue).join(",")).join("\n");
+
+export const getStudentMiddleName = (student = {}) =>
+  student.middleName || student.middleInitial || "";
+
 export const parseStudentIdSpreadsheet = (text = "") => {
-  const lines = text
-    .split(/\r?\n/)
-    .map((line) => line.trim())
-    .filter(Boolean);
+  const rows = parseCsvRows(text);
 
-  if (lines.length < 2) return [];
+  if (rows.length < 2) return [];
 
-  const headers = lines[0].split(",").map((header) => normalizeHeader(header));
-  const studentIdIndex = headers.indexOf("student id");
-  const sexIndex = headers.indexOf("sex");
-  const lastNameIndex = headers.indexOf("last name");
-  const firstNameIndex = headers.indexOf("first name");
-  const middleInitialIndex = headers.indexOf("middle initial");
-  const yearLevelIndex = headers.indexOf("year level");
+  const headers = rows[0].map((header) => normalizeHeader(header));
+  const studentIdIndex = getColumnIndex(headers, [
+    "student id",
+    "student no",
+    "student number",
+    "id number",
+  ]);
+  const sexIndex = getColumnIndex(headers, ["sex", "gender"]);
+  const lastNameIndex = getColumnIndex(headers, ["last name", "surname", "last"]);
+  const firstNameIndex = getColumnIndex(headers, [
+    "first name",
+    "given name",
+    "first",
+  ]);
+  const middleNameIndex = getColumnIndex(headers, [
+    "middle initial",
+    "mi",
+    "m i",
+    "middle name",
+  ]);
+  const yearLevelIndex = getColumnIndex(headers, ["year level", "year", "level"]);
 
   if (
     studentIdIndex === -1 ||
     sexIndex === -1 ||
     lastNameIndex === -1 ||
     firstNameIndex === -1 ||
-    middleInitialIndex === -1
+    middleNameIndex === -1
   ) {
     return [];
   }
 
-  return lines
+  return rows
     .slice(1)
-    .map((line) => {
-      const values = line.split(",").map((value) => value.trim());
-
-      return {
-        studentId: values[studentIdIndex] || "",
-        sex: values[sexIndex] || "",
-        lastName: values[lastNameIndex] || "",
-        firstName: values[firstNameIndex] || "",
-        middleInitial: values[middleInitialIndex] || "",
-        yearLevel: yearLevelIndex === -1 ? "1st Year" : values[yearLevelIndex] || "1st Year",
-        sectionCode: "",
-      };
-    })
+    .map((values) => ({
+      studentId: values[studentIdIndex]?.trim() || "",
+      sex: values[sexIndex]?.trim() || "",
+      lastName: values[lastNameIndex]?.trim() || "",
+      firstName: values[firstNameIndex]?.trim() || "",
+      middleName: values[middleNameIndex]?.trim() || "",
+      middleInitial: values[middleNameIndex]?.trim() || "",
+      yearLevel:
+        yearLevelIndex === -1 ? "1st Year" : values[yearLevelIndex]?.trim() || "1st Year",
+      sectionCode: "",
+    }))
     .filter(
       (student) =>
         student.studentId &&
         student.sex &&
         student.lastName &&
         student.firstName &&
-        student.middleInitial
+        student.middleName
     );
 };
 
@@ -132,7 +201,7 @@ export const buildStudentCsvContent = (students = [], options = {}) => {
     "Sex",
     "Last Name",
     "First Name",
-    "Middle Initial",
+    "Middle Name",
   ];
 
   if (includeYearLevel) {
@@ -140,31 +209,28 @@ export const buildStudentCsvContent = (students = [], options = {}) => {
   }
 
   const rows = students.map((student) =>
-    (includeYearLevel
+    includeYearLevel
       ? [
-      student.studentId,
-      student.sex,
-      student.lastName,
-      student.firstName,
-      student.middleInitial,
-      student.yearLevel || "",
+          student.studentId,
+          student.sex,
+          student.lastName,
+          student.firstName,
+          getStudentMiddleName(student),
+          student.yearLevel || "",
         ]
       : [
           student.studentId,
           student.sex,
           student.lastName,
           student.firstName,
-          student.middleInitial,
-        ])
-      .map(escapeCsvValue)
-      .join(",")
+          getStudentMiddleName(student),
+        ]
   );
 
-  return [header.join(","), ...rows].join("\n");
+  return buildCsvContent([header, ...rows]);
 };
 
-export const downloadStudentCsvFile = (students = [], fileName = "students.csv") => {
-  const csvContent = buildStudentCsvContent(students);
+export const downloadCsvFile = (csvContent = "", fileName = "students.csv") => {
   const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
@@ -177,6 +243,10 @@ export const downloadStudentCsvFile = (students = [], fileName = "students.csv")
   URL.revokeObjectURL(url);
 };
 
+export const downloadStudentCsvFile = (students = [], fileName = "students.csv") => {
+  downloadCsvFile(buildStudentCsvContent(students), fileName);
+};
+
 export const buildStudentMasterlistFromBatches = (batches = []) =>
   batches
     .filter((batch) => batch.status !== "Promoted")
@@ -186,7 +256,8 @@ export const buildStudentMasterlistFromBatches = (batches = []) =>
         sex: student.sex || "",
         firstName: student.firstName || "",
         lastName: student.lastName || "",
-        middleInitial: student.middleInitial || "",
+        middleName: getStudentMiddleName(student),
+        middleInitial: student.middleInitial || getStudentMiddleName(student),
         program: batch.program,
         yearLevel: student.yearLevel || "",
         section: student.sectionCode
@@ -233,7 +304,8 @@ export const buildGroupedSectionLists = (students = []) => {
       sex: student.sex || "",
       firstName: student.firstName || "",
       lastName: student.lastName || "",
-      middleInitial: student.middleInitial || "",
+      middleName: getStudentMiddleName(student),
+      middleInitial: student.middleInitial || getStudentMiddleName(student),
       studentType: student.studentType || "Regular",
       remarks: student.remarks || "",
       repeatedSubjects: student.repeatedSubjects || "",

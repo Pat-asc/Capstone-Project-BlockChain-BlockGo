@@ -5,21 +5,32 @@ import {
   YEAR_LEVEL_PREFIXES,
   downloadStudentCsvFile,
   getDefaultSectionName,
+  getStudentMiddleName,
   parseStudentIdSpreadsheet,
   syncSectionedStudentsToStorage,
 } from "../../utils/studentSectioningHelpers";
+import {
+  fetchApprovedStudents,
+  fetchDepartmentSections,
+} from "../../services/api";
+import { pushSectioningSharedState } from "../../utils/sharedClientState";
 
-const buildStudentName = (student) =>
-  [student.lastName, student.firstName, student.middleInitial]
+const buildStudentName = (student) => {
+  const firstAndMiddle = [
+    student.firstName,
+    getStudentMiddleName(student),
+  ]
     .filter(Boolean)
-    .join(", ")
-    .replace(", ,", ",");
+    .join(" ");
+
+  return [student.lastName, firstAndMiddle].filter(Boolean).join(", ");
+};
 
 const compareStudentsByName = (left, right) => {
   const leftName = [
     left.lastName,
     left.firstName,
-    left.middleInitial,
+    getStudentMiddleName(left),
     left.studentId,
   ]
     .join(" ")
@@ -27,7 +38,7 @@ const compareStudentsByName = (left, right) => {
   const rightName = [
     right.lastName,
     right.firstName,
-    right.middleInitial,
+    getStudentMiddleName(right),
     right.studentId,
   ]
     .join(" ")
@@ -141,19 +152,159 @@ const getCurrentRolloverBatches = (workspaces = []) => {
 
 const buildIrregularSubjectKey = () =>
   `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+const BACKEND_BATCH_KEY_PREFIX = "backend-approved-students";
+const BACKEND_SYNCED_AT = "1970-01-01T00:00:00.000Z";
+
+const normalizeYearLevelLabel = (value = "") => {
+  const text = String(value || "").trim();
+  if (AVAILABLE_YEAR_LEVELS.includes(text)) return text;
+
+  const matchedYear = text.match(/[1-4]/)?.[0];
+  const yearLabels = {
+    1: "1st Year",
+    2: "2nd Year",
+    3: "3rd Year",
+    4: "4th Year",
+  };
+
+  return yearLabels[matchedYear] || "1st Year";
+};
+
+const normalizeSectionCode = (section = "", yearLevel = "1st Year") => {
+  const text = String(section || "").trim();
+  const matchedCode = text.match(/([1-4])\s*-\s*(\d+)/);
+  if (matchedCode) return `${matchedCode[1]}-${matchedCode[2]}`;
+
+  const matchedCompact = text.match(/([1-4])\s+(\d+)/);
+  if (matchedCompact) return `${matchedCompact[1]}-${matchedCompact[2]}`;
+
+  const matchedNumber = text.match(/\d+/);
+  if (!matchedNumber) return "";
+
+  return `${YEAR_LEVEL_PREFIXES[yearLevel] || "1"}-${matchedNumber[0]}`;
+};
+
+const splitBackendFullName = (fullName = "") => {
+  const cleanName = String(fullName || "").trim();
+  if (!cleanName) return { firstName: "", lastName: "", middleName: "" };
+
+  if (cleanName.includes(",")) {
+    const [lastName, rest = ""] = cleanName.split(",");
+    const nameParts = rest.trim().split(/\s+/).filter(Boolean);
+    return {
+      firstName: nameParts[0] || "",
+      middleName: nameParts.slice(1).join(" "),
+      lastName: lastName.trim(),
+    };
+  }
+
+  const parts = cleanName.split(/\s+/).filter(Boolean);
+  return {
+    firstName: parts[0] || "",
+    middleName: parts.length > 2 ? parts.slice(1, -1).join(" ") : "",
+    lastName: parts.length > 1 ? parts[parts.length - 1] : "",
+  };
+};
+
+const buildBackendBatch = (department, approvedStudents = [], academicSections = []) => {
+  if (!department) return null;
+
+  const students = approvedStudents
+    .filter((student) => student.department === department)
+    .map((student) => {
+      const inferredYearLevel = normalizeYearLevelLabel(student.yearLevel || student.section);
+      const sectionCode = normalizeSectionCode(student.section, inferredYearLevel);
+      const names = splitBackendFullName(student.fullname || student.fullName);
+
+      return {
+        studentId: student.studentno || student.email || String(student.id || ""),
+        sex: student.sex || "",
+        firstName: names.firstName,
+        lastName: names.lastName,
+        middleName: names.middleName,
+        middleInitial: names.middleName,
+        yearLevel: inferredYearLevel,
+        sectionCode,
+        sectionName: sectionCode ? getDefaultSectionName(department, sectionCode) : "",
+        studentType: "Regular",
+        remarks: student.assignmentStatus || "",
+      };
+    })
+    .sort(compareStudentsByName);
+
+  const sectionPlansByCode = new Map();
+
+  academicSections
+    .filter((section) => section.department === department)
+    .forEach((section) => {
+      const yearLevel = normalizeYearLevelLabel(section.yearLevel);
+      const sectionCode = normalizeSectionCode(
+        `${section.yearLevel}-${section.sectionNum}`,
+        yearLevel
+      );
+      if (!sectionCode) return;
+      sectionPlansByCode.set(sectionCode, {
+        id: section.id || sectionCode,
+        sectionCode,
+        sectionName: getDefaultSectionName(department, sectionCode),
+        yearLevel,
+      });
+    });
+
+  students.forEach((student) => {
+    if (!student.sectionCode || sectionPlansByCode.has(student.sectionCode)) return;
+    sectionPlansByCode.set(student.sectionCode, {
+      id: `student-${student.sectionCode}`,
+      sectionCode: student.sectionCode,
+      sectionName: student.sectionName || getDefaultSectionName(department, student.sectionCode),
+      yearLevel: student.yearLevel,
+    });
+  });
+
+  const sectionPlans = [...sectionPlansByCode.values()].sort((left, right) =>
+    String(left.sectionCode || "").localeCompare(String(right.sectionCode || ""))
+  );
+
+  if (!students.length && !sectionPlans.length) return null;
+
+  return {
+    id: `${BACKEND_BATCH_KEY_PREFIX}-${department}`,
+    key: `${BACKEND_BATCH_KEY_PREFIX}|${department}`,
+    program: department,
+    batchYear: String(new Date().getFullYear()),
+    submittedTo: `${department} Chairperson`,
+    fileName: "System student records",
+    submittedAt: BACKEND_SYNCED_AT,
+    status: sectionPlans.length ? "Sectioning" : "Imported",
+    students,
+    sectionPlans,
+    removedStudents: [],
+    importedCount: students.length,
+    source: "backend",
+  };
+};
+
+const mergeBackendBatch = (previousBatches = [], backendBatch) => {
+  if (!backendBatch) return previousBatches;
+  return [
+    ...previousBatches.filter((batch) => batch.key !== backendBatch.key),
+    backendBatch,
+  ];
+};
 
 function StudentSectioning({
   chairpersonDepartment,
   onSectioningSaved,
 }) {
   const isRegistrarMode = false;
-  const canEditRoster = true;
+  const canEditRoster = false;
   const isChairpersonMode = true;
   const rosterRef = useRef(null);
   const [batches, setBatches] = useState(() => {
     const saved = localStorage.getItem(STUDENT_BATCHES_KEY);
     return saved ? JSON.parse(saved) : [];
   });
+  const batchesRef = useRef(batches);
   const [activeWorkspace, setActiveWorkspace] = useState("sectioning");
   const [selectedBatchKey, setSelectedBatchKey] = useState("");
   const [sectioningBatchYear, setSectioningBatchYear] = useState(() =>
@@ -194,8 +345,58 @@ function StudentSectioning({
     sex: "",
     lastName: "",
     firstName: "",
-    middleInitial: "",
+    middleName: "",
   });
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const refreshBackendSectioningData = async () => {
+      if (!chairpersonDepartment) return;
+
+      try {
+        const [studentsResponse, sectionsResponse] = await Promise.all([
+          fetchApprovedStudents(),
+          fetchDepartmentSections(chairpersonDepartment),
+        ]);
+
+        if (cancelled) return;
+
+        const backendBatch = buildBackendBatch(
+          chairpersonDepartment,
+          studentsResponse.students || studentsResponse.data || [],
+          sectionsResponse.data || sectionsResponse.sections || []
+        );
+
+        if (!backendBatch) return;
+
+        setBatches((previousBatches) => {
+          const nextBatches = mergeBackendBatch(previousBatches, backendBatch);
+          if (JSON.stringify(previousBatches) === JSON.stringify(nextBatches)) {
+            return previousBatches;
+          }
+
+          localStorage.setItem(STUDENT_BATCHES_KEY, JSON.stringify(nextBatches));
+          syncSectionedStudentsToStorage(nextBatches);
+          pushSectioningSharedState();
+          onSectioningSaved?.();
+          return nextBatches;
+        });
+      } catch (error) {
+        console.error("Failed to refresh backend sectioning data:", error);
+      }
+    };
+
+    refreshBackendSectioningData();
+
+    const handleAcademicDataChanged = () => refreshBackendSectioningData();
+    window.addEventListener("blockgo:academic-data-changed", handleAcademicDataChanged);
+
+    return () => {
+      cancelled = true;
+      window.removeEventListener("blockgo:academic-data-changed", handleAcademicDataChanged);
+    };
+  }, [chairpersonDepartment, onSectioningSaved]);
 
   const departmentBatches = useMemo(() => {
     return batches
@@ -509,23 +710,51 @@ function StudentSectioning({
   })();
 
   useEffect(() => {
+    batchesRef.current = batches;
     localStorage.setItem(STUDENT_BATCHES_KEY, JSON.stringify(batches));
   }, [batches]);
+
+  useEffect(() => {
+    const handleSharedStateChanged = (event) => {
+      const keys = event.detail?.keys || [];
+      if (!keys.includes(STUDENT_BATCHES_KEY)) return;
+
+      try {
+        const saved = localStorage.getItem(STUDENT_BATCHES_KEY);
+        setBatches(saved ? JSON.parse(saved) : []);
+      } catch (error) {
+        console.warn("Failed to refresh chairperson batches from shared state.", error);
+      }
+    };
+
+    window.addEventListener(
+      "blockgo:shared-client-state-changed",
+      handleSharedStateChanged
+    );
+
+    return () =>
+      window.removeEventListener(
+        "blockgo:shared-client-state-changed",
+        handleSharedStateChanged
+      );
+  }, []);
 
   const updateSelectedBatch = (updater) => {
     if (!activeBatchKey) return;
 
-    setBatches((previousBatches) =>
-      previousBatches.map((batch) =>
-        batch.key === activeBatchKey ? updater(batch) : batch
-      )
+    const nextBatches = batchesRef.current.map((batch) =>
+      batch.key === activeBatchKey ? updater(batch) : batch
     );
+    batchesRef.current = nextBatches;
+    setBatches(nextBatches);
   };
 
   const persistBatches = (nextBatches) => {
+    batchesRef.current = nextBatches;
     setBatches(nextBatches);
     localStorage.setItem(STUDENT_BATCHES_KEY, JSON.stringify(nextBatches));
     syncSectionedStudentsToStorage(nextBatches);
+    pushSectioningSharedState();
     onSectioningSaved?.();
   };
 
@@ -648,12 +877,30 @@ function StudentSectioning({
       yearLevel: targetYearLevel,
       sectionCount: requestedSectionCount,
     });
+    const existingYearSections = (workspace.sectionPlans || []).filter((section) =>
+      sectionMatchesYearLevel(section, targetYearLevel)
+    );
+    const existingYearSectionsByCode = new Map(
+      existingYearSections.map((section) => [section.sectionCode, section])
+    );
+    const missingSections = generatedSections.filter(
+      (section) => !existingYearSectionsByCode.has(section.sectionCode)
+    );
+    const mergedYearSections = [...existingYearSections, ...missingSections].sort(
+      (left, right) => String(left.sectionCode || "").localeCompare(String(right.sectionCode || ""))
+    );
+    const mergedYearSectionCodes = new Set(
+      mergedYearSections.map((section) => section.sectionCode)
+    );
     const studentsForYear = (workspace.students || []).filter(
       (student) => (student.yearLevel || targetYearLevel) === targetYearLevel
     );
+    const studentsNeedingSection = studentsForYear.filter(
+      (student) => !mergedYearSectionCodes.has(student.sectionCode)
+    );
     const assignedStudentsById = new Map(
-      studentsForYear.map((student, index) => {
-        const targetSection = generatedSections[index % generatedSections.length];
+      studentsNeedingSection.map((student, index) => {
+        const targetSection = mergedYearSections[index % mergedYearSections.length];
 
         return [
           student.studentId,
@@ -674,7 +921,7 @@ function StudentSectioning({
         ...(workspace.sectionPlans || []).filter(
           (section) => (section.yearLevel || "") !== targetYearLevel
         ),
-        ...generatedSections,
+        ...mergedYearSections,
       ],
       students: (workspace.students || []).map((student) =>
         assignedStudentsById.get(student.studentId) || student
@@ -689,11 +936,11 @@ function StudentSectioning({
     setSelectedBatchKey(workspaceKey);
     setSectioningBatchYear(workspace.batchYear || sectioningBatchYear);
     setSelectedYearLevel(targetYearLevel);
-    setSelectedSectionCode(generatedSections[0]?.sectionCode || "");
+    setSelectedSectionCode(mergedYearSections[0]?.sectionCode || "");
 
-    if (!workspace.students.length) {
+    if (!studentsForYear.length) {
       alert(
-        `${generatedSections.length} empty 1st Year section${generatedSections.length === 1 ? "" : "s"} created for ${workspace.program}.`
+        `${missingSections.length || mergedYearSections.length} empty 1st Year section${(missingSections.length || mergedYearSections.length) === 1 ? "" : "s"} created for ${workspace.program}.`
       );
     }
   };
@@ -853,7 +1100,8 @@ function StudentSectioning({
         sex: removedStudent.sex || "",
         lastName: removedStudent.lastName || "",
         firstName: removedStudent.firstName || "",
-        middleInitial: removedStudent.middleInitial || "",
+        middleName: getStudentMiddleName(removedStudent),
+        middleInitial: removedStudent.middleInitial || getStudentMiddleName(removedStudent),
         yearLevel: originalSectionExists
           ? removedStudent.yearLevel || selectedYearLevel
           : "",
@@ -891,7 +1139,7 @@ function StudentSectioning({
       !lateStudent.sex ||
       !lateStudent.lastName.trim() ||
       !lateStudent.firstName.trim() ||
-      !lateStudent.middleInitial.trim()
+      !lateStudent.middleName.trim()
     ) {
       alert("Complete all late enrollee fields before adding the student.");
       return;
@@ -912,7 +1160,8 @@ function StudentSectioning({
       sex: lateStudent.sex,
       lastName: lateStudent.lastName.trim(),
       firstName: lateStudent.firstName.trim(),
-      middleInitial: lateStudent.middleInitial.trim().slice(0, 2),
+      middleName: lateStudent.middleName.trim(),
+      middleInitial: lateStudent.middleName.trim(),
       yearLevel: targetSection ? targetSection.yearLevel || selectedYearLevel : "",
       sectionCode: targetSection?.sectionCode || "",
       sectionName: targetSection
@@ -933,7 +1182,7 @@ function StudentSectioning({
       sex: "",
       lastName: "",
       firstName: "",
-      middleInitial: "",
+      middleName: "",
     });
   };
 
@@ -991,7 +1240,7 @@ function StudentSectioning({
 
         if (!parsedStudents.length) {
           alert(
-            "The section CSV must contain Student ID, Sex, Last Name, First Name, and Middle Initial columns with valid rows."
+            "The section CSV must contain Student ID, Sex, Last Name, First Name, and Middle Name columns with valid rows."
           );
           return;
         }
@@ -1062,8 +1311,10 @@ function StudentSectioning({
   };
 
   const handleSaveSectioning = () => {
-    localStorage.setItem(STUDENT_BATCHES_KEY, JSON.stringify(batches));
-    syncSectionedStudentsToStorage(batches);
+    const latestBatches = batchesRef.current;
+    localStorage.setItem(STUDENT_BATCHES_KEY, JSON.stringify(latestBatches));
+    syncSectionedStudentsToStorage(latestBatches);
+    pushSectioningSharedState();
     onSectioningSaved?.();
     alert("Sections saved successfully.");
   };
@@ -1077,6 +1328,7 @@ function StudentSectioning({
       JSON.stringify(nextGraduatingStudents)
     );
     syncSectionedStudentsToStorage(nextBatches);
+    pushSectioningSharedState();
     onSectioningSaved?.();
   };
 
@@ -1089,6 +1341,7 @@ function StudentSectioning({
       JSON.stringify(nextAssignments)
     );
     syncSectionedStudentsToStorage(nextBatches);
+    pushSectioningSharedState();
     onSectioningSaved?.();
   };
 
@@ -1383,7 +1636,8 @@ function StudentSectioning({
         studentId,
         firstName: student.firstName,
         lastName: student.lastName,
-        middleInitial: student.middleInitial || "",
+        middleName: getStudentMiddleName(student),
+        middleInitial: student.middleInitial || getStudentMiddleName(student),
         sex: student.sex || "",
         program: batch.program,
         mainBatchYear: batch.batchYear,
@@ -1593,25 +1847,6 @@ function StudentSectioning({
 
   return (
     <div className="space-y-6">
-      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-        <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
-          <div>
-            <p className="text-sm font-semibold uppercase tracking-wide text-slate-500">
-              {isRegistrarMode
-                ? "Registrar Section Generator"
-                : "Chairperson Section Preview"}
-            </p>
-            <h3 className="mt-1 text-2xl font-bold text-[#003366]">
-              Year-Level Sectioning
-            </h3>
-            <p className="mt-2 max-w-3xl text-sm text-slate-500">
-              {isRegistrarMode
-                ? "Work from imported enrolled lists, generate sections per year level, automatically distribute students, and save the final sections for chairperson review."
-                : "View registrar-created sections. Use Academic Assignment to distribute sections to faculty."}
-            </p>
-          </div>
-        </div>
-      </div>
 
       {isRegistrarMode ? (
         <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
@@ -2437,13 +2672,8 @@ function StudentSectioning({
               <div className="mb-5 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                 <div>
                   <h3 className="text-xl font-bold text-[#003366]">
-                    Section Preview
+                    Sections Preview
                   </h3>
-                  <p className="mt-1 text-sm text-slate-500">
-                    {isRegistrarMode
-                      ? "Review each generated section separately and edit section names before saving the final sections."
-                      : "Review registrar-created sections before assigning them to faculty."}
-                  </p>
                 </div>
                 {isChairpersonMode ? (
                   <label className="block w-full md:max-w-xs">
@@ -2596,13 +2826,8 @@ function StudentSectioning({
                           selectedBatch.program,
                           selectedSection.sectionCode
                         )
-                      : "Section Roster"}
+                      : "Section Students"}
                   </h3>
-                  <p className="mt-1 text-sm text-slate-500">
-                    {canEditRoster
-                      ? "Move students between generated sections, add late enrollees, and remove duplicates or wrong entries."
-                      : "Students shown here come from registrar-created sections for faculty assignment reference."}
-                  </p>
                 </div>
 
                 <input
@@ -2810,11 +3035,11 @@ function StudentSectioning({
                 />
                 <input
                   type="text"
-                  value={lateStudent.middleInitial}
+                  value={lateStudent.middleName}
                   onChange={(event) =>
-                    handleLateStudentChange("middleInitial", event.target.value)
+                    handleLateStudentChange("middleName", event.target.value)
                   }
-                  placeholder="M.I."
+                  placeholder="Middle name"
                   className="rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-[#003366]"
                 />
                 <button
@@ -2835,10 +3060,6 @@ function StudentSectioning({
                 <h3 className="text-xl font-bold text-[#003366]">
                   Removed Students
                 </h3>
-                <p className="mt-1 text-sm text-slate-500">
-                  Students removed from the final rosters stay here for audit
-                  review and can be restored if needed.
-                </p>
               </div>
 
               <div className="overflow-x-auto">

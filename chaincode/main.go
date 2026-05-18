@@ -16,6 +16,8 @@ import (
 type AcademicRecord struct {
 	ID          string `json:"id"`
 	StudentHash string `json:"student_hash"`
+	StudentNo   string `json:"student_no"`
+	StudentName string `json:"student_name"`
 	Section     string `json:"section"`
 	YearLevel   string `json:"year_level"`
 	Course      string `json:"course"`
@@ -80,14 +82,16 @@ func (cc *SmartContract) initLedger(stub shim.ChaincodeStubInterface) *pb.Respon
 		{
 			ID:          "GENESIS-001",
 			StudentHash: "genesis.student@plv.edu.ph",
+			StudentNo:   "23-0000",
+			StudentName: "Genesis Student",
 			Section:     "A",
-			Course:      "BSCS",
-			SubjectCode: "CS-GENESIS",
+			Course:      "BSIT",
+			SubjectCode: "IT-GENESIS",
 			Grade:       "1.00",
 			Semester:    "1st Semester",
-			SchoolYear:  "2024",
+			SchoolYear:  "2023",
 			FacultyID:   "system",
-			Date:        "2024-01-01",
+			Date:        "2023-01-01",
 			University:  "PLV",
 			Status:      "Finalized",
 			Version:     1,
@@ -256,11 +260,11 @@ func (cc *SmartContract) updateGrade(stub shim.ChaincodeStubInterface, args []st
 	}
 
 	mspID, _ := cid.GetMSPID(stub)
-	if mspID != "FacultyMSP" && mspID != "DepartmentMSP" {
-		return shim.Error("OBAC Denied: Only Faculty or Department Admins can update their issued grades")
+	if mspID != "FacultyMSP" && mspID != "DepartmentMSP" && mspID != "RegistrarMSP" {
+		return shim.Error("OBAC Denied: Only Faculty, Department Admins, or Registrars can update grades")
 	}
 	role, found := getSafeAttribute(stub, "role")
-	if !found || (role != "faculty" && role != "department_admin" && role != "deptAdmin") {
+	if !found || (role != "faculty" && role != "department_admin" && role != "deptAdmin" && role != "registrar") {
 		return shim.Error("ABAC Denied: Missing required role.")
 	}
 
@@ -287,11 +291,6 @@ func (cc *SmartContract) updateGrade(stub shim.ChaincodeStubInterface, args []st
 		return shim.Error(fmt.Sprintf("Failed to unmarshal existing record: %v", err))
 	}
 
-	// VALIDATION: Prevent modification of a finalized record.
-	if existing.Status == "Finalized" {
-		return shim.Error("Cannot update a grade that has been finalized")
-	}
-
 	submitterID, _ := cid.GetID(stub)
 	var email string
 	cert, err := cid.GetX509Certificate(stub)
@@ -301,7 +300,12 @@ func (cc *SmartContract) updateGrade(stub shim.ChaincodeStubInterface, args []st
 
 	// Validate against both formats to support legacy records
 	if existing.FacultyID != submitterID && existing.FacultyID != email {
-		return shim.Error("Only the original professor who issued the grade can update it")
+		// Allow Chairperson/Registrar to update the record IF they are just returning it for revision
+		if updated.Status == "Returned" && (role == "department_admin" || role == "deptAdmin" || role == "registrar") {
+			// Authorized return operation
+		} else {
+			return shim.Error("Only the original professor who issued the grade can update it")
+		}
 	}
 
 	existing.Grade = updated.Grade

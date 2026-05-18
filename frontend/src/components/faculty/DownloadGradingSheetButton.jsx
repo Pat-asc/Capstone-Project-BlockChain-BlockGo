@@ -1,5 +1,6 @@
 import { downloadGradingSheet } from '../../services/api';
 import React, { useState } from 'react';
+import { downloadTemplateButtonClass } from '../shared/downloadButtonStyles';
 
 const DownloadGradingSheetButton = ({ department, section }) => {
     const [isDownloading, setIsDownloading] = useState(false);
@@ -18,14 +19,7 @@ const DownloadGradingSheetButton = ({ department, section }) => {
 
     return (
         <button 
-            className="upload-label" 
-            style={{ 
-                backgroundColor: '#0d6efd', 
-                color: 'white', 
-                border: 'none', 
-                cursor: isDownloading ? 'not-allowed' : 'pointer',
-                opacity: isDownloading ? 0.7 : 1
-            }} 
+            className={downloadTemplateButtonClass}
             onClick={handleDownload}
             disabled={isDownloading}
         >

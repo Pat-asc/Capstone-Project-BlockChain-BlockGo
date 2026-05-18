@@ -42,6 +42,7 @@ namespace Client_app.Controllers
             await Groups.AddToGroupAsync(Context.ConnectionId, $"role_{normalizedRole}");
             
             await UpdateOnlineStatus(userEmail, true, resolvedRole);
+            await MarkPendingIncomingMessagesDeliveredAsync(userEmail);
             await Clients.All.SendAsync("OnlineStatusChanged", new { Email = userEmail, IsOnline = true });
             await SendContactsToCallerAsync(userEmail, resolvedRole);
 
@@ -167,9 +168,33 @@ namespace Client_app.Controllers
             if (!string.IsNullOrEmpty(senderEmail) && !string.IsNullOrEmpty(otherUserEmail))
             {
                 var history = await GetMergedHistoryAsync(senderEmail, otherUserEmail);
-                await MarkConversationSeenAsync(senderEmail, otherUserEmail, history);
                 await Clients.Caller.SendAsync("ChatHistory", history);
             }
+        }
+
+        public async Task MarkConversationSeen(string otherUserEmail)
+        {
+            var viewerEmail = Context.User?.Identity?.Name ?? string.Empty;
+
+            if (string.IsNullOrEmpty(viewerEmail) || string.IsNullOrEmpty(otherUserEmail)) return;
+
+            var history = await GetMergedHistoryAsync(viewerEmail, otherUserEmail);
+            await MarkConversationSeenAsync(viewerEmail, otherUserEmail, history);
+        }
+
+        public async Task SetTyping(string receiverEmail, bool isTyping)
+        {
+            var senderEmail = Context.User?.Identity?.Name;
+            if (string.IsNullOrEmpty(senderEmail) || string.IsNullOrEmpty(receiverEmail)) return;
+
+            await EnsureCanSendAsync(receiverEmail);
+
+            await Clients.Group($"private_{receiverEmail}").SendAsync("UserTyping", new
+            {
+                Sender = senderEmail,
+                Receiver = receiverEmail,
+                IsTyping = isTyping
+            });
         }
 
         private async Task SaveAndBroadcastAsync(ChatMessage chatMessage)
@@ -296,6 +321,52 @@ namespace Client_app.Controllers
             catch (Exception ex)
             {
                 _logger.LogWarning(ex, "Failed to mark chat message as delivered.");
+            }
+        }
+
+        private async Task MarkPendingIncomingMessagesDeliveredAsync(string receiverEmail)
+        {
+            if (string.IsNullOrWhiteSpace(receiverEmail)) return;
+
+            var deliveredAt = DateTime.UtcNow;
+            var deliveredMessages = new List<(int MessageId, string SenderEmail)>();
+
+            try
+            {
+                using var conn = new NpgsqlConnection(_connectionString);
+                await conn.OpenAsync();
+                await EnsureChatSchemaAsync(conn);
+
+                using var cmd = new NpgsqlCommand(@"
+                    UPDATE chat_messages
+                    SET delivered_at = COALESCE(delivered_at, @deliveredAt)
+                    WHERE LOWER(receiver_email) = LOWER(@receiverEmail)
+                      AND delivered_at IS NULL
+                      AND COALESCE(sent_at, timestamp) >= @cutoff
+                    RETURNING id, sender_email;", conn);
+                cmd.Parameters.AddWithValue("deliveredAt", deliveredAt);
+                cmd.Parameters.AddWithValue("receiverEmail", receiverEmail);
+                cmd.Parameters.AddWithValue("cutoff", DateTime.UtcNow.Subtract(DatabaseHistoryDuration));
+
+                using var reader = await cmd.ExecuteReaderAsync();
+                while (await reader.ReadAsync())
+                {
+                    deliveredMessages.Add((reader.GetInt32(0), reader.GetString(1)));
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to mark pending incoming chat messages as delivered for {ReceiverEmail}.", receiverEmail);
+                return;
+            }
+
+            foreach (var deliveredMessage in deliveredMessages)
+            {
+                await Clients.Group($"private_{deliveredMessage.SenderEmail}").SendAsync("MessageDelivered", new
+                {
+                    MessageId = deliveredMessage.MessageId,
+                    DeliveredAt = deliveredAt
+                });
             }
         }
 
@@ -468,6 +539,8 @@ namespace Client_app.Controllers
                 ALTER TABLE chat_messages ADD COLUMN IF NOT EXISTS sent_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP;
                 ALTER TABLE chat_messages ADD COLUMN IF NOT EXISTS delivered_at TIMESTAMP WITH TIME ZONE;
                 ALTER TABLE chat_messages ADD COLUMN IF NOT EXISTS seen_at TIMESTAMP WITH TIME ZONE;
+                ALTER TABLE chat_messages DROP CONSTRAINT IF EXISTS chat_messages_sender_email_fkey;
+                ALTER TABLE chat_messages DROP CONSTRAINT IF EXISTS chat_messages_receiver_email_fkey;
                 UPDATE chat_messages SET sent_at = COALESCE(sent_at, timestamp, CURRENT_TIMESTAMP) WHERE sent_at IS NULL;
                 UPDATE chat_messages SET timestamp = COALESCE(timestamp, sent_at, CURRENT_TIMESTAMP) WHERE timestamp IS NULL;
                 CREATE INDEX IF NOT EXISTS idx_chat_messages_sender ON chat_messages(sender_email);
@@ -584,7 +657,7 @@ namespace Client_app.Controllers
             var viewer = NormalizeRole(viewerRole);
             var target = NormalizeRole(targetRole);
 
-            if (viewer == "faculty") return target == "department_admin" || target == "faculty";
+            if (viewer == "faculty") return target == "registrar" || target == "department_admin" || target == "faculty";
             if (viewer == "department_admin") return target == "registrar" || target == "faculty";
             if (viewer == "registrar") return target == "department_admin" || target == "faculty" || target == "student";
             return target == "registrar";

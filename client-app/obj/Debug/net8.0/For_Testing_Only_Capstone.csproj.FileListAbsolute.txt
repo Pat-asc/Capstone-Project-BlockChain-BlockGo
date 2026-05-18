@@ -135,7 +135,6 @@ C:/Users/pascu/Documents/GitHub2/GitHub/Capstone-Project-/For_Testing_Only_Capst
 C:/Users/pascu/Documents/GitHub2/GitHub/Capstone-Project-/For_Testing_Only_Capstone/client-app/obj/Debug/net8.0/For_Testing_Only_Capstone.pdb
 C:/Users/pascu/Documents/GitHub2/GitHub/Capstone-Project-/For_Testing_Only_Capstone/client-app/obj/Debug/net8.0/For_Testing_Only_Capstone.genruntimeconfig.cache
 C:/Users/pascu/Documents/GitHub2/GitHub/Capstone-Project-/For_Testing_Only_Capstone/client-app/obj/Debug/net8.0/ref/For_Testing_Only_Capstone.dll
-/app/bin/Debug/net8.0/appsettings.Development.json
 /app/bin/Debug/net8.0/appsettings.json
 /app/bin/Debug/net8.0/For_Testing_Only_Capstone
 /app/bin/Debug/net8.0/For_Testing_Only_Capstone.deps.json
@@ -436,3 +435,18 @@ C:/Users/pascu/Documents/GitHub2/GitHub/Capstone-Project-/For_Testing_Only_Capst
 /mnt/c/Users/DELL/Documents/Pls let this shi work (V2)/client-app/obj/Debug/net8.0/For_Testing_Only_Capstone.pdb
 /mnt/c/Users/DELL/Documents/Pls let this shi work (V2)/client-app/obj/Debug/net8.0/For_Testing_Only_Capstone.genruntimeconfig.cache
 /mnt/c/Users/DELL/Documents/Pls let this shi work (V2)/client-app/obj/Debug/net8.0/ref/For_Testing_Only_Capstone.dll
+C:/Users/pascu/Documents/GitHub2/GitHub/Casptone 1/Capstone-Project-BlockChain-BlockGo/client-app/obj/Debug/net8.0/For_Testing_Only_Capstone.csproj.AssemblyReference.cache
+C:/Users/pascu/Documents/GitHub2/GitHub/Casptone 1/Capstone-Project-BlockChain-BlockGo/client-app/obj/Debug/net8.0/rpswa.dswa.cache.json
+C:/Users/pascu/Documents/GitHub2/GitHub/Casptone 1/Capstone-Project-BlockChain-BlockGo/client-app/obj/Debug/net8.0/For_Testing_Only_Capstone.GeneratedMSBuildEditorConfig.editorconfig
+C:/Users/pascu/Documents/GitHub2/GitHub/Casptone 1/Capstone-Project-BlockChain-BlockGo/client-app/obj/Debug/net8.0/For_Testing_Only_Capstone.AssemblyInfoInputs.cache
+C:/Users/pascu/Documents/GitHub2/GitHub/Casptone 1/Capstone-Project-BlockChain-BlockGo/client-app/obj/Debug/net8.0/For_Testing_Only_Capstone.AssemblyInfo.cs
+C:/Users/pascu/Documents/GitHub2/GitHub/Casptone 1/Capstone-Project-BlockChain-BlockGo/client-app/obj/Debug/net8.0/For_Testing_Only_Capstone.dll
+C:/Users/pascu/Documents/GitHub2/GitHub/Casptone 1/Capstone-Project-BlockChain-BlockGo/client-app/obj/Debug/net8.0/refint/For_Testing_Only_Capstone.dll
+C:/Users/pascu/Documents/GitHub2/GitHub/Casptone 1/Capstone-Project-BlockChain-BlockGo/client-app/obj/Debug/net8.0/For_Testing_Only_Capstone.pdb
+/app/bin/Debug/net8.0/assets/plvlogo.png
+/app/bin/Debug/net8.0/MessagePack.dll
+/app/bin/Debug/net8.0/MessagePack.Annotations.dll
+/app/bin/Debug/net8.0/Microsoft.AspNetCore.SignalR.StackExchangeRedis.dll
+/app/bin/Debug/net8.0/Microsoft.NET.StringTools.dll
+/app/bin/Debug/net8.0/Pipelines.Sockets.Unofficial.dll
+/app/bin/Debug/net8.0/StackExchange.Redis.dll

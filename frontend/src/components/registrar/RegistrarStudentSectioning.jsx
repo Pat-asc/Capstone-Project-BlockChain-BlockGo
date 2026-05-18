@@ -3,23 +3,34 @@ import {
   AVAILABLE_YEAR_LEVELS,
   STUDENT_BATCHES_KEY,
   YEAR_LEVEL_PREFIXES,
+  buildStudentCsvContent,
+  downloadCsvFile,
   downloadStudentCsvFile,
   getDefaultSectionName,
+  getStudentMiddleName,
   parseStudentIdSpreadsheet,
   syncSectionedStudentsToStorage,
 } from "../../utils/studentSectioningHelpers";
+import { downloadTemplateButtonClass } from "../shared/downloadButtonStyles";
+import { syncSectioningBatchToBackend } from "../../utils/registrarSectioningBackendSync";
+import { pushSectioningSharedState } from "../../utils/sharedClientState";
 
-const buildStudentName = (student) =>
-  [student.lastName, student.firstName, student.middleInitial]
+const buildStudentName = (student) => {
+  const firstAndMiddle = [
+    student.firstName,
+    getStudentMiddleName(student),
+  ]
     .filter(Boolean)
-    .join(", ")
-    .replace(", ,", ",");
+    .join(" ");
+
+  return [student.lastName, firstAndMiddle].filter(Boolean).join(", ");
+};
 
 const compareStudentsByName = (left, right) => {
   const leftName = [
     left.lastName,
     left.firstName,
-    left.middleInitial,
+    getStudentMiddleName(left),
     left.studentId,
   ]
     .join(" ")
@@ -27,7 +38,7 @@ const compareStudentsByName = (left, right) => {
   const rightName = [
     right.lastName,
     right.firstName,
-    right.middleInitial,
+    getStudentMiddleName(right),
     right.studentId,
   ]
     .join(" ")
@@ -153,6 +164,7 @@ function RegistrarStudentSectioning({
     const saved = localStorage.getItem(STUDENT_BATCHES_KEY);
     return saved ? JSON.parse(saved) : [];
   });
+  const batchesRef = useRef(batches);
   const [activeWorkspace, setActiveWorkspace] = useState("sectioning");
   const [selectedBatchKey, setSelectedBatchKey] = useState("");
   const [sectioningBatchYear, setSectioningBatchYear] = useState(() =>
@@ -198,24 +210,21 @@ function RegistrarStudentSectioning({
     sex: "",
     lastName: "",
     firstName: "",
-    middleInitial: "",
+    middleName: "",
   });
 
-  const departmentBatches = useMemo(() => {
-    return batches
-      .filter(
-        (batch) =>
-          batch.program === chairpersonDepartment &&
-          ["Forwarded", "Imported"].includes(batch.status || "Forwarded") &&
-          batch.status !== "Distributed" &&
-          batch.status !== "Promoted"
-      )
-      .sort(
-        (left, right) =>
-          new Date(right.lastSectionedAt || right.submittedAt || 0) -
-          new Date(left.lastSectionedAt || left.submittedAt || 0)
+  const syncBatchToBackend = async (batch, successMessage = "") => {
+    if (!batch || !isRegistrarMode) return;
+
+    try {
+      await syncSectioningBatchToBackend(batch);
+      if (successMessage) alert(successMessage);
+    } catch (error) {
+      alert(
+        `Saved locally, but backend sync failed: ${error.message || "Please try saving again."}`
       );
-  }, [batches, chairpersonDepartment]);
+    }
+  };
 
   const departmentWorkspaces = useMemo(
     () =>
@@ -523,8 +532,34 @@ function RegistrarStudentSectioning({
   })();
 
   useEffect(() => {
+    batchesRef.current = batches;
     localStorage.setItem(STUDENT_BATCHES_KEY, JSON.stringify(batches));
   }, [batches]);
+
+  useEffect(() => {
+    const handleSharedStateChanged = (event) => {
+      const keys = event.detail?.keys || [];
+      if (!keys.includes(STUDENT_BATCHES_KEY)) return;
+
+      try {
+        const saved = localStorage.getItem(STUDENT_BATCHES_KEY);
+        setBatches(saved ? JSON.parse(saved) : []);
+      } catch (error) {
+        console.warn("Failed to refresh sectioning batches from shared state.", error);
+      }
+    };
+
+    window.addEventListener(
+      "blockgo:shared-client-state-changed",
+      handleSharedStateChanged
+    );
+
+    return () =>
+      window.removeEventListener(
+        "blockgo:shared-client-state-changed",
+        handleSharedStateChanged
+      );
+  }, []);
 
   useEffect(() => {
     if (!isBatchYearPickerOpen) return;
@@ -544,17 +579,19 @@ function RegistrarStudentSectioning({
   const updateSelectedBatch = (updater) => {
     if (!activeBatchKey) return;
 
-    setBatches((previousBatches) =>
-      previousBatches.map((batch) =>
-        batch.key === activeBatchKey ? updater(batch) : batch
-      )
+    const nextBatches = batchesRef.current.map((batch) =>
+      batch.key === activeBatchKey ? updater(batch) : batch
     );
+    batchesRef.current = nextBatches;
+    setBatches(nextBatches);
   };
 
   const persistBatches = (nextBatches) => {
+    batchesRef.current = nextBatches;
     setBatches(nextBatches);
     localStorage.setItem(STUDENT_BATCHES_KEY, JSON.stringify(nextBatches));
     syncSectionedStudentsToStorage(nextBatches);
+    pushSectioningSharedState();
     onSectioningSaved?.();
   };
 
@@ -593,24 +630,6 @@ function RegistrarStudentSectioning({
     setIsBatchYearPickerOpen(false);
   };
 
-  const handleMarkListDistributed = (batch) => {
-    const nextBatches = batches.map((item) =>
-      item.key === batch.key
-        ? {
-            ...item,
-            status: "Distributed",
-            distributedAt: new Date().toISOString(),
-          }
-        : item
-    );
-
-    if (selectedBatchKey === batch.key) {
-      setSelectedBatchKey("");
-    }
-
-    persistBatches(nextBatches);
-  };
-
   const handleGenerateSections = () => {
     if (!chairpersonDepartment) {
       alert("Please choose a department first.");
@@ -631,8 +650,6 @@ function RegistrarStudentSectioning({
 
     const resolvedBatchYear = selectedBatch?.batchYear || sectioningBatchYear;
     const targetYearLevel = selectedYearLevel;
-    const sourceImportedBatch =
-      departmentBatches.find((batch) => batch.key === activeBatchKey) || null;
     const workspaceKey = selectedBatch
       ? activeBatchKey
       : [chairpersonDepartment, resolvedBatchYear, "sectioning"].join("|");
@@ -658,16 +675,9 @@ function RegistrarStudentSectioning({
         removedStudents: [],
       };
     const existingStudents = baseWorkspace.students || [];
-    const sourceStudents =
-      isRegistrarMode && !sourceImportedBatch
-        ? existingStudents.filter(
-            (student) =>
-              (student.yearLevel || targetYearLevel) !== targetYearLevel
-          )
-        : sourceImportedBatch?.students || existingStudents;
     const workspace = {
       ...baseWorkspace,
-      students: sourceStudents,
+      students: existingStudents,
     };
 
     if (!workspace.students.length && !isRegistrarMode) {
@@ -681,12 +691,30 @@ function RegistrarStudentSectioning({
       yearLevel: targetYearLevel,
       sectionCount: requestedSectionCount,
     });
+    const existingYearSections = (workspace.sectionPlans || []).filter((section) =>
+      sectionMatchesYearLevel(section, targetYearLevel)
+    );
+    const existingYearSectionsByCode = new Map(
+      existingYearSections.map((section) => [section.sectionCode, section])
+    );
+    const missingSections = generatedSections.filter(
+      (section) => !existingYearSectionsByCode.has(section.sectionCode)
+    );
+    const mergedYearSections = [...existingYearSections, ...missingSections].sort(
+      (left, right) => String(left.sectionCode || "").localeCompare(String(right.sectionCode || ""))
+    );
+    const mergedYearSectionCodes = new Set(
+      mergedYearSections.map((section) => section.sectionCode)
+    );
     const studentsForYear = (workspace.students || []).filter(
       (student) => (student.yearLevel || targetYearLevel) === targetYearLevel
     );
+    const studentsNeedingSection = studentsForYear.filter(
+      (student) => !mergedYearSectionCodes.has(student.sectionCode)
+    );
     const assignedStudentsById = new Map(
-      studentsForYear.map((student, index) => {
-        const targetSection = generatedSections[index % generatedSections.length];
+      studentsNeedingSection.map((student, index) => {
+        const targetSection = mergedYearSections[index % mergedYearSections.length];
 
         return [
           student.studentId,
@@ -707,7 +735,7 @@ function RegistrarStudentSectioning({
         ...(workspace.sectionPlans || []).filter(
           (section) => (section.yearLevel || "") !== targetYearLevel
         ),
-        ...generatedSections,
+        ...mergedYearSections,
       ],
       students: (workspace.students || []).map((student) =>
         assignedStudentsById.get(student.studentId) || student
@@ -715,18 +743,21 @@ function RegistrarStudentSectioning({
       lastSectionedAt: new Date().toISOString(),
     };
 
-    persistBatches([
+    const nextBatches = [
       ...batches.filter((batch) => batch.key !== workspaceKey),
       nextWorkspace,
-    ]);
+    ];
+
+    persistBatches(nextBatches);
+    syncBatchToBackend(nextWorkspace);
     setSelectedBatchKey(workspaceKey);
     setSectioningBatchYear(workspace.batchYear || sectioningBatchYear);
     setSelectedYearLevel(targetYearLevel);
-    setSelectedSectionCode(generatedSections[0]?.sectionCode || "");
+    setSelectedSectionCode(mergedYearSections[0]?.sectionCode || "");
 
-    if (!workspace.students.length) {
+    if (!studentsForYear.length) {
       alert(
-        `${generatedSections.length} empty ${targetYearLevel} section${generatedSections.length === 1 ? "" : "s"} created for ${workspace.program}.`
+        `${missingSections.length || mergedYearSections.length} empty ${targetYearLevel} section${(missingSections.length || mergedYearSections.length) === 1 ? "" : "s"} created for ${workspace.program}.`
       );
     }
   };
@@ -883,7 +914,8 @@ function RegistrarStudentSectioning({
         sex: removedStudent.sex || "",
         lastName: removedStudent.lastName || "",
         firstName: removedStudent.firstName || "",
-        middleInitial: removedStudent.middleInitial || "",
+        middleName: getStudentMiddleName(removedStudent),
+        middleInitial: removedStudent.middleInitial || getStudentMiddleName(removedStudent),
         yearLevel: originalSectionExists
           ? removedStudent.yearLevel || selectedYearLevel
           : "",
@@ -920,7 +952,7 @@ function RegistrarStudentSectioning({
       !studentForm.sex ||
       !studentForm.lastName.trim() ||
       !studentForm.firstName.trim() ||
-      !studentForm.middleInitial.trim()
+      !studentForm.middleName.trim()
     ) {
       alert("Complete all student fields before adding the student.");
       return;
@@ -941,7 +973,8 @@ function RegistrarStudentSectioning({
       sex: studentForm.sex,
       lastName: studentForm.lastName.trim(),
       firstName: studentForm.firstName.trim(),
-      middleInitial: studentForm.middleInitial.trim().slice(0, 2),
+      middleName: studentForm.middleName.trim(),
+      middleInitial: studentForm.middleName.trim(),
       yearLevel: targetSection ? targetSection.yearLevel || selectedYearLevel : "",
       sectionCode: targetSection?.sectionCode || "",
       sectionName: targetSection
@@ -961,7 +994,7 @@ function RegistrarStudentSectioning({
       sex: "",
       lastName: "",
       firstName: "",
-      middleInitial: "",
+      middleName: "",
     });
   };
 
@@ -982,6 +1015,23 @@ function RegistrarStudentSectioning({
       sectionStudents,
       `${section?.sectionName || sectionCode}-${selectedBatch.batchYear}.csv`
     );
+  };
+
+  const handleDownloadSectionTemplate = () => {
+    const templateRows = [
+      {
+        studentId: "2026-0001",
+        sex: "Male",
+        lastName: "Dela Cruz",
+        firstName: "Juan",
+        middleName: "Santos",
+        middleInitial: "Santos",
+        yearLevel: selectedYearLevel,
+      },
+    ];
+    const fileName = `${chairpersonDepartment || "student"}-${selectedYearLevel.replace(/\s+/g, "-").toLowerCase()}-section-template.csv`;
+
+    downloadCsvFile(buildStudentCsvContent(templateRows), fileName);
   };
 
   const handleImportSectionCsv = (sectionCode) => {
@@ -1019,7 +1069,7 @@ function RegistrarStudentSectioning({
 
         if (!parsedStudents.length) {
           alert(
-            "The section CSV must contain Student ID, Sex, Last Name, First Name, and Middle Initial columns with valid rows."
+            "The section CSV must contain Student ID, Sex, Last Name, First Name, and Middle Name columns with valid rows."
           );
           return;
         }
@@ -1077,6 +1127,8 @@ function RegistrarStudentSectioning({
         );
 
         persistBatches(nextBatches);
+        const updatedBatch = nextBatches.find((batch) => batch.key === selectedBatch.key);
+        syncBatchToBackend(updatedBatch);
         setSelectedSectionCode(section.sectionCode);
         alert(
           `${importedStudents.length} student${importedStudents.length === 1 ? "" : "s"} imported into ${sectionName}.`
@@ -1089,8 +1141,8 @@ function RegistrarStudentSectioning({
     input.click();
   };
 
-  const handleSaveSectioning = () => {
-    const nextBatches = batches.map((batch) =>
+  const handleSaveSectioning = async () => {
+    const nextBatches = batchesRef.current.map((batch) =>
       batch.key === activeBatchKey && (batch.sectionPlans || []).length > 0
         ? {
             ...batch,
@@ -1102,8 +1154,10 @@ function RegistrarStudentSectioning({
     setBatches(nextBatches);
     localStorage.setItem(STUDENT_BATCHES_KEY, JSON.stringify(nextBatches));
     syncSectionedStudentsToStorage(nextBatches);
+    pushSectioningSharedState();
     onSectioningSaved?.();
-    alert("Sections saved successfully.");
+    const batchToSync = nextBatches.find((batch) => batch.key === activeBatchKey);
+    await syncBatchToBackend(batchToSync, "Sections saved and synced successfully.");
   };
 
   const handleShuffleSections = () => {
@@ -1161,6 +1215,7 @@ function RegistrarStudentSectioning({
       JSON.stringify(nextGraduatingStudents)
     );
     syncSectionedStudentsToStorage(nextBatches);
+    pushSectioningSharedState();
     onSectioningSaved?.();
   };
 
@@ -1173,6 +1228,7 @@ function RegistrarStudentSectioning({
       JSON.stringify(nextAssignments)
     );
     syncSectionedStudentsToStorage(nextBatches);
+    pushSectioningSharedState();
     onSectioningSaved?.();
   };
 
@@ -1467,7 +1523,8 @@ function RegistrarStudentSectioning({
         studentId,
         firstName: student.firstName,
         lastName: student.lastName,
-        middleInitial: student.middleInitial || "",
+        middleName: getStudentMiddleName(student),
+        middleInitial: student.middleInitial || getStudentMiddleName(student),
         sex: student.sex || "",
         program: batch.program,
         mainBatchYear: batch.batchYear,
@@ -2352,91 +2409,17 @@ function RegistrarStudentSectioning({
         </section>
       ) : null}
 
-      <div className={`grid grid-cols-1 gap-6 ${isRegistrarMode ? "xl:grid-cols-[300px_1fr]" : ""}`}>
-        {isRegistrarMode ? (
-          <aside className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-          <h3 className="text-lg font-bold text-[#003366]">Imported Lists</h3>
-          <p className="mt-1 text-sm text-slate-500">
-            Imported student lists are optional. Mark a list distributed once
-            it has been handled, or generate empty sections and upload CSVs per
-            section.
-          </p>
-
-          <div className="mt-4 space-y-3">
-            {departmentBatches.length > 0 ? (
-              departmentBatches.map((batch) => (
-                <article
-                  key={batch.key}
-                  className="rounded-xl border border-slate-200 bg-white p-4"
-                >
-                  <p className="font-bold text-[#003366]">{batch.program}</p>
-                  <p className="mt-1 text-sm text-slate-600">
-                    Batch {batch.batchYear}
-                  </p>
-                  <p className="mt-2 text-xs text-slate-500">
-                    {new Date(batch.submittedAt).toLocaleString("en-US")}
-                  </p>
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    <span className="inline-flex rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">
-                      {(batch.students || []).length} student
-                      {(batch.students || []).length === 1 ? "" : "s"}
-                    </span>
-                    {(batch.sectionPlans || []).length ? (
-                      <span className="inline-flex rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-700">
-                        {(batch.sectionPlans || []).length} section
-                        {(batch.sectionPlans || []).length === 1 ? "" : "s"} saved
-                      </span>
-                    ) : null}
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => handleMarkListDistributed(batch)}
-                    className="mt-3 w-full rounded-lg border border-[#003366] px-3 py-2 text-sm font-semibold text-[#003366] hover:bg-[#003366] hover:text-white"
-                  >
-                    List Distributed
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSelectedBatchKey(batch.key);
-                      setSectioningBatchYear(batch.batchYear);
-                      alert(
-                        `${batch.program} Batch ${batch.batchYear} list selected for sectioning.`
-                      );
-                    }}
-                    className="mt-2 w-full rounded-lg bg-[#003366] px-3 py-2 text-sm font-semibold text-white hover:bg-[#00264d]"
-                  >
-                    {(batch.sectionPlans || []).length
-                      ? "Open Saved Sections"
-                      : "Use This List"}
-                  </button>
-                </article>
-              ))
-            ) : (
-              <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-5 text-center text-sm text-slate-500">
-                No pending imported list. You can still generate sections and
-                upload a CSV to each section.
-              </div>
-            )}
-          </div>
-          </aside>
-        ) : null}
-
+      <div className="space-y-6">
         <main className="space-y-6">
           {isRegistrarMode ? (
             <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
               <div>
-                <h3 className="text-lg font-bold text-[#003366]">
+                <h3 className="text-xl font-bold text-[#003366]">
                   Section Generator
                 </h3>
-                <p className="mt-1 text-sm text-slate-500">
-                  Imported lists are not required. Generate empty sections,
-                  then use each section card's upload option for manual CSV
-                  distribution.
-                </p>
               </div>
 
-              <div className="mt-5 grid grid-cols-1 gap-4 lg:grid-cols-[170px_170px_170px_auto_auto] lg:items-end">
+              <div className="mt-5 grid grid-cols-1 gap-4 lg:grid-cols-[170px_170px_170px_auto_auto_auto] lg:items-end">
                 <label className="block">
                   <span className="mb-2 block text-sm font-medium text-slate-700">
                     Year level
@@ -2574,6 +2557,13 @@ function RegistrarStudentSectioning({
                 </button>
                 <button
                   type="button"
+                  onClick={handleDownloadSectionTemplate}
+                  className={downloadTemplateButtonClass}
+                >
+                  Download Template
+                </button>
+                <button
+                  type="button"
                   onClick={handleSaveSectioning}
                   disabled={!selectedBatch || !sectionPlans.length}
                   className="rounded-xl border border-[#003366] px-5 py-3 text-sm font-semibold text-[#003366] transition hover:bg-[#003366] hover:text-white disabled:cursor-not-allowed disabled:border-slate-300 disabled:text-slate-400"
@@ -2589,13 +2579,8 @@ function RegistrarStudentSectioning({
               <div className="mb-5 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                 <div>
                   <h3 className="text-xl font-bold text-[#003366]">
-                    Section Preview
+                    Sections Preview
                   </h3>
-                  <p className="mt-1 text-sm text-slate-500">
-                    {isRegistrarMode
-                      ? "Review each generated section separately and edit section names before saving the final sections."
-                      : "Review registrar-created sections and shuffle students across existing sections when needed."}
-                  </p>
                 </div>
                 {isChairpersonMode ? (
                   <label className="block w-full md:max-w-xs">
@@ -2746,13 +2731,8 @@ function RegistrarStudentSectioning({
                           selectedBatch.program,
                           selectedSection.sectionCode
                         )
-                      : "Section Roster"}
+                      : "Section Students"}
                   </h3>
-                  <p className="mt-1 text-sm text-slate-500">
-                    {isRegistrarMode
-                      ? "Move students between generated sections, add students, and remove duplicates or wrong entries."
-                      : "Students shown here come from registrar-created sections. Use Shuffle Sections for a randomized redistribution."}
-                  </p>
                 </div>
 
                 <input
@@ -2949,11 +2929,11 @@ function RegistrarStudentSectioning({
                 />
                 <input
                   type="text"
-                  value={studentForm.middleInitial}
+                  value={studentForm.middleName}
                   onChange={(event) =>
-                    handleStudentFormChange("middleInitial", event.target.value)
+                    handleStudentFormChange("middleName", event.target.value)
                   }
-                  placeholder="M.I."
+                  placeholder="Middle name"
                   className="rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-[#003366]"
                 />
                 <button
@@ -2974,10 +2954,6 @@ function RegistrarStudentSectioning({
                 <h3 className="text-xl font-bold text-[#003366]">
                   Removed Students
                 </h3>
-                <p className="mt-1 text-sm text-slate-500">
-                  Students removed from the final rosters stay here for audit
-                  review and can be restored if needed.
-                </p>
               </div>
 
               <div className="overflow-x-auto">

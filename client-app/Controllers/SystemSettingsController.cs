@@ -114,20 +114,28 @@ namespace Client_app.Controllers
                 using var cmdClearFacSections = new NpgsqlCommand("DELETE FROM FacultySections", conn, tx);
                 await cmdClearFacSections.ExecuteNonQueryAsync();
 
-                using var cmdClearAcadSections = new NpgsqlCommand("DELETE FROM AcademicSections", conn, tx);
-                await cmdClearAcadSections.ExecuteNonQueryAsync();
-
-                using var cmdResetStudents = new NpgsqlCommand("UPDATE StudentProfiles SET section = NULL, assignment_status = 'Unassigned'", conn, tx);
-                await cmdResetStudents.ExecuteNonQueryAsync();
-
-                using var cmdResetFaculty = new NpgsqlCommand("UPDATE FacultyProfiles SET department = 'Unassigned'", conn, tx);
-                await cmdResetFaculty.ExecuteNonQueryAsync();
+                const string resetEncodingPeriod = "{\"semester\":\"2nd Semester\",\"startDate\":\"\",\"endDate\":\"\",\"term\":\"midterm\"}";
+                using var cmdResetEncodingPeriod = new NpgsqlCommand(@"
+                    INSERT INTO SystemSettings (key, value) VALUES ('encoding_period', @value)
+                    ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value", conn, tx);
+                cmdResetEncodingPeriod.Parameters.AddWithValue("value", resetEncodingPeriod);
+                await cmdResetEncodingPeriod.ExecuteNonQueryAsync();
 
                 await tx.CommitAsync();
 
                 _logger.LogInformation("Encoding season reset by {User}", User.Identity?.Name);
+                await _chatHubContext.Clients.All.SendAsync("SystemSettingChanged", new
+                {
+                    Key = "encoding_period",
+                    Value = resetEncodingPeriod,
+                    UpdatedAt = DateTime.UtcNow
+                });
 
-                return Ok(new { status = "Success", message = "Encoding season reset." });
+                return Ok(new
+                {
+                    status = "Success",
+                    message = "Encoding season reset. Faculty assigned sections were cleared while saved sections were kept."
+                });
             }
             catch (Exception ex)
             {

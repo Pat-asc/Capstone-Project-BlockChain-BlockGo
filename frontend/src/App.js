@@ -8,6 +8,7 @@ import FacultyPortal from './components/faculty/FacultyPortal';
 import DeptAdminGradesView from './components/chairperson/DeptAdminGradesView';
 import RegistrarGradesView from './components/registrar/RegistrarGradesView';
 import Chat from './components/shared/Chat';
+import { startNginxFailoverMonitor } from './services/nginxFailover';
 
 import { BrowserRouter as Router } from 'react-router-dom';
 import { NotificationProvider, useNotification } from './services/NotificationContext';
@@ -83,8 +84,10 @@ function AppContent() {
           rawRole: fetchedUser.role,
           studentNo: fetchedUser.studentNo,
           dateOfBirth: fetchedUser.dateOfBirth,
+          middleName: fetchedUser.middleName,
           sex: fetchedUser.sex,
           phone: fetchedUser.phone,
+          studentEmail: fetchedUser.studentEmail,
           address: fetchedUser.address,
           department: fetchedUser.department,
           section: fetchedUser.section,
@@ -110,11 +113,30 @@ function AppContent() {
 
   const handleLogout = () => {
     localStorage.removeItem('token');
+    localStorage.removeItem('userRole');
     setUser(null);
     setChatUnreadTotal(0);
     setLatestChatNotice(null);
     setChatAutoOpenTarget(null);
   };
+
+  const handleNginxFailover = useCallback((nextOrigin) => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('userRole');
+    setUser(null);
+    setChatUnreadTotal(0);
+    setLatestChatNotice(null);
+    setChatAutoOpenTarget(null);
+
+    const from = encodeURIComponent(window.location.origin);
+    window.location.replace(`${nextOrigin}/?failover=nginx&from=${from}`);
+  }, []);
+
+  useEffect(() => {
+    return startNginxFailoverMonitor({
+      onFailover: handleNginxFailover,
+    });
+  }, [handleNginxFailover]);
 
   const handleUnreadChange = useCallback((totalUnread) => {
     setChatUnreadTotal(totalUnread);

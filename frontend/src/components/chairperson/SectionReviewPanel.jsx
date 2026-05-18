@@ -12,12 +12,16 @@ const formatLogDate = (value) => {
   return new Date(value).toLocaleString();
 };
 
+const getEncodingTermLabel = (term = "") =>
+  String(term || "").toLowerCase() === "finals" ? "Finals" : "Midterm";
+
 function SectionReviewPanel({
   selectedSection,
   activeTerm,
   onSendBack,
   onApprove,
   onSubmitToRegistrar,
+  onViewIpfs,
 }) {
   const [draftNotes, setDraftNotes] = useState({});
   const note = selectedSection
@@ -49,11 +53,15 @@ function SectionReviewPanel({
           : finalAverage;
 
       return {
-        id: student.studentId || student.id,
-        name: `${student.lastName || ""}, ${student.firstName || ""}`.replace(
-          /^,\s*/,
-          ""
-        ),
+        id: student.studentNo || student.studentId || student.id,
+        name:
+          student.fullName ||
+          `${student.lastName || ""}, ${student.firstName || ""}`.replace(
+            /^,\s*/,
+            ""
+          ) ||
+          student.studentId ||
+          "-",
         midterm: record.midterm || "-",
         finals: record.finals || "-",
         finalAverage,
@@ -64,6 +72,37 @@ function SectionReviewPanel({
       };
     });
   }, [selectedSection, activeTerm]);
+
+  const summary = useMemo(() => {
+    return rows.reduce(
+      (acc, row) => {
+        const normalizedStanding = String(row.standing || "").toLowerCase();
+        const numericFinalAverage = Number(row.finalAverage);
+
+        if (Number.isFinite(numericFinalAverage)) {
+          if (numericFinalAverage >= 75) acc.passed += 1;
+          else acc.failed += 1;
+        }
+
+        if (normalizedStanding === "dropped") acc.d += 1;
+        if (normalizedStanding === "unofficially_dropped") acc.ud += 1;
+        if (normalizedStanding === "withdrawn") acc.w += 1;
+        if (normalizedStanding === "incomplete") acc.inc += 1;
+        if (row.flagged) acc.flagged += 1;
+
+        return acc;
+      },
+      {
+        passed: 0,
+        failed: 0,
+        d: 0,
+        ud: 0,
+        w: 0,
+        inc: 0,
+        flagged: 0,
+      }
+    );
+  }, [rows]);
 
   if (!selectedSection) {
     return (
@@ -79,13 +118,41 @@ function SectionReviewPanel({
 
   return (
     <div className="space-y-6">
+      <div className="rounded-2xl border border-blue-200 bg-blue-50 p-6 shadow-sm">
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div>
+            <h3 className="text-lg font-bold text-blue-900">
+              Attached Grading Sheet (IPFS Vault)
+            </h3>
+            <p className="mt-1 text-sm text-blue-700">
+              {selectedSection.ipfsCid
+                ? `Open the encrypted grading sheet attached for ${selectedSection.sectionName}.`
+                : `No IPFS attachment was found for ${selectedSection.sectionName} yet.`}
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => selectedSection.ipfsCid && onViewIpfs?.(selectedSection.ipfsCid)}
+            disabled={!selectedSection.ipfsCid}
+            className={`rounded-xl px-5 py-2.5 text-sm font-bold shadow-sm transition ${
+              selectedSection.ipfsCid
+                ? "bg-blue-600 text-white hover:bg-blue-700"
+                : "bg-slate-300 text-slate-600"
+            }`}
+          >
+            {selectedSection.ipfsCid ? "Decrypt & View" : "Unavailable"}
+          </button>
+        </div>
+      </div>
+
       <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div>
             <h3 className="text-xl font-bold text-[#003366]">Section Review Details</h3>
             <p className="mt-1 text-sm text-slate-500">
               {selectedSection.facultyName} • {selectedSection.sectionName} •{" "}
-              {selectedSection.schoolYear} • {selectedSection.semester}
+              {selectedSection.semester} • {getEncodingTermLabel(activeTerm)}
             </p>
           </div>
 
@@ -116,6 +183,37 @@ function SectionReviewPanel({
           <div className="rounded-xl bg-slate-50 p-4">
             <p className="text-sm text-slate-500">Progress</p>
             <p className="mt-1 font-semibold text-slate-800">{selectedSection.progress}%</p>
+          </div>
+        </div>
+
+        <div className="mt-4 grid grid-cols-2 gap-4 md:grid-cols-4 xl:grid-cols-7">
+          <div className="rounded-xl bg-emerald-50 p-4">
+            <p className="text-sm text-emerald-700">Passed</p>
+            <p className="mt-1 font-semibold text-emerald-900">{summary.passed}</p>
+          </div>
+          <div className="rounded-xl bg-rose-50 p-4">
+            <p className="text-sm text-rose-700">Failed</p>
+            <p className="mt-1 font-semibold text-rose-900">{summary.failed}</p>
+          </div>
+          <div className="rounded-xl bg-slate-50 p-4">
+            <p className="text-sm text-slate-500">D</p>
+            <p className="mt-1 font-semibold text-slate-800">{summary.d}</p>
+          </div>
+          <div className="rounded-xl bg-slate-50 p-4">
+            <p className="text-sm text-slate-500">UD</p>
+            <p className="mt-1 font-semibold text-slate-800">{summary.ud}</p>
+          </div>
+          <div className="rounded-xl bg-slate-50 p-4">
+            <p className="text-sm text-slate-500">W</p>
+            <p className="mt-1 font-semibold text-slate-800">{summary.w}</p>
+          </div>
+          <div className="rounded-xl bg-amber-50 p-4">
+            <p className="text-sm text-amber-700">INC</p>
+            <p className="mt-1 font-semibold text-amber-900">{summary.inc}</p>
+          </div>
+          <div className="rounded-xl bg-red-50 p-4">
+            <p className="text-sm text-red-700">Flagged</p>
+            <p className="mt-1 font-semibold text-red-900">{summary.flagged}</p>
           </div>
         </div>
       </div>

@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { downloadTemplateButtonClass } from "../shared/downloadButtonStyles";
 
 const BulkUploadModal = ({
   isOpen,
@@ -20,51 +21,119 @@ const BulkUploadModal = ({
 
   if (!isOpen) return null;
 
+  const getTemporarySheetHeader = () => [
+    "Student ID",
+    "Student Name",
+    "Quizzes (20%)",
+    "Assignments (10%)",
+    "Attendance (10%)",
+    "Midterm Exam (60%)",
+    "Midterm Grade",
+    "Final Quizzes (20%)",
+    "Final Assignments (10%)",
+    "Final Attendance (10%)",
+    "Final Exam (60%)",
+    "Final Grade",
+    "Final Rating",
+  ];
+
   const handleDownloadTemplate = () => {
-  const header =
-    systemTerm === "midterm"
-      ? "Student ID,Midterm Grade\n"
-      : "Student ID,Finals Grade\n";
+    const header = `${getTemporarySheetHeader().join(",")}\n`;
+    const rows = sectionData.students
+      .map((student, index) => {
+        const rowNumber = index + 2;
+        const midtermFormula = `"=ROUND((C${rowNumber}*20%)+(D${rowNumber}*10%)+(E${rowNumber}*10%)+(F${rowNumber}*60%),2)"`;
+        const finalFormula = `"=ROUND((H${rowNumber}*20%)+(I${rowNumber}*10%)+(J${rowNumber}*10%)+(K${rowNumber}*60%),2)"`;
+        const finalRatingFormula = `"=ROUND(AVERAGE(G${rowNumber},L${rowNumber}),2)"`;
+        const studentName =
+          student.name ||
+          [student.lastName, student.firstName].filter(Boolean).join(", ");
 
-  const rows = sectionData.students
-    .map((student) => `${student.id},`)
-    .join("\n");
+        return [
+          student.id,
+          `"${studentName}"`,
+          "",
+          "",
+          "",
+          "",
+          midtermFormula,
+          "",
+          "",
+          "",
+          "",
+          finalFormula,
+          finalRatingFormula,
+        ].join(",");
+      })
+      .join("\n");
 
-  const blob = new Blob([header + rows], { type: "text/csv" });
-  const url = URL.createObjectURL(blob);
+    const blob = new Blob([header + rows], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
 
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `${sectionData.sectionName}_${systemTerm}_template.csv`;
-  a.click();
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${sectionData.sectionName}_temporary_grading_sheet.csv`;
+    a.click();
 
-  URL.revokeObjectURL(url);
-};
+    URL.revokeObjectURL(url);
+  };
 
   const parseLinesToGrades = (text) => {
-  const lines = text.split("\n");
-  const parsed = {};
+    const lines = text.split("\n").filter((line) => line.trim());
+    const parsed = {};
+    const targetHeader =
+      systemTerm === "midterm" ? "midterm grade" : "final grade";
 
-  lines.forEach((line) => {
-    const trimmed = line.trim();
-    if (!trimmed) return;
+    if (lines.length > 1 && lines[0].toLowerCase().includes("student id")) {
+      const headers = lines[0]
+        .split(/,(?=(?:(?:[^\"]*\"){2})*[^\"]*$)/)
+        .map((value) => value.replace(/^"|"$/g, "").trim().toLowerCase());
+      const studentIdIndex = headers.findIndex((header) =>
+        ["student id", "student_id", "student no", "student_no"].includes(header)
+      );
+      const gradeIndex = headers.findIndex((header) => header === targetHeader);
 
-    const parts = trimmed.split(/[\s,]+/);
+      if (studentIdIndex !== -1 && gradeIndex !== -1) {
+        lines.slice(1).forEach((line) => {
+          const parts = line
+            .split(/,(?=(?:(?:[^\"]*\"){2})*[^\"]*$)/)
+            .map((value) => value.replace(/^"|"$/g, "").trim());
+          const studentId = parts[studentIdIndex];
+          const gradeValue = parts[gradeIndex];
 
-    if (parts.length >= 2) {
-      const studentId = parts[0];
-      const gradeValue = parts[1];
+          if (!studentId || !gradeValue) return;
 
-      parsed[studentId] = {
-        [systemTerm]: ["INC", "UD", "D", "W"].includes(gradeValue.toUpperCase())
-          ? gradeValue.toUpperCase()
-          : gradeValue,
-      };
+          parsed[studentId] = {
+            [systemTerm]: ["INC", "UD", "D", "W"].includes(gradeValue.toUpperCase())
+              ? gradeValue.toUpperCase()
+              : gradeValue,
+          };
+        });
+
+        return parsed;
+      }
     }
-  });
 
-  return parsed;
-};
+    lines.forEach((line) => {
+      const trimmed = line.trim();
+      if (!trimmed) return;
+
+      const parts = trimmed.split(/[\s,]+/);
+
+      if (parts.length >= 2) {
+        const studentId = parts[0];
+        const gradeValue = parts[1];
+
+        parsed[studentId] = {
+          [systemTerm]: ["INC", "UD", "D", "W"].includes(gradeValue.toUpperCase())
+            ? gradeValue.toUpperCase()
+            : gradeValue,
+        };
+      }
+    });
+
+    return parsed;
+  };
 
   const handleUpload = async () => {
     if (activeTab === "paste") {
@@ -124,9 +193,16 @@ const BulkUploadModal = ({
               <div className="text-sm text-blue-800">
                 <h3 className="mb-2 font-bold">Format Instructions:</h3>
 
-                <p>Each line: Student ID,{" "}{systemTerm === "midterm" ? "Midterm" : "Finals"} (60–100)</p>
+                <p className="mb-2">
+                  The temporary grading sheet includes both midterm and final grading columns in one file.
+                  During upload, the system will only read the{" "}
+                  <strong>{systemTerm === "midterm" ? "Midterm Grade" : "Final Grade"}</strong>{" "}
+                  column for this encoding period.
+                </p>
 
-                    <p className="mb-2">Separate with comma, space, or tab</p>
+                <p>For pasted text: Student ID,{" "}{systemTerm === "midterm" ? "Midterm Grade" : "Final Grade"} (60-100)</p>
+
+                    <p className="mb-2">Separate pasted values with comma, space, or tab</p>
 
                     <p className="mb-1">
                     Example:{" "}
@@ -145,9 +221,9 @@ const BulkUploadModal = ({
                 <button
                   type="button"
                   onClick={handleDownloadTemplate}
-                  className="rounded-lg bg-[#032d63] px-4 py-2 text-sm font-semibold text-white hover:bg-[#02244d]"
+                  className={downloadTemplateButtonClass}
                 >
-                  Download CSV Template
+                  Download Temporary Grading Sheet
                 </button>
               </div>
             </div>
