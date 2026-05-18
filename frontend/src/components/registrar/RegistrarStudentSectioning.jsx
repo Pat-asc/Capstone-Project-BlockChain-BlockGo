@@ -164,6 +164,7 @@ function RegistrarStudentSectioning({
     const saved = localStorage.getItem(STUDENT_BATCHES_KEY);
     return saved ? JSON.parse(saved) : [];
   });
+  const batchesRef = useRef(batches);
   const [activeWorkspace, setActiveWorkspace] = useState("sectioning");
   const [selectedBatchKey, setSelectedBatchKey] = useState("");
   const [sectioningBatchYear, setSectioningBatchYear] = useState(() =>
@@ -531,6 +532,7 @@ function RegistrarStudentSectioning({
   })();
 
   useEffect(() => {
+    batchesRef.current = batches;
     localStorage.setItem(STUDENT_BATCHES_KEY, JSON.stringify(batches));
   }, [batches]);
 
@@ -577,14 +579,15 @@ function RegistrarStudentSectioning({
   const updateSelectedBatch = (updater) => {
     if (!activeBatchKey) return;
 
-    setBatches((previousBatches) =>
-      previousBatches.map((batch) =>
-        batch.key === activeBatchKey ? updater(batch) : batch
-      )
+    const nextBatches = batchesRef.current.map((batch) =>
+      batch.key === activeBatchKey ? updater(batch) : batch
     );
+    batchesRef.current = nextBatches;
+    setBatches(nextBatches);
   };
 
   const persistBatches = (nextBatches) => {
+    batchesRef.current = nextBatches;
     setBatches(nextBatches);
     localStorage.setItem(STUDENT_BATCHES_KEY, JSON.stringify(nextBatches));
     syncSectionedStudentsToStorage(nextBatches);
@@ -1139,7 +1142,7 @@ function RegistrarStudentSectioning({
   };
 
   const handleSaveSectioning = async () => {
-    const nextBatches = batches.map((batch) =>
+    const nextBatches = batchesRef.current.map((batch) =>
       batch.key === activeBatchKey && (batch.sectionPlans || []).length > 0
         ? {
             ...batch,
@@ -1151,6 +1154,7 @@ function RegistrarStudentSectioning({
     setBatches(nextBatches);
     localStorage.setItem(STUDENT_BATCHES_KEY, JSON.stringify(nextBatches));
     syncSectionedStudentsToStorage(nextBatches);
+    pushSectioningSharedState();
     onSectioningSaved?.();
     const batchToSync = nextBatches.find((batch) => batch.key === activeBatchKey);
     await syncBatchToBackend(batchToSync, "Sections saved and synced successfully.");

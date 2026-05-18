@@ -10783,3 +10783,12 @@
 21:12:16.367028 db@open done T·54.039227ms
 21:12:16.404468 db@close closing
 21:12:16.406849 db@close done T·2.359654ms
+=============== May 17, 2026 (UTC) ===============
+21:12:29.739152 log@legend F·NumFile S·FileSize N·Entry C·BadEntry B·BadBlock Ke·KeyError D·DroppedEntry L·Level Q·SeqNum T·TimeElapsed
+21:12:29.772883 version@stat F·[2 1] S·16KiB[2KiB 14KiB] Sc·[0.50 0.00]
+21:12:29.778485 db@open opening
+21:12:29.785610 journal@recovery F·1
+21:12:29.795144 journal@recovery recovering @2366
+21:12:29.809824 version@stat F·[2 1] S·16KiB[2KiB 14KiB] Sc·[0.50 0.00]
+21:28:58.817074 db@janitor F·5 G·0
+21:28:58.817979 db@open done T·174.594028ms

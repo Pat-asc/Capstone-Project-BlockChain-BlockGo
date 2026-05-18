@@ -304,6 +304,7 @@ function StudentSectioning({
     const saved = localStorage.getItem(STUDENT_BATCHES_KEY);
     return saved ? JSON.parse(saved) : [];
   });
+  const batchesRef = useRef(batches);
   const [activeWorkspace, setActiveWorkspace] = useState("sectioning");
   const [selectedBatchKey, setSelectedBatchKey] = useState("");
   const [sectioningBatchYear, setSectioningBatchYear] = useState(() =>
@@ -709,6 +710,7 @@ function StudentSectioning({
   })();
 
   useEffect(() => {
+    batchesRef.current = batches;
     localStorage.setItem(STUDENT_BATCHES_KEY, JSON.stringify(batches));
   }, [batches]);
 
@@ -740,14 +742,15 @@ function StudentSectioning({
   const updateSelectedBatch = (updater) => {
     if (!activeBatchKey) return;
 
-    setBatches((previousBatches) =>
-      previousBatches.map((batch) =>
-        batch.key === activeBatchKey ? updater(batch) : batch
-      )
+    const nextBatches = batchesRef.current.map((batch) =>
+      batch.key === activeBatchKey ? updater(batch) : batch
     );
+    batchesRef.current = nextBatches;
+    setBatches(nextBatches);
   };
 
   const persistBatches = (nextBatches) => {
+    batchesRef.current = nextBatches;
     setBatches(nextBatches);
     localStorage.setItem(STUDENT_BATCHES_KEY, JSON.stringify(nextBatches));
     syncSectionedStudentsToStorage(nextBatches);
@@ -1308,8 +1311,10 @@ function StudentSectioning({
   };
 
   const handleSaveSectioning = () => {
-    localStorage.setItem(STUDENT_BATCHES_KEY, JSON.stringify(batches));
-    syncSectionedStudentsToStorage(batches);
+    const latestBatches = batchesRef.current;
+    localStorage.setItem(STUDENT_BATCHES_KEY, JSON.stringify(latestBatches));
+    syncSectionedStudentsToStorage(latestBatches);
+    pushSectioningSharedState();
     onSectioningSaved?.();
     alert("Sections saved successfully.");
   };
