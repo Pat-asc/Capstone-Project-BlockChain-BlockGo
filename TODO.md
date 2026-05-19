@@ -30,3 +30,14 @@
 - [x] Cross-port refresh para sa registrar/chairperson data updates across 8080, 8090, at 8100.
 
 - [x] Chairperson sectioning fallback sa backend records para magreflect ang bootstrapped/assigned students kahit ibang port ginamit.
+
+###
+to do
+
+- students should be able to view previous semester grades
+- updates student details in the section creation [/]
+- should be able to update grades even it was bulk uploaded [/]
+- no sign up for the faculty same with the chairperson [/]
+- status of encoded grades [/]
+- add a indication that encoded grades has inc information [/]
+- registrar can now reject grades [/]
