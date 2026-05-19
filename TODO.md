@@ -59,6 +59,7 @@ latest applied requests / traceback
 - [x] Registrar: faculty bulk upload added/checked and does not require faculty ID number.
 - [x] Auth: signup/request access flow removed from login page.
 - [x] Responsive UI: updated affected student/faculty/registrar screens to avoid desktop-only behavior.
+- [x] Responsive UI: checked device adjustment and improved mobile sidebars, headers, modal sizing, and scroll behavior.
 - [x] Access rule: when both midterm and final grades are missing, student is considered inactive and access revocation is triggered on submit.
 - [x] Access rule: students with complete midterm and final grades and no remarks remain active.
 
@@ -95,3 +96,29 @@ possible next issues to verify - reset season and irregular students
 - [ ] Test Add Temporary Student and confirm the student appears as Irregular/Temporary on registrar side.
 - [ ] Test a temporary student assigned to an existing section and confirm the faculty can see the student in grade encoding.
 - [ ] Test missing midterm only, missing final only, and both missing to confirm registrar status shows irreg:INC.
+
+###
+latest applied requests / traceback - sudden shutdown recovery
+
+- [x] Added shared session recovery utility for local screen/tab and field draft persistence.
+- [x] Added global input/select/textarea draft autosave, excluding password/file/hidden fields.
+- [x] Added automatic draft restore after reload/system restart using local browser storage.
+- [x] Added recovery cleanup on intentional logout.
+- [x] Registrar screen now restores last active tab, assignment tab, filters, search fields, sectioning department, and temporary student form drafts.
+- [x] Faculty screen now restores last active section, active year tab, and search query.
+- [x] Student screen now restores selected school year, selected semester, and TOR preview state.
+- [x] Chairperson screen now restores active tab, selected department, and selected review record.
+- [x] Login screen now restores email and current login/reset view, but not passwords.
+- [x] Recovery state now syncs through backend shared state for logged-in users so it can work across the 3 running ports.
+- [x] Nginx/failover port switching no longer clears recovery drafts, so the user can land back on saved work after the system comes back.
+- [x] Recovery now flushes pending drafts when the page is hidden/unloaded to reduce lost work during port switches or shutdown.
+
+###
+possible next issues to verify - sudden shutdown recovery
+
+- [ ] Type in Add Temporary Student, refresh browser, and confirm typed values return.
+- [ ] Type in Add Temporary Student on one port, open another system port, and confirm the draft restores for the same logged-in user.
+- [ ] Open a registrar tab, refresh browser, and confirm it lands on the same registrar screen.
+- [ ] Open a faculty section, refresh browser, and confirm it returns to the same section.
+- [ ] Confirm password fields are not restored after refresh.
+- [ ] Confirm intentional logout clears recovered drafts.

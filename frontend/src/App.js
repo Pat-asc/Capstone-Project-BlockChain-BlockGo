@@ -12,6 +12,7 @@ import { startNginxFailoverMonitor } from './services/nginxFailover';
 
 import { BrowserRouter as Router } from 'react-router-dom';
 import { NotificationProvider, useNotification } from './services/NotificationContext';
+import { clearSessionRecovery, useRecoveredState, useSessionRecovery } from './utils/sessionRecovery';
 
 const normalizeAppRole = (role) => {
   const normalized = String(role || '').trim().toLowerCase().replace(/[\s-]+/g, '_');
@@ -24,8 +25,9 @@ const normalizeAppRole = (role) => {
 };
 
 function AppContent() {
+  useSessionRecovery();
   const [user, setUser] = useState(null);
-  const [isChatOpen, setIsChatOpen] = useState(false);
+  const [isChatOpen, setIsChatOpen] = useRecoveredState("chat:isOpen", false);
   const [chatUnreadTotal, setChatUnreadTotal] = useState(0);
   const [latestChatNotice, setLatestChatNotice] = useState(null);
   const [chatAutoOpenTarget, setChatAutoOpenTarget] = useState(null);
@@ -112,6 +114,7 @@ function AppContent() {
   };
 
   const handleLogout = () => {
+    clearSessionRecovery();
     localStorage.removeItem('token');
     localStorage.removeItem('userRole');
     setUser(null);

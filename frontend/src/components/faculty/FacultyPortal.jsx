@@ -5,6 +5,7 @@ import Modal from '../../services/Modal';
 import FacultyHeader from './FacultyHeader';
 import YearTabs from './YearTabs';
 import ProgramCard from './ProgramCard';
+import { useRecoveredState } from '../../utils/sessionRecovery';
 
 const normalizeYearLabel = (value) => {
   const raw = String(value || '').trim();
@@ -328,9 +329,9 @@ const getTemporarySheetHeader = () => [
 ];
 
 const FacultyPortal = ({ facultyData, onLogout }) => {
-  const [activeSection, setActiveSection] = useState(null);
-  const [activeTab, setActiveTab] = useState("All Sections");
-  const [searchQuery, setSearchQuery] = useState("");
+  const [activeSection, setActiveSection] = useRecoveredState("faculty:activeSection", null);
+  const [activeTab, setActiveTab] = useRecoveredState("faculty:activeTab", "All Sections");
+  const [searchQuery, setSearchQuery] = useRecoveredState("faculty:searchQuery", "");
   const [rowSaveState, setRowSaveState] = useState({});
   const [sectionStatus, setSectionStatus] = useState({});
   const [validationErrors, setValidationErrors] = useState({});

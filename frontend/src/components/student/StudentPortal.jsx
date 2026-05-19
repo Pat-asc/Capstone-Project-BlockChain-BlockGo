@@ -5,14 +5,15 @@ import StudentInfoCard from './StudentInfoCard';
 import StudentSummary from './StudentSummary';
 import StudentGradesTable from './StudentGradesTable';
 import { getPLVPoint } from '../../utils/studentHelpers';
+import { useRecoveredState } from '../../utils/sessionRecovery';
 
 const StudentPortal = ({ studentData, onLogout }) => {
   const [grades, setGrades] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeSemester, setActiveSemester] = useState('Semester Grades');
-  const [selectedSchoolYear, setSelectedSchoolYear] = useState('');
-  const [selectedSemester, setSelectedSemester] = useState('');
-  const [isTorPreviewOpen, setIsTorPreviewOpen] = useState(false);
+  const [selectedSchoolYear, setSelectedSchoolYear] = useRecoveredState('student:selectedSchoolYear', '');
+  const [selectedSemester, setSelectedSemester] = useRecoveredState('student:selectedSemester', '');
+  const [isTorPreviewOpen, setIsTorPreviewOpen] = useRecoveredState('student:isTorPreviewOpen', false);
 
   const rawFullName = studentData.name || '';
   const firstName = rawFullName.split(' ')[0] || '';

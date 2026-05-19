@@ -3694,6 +3694,7 @@ namespace Client_app.Controllers
             "irregularSubjectAssignments",
             "encodingPeriod",
             "facultyLoadResetAt",
+            "sessionRecoveryDrafts",
             "STUDENT_BATCHES_KEY",
             "STUDENT_SUBMISSION_LOGS_KEY"
         };

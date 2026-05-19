@@ -6,8 +6,10 @@ import RegistrarPortal from "./pages/RegistrarPortal";
 import ChairpersonPortal from "./pages/ChairpersonPortal";
 import { CHAIRPERSON_REVIEW_KEY } from "./utils/chairpersonHelpers";
 import { getPublishedGradesForStudent } from "./utils/publishedGradesHelpers";
+import { clearSessionRecovery, useSessionRecovery } from "./utils/sessionRecovery";
 
 function App() {
+  useSessionRecovery();
   const [userRole, setUserRole] = useState(localStorage.getItem("userRole"));
 
   const [allGrades, setAllGrades] = useState(() => {
@@ -36,6 +38,7 @@ function App() {
   };
 
   const handleLogout = () => {
+    clearSessionRecovery();
     localStorage.removeItem("userRole");
     setUserRole(null);
   };

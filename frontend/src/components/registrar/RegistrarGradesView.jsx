@@ -12,6 +12,7 @@ import RegistrarStudentSectioning from './RegistrarStudentSectioning';
 import RegistrarSectionsCreated from './RegistrarSectionsCreated';
 import { downloadTemplateButtonClass } from '../shared/downloadButtonStyles';
 import { buildCsvContent, downloadCsvFile } from '../../utils/studentSectioningHelpers';
+import { useRecoveredState } from '../../utils/sessionRecovery';
 
 const HoverableID = ({ fullId, isAuthorized }) => {
     const [isRevealed, setIsRevealed] = useState(false);
@@ -49,11 +50,11 @@ const RegistrarGradesView = ({
     const [grades, setGrades] = useState([]);
     const [loading, setLoading] = useState(true);
     const [errorMsg, setErrorMsg] = useState(null); 
-    const [mainTab, setMainTab] = useState('dashboard'); 
-    const [assignmentTab, setAssignmentTab] = useState('students');
+    const [mainTab, setMainTab] = useRecoveredState('registrar:mainTab', 'dashboard');
+    const [assignmentTab, setAssignmentTab] = useRecoveredState('registrar:assignmentTab', 'students');
     
     const [pendingRequests, setPendingRequests] = useState([]);
-    const [requestSearchTerm, setRequestSearchTerm] = useState('');
+    const [requestSearchTerm, setRequestSearchTerm] = useRecoveredState('registrar:requestSearchTerm', '');
 
     const [approvedStudents, setApprovedStudents] = useState([]);
     const [studentAssignments, setStudentAssignments] = useState({});
@@ -68,7 +69,7 @@ const RegistrarGradesView = ({
     const [bulkEnrollLoading, setBulkEnrollLoading] = useState(false);
     const [bulkEnrollResult, setBulkEnrollResult] = useState(null);
     const [temporaryStudentLoading, setTemporaryStudentLoading] = useState(false);
-    const [temporaryStudentForm, setTemporaryStudentForm] = useState({
+    const [temporaryStudentForm, setTemporaryStudentForm] = useRecoveredState('registrar:temporaryStudentForm', {
         studentNo: '',
         firstName: '',
         middleName: '',
@@ -84,9 +85,9 @@ const RegistrarGradesView = ({
     const [chairpersonBulkUploadLoading, setChairpersonBulkUploadLoading] = useState(false);
     const [chairpersonBulkUploadResult, setChairpersonBulkUploadResult] = useState(null);
 
-    const [filterDept, setFilterDept] = useState('All');
-    const [filterYear, setFilterYear] = useState('All');
-    const [filterSection, setFilterSection] = useState('All');
+    const [filterDept, setFilterDept] = useRecoveredState('registrar:filterDept', 'All');
+    const [filterYear, setFilterYear] = useRecoveredState('registrar:filterYear', 'All');
+    const [filterSection, setFilterSection] = useRecoveredState('registrar:filterSection', 'All');
 
     const departments = [
     "Bachelor of Early Childhood Education",
@@ -107,7 +108,7 @@ const RegistrarGradesView = ({
     "Bachelor of Science in Business Administration Major in Human Resource Management",
     "Bachelor of Science in Business Administration Major in Marketing Management",
     ];
-    const [sectioningDepartment, setSectioningDepartment] = useState(departments[0]);
+    const [sectioningDepartment, setSectioningDepartment] = useRecoveredState('registrar:sectioningDepartment', departments[0]);
 
     const [ipfsModalOpen, setIpfsModalOpen] = useState(false);
     const [ipfsCid, setIpfsCid] = useState("");
@@ -117,12 +118,12 @@ const RegistrarGradesView = ({
     const [registrarRejectModal, setRegistrarRejectModal] = useState({ isOpen: false, section: null });
     const [registrarRejectNote, setRegistrarRejectNote] = useState('');
     const [registrarRejectLoading, setRegistrarRejectLoading] = useState(false);
-    const [chairpersonSearchTerm, setChairpersonSearchTerm] = useState('');
-    const [facultySearchTerm, setFacultySearchTerm] = useState('');
-    const [showChairpersonAccounts, setShowChairpersonAccounts] = useState(false);
-    const [showFacultyDepartments, setShowFacultyDepartments] = useState(false);
-    const [selectedFacultyDepartment, setSelectedFacultyDepartment] = useState('');
-    const [selectedFacultyReview, setSelectedFacultyReview] = useState('');
+    const [chairpersonSearchTerm, setChairpersonSearchTerm] = useRecoveredState('registrar:chairpersonSearchTerm', '');
+    const [facultySearchTerm, setFacultySearchTerm] = useRecoveredState('registrar:facultySearchTerm', '');
+    const [showChairpersonAccounts, setShowChairpersonAccounts] = useRecoveredState('registrar:showChairpersonAccounts', false);
+    const [showFacultyDepartments, setShowFacultyDepartments] = useRecoveredState('registrar:showFacultyDepartments', false);
+    const [selectedFacultyDepartment, setSelectedFacultyDepartment] = useRecoveredState('registrar:selectedFacultyDepartment', '');
+    const [selectedFacultyReview, setSelectedFacultyReview] = useRecoveredState('registrar:selectedFacultyReview', '');
     const [openedFacultySections, setOpenedFacultySections] = useState({});
 
     const revocationPreviewSections = [
@@ -1388,7 +1389,7 @@ const RegistrarGradesView = ({
     return (
         <div className="flex h-screen w-full flex-col bg-slate-50 font-sans fixed inset-0 z-[100] overflow-auto">
             <RegistrarHeader registrarData={{ name: loggedInName, semester: activeSemester }} onLogout={() => { localStorage.removeItem('token'); window.location.reload(); }} />
-            <div className="flex flex-col md:flex-row flex-1 overflow-hidden p-4 md:p-6 gap-6">
+            <div className="flex flex-1 flex-col gap-6 overflow-hidden p-4 md:flex-row md:p-6">
                 <RegistrarSidebar
                     activeTab={mainTab}
                     setActiveTab={setMainTab}
@@ -1397,12 +1398,12 @@ const RegistrarGradesView = ({
                     onOpenChat={onOpenChat}
                 />
                 {isSystemAdministrationView && (
-                    <aside className="w-full max-w-[220px] self-start rounded-2xl border border-slate-200 bg-slate-100 p-4 shadow-sm lg:sticky lg:top-6">
+                    <aside className="w-full max-w-none self-start rounded-2xl border border-slate-200 bg-slate-100 p-4 shadow-sm md:max-w-[220px] lg:sticky lg:top-6">
                         <div className="mb-4 border-b border-slate-200 pb-3">
                             <h2 className="text-lg font-bold text-[#003366]">System Management</h2>
                         </div>
 
-                        <nav className="flex flex-col gap-2">
+                        <nav className="flex gap-2 overflow-x-auto pb-1 md:flex-col md:overflow-visible md:pb-0">
                             {systemAdminMenuItems.map((item) => {
                                 const isActive = mainTab === item.id;
 
@@ -1411,7 +1412,7 @@ const RegistrarGradesView = ({
                                         key={item.id}
                                         type="button"
                                         onClick={() => setMainTab(item.id)}
-                                        className={`w-full rounded-xl border-b-2 px-4 py-3 text-left text-sm font-medium transition ${
+                                        className={`min-w-[170px] rounded-xl border-b-2 px-4 py-3 text-left text-sm font-medium transition md:w-full md:min-w-0 ${
                                             isActive
                                                 ? 'border-yellow-400 bg-[#003366] text-yellow-400 shadow-sm'
                                                 : 'border-transparent text-slate-700 hover:bg-slate-100'
@@ -1424,7 +1425,7 @@ const RegistrarGradesView = ({
                         </nav>
                     </aside>
                 )}
-                <main className="flex-1 overflow-y-auto pr-2">
+                <main className="min-w-0 flex-1 overflow-y-auto md:pr-2">
                     {mainTab === 'dashboard' && <RegistrarDashboard grades={grades} />}
                     {mainTab === 'encoding' && <EncodingPeriod onResetEncodingSeason={handleResetEncodingSeason} />}
                     {mainTab === 'studentlist' && <StudentListImport />}

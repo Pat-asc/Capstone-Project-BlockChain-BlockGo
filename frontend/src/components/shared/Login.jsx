@@ -4,14 +4,15 @@ import '../../assets/App.css';
 import plvbg from '../../assets/plvbg.png';
 import plvlogo from '../../assets/plvlogo.png';
 import { login, forgotPassword, resetPassword } from '../../services/api';
+import { useRecoveredState } from '../../utils/sessionRecovery';
 
 
 const Login = ({ onLogin }) => {
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useRecoveredState("login:email", "");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [currentView, setCurrentView] = useState('signIn');
+  const [currentView, setCurrentView] = useRecoveredState('login:currentView', 'signIn');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
