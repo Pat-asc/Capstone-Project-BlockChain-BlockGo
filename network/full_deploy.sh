@@ -147,9 +147,9 @@ docker compose -f docker-compose-main.yaml -f docker-compose-annex.yaml -f docke
 docker rm -f -v couchdb_wallet couchdb_wallet_faculty couchdb_wallet_department blockgo-middleware nginx-shield-main-failover nginx-shield-annex-failover nginx-shield-pubad-failover 2>/dev/null || true
 
 # Force remove root-owned files created by containers to prevent CA container crashes
-docker run --rm -v "$(pwd):/tmp/network" alpine sh -c "rm -rf /tmp/network/fabric-ca/registrar/* /tmp/network/fabric-ca/faculty/* /tmp/network/fabric-ca/department/* /tmp/network/${CRYPTO_DIR} /tmp/network/${ARTIFACTS_DIR} /tmp/network/../middleware/wallet" 2>/dev/null || true
+docker run --rm -v "$(pwd):/tmp/network" alpine sh -c "find /tmp/network/fabric-ca -type f ! -name '*.yaml' -delete && rm -rf /tmp/network/${CRYPTO_DIR} /tmp/network/${ARTIFACTS_DIR} /tmp/network/../middleware/wallet" 2>/dev/null || true
 
-rm -rf ./fabric-ca/registrar/* ./fabric-ca/faculty/* ./fabric-ca/department/* 2>/dev/null || true
+find ./fabric-ca -type f ! -name '*.yaml' -delete 2>/dev/null || true
 rm -rf "$CRYPTO_DIR" "$ARTIFACTS_DIR" 2>/dev/null || true
 rm -rf ../middleware/wallet 2>/dev/null || true
 mkdir -p "$ARTIFACTS_DIR"

@@ -13,7 +13,7 @@ async function getWallet(role = 'registrar') {
     let couchUrl;
     const user = process.env.COUCHDB_USER || 'capstone';
     const pass = process.env.COUCHDB_PASS || 'pass123';
-    const host = '127.0.0.1';
+    const host = process.env.COUCHDB_HOST || '127.0.0.1';
 
     if (normalizedRole === 'faculty') {
         couchUrl = process.env.COUCHDB_WALLET_FACULTY_URL || `http://${user}:${pass}@${host}:6990`;
@@ -224,17 +224,17 @@ async function main() {
         
         // 1. Registrar Wallet & Admin
         const walletRegistrar = await getWallet('registrar');
-        const caRegistrar = new FabricCAServices('https://127.0.0.1:7054', { tlsCACerts: [], verify: false }, 'ca-registrar');
+        const caRegistrar = new FabricCAServices(process.env.FABRIC_CA_REGISTRAR_URL || 'https://127.0.0.1:7054', { tlsCACerts: [], verify: false }, 'ca-registrar');
         await enrollCAAdmin(caRegistrar, walletRegistrar, 'RegistrarMSP', 'admin', caAdminSecret, 'admin-registrar');
         
         // 2. Faculty Wallet & Admin
         const walletFaculty = await getWallet('faculty');
-        const caFaculty = new FabricCAServices('https://127.0.0.1:8054', { tlsCACerts: [], verify: false }, 'ca-faculty');
+        const caFaculty = new FabricCAServices(process.env.FABRIC_CA_FACULTY_URL || 'https://127.0.0.1:8054', { tlsCACerts: [], verify: false }, 'ca-faculty');
         await enrollCAAdmin(caFaculty, walletFaculty, 'FacultyMSP', 'admin', caAdminSecret, 'admin-faculty');
         
         // 3. Department Wallet & Admin
         const walletDept = await getWallet('department');
-        const caDepartment = new FabricCAServices('https://127.0.0.1:9054', { tlsCACerts: [], verify: false }, 'ca-department');
+        const caDepartment = new FabricCAServices(process.env.FABRIC_CA_DEPARTMENT_URL || 'https://127.0.0.1:9054', { tlsCACerts: [], verify: false }, 'ca-department');
         await enrollCAAdmin(caDepartment, walletDept, 'DepartmentMSP', 'admin', caAdminSecret, 'admin-department');
 
         await bootstrapRootUser(walletRegistrar);

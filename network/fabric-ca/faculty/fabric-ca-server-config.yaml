@@ -319,7 +319,8 @@ csr:
         O: Hyperledger
         OU: Fabric
    hosts:
-     - 6264cb97d2a6
+     - fabric-ca-faculty.plv-annex-campus.svc.cluster.local
+     - ca.faculty.capstone.com
      - localhost
    ca:
       expiry: 131400h

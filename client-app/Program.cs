@@ -10,6 +10,7 @@ using For_Testing_Only_Capstone.Models;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
+using Microsoft.AspNetCore.HttpOverrides;
 
 AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
 
@@ -109,7 +110,7 @@ try
     {
         options.AddPolicy("AllowFrontend", policy =>
         {
-            policy.WithOrigins("http://localhost:8080", "http://localhost:8090", "http://localhost:8100", "http://localhost:3000") 
+            policy.SetIsOriginAllowed(origin => true) // Allow dynamic cloud public IPs/Domains
                   .WithMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
                   .WithHeaders("Content-Type", "Authorization", "x-user-identity", "x-api-key")
                   .AllowCredentials();
@@ -256,6 +257,8 @@ try
     builder.Services.AddSingleton<IChatCache, ChatCache>(); 
 
     var app = builder.Build();
+
+    app.UseForwardedHeaders(); // Must be first in the pipeline for Ingress
 
     app.UseExceptionHandler();
     app.UseSerilogRequestLogging();

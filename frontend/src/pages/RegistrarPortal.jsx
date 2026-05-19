@@ -12,12 +12,10 @@ import RegistrarStudentSectioning from "../components/registrar/RegistrarStudent
 import RegistrarSectionsCreated from "../components/registrar/RegistrarSectionsCreated";
 import { programs } from "../data/registrarData";
 import { getSystemSetting } from "../services/api";
-import { useRecoveredState } from "../utils/sessionRecovery";
 
 function RegistrarPortal({ onLogout, onResetEncodingSeason, allGrades = {} }) {
-  const [activeTab, setActiveTab] = useRecoveredState("pageRegistrar:activeTab", "dashboard");
-  const [sectioningDepartment, setSectioningDepartment] = useRecoveredState(
-    "pageRegistrar:sectioningDepartment",
+  const [activeTab, setActiveTab] = useState("dashboard");
+  const [sectioningDepartment, setSectioningDepartment] = useState(
     programs[0] || ""
   );
   const [sectioningVersion, setSectioningVersion] = useState(0);
@@ -181,14 +179,14 @@ function RegistrarPortal({ onLogout, onResetEncodingSeason, allGrades = {} }) {
     <div className="min-h-screen bg-[#f3f4f6]">
       <RegistrarHeader registrarData={registrarData} onLogout={onLogout} />
 
-      <div className="px-4 py-6 sm:px-6">
+      <div className="px-6 py-6">
         <div className="flex flex-col gap-6 lg:flex-row">
           <RegistrarSidebar
             activeTab={activeTab}
             setActiveTab={setActiveTab}
           />
 
-          <main className="min-w-0 flex-1 space-y-4">
+          <main className="flex-1 space-y-4">
             <div>
               <h2 className="text-2xl font-bold text-[#003366]">
                 {getSectionTitle()}

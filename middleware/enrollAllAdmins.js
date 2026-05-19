@@ -10,7 +10,7 @@ async function main() {
         // --- Use CouchDB Wallet ---
         let couchUrl = process.env.COUCHDB_WALLET_URL;
         if (!couchUrl && process.env.COUCHDB_USER && process.env.COUCHDB_PASS) {
-            couchUrl = `http://${process.env.COUCHDB_USER}:${process.env.COUCHDB_PASS}@127.0.0.1:5990`;
+            couchUrl = `http://${process.env.COUCHDB_USER}:${process.env.COUCHDB_PASS}@${process.env.COUCHDB_HOST || '127.0.0.1'}:5990`;
         }
         if (!couchUrl) {
             throw new Error("CouchDB wallet URL or credentials not found in .env");
@@ -41,7 +41,7 @@ async function main() {
         const enrollSecret = process.env.BOOTSTRAP_REGISTRAR_PASS || 'adminpw';
 
         // 1. Enroll Registrar Admin
-        const caRegistrar = new FabricCAServices('https://localhost:7054', { verify: false }, 'ca-registrar');
+        const caRegistrar = new FabricCAServices(process.env.FABRIC_CA_REGISTRAR_URL || 'https://localhost:7054', { verify: false }, 'ca-registrar');
         const enrollmentReq = await caRegistrar.enroll({
             enrollmentID: 'admin',
             enrollmentSecret: enrollSecret
@@ -54,7 +54,7 @@ async function main() {
         console.log('Successfully enrolled and encrypted admin-registrar (Port 7054)');
 
         // 2. Enroll Faculty Admin
-        const caFaculty = new FabricCAServices('https://localhost:8054', { verify: false }, 'ca-faculty');
+        const caFaculty = new FabricCAServices(process.env.FABRIC_CA_FACULTY_URL || 'https://localhost:8054', { verify: false }, 'ca-faculty');
         const enrollmentFac = await caFaculty.enroll({
             enrollmentID: 'admin',
             enrollmentSecret: enrollSecret
@@ -67,7 +67,7 @@ async function main() {
         console.log('Successfully enrolled and encrypted admin-faculty (Port 8054)');
 
         // 3. Enroll Department Admin
-        const caDept = new FabricCAServices('https://localhost:9054', { verify: false }, 'ca-department');
+        const caDept = new FabricCAServices(process.env.FABRIC_CA_DEPARTMENT_URL || 'https://localhost:9054', { verify: false }, 'ca-department');
         const enrollmentDept = await caDept.enroll({
             enrollmentID: 'admin',
             enrollmentSecret: enrollSecret

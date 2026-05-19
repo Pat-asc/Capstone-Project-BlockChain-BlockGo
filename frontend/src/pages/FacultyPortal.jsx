@@ -14,7 +14,6 @@ import {
   getSystemSetting,
   submitFacultySectionToChairperson,
 } from "../services/api";
-import { useRecoveredState } from "../utils/sessionRecovery";
 
 const notifyChairpersonReviewChanged = (reviewData) => {
   window.dispatchEvent(
@@ -57,9 +56,9 @@ const getOptionalAssignmentValue = (value) => {
 };
 
 const FacultyPortal = ({ onLogout, allGrades, setAllGrades }) => {
-  const [activeTab, setActiveTab] = useRecoveredState("pageFaculty:activeTab", "All Sections");
-  const [selectedProgram, setSelectedProgram] = useRecoveredState("pageFaculty:selectedProgram", "");
-  const [selectedSection, setSelectedSection] = useRecoveredState("pageFaculty:selectedSection", null);
+  const [activeTab, setActiveTab] = useState("All Sections");
+  const [selectedProgram, setSelectedProgram] = useState("");
+  const [selectedSection, setSelectedSection] = useState(null);
   const [sharedDataVersion, setSharedDataVersion] = useState(0);
 
   const [systemSettings, setSystemSettings] = useState({

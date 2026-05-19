@@ -84,29 +84,10 @@ const getWorkflowState = (sections = []) => {
   return "submitted";
 };
 
-const buildSectionSelectionIdentity = (section) => {
-  const safeSection = section || {};
-
-  return [
-    safeSection.reviewKey || "",
-    safeSection.facultyId || "",
-    safeSection.sectionName || "",
-    safeSection.subjectCode || "",
-    safeSection.schoolYear || "",
-    safeSection.semester || "",
-    safeSection.ipfsCid || "",
-    safeSection.earliestEncodedAt || "",
-    safeSection.totalStudents || 0,
-    safeSection.encodedCount || 0,
-  ]
-    .map((value) => String(value || "").trim().toLowerCase())
-    .join("|");
-};
-
 function FacultyStatusTable({
   rows,
   allRows = [],
-  selectedReviewSection,
+  selectedReviewKey,
   onSelectSection,
   onViewIpfs,
   viewMode = "default",
@@ -252,9 +233,7 @@ function FacultyStatusTable({
                       <td colSpan="4" className="px-6 py-5">
                         <div className="flex flex-col gap-3">
                           {faculty.sections.map((section) => {
-                            const isActive =
-                              buildSectionSelectionIdentity(selectedReviewSection) ===
-                              buildSectionSelectionIdentity(section);
+                            const isActive = selectedReviewKey === section.reviewKey;
                             const priorityLabel = buildPriorityLabel(section.prioritySummary);
 
                             return (
@@ -280,7 +259,11 @@ function FacultyStatusTable({
                                 </div>
                                 <button
                                   type="button"
-                                  onClick={() => onSelectSection?.(isActive ? null : { ...section })}
+                                  onClick={() =>
+                                    onSelectSection?.(
+                                      isActive ? null : section
+                                    )
+                                  }
                                   className={`rounded-xl px-4 py-2 text-sm font-semibold text-white transition ${
                                     section.needsPriorityReview
                                       ? "bg-red-600 hover:bg-red-700"

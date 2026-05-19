@@ -61,6 +61,8 @@ appsettings.*.json
 # DOCKER & DEPLOYMENT
 # =========================
 docker-compose.override.yml
+network/.tmp-k8s/
+network/k8s/.tmp-k8s/
 # =========================
 # BLOCKCHAIN NETWORK SPECIFIC
 # =========================

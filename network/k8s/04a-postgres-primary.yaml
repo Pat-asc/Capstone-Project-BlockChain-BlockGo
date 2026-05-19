@@ -1,0 +1,80 @@
+# PostgreSQL Primary (Master)
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+  namespace: plv-main-campus
+spec:
+  type: ClusterIP
+  ports:
+  - port: 5432
+  selector:
+    app: postgres-primary
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgres-primary
+  namespace: plv-main-campus
+spec:
+  serviceName: postgres
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres-primary
+  template:
+    metadata:
+      labels:
+        app: postgres-primary
+    spec:
+      serviceAccountName: fabric-sa
+      containers:
+      - name: postgres
+        image: bitnami/postgresql:latest
+        imagePullPolicy: IfNotPresent
+        securityContext:
+          runAsUser: 0
+        ports:
+        - containerPort: 5432
+        env:
+        - name: POSTGRESQL_REPLICATION_MODE
+          value: master
+        - name: POSTGRESQL_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: blockgo-secrets
+              key: POSTGRES_USER
+        - name: POSTGRESQL_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: blockgo-secrets
+              key: POSTGRES_PASS
+        - name: POSTGRESQL_DATABASE
+          valueFrom:
+            secretKeyRef:
+              name: blockgo-secrets
+              key: POSTGRES_DB
+        - name: POSTGRESQL_REPLICATION_USER
+          value: repl_user
+        - name: POSTGRESQL_REPLICATION_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: blockgo-secrets
+              key: POSTGRES_REPL_PASS # Ensure this is in your .env
+        volumeMounts:
+        - name: postgres-storage
+          mountPath: /bitnami/postgresql
+        - name: postgres-init-script
+          mountPath: /docker-entrypoint-initdb.d
+      volumes:
+      - name: postgres-init-script
+        configMap:
+          name: postgres-init-script
+  volumeClaimTemplates:
+  - metadata:
+      name: postgres-storage
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      resources:
+        requests:
+          storage: 2Gi

@@ -12,7 +12,6 @@ import { startNginxFailoverMonitor } from './services/nginxFailover';
 
 import { BrowserRouter as Router } from 'react-router-dom';
 import { NotificationProvider, useNotification } from './services/NotificationContext';
-import { clearSessionRecovery, useRecoveredState, useSessionRecovery } from './utils/sessionRecovery';
 
 const normalizeAppRole = (role) => {
   const normalized = String(role || '').trim().toLowerCase().replace(/[\s-]+/g, '_');
@@ -25,9 +24,8 @@ const normalizeAppRole = (role) => {
 };
 
 function AppContent() {
-  useSessionRecovery();
   const [user, setUser] = useState(null);
-  const [isChatOpen, setIsChatOpen] = useRecoveredState("chat:isOpen", false);
+  const [isChatOpen, setIsChatOpen] = useState(false);
   const [chatUnreadTotal, setChatUnreadTotal] = useState(0);
   const [latestChatNotice, setLatestChatNotice] = useState(null);
   const [chatAutoOpenTarget, setChatAutoOpenTarget] = useState(null);
@@ -114,7 +112,6 @@ function AppContent() {
   };
 
   const handleLogout = () => {
-    clearSessionRecovery();
     localStorage.removeItem('token');
     localStorage.removeItem('userRole');
     setUser(null);
@@ -162,6 +159,15 @@ function AppContent() {
     }
   }, [user?.role]);
 
+  const handleRegistrationRequest = useCallback((request) => {
+    const isRegistrar = normalizeAppRole(user?.role).includes('registrar');
+    if (!isRegistrar) return;
+
+    const name = request?.fullName || request?.FullName || request?.email || request?.Email || 'A new user';
+    const role = request?.role || request?.Role || 'user';
+    addNotification(`New registration request from ${name} (${role})`, 'success');
+  }, [addNotification, user?.role]);
+
   const currentUserRole = normalizeAppRole(user?.role);
 
   return (
@@ -208,6 +214,7 @@ function AppContent() {
             onClose={() => setIsChatOpen(false)}
             onUnreadChange={handleUnreadChange}
             onIncomingMessage={handleIncomingMessage}
+            onRegistrationRequest={handleRegistrationRequest}
             autoOpenTarget={chatAutoOpenTarget}
           />
 

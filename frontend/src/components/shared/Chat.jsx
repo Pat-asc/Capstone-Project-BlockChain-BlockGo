@@ -189,6 +189,7 @@ const Chat = ({
   isOpen = true,
   onUnreadChange,
   onIncomingMessage,
+  onRegistrationRequest,
   autoOpenTarget,
 }) => {
   const [connection, setConnection] = useState(null);
@@ -414,6 +415,11 @@ const Chat = ({
       }
     });
 
+    conn.on('NewRegistrationRequest', (payload) => {
+      console.log('[Chat] NewRegistrationRequest:', payload);
+      onRegistrationRequest?.(payload);
+    });
+
     conn.on('SystemSettingChanged', (payload) => {
       console.log('[Chat] SystemSettingChanged:', payload);
       window.dispatchEvent(new CustomEvent('blockgo:system-setting-changed', { detail: payload }));
@@ -540,7 +546,7 @@ const Chat = ({
       setConnection(null);
       conn.stop();
     };
-  }, [userEmail, userRole, onIncomingMessage, isConversationReadable, markConversationSeen]);
+  }, [userEmail, userRole, onIncomingMessage, onRegistrationRequest, isConversationReadable, markConversationSeen]);
 
   // Load history when selected user changes
   useEffect(() => {

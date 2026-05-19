@@ -103,11 +103,11 @@ const getFileSignature = (filePath) => {
 
 const getCAConfig = (role) => {
     const normalizedRole = String(role || 'registrar').toLowerCase();
-    const isDocker = fs.existsSync('/.dockerenv');
+    const isContainerized = fs.existsSync('/.dockerenv') || fs.existsSync('/var/run/secrets/kubernetes.io');
     let caURL, caName, adminLabel, mspId, certPaths, cacheKey;
 
     if (normalizedRole === 'faculty') {
-        caURL = isDocker ? 'https://ca.faculty.capstone.com:7054' : 'https://localhost:8054';
+        caURL = process.env.FABRIC_CA_FACULTY_URL || (isContainerized ? 'https://ca.faculty.capstone.com:7054' : 'https://localhost:8054');
         caName = 'ca-faculty';
         adminLabel = 'admin-faculty';
         mspId = 'FacultyMSP';
@@ -118,7 +118,7 @@ const getCAConfig = (role) => {
             '../network/fabric-ca/faculty/tls-cert.pem'
         );
     } else if (normalizedRole === 'department_admin' || normalizedRole === 'admin' || normalizedRole === 'deptadmin' || normalizedRole === 'department' || normalizedRole === 'chairperson') {
-        caURL = isDocker ? 'https://ca.department.capstone.com:7054' : 'https://localhost:9054';
+        caURL = process.env.FABRIC_CA_DEPARTMENT_URL || (isContainerized ? 'https://ca.department.capstone.com:7054' : 'https://localhost:9054');
         caName = 'ca-department';
         adminLabel = 'admin-department';
         mspId = 'DepartmentMSP';
@@ -129,7 +129,7 @@ const getCAConfig = (role) => {
             '../network/fabric-ca/department/tls-cert.pem'
         );
     } else {
-        caURL = isDocker ? 'https://ca.registrar.capstone.com:7054' : 'https://localhost:7054';
+        caURL = process.env.FABRIC_CA_REGISTRAR_URL || (isContainerized ? 'https://ca.registrar.capstone.com:7054' : 'https://localhost:7054');
         caName = 'ca-registrar';
         adminLabel = 'admin-registrar';
         mspId = 'RegistrarMSP';
@@ -142,17 +142,21 @@ const getCAConfig = (role) => {
     }
 
     if (!certPaths || certPaths.length === 0) {
-        throw new Error(`Fabric CA trust certificate was not found for role "${role}". Run full_deploy.sh so fabric-ca/*/ca-cert.pem and tls-cert.pem are generated.`);
+        if (isContainerized) {
+            console.warn(`[Fabric CA] No local TLS certs found for ${role}. Disabling strict TLS verification for internal K8s cluster routing.`);
+        } else {
+            throw new Error(`Fabric CA trust certificate was not found for role "${role}". Run full_deploy.sh so fabric-ca/*/ca-cert.pem and tls-cert.pem are generated.`);
+        }
     }
 
-    cacheKey = `${normalizedRole}:${certPaths.map(getFileSignature).join('|')}`;
+    cacheKey = `${normalizedRole}:${(certPaths || []).map(getFileSignature).join('|')}`;
     if (caConfigCache.has(cacheKey)) {
         return caConfigCache.get(cacheKey);
     }
 
     const tlsOptions = {
-        trustedRoots: certPaths.map((certPath) => fs.readFileSync(certPath, 'utf8')),
-        verify: true
+        trustedRoots: certPaths ? certPaths.map((certPath) => fs.readFileSync(certPath, 'utf8')) : [],
+        verify: certPaths && certPaths.length > 0
     };
 
     const caClient = new FabricCAServices(caURL, tlsOptions, caName);
@@ -242,7 +246,7 @@ async function getWallet(role = 'registrar') {
     let couchUrl;
     const user = process.env.COUCHDB_USER || 'capstone';
     const pass = process.env.COUCHDB_PASS || 'pass123';
-    const host = fs.existsSync('/.dockerenv') ? 'host.docker.internal' : '127.0.0.1';
+    const host = (fs.existsSync('/.dockerenv') || fs.existsSync('/var/run/secrets/kubernetes.io')) ? 'host.docker.internal' : '127.0.0.1';
 
     if (normalizedRole === 'faculty') {
         couchUrl = process.env.COUCHDB_WALLET_FACULTY_URL || `http://${user}:${pass}@${host}:6990`;
@@ -563,8 +567,9 @@ async function getContractForUser(username, roleHint) {
     if (!ccp.client) ccp.client = {};
     ccp.client.organization = clientOrgName;
 
-    // Inject full network routing to bypass broken Docker Service Discovery on localhost
-    if (!fs.existsSync('/.dockerenv')) {
+    const isContainerized = fs.existsSync('/.dockerenv') || fs.existsSync('/var/run/secrets/kubernetes.io');
+    // Inject full network routing to bypass broken Service Discovery on localhost
+    if (!isContainerized) {
         const getPEM = (org, peer) => {
             try { return fs.readFileSync(path.resolve(__dirname, `../network/crypto-config-final-v2/peerOrganizations/${org}/peers/${peer}/tls/ca.crt`), 'utf8'); } catch(e) { return ""; }
         };
@@ -619,7 +624,7 @@ async function getContractForUser(username, roleHint) {
     await gateway.connect(ccp, {
         wallet,
         identity: username, 
-        discovery: { enabled: fs.existsSync('/.dockerenv'), asLocalhost: false }
+        discovery: { enabled: isContainerized, asLocalhost: !isContainerized }
     });
 
     const network = await gateway.getNetwork(process.env.CHANNEL_NAME || 'registrar-channel');

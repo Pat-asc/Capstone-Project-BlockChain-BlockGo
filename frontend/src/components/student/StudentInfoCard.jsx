@@ -1,5 +1,5 @@
 import infoLogo from "../../assets/infoLogo.webp"; // Assuming infoLogo.webp exists in your assets folder
-const StudentInfoCard = ({ studentData, onPreviewTOR, onSaveTOR, torDisabled }) => {
+const StudentInfoCard = ({ studentData }) => {
   return (
     <div className="mx-4 mt-5 rounded-xl border border-[#003366] bg-gray-100 p-4 md:mx-6 md:p-6">
       <h3 className="mb-4 text-base font-bold text-[#003366] md:text-lg">
@@ -60,28 +60,6 @@ const StudentInfoCard = ({ studentData, onPreviewTOR, onSaveTOR, torDisabled }) 
         </p>
 
       </div>
-
-      <div className="mt-5 flex flex-col gap-3 border-t border-gray-300 pt-4 sm:flex-row">
-        <button
-          type="button"
-          onClick={onPreviewTOR}
-          className="rounded-lg bg-[#003366] px-4 py-2.5 text-sm font-bold text-white transition hover:bg-[#00264d]"
-        >
-          Preview / Print TOR
-        </button>
-        <button
-          type="button"
-          onClick={onSaveTOR}
-          className="rounded-lg border border-[#003366] bg-white px-4 py-2.5 text-sm font-bold text-[#003366] transition hover:bg-blue-50"
-        >
-          Save TOR as PDF
-        </button>
-      </div>
-      {torDisabled ? (
-        <p className="mt-2 text-xs font-semibold text-red-600">
-          TOR is not yet complete. Printing is locked, but PDF download will include a "NOT YET COMPLETE" watermark.
-        </p>
-      ) : null}
     </div>
   );
 };

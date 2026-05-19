@@ -19,7 +19,6 @@ import {
   getSectionStudents,
 } from "../utils/chairpersonHelpers";
 import { getSystemSetting } from "../services/api";
-import { useRecoveredState } from "../utils/sessionRecovery";
 
 const DEFAULT_CHAIRPERSON_DEPARTMENT =
   "Bachelor of Science in Information Technology";
@@ -35,9 +34,9 @@ const loadSavedReviewData = () => {
 };
 
 function ChairpersonPortal({ onLogout, allGrades = {} }) {
-  const [activeTab, setActiveTab] = useRecoveredState("pageChairperson:activeTab", "sectioning");
+  const [activeTab, setActiveTab] = useState("sectioning");
   const [reviewData, setReviewData] = useState(loadSavedReviewData);
-  const [selectedReviewKey, setSelectedReviewKey] = useRecoveredState("pageChairperson:selectedReviewKey", "");
+  const [selectedReviewKey, setSelectedReviewKey] = useState("");
   const [studentDataVersion, setStudentDataVersion] = useState(0);
   const [encodingPeriod, setEncodingPeriod] = useState({
     semester: "2nd Semester",
@@ -165,7 +164,7 @@ function ChairpersonPortal({ onLogout, allGrades = {} }) {
     return Array.from(departments);
   }, [assignments, forwardedBatches]);
 
-  const [selectedDepartment, setSelectedDepartment] = useRecoveredState("pageChairperson:selectedDepartment", "");
+  const [selectedDepartment, setSelectedDepartment] = useState("");
   const resolvedSelectedDepartment =
     selectedDepartment && availableDepartments.includes(selectedDepartment)
       ? selectedDepartment
@@ -387,11 +386,11 @@ function ChairpersonPortal({ onLogout, allGrades = {} }) {
         onLogout={onLogout}
       />
 
-      <div className="px-4 py-6 sm:px-6">
+      <div className="px-6 py-6">
         <div className="flex flex-col gap-6 lg:flex-row">
           <ChairpersonSidebar activeTab={activeTab} setActiveTab={setActiveTab} />
 
-          <main className="min-w-0 flex-1 space-y-6">
+          <main className="flex-1 space-y-6">
             {activeTab === "sectioning" ? (
               <StudentSectioning
                 chairpersonDepartment={chairpersonDepartment}

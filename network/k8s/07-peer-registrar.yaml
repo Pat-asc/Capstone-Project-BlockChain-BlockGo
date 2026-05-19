@@ -1,0 +1,289 @@
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: peer-registrar-pvc
+  namespace: plv-main-campus
+spec:
+  accessModes: [ "ReadWriteOnce" ]
+  storageClassName: fabric-storage
+  resources:
+    requests:
+      storage: 50Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: peer-registrar
+  namespace: plv-main-campus
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: peer-registrar
+  template:
+    metadata:
+      labels:
+        app: peer-registrar
+        org: registrar
+    spec:
+      serviceAccountName: peer-sa
+      hostAliases:
+      - ip: "127.0.0.1"
+        hostnames: ["peer0.registrar.capstone.com", "registrar-chaincode"]
+      containers:
+      - name: peer
+        image: hyperledger/fabric-peer:2.5.4
+        ports:
+        - containerPort: 7051
+          name: peer
+        - containerPort: 7052
+          name: chaincode
+        - containerPort: 7053
+          name: events
+        env:
+        - name: FABRIC_CFG_PATH
+          value: /etc/hyperledger/fabric
+        - name: CORE_PEER_ID
+          value: peer0.registrar.capstone.com
+        - name: CORE_PEER_ADDRESS
+          value: peer-registrar:7051
+        - name: CORE_PEER_LISTENADDRESS
+          value: 0.0.0.0:7051
+        - name: CORE_PEER_CHAINCODELISTENADDRESS
+          value: 0.0.0.0:7052
+        - name: CORE_PEER_CHAINCODEADDRESS
+          value: peer-registrar:7052
+        - name: CORE_PEER_GOSSIP_BOOTSTRAP
+          value: peer-registrar:7051
+        - name: CORE_PEER_GOSSIP_EXTERNALENDPOINT
+          value: peer-registrar:7051
+        - name: CORE_PEER_LOCALMSPID
+          value: RegistrarMSP
+        - name: CORE_PEER_MSPCONFIGPATH
+          value: /var/hyperledger/msp
+        - name: CORE_PEER_TLS_ENABLED
+          value: "true"
+        - name: CORE_PEER_TLS_CERT_FILE
+          value: /var/hyperledger/tls/server.crt
+        - name: CORE_PEER_TLS_KEY_FILE
+          value: /var/hyperledger/tls/server.key
+        - name: CORE_PEER_TLS_ROOTCERT_FILE
+          value: /var/hyperledger/tls/ca.crt
+        - name: CORE_LEDGER_STATE_STATEDATABASE
+          value: CouchDB
+        - name: CORE_LEDGER_STATE_COUCHDBCONFIG_COUCHDBADDRESS
+          value: couchdb-registrar:5984
+        - name: CORE_LEDGER_STATE_COUCHDBCONFIG_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: blockgo-secrets
+              key: COUCHDB_USER
+        - name: CORE_LEDGER_STATE_COUCHDBCONFIG_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: blockgo-secrets
+              key: COUCHDB_PASS
+        volumeMounts:
+        - name: peer-storage
+          mountPath: /var/hyperledger/production
+        - name: config
+          mountPath: /etc/hyperledger/fabric/core.yaml
+          subPath: core.yaml
+        - name: crypto
+          mountPath: /var/hyperledger/msp/signcerts/cert.pem
+          subPath: msp-cert.pem
+        - name: crypto
+          mountPath: /var/hyperledger/msp/keystore/priv_sk
+          subPath: msp-key.pem
+        - name: crypto
+          mountPath: /var/hyperledger/msp/cacerts/ca.pem
+          subPath: msp-ca.pem
+        - name: crypto
+          mountPath: /var/hyperledger/msp/admincerts/admin-cert.pem
+          subPath: admin-cert.pem
+        - name: crypto
+          mountPath: /var/hyperledger/tls/server.crt
+          subPath: server.crt
+        - name: crypto
+          mountPath: /var/hyperledger/tls/server.key
+          subPath: server.key
+        - name: crypto
+          mountPath: /var/hyperledger/tls/ca.crt
+          subPath: ca.crt
+        livenessProbe:
+          exec:
+            command:
+            - /bin/bash
+            - -c
+            - "CORE_PEER_ADDRESS=127.0.0.1:7051 CORE_PEER_TLS_SERVERHOSTOVERRIDE=peer0.registrar.capstone.com peer node status || exit 1"
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          exec:
+            command:
+            - /bin/bash
+            - -c
+            - "CORE_PEER_ADDRESS=127.0.0.1:7051 CORE_PEER_TLS_SERVERHOSTOVERRIDE=peer0.registrar.capstone.com peer node status || exit 1"
+          initialDelaySeconds: 10
+          periodSeconds: 5
+      volumes:
+      - name: peer-storage
+        persistentVolumeClaim:
+          claimName: peer-registrar-pvc
+      - name: config
+        configMap:
+          name: fabric-common-config
+      - name: crypto
+        secret:
+          secretName: peer-registrar-crypto
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: peer-registrar
+  namespace: plv-main-campus
+spec:
+  selector:
+    app: peer-registrar
+  ports:
+  - port: 7051
+    name: peer
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: couchdb-registrar
+  namespace: plv-main-campus
+spec:
+  serviceName: couchdb-registrar
+  replicas: 1
+  selector:
+    matchLabels:
+      app: couchdb-registrar
+  template:
+    metadata:
+      labels:
+        app: couchdb-registrar
+    spec:
+      containers:
+      - name: couchdb
+        image: couchdb:3.2.2
+        ports:
+        - containerPort: 5984
+          name: couchdb
+        env:
+        - name: COUCHDB_USER
+          valueFrom:
+            secretKeyRef:
+              name: blockgo-secrets
+              key: COUCHDB_USER
+        - name: COUCHDB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: blockgo-secrets
+              key: COUCHDB_PASS
+        - name: COUCHDB_SINGLE_NODE
+          value: "true"
+        volumeMounts:
+        - name: couchdb-storage
+          mountPath: /opt/couchdb/data
+        livenessProbe:
+          httpGet:
+            path: /_up
+            port: 5984
+            scheme: HTTP
+            httpHeaders:
+            - name: Authorization
+              value: "Basic Y2Fwc3RvbmU6cGFzczEyMw=="
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /_up
+            port: 5984
+            scheme: HTTP
+            httpHeaders:
+            - name: Authorization
+              value: "Basic Y2Fwc3RvbmU6cGFzczEyMw=="
+          initialDelaySeconds: 5
+          periodSeconds: 5
+  volumeClaimTemplates:
+  - metadata:
+      name: couchdb-storage
+    spec:
+      accessModes: ["ReadWriteOnce"]
+      resources:
+        requests:
+          storage: 30Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: couchdb-registrar
+  namespace: plv-main-campus
+spec:
+  selector:
+    app: couchdb-registrar
+  ports:
+  - port: 5984
+    name: couchdb
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: couchdb-wallet-registrar
+  namespace: plv-main-campus
+spec:
+  serviceName: couchdb-wallet-registrar
+  replicas: 1
+  selector:
+    matchLabels:
+      app: couchdb-wallet-registrar
+  template:
+    metadata:
+      labels:
+        app: couchdb-wallet-registrar
+    spec:
+      containers:
+      - name: couchdb
+        image: couchdb:3.2.2
+        ports:
+        - containerPort: 5984
+          name: couchdb
+        env:
+        - name: COUCHDB_USER
+          valueFrom:
+            secretKeyRef:
+              name: blockgo-secrets
+              key: COUCHDB_USER
+        - name: COUCHDB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: blockgo-secrets
+              key: COUCHDB_PASS
+        - name: COUCHDB_SINGLE_NODE
+          value: "true"
+        volumeMounts:
+        - name: couchdb-wallet-storage
+          mountPath: /opt/couchdb/data
+  volumeClaimTemplates:
+  - metadata:
+      name: couchdb-wallet-storage
+    spec:
+      accessModes: ["ReadWriteOnce"]
+      resources:
+        requests:
+          storage: 10Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: couchdb-wallet-registrar
+  namespace: plv-main-campus
+spec:
+  selector:
+    app: couchdb-wallet-registrar
+  ports:
+  - port: 5984
+    name: couchdb

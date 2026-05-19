@@ -59,9 +59,7 @@
     "Enabled": false
   },
   "Bitswap": {},
-  "Bootstrap": [
-    "/dns4/ipfs0/tcp/4001/p2p/12D3KooW9y66PLW5ysYbSfYyDT3D5V8GCtKgKEBKu67kF2y3e8vf"
-  ],
+  "Bootstrap": [],
   "DNS": {
     "Resolvers": {}
   },
