@@ -1,7 +1,7 @@
 import React from "react";
 
 function RegistrarSidebar({ activeTab, setActiveTab, chatUnreadCount = 0, latestChatNotice = null, onOpenChat }) {
-  const systemAdminTabs = ["monitoring", "grades", "Requests", "assignStudents", "assignAdmins", "assignFaculties"];
+  const systemAdminTabs = ["monitoring", "grades", "assignStudents", "assignAdmins", "assignFaculties"];
   const menuItems = [
   { id: "dashboard", label: "Dashboard" },
   { id: "encoding", label: "Encoding Period" },

@@ -29,6 +29,12 @@ const Login = ({ onLogin }) => {
     }
   }, []);
 
+  useEffect(() => {
+    if (!['signIn', 'forgotPassword', 'resetPassword'].includes(currentView)) {
+      setCurrentView('signIn');
+    }
+  }, [currentView, setCurrentView]);
+
   const validatePassword = (pwd) => {
     if (pwd.length < 8) return "Password must be at least 8 characters long.";
     if (!/[A-Z]/.test(pwd)) return "Password must contain at least one uppercase letter.";

@@ -291,42 +291,6 @@ export const approveGrade = async (recordId, invokerId) => {
     });
 };
 
-export const submitRegistrationRequest = async (userData) => {
-    return await fetchPublic(`/Auth/request`, {
-        method: 'POST',
-        body: JSON.stringify(userData)
-    });
-};
-
-export const sendVerificationCode = async (email) => {
-    return await fetchPublic(`/Auth/send-verification`, {
-        method: 'POST',
-        body: JSON.stringify({ email })
-    });
-};
-
-export const fetchPendingRequests = async () => {
-    return await fetchWithAuth(`/Auth/requests/pending`);
-};
-
-export const approveRegistrationRequest = async (id, type) => {
-    return await fetchWithAuth(`/Auth/requests/approve/${encodeURIComponent(type)}/${encodeURIComponent(id)}`, {
-        method: 'PUT'
-    });
-};
-
-export const denyRegistrationRequest = async (id) => {
-    return await fetchWithAuth(`/Auth/requests/deny/${encodeURIComponent(id)}`, {
-        method: 'DELETE'
-    });
-};
-
-export const cleanupPendingRequests = async () => {
-    return await fetchWithAuth('/Auth/requests/cleanup-pending', {
-        method: 'DELETE'
-    });
-};
-
 export const fetchUserProfile = async (email, role) => {
     return await fetchWithAuth(`/Auth/user-profile?email=${encodeURIComponent(email)}&role=${encodeURIComponent(role)}`);
 };

@@ -58,6 +58,9 @@ latest applied requests / traceback
 - [x] Registrar: "Register Students" changed to "Register User".
 - [x] Registrar: faculty bulk upload added/checked and does not require faculty ID number.
 - [x] Auth: signup/request access flow removed from login page.
+- [x] Auth: pending registration requests UI and approve/deny request access flow removed from registrar access screens.
+- [x] Auth: login interface now only keeps sign in, forgot password, and reset password views.
+- [x] Auth: backend self-service registration request endpoints now return disabled/410 so direct API calls cannot create pending access requests.
 - [x] Responsive UI: updated affected student/faculty/registrar screens to avoid desktop-only behavior.
 - [x] Responsive UI: checked device adjustment and improved mobile sidebars, headers, modal sizing, and scroll behavior.
 - [x] Access rule: when both midterm and final grades are missing, student is considered inactive and access revocation is triggered on submit.

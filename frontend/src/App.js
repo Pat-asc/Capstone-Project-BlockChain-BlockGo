@@ -162,15 +162,6 @@ function AppContent() {
     }
   }, [user?.role]);
 
-  const handleRegistrationRequest = useCallback((request) => {
-    const isRegistrar = normalizeAppRole(user?.role).includes('registrar');
-    if (!isRegistrar) return;
-
-    const name = request?.fullName || request?.FullName || request?.email || request?.Email || 'A new user';
-    const role = request?.role || request?.Role || 'user';
-    addNotification(`New registration request from ${name} (${role})`, 'success');
-  }, [addNotification, user?.role]);
-
   const currentUserRole = normalizeAppRole(user?.role);
 
   return (
@@ -217,7 +208,6 @@ function AppContent() {
             onClose={() => setIsChatOpen(false)}
             onUnreadChange={handleUnreadChange}
             onIncomingMessage={handleIncomingMessage}
-            onRegistrationRequest={handleRegistrationRequest}
             autoOpenTarget={chatAutoOpenTarget}
           />
 

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { fetchAllGrades, finalizeGrade, returnGrade, fetchPendingRequests, approveRegistrationRequest, denyRegistrationRequest, fetchApprovedStudents, assignStudent, fetchApprovedAdmins, assignDepartmentAdmin, revokeDepartmentAdmin, fetchApprovedFaculties, assignFaculty, dropStudent, revokeFaculty, getDecryptedIpfsUrl, fetchStagedGrades, finalizeStagedGrades, getSystemSetting, registrarBulkEnrollStudents, registrarBulkUpdateStudents, registrarAddTemporaryStudent, registrarBulkUploadFaculty, registrarBulkUploadChairperson, resetEncodingSeason } from '../../services/api';
+import { fetchAllGrades, finalizeGrade, returnGrade, fetchApprovedStudents, assignStudent, fetchApprovedAdmins, assignDepartmentAdmin, revokeDepartmentAdmin, fetchApprovedFaculties, assignFaculty, dropStudent, revokeFaculty, getDecryptedIpfsUrl, fetchStagedGrades, finalizeStagedGrades, getSystemSetting, registrarBulkEnrollStudents, registrarBulkUpdateStudents, registrarAddTemporaryStudent, registrarBulkUploadFaculty, registrarBulkUploadChairperson, resetEncodingSeason } from '../../services/api';
 import RegistrarHeader from './RegistrarHeader';
 import RegistrarSidebar from './RegistrarSidebar';
 import RegistrarDashboard from './RegistrarDashboard';
@@ -39,10 +39,9 @@ const RegistrarGradesView = ({
     latestChatNotice = null,
     onOpenChat,
 }) => {
-    const systemAdminTabs = ['grades', 'Requests', 'assigning', 'bulkEnroll', 'revokeAccounts'];
+    const systemAdminTabs = ['grades', 'assigning', 'bulkEnroll', 'revokeAccounts'];
     const systemAdminMenuItems = [
         { id: 'grades', label: 'Grades Ledger' },
-        { id: 'Requests', label: 'Pending Requests' },
         { id: 'assigning', label: 'Assigning' },
         { id: 'bulkEnroll', label: 'Register Users' },
         { id: 'revokeAccounts', label: 'Account Revocation' },
@@ -53,9 +52,6 @@ const RegistrarGradesView = ({
     const [mainTab, setMainTab] = useRecoveredState('registrar:mainTab', 'dashboard');
     const [assignmentTab, setAssignmentTab] = useRecoveredState('registrar:assignmentTab', 'students');
     
-    const [pendingRequests, setPendingRequests] = useState([]);
-    const [requestSearchTerm, setRequestSearchTerm] = useRecoveredState('registrar:requestSearchTerm', '');
-
     const [approvedStudents, setApprovedStudents] = useState([]);
     const [studentAssignments, setStudentAssignments] = useState({});
     const [approvedAdmins, setApprovedAdmins] = useState([]);
@@ -322,13 +318,6 @@ const RegistrarGradesView = ({
         setStagedLoading(false);
     }, [loggedInEmail]);
 
-    const loadRequests = useCallback(async () => {
-        try {
-            const response = await fetchPendingRequests();
-            if (response.status === 'Success') setPendingRequests([...(response.studentRequests || []), ...(response.staffRequests || [])]);
-        } catch (error) { console.error('Error loading requests:', error); }
-    }, []);
-
     const loadApprovedStudents = useCallback(async () => {
         try {
             const response = await fetchApprovedStudents();
@@ -391,13 +380,10 @@ const RegistrarGradesView = ({
     useEffect(() => { loadGrades(); }, [loadGrades]);
 
     useEffect(() => {
-        if (mainTab === 'Requests') {
-            loadRequests();
-        }
         if (mainTab === 'finalization') {
             loadStagedGrades();
         }
-    }, [mainTab, loadRequests, loadStagedGrades]);
+    }, [mainTab, loadStagedGrades]);
 
     useEffect(() => {
         const handleAcademicDataChanged = () => {
@@ -405,13 +391,12 @@ const RegistrarGradesView = ({
             loadApprovedStudents();
             loadApprovedAdmins();
             loadApprovedFaculties();
-            if (mainTab === 'Requests') loadRequests();
             if (mainTab === 'finalization') loadStagedGrades();
         };
 
         window.addEventListener('blockgo:academic-data-changed', handleAcademicDataChanged);
         return () => window.removeEventListener('blockgo:academic-data-changed', handleAcademicDataChanged);
-    }, [mainTab, loadGrades, loadRequests, loadStagedGrades, loadApprovedStudents, loadApprovedAdmins, loadApprovedFaculties]);
+    }, [mainTab, loadGrades, loadStagedGrades, loadApprovedStudents, loadApprovedAdmins, loadApprovedFaculties]);
 
     useEffect(() => {
         if (mainTab === 'assigning') {
@@ -492,39 +477,6 @@ const RegistrarGradesView = ({
         }
     };
 
-    const handleApproveRequest = async (id, type) => {
-        setConfirmModal({
-            isOpen: true,
-            title: "Approve Request",
-            message: `Are you sure you want to approve this ${type} registration request?`,
-            onConfirm: async () => {
-                try {
-                    await approveRegistrationRequest(id, type);
-                    alert("Request approved successfully!");
-                    loadRequests(); 
-                } catch (error) { alert(`Failed to approve: ${error.message}`); }
-                setConfirmModal(prev => ({ ...prev, isOpen: false }));
-            }
-        });
-    };
-
-    const handleDenyRequest = async (id) => {
-        setConfirmModal({
-            isOpen: true,
-            title: "Deny Request",
-            message: "Are you sure you want to deny this request?",
-            isDestructive: true,
-            onConfirm: async () => {
-                try {
-                    await denyRegistrationRequest(id);
-                    alert("Request denied and removed.");
-                    loadRequests(); 
-                } catch (error) { alert(`Failed to deny: ${error.message}`); }
-                setConfirmModal(prev => ({ ...prev, isOpen: false }));
-            }
-        });
-    };
-
     const handleDropStudent = async (id, name) => {
         setConfirmModal({
             isOpen: true,
@@ -582,12 +534,6 @@ const RegistrarGradesView = ({
             }
         });
     };
-
-    const sortedAndFilteredRequests = useMemo(() => {
-        let sortableItems = [...pendingRequests];
-        const searchTerm = requestSearchTerm.toLowerCase();
-        return sortableItems.filter(req => Object.values(req).some(val => String(val).toLowerCase().includes(searchTerm)));
-    }, [pendingRequests, requestSearchTerm]);
 
     const filteredGrades = grades.filter(grade => {
         if (!loggedInEmail) return false;
@@ -1998,35 +1944,6 @@ const RegistrarGradesView = ({
                                     )}
                                 </div>
                             )}
-                        </div>
-                    )}
-                    {mainTab === 'Requests' && (
-                        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-                            <div className="border-b border-slate-200 p-4">
-                                <input type="text" placeholder="Search..." value={requestSearchTerm} onChange={e => setRequestSearchTerm(e.target.value)} className="w-full rounded-xl border border-slate-300 bg-slate-50 px-4 py-3 outline-none" />
-                            </div>
-                            <div className="overflow-x-auto"><table className="w-full min-w-[800px] text-left text-sm">
-                                <thead>
-                                    <tr className="bg-[#003366] text-white">
-                                        <th className="p-4">Role</th><th className="p-4">Name</th><th className="p-4">Student No.</th><th className="p-4">Email</th><th className="p-4">Department</th><th className="p-4">Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {sortedAndFilteredRequests.map((req) => (
-                                        <tr key={req.requestid} className="border-b border-slate-100 hover:bg-slate-50">
-                                            <td className="p-4 font-bold capitalize text-slate-800">{req.role}</td>
-                                            <td className="p-4">{req.fullname}</td>
-                                            <td className="p-4">{req.studentno || 'N/A'}</td>
-                                            <td className="p-4 text-slate-500">{req.email}</td>
-                                            <td className="p-4">{req.department}</td>
-                                            <td className="p-4">
-                                                <button onClick={() => handleDenyRequest(req.requestid)} className="mr-2 rounded-lg bg-red-500 px-3 py-1 text-xs font-bold text-white hover:bg-red-600">Deny</button>
-                                                <button onClick={() => handleApproveRequest(req.requestid, req.role)} className="rounded-lg bg-emerald-600 px-3 py-1 text-xs font-bold text-white hover:bg-emerald-700">Approve</button>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table></div>
                         </div>
                     )}
                     {mainTab === 'assigning' && (

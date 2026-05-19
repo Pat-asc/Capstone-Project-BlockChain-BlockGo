@@ -188,9 +188,20 @@ namespace Client_app.Controllers
             };
         }
 
+        private static bool RegistrationRequestsDisabled() => true;
+
+        private IActionResult RegistrationRequestsDisabledResponse() =>
+            StatusCode(410, new
+            {
+                status = "Disabled",
+                message = "Self-service registration requests are disabled. Use Registrar Register Users for account creation or Password Reset for existing accounts."
+            });
+
         [HttpPost("send-verification")]
         public async Task<IActionResult> SendVerificationCode([FromBody] VerificationRequest request)
         {
+            if (RegistrationRequestsDisabled()) return RegistrationRequestsDisabledResponse();
+
             if (string.IsNullOrEmpty(request.Email))
             {
                 return BadRequest(new { status = "Error", message = "Email is required." });
@@ -235,6 +246,8 @@ namespace Client_app.Controllers
         [HttpPost("request")]
         public async Task<IActionResult> RequestAccess([FromBody] SignupRequest request)
         {
+            if (RegistrationRequestsDisabled()) return RegistrationRequestsDisabledResponse();
+
             if (string.IsNullOrEmpty(request.Email))
             {
                 return BadRequest(new { status = "Error", message = "Email is required." });
@@ -377,6 +390,8 @@ namespace Client_app.Controllers
         [HttpGet("requests/pending")]
         public async Task<IActionResult> GetPendingRequests()
         {
+            if (RegistrationRequestsDisabled()) return RegistrationRequestsDisabledResponse();
+
             const string cacheKey = "pending_requests";
             if (_cache.TryGetValue(cacheKey, out object? cachedData) && cachedData != null)
             {
@@ -445,6 +460,8 @@ namespace Client_app.Controllers
         [HttpPut("requests/approve/{type}/{id}")]
         public async Task<IActionResult> ApproveRequest(string type, int id)
         {
+            if (RegistrationRequestsDisabled()) return RegistrationRequestsDisabledResponse();
+
             using var conn = new NpgsqlConnection(_connectionString);
             await conn.OpenAsync();
             using var transaction = await conn.BeginTransactionAsync();
@@ -505,6 +522,8 @@ namespace Client_app.Controllers
         [HttpDelete("requests/deny/{id}")]
         public async Task<IActionResult> DenyRequest(int id)
         {
+            if (RegistrationRequestsDisabled()) return RegistrationRequestsDisabledResponse();
+
             using var conn = new NpgsqlConnection(_connectionString);
             await conn.OpenAsync();
 
@@ -536,6 +555,8 @@ namespace Client_app.Controllers
         [HttpDelete("requests/cleanup-pending")]
         public async Task<IActionResult> CleanupPendingRequests()
         {
+            if (RegistrationRequestsDisabled()) return RegistrationRequestsDisabledResponse();
+
             var requestApiKey = Request.Headers["x-api-key"].ToString();
             var configuredApiKey = Environment.GetEnvironmentVariable("INTERNAL_API_KEY") ?? _configuration["InternalApiKey"] ?? throw new InvalidOperationException("Internal API Key not configured.");
             if (requestApiKey != configuredApiKey)
