@@ -1,5 +1,4 @@
 ---
-# High-Availability Frontend (Nginx UI)
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -9,7 +8,7 @@ metadata:
     app: frontend
     tier: web
 spec:
-  replicas: 3 # Triple redundancy as requested
+  replicas: 1
   selector:
     matchLabels:
       app: frontend
@@ -26,7 +25,6 @@ spec:
     spec:
       affinity:
         podAntiAffinity:
-          # Spread pods across different nodes for actual HA
           preferredDuringSchedulingIgnoredDuringExecution:
           - weight: 100
             podAffinityTerm:
@@ -74,7 +72,7 @@ metadata:
   annotations:
     cloud.google.com/neg: '{"ingress": true}'
 spec:
-  type: ClusterIP # Internal routing, Ingress handles external access
+  type: ClusterIP
   selector:
     app: frontend
   ports:

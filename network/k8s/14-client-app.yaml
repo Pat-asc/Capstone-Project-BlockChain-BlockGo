@@ -4,7 +4,7 @@ metadata:
   name: client-app
   namespace: plv-fabric
 spec:
-  replicas: 2
+  replicas: 1
   selector:
     matchLabels:
       app: client-app

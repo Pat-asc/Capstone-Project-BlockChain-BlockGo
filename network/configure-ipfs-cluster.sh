@@ -23,7 +23,7 @@ for i in $(seq 0 $(($IPFS_NODE_COUNT - 1))); do
     IMAGE=$(docker inspect --format='{{.Config.Image}}' "ipfs${i}" 2>/dev/null || echo "ipfs/kubo:latest")
     
     # Use an offline temporary container to initialize and patch the config to bypass crash-loops
-    docker run --rm --volumes-from "ipfs${i}" --entrypoint sh "$IMAGE" -c "ipfs init 2>/dev/null || true; ipfs config --json AutoConf.Enabled false 2>/dev/null || true; ipfs config Routing.Type dht 2>/dev/null || true; ipfs config --json Bootstrap '[]' 2>/dev/null || true; ipfs config --json DNS.Resolvers '{}' 2>/dev/null || true; ipfs config --json Routing.DelegatedRouters '[]' 2>/dev/null || true; ipfs config --json Ipns.DelegatedPublishers '[]' 2>/dev/null || true"
+    docker run --rm --volumes-from "ipfs${i}" --entrypoint sh "$IMAGE" -c "ipfs init 2>/dev/null || true; ipfs config --json AutoConf.Enabled false 2>/dev/null || true; ipfs config Routing.Type dht 2>/dev/null || true; ipfs config --json Bootstrap '[]' 2>/dev/null || true; ipfs config --json DNS.Resolvers '{}' 2>/dev/null || true; ipfs config --json Routing.DelegatedRouters '[]' 2>/dev/null || true; ipfs config --json Ipns.DelegatedPublishers '[]' 2>/dev/null || true; chown -R 1000:100 /data/ipfs 2>/dev/null || true"
     
     docker start "ipfs${i}" 2>/dev/null || true
 done
@@ -44,9 +44,9 @@ ID0=$(docker exec ipfs0 ipfs id -f "<id>")
 # but for multi-device cross-communication, external IPs should be used.
 log_info "Peering all other nodes with ipfs0..."
 for i in $(seq 1 $(($IPFS_NODE_COUNT - 1))); do
-    docker exec "ipfs${i}" ipfs bootstrap add "/dns4/ipfs0/tcp/4001/p2p/${ID0}" || log_warn "Failed to peer ipfs${i} with ipfs0."
+    MSYS_NO_PATHCONV=1 docker exec "ipfs${i}" ipfs bootstrap add "/dns4/ipfs0/tcp/4001/p2p/${ID0}" || log_warn "Failed to peer ipfs${i} with ipfs0."
     # Actively force swarm connection so they instantly sync
-    docker exec "ipfs${i}" ipfs swarm connect "/dns4/ipfs0/tcp/4001/p2p/${ID0}" || true
+    MSYS_NO_PATHCONV=1 docker exec "ipfs${i}" ipfs swarm connect "/dns4/ipfs0/tcp/4001/p2p/${ID0}" || true
 done
 
 log_info "IPFS Distributed Network Configured!"

@@ -63,14 +63,7 @@ const fetchPublic = async (endpoint, options = {}) => {
     return await response.json();
 };
 
-// ==================== MIDDLEWARE API - LOGIN & AUTH ====================
-// These endpoints point to middleware.js running on port 4000
-// Middleware uses role-based wallet routing (registrar/5990, faculty/6990, department/7990)
-
 export const login = (credentials) => {
-    // Middleware expects: { username: string, password: string }
-    // Frontend passes: { username: email, password: password }
-    // /api/login is served by middleware on port 4000
     const loginPayload = {
         username: credentials.username || credentials.email,
         password: credentials.password
@@ -107,7 +100,6 @@ export const bootstrapSystem = async () => {
     return await fetchPublic('/bootstrap');
 };
 
-// ==================== MIDDLEWARE API - STUDENT PROFILE ====================
 export const getStudentProfile = async () => {
     return await fetchWithAuth('/student/profile');
 };
@@ -119,7 +111,6 @@ export const updateStudentProfile = async (profileData) => {
     });
 };
 
-// ==================== GRADES API - C# STAGING + BLOCKCHAIN LEDGER ====================
 export const getAllGrades = async (invokerId = 'system') => {
     return await fetchWithAuth(`/Grades/all?invokerId=${encodeURIComponent(invokerId)}`);
 };
@@ -291,42 +282,6 @@ export const approveGrade = async (recordId, invokerId) => {
     });
 };
 
-export const submitRegistrationRequest = async (userData) => {
-    return await fetchPublic(`/Auth/request`, {
-        method: 'POST',
-        body: JSON.stringify(userData)
-    });
-};
-
-export const sendVerificationCode = async (email) => {
-    return await fetchPublic(`/Auth/send-verification`, {
-        method: 'POST',
-        body: JSON.stringify({ email })
-    });
-};
-
-export const fetchPendingRequests = async () => {
-    return await fetchWithAuth(`/Auth/requests/pending`);
-};
-
-export const approveRegistrationRequest = async (id, type) => {
-    return await fetchWithAuth(`/Auth/requests/approve/${encodeURIComponent(type)}/${encodeURIComponent(id)}`, {
-        method: 'PUT'
-    });
-};
-
-export const denyRegistrationRequest = async (id) => {
-    return await fetchWithAuth(`/Auth/requests/deny/${encodeURIComponent(id)}`, {
-        method: 'DELETE'
-    });
-};
-
-export const cleanupPendingRequests = async () => {
-    return await fetchWithAuth('/Auth/requests/cleanup-pending', {
-        method: 'DELETE'
-    });
-};
-
 export const fetchUserProfile = async (email, role) => {
     return await fetchWithAuth(`/Auth/user-profile?email=${encodeURIComponent(email)}&role=${encodeURIComponent(role)}`);
 };
@@ -465,10 +420,9 @@ export const batchEnrollStudentsToSection = async (file, sectionId) => {
     });
 };
 
-export const batchUploadStudents = async (file, defaultDepartment = '', mode = 'enroll') => {
+export const batchUploadStudents = async (file, mode = 'enroll') => {
     const formData = new FormData();
     formData.append('file', file);
-    if (defaultDepartment) formData.append('defaultDepartment', defaultDepartment);
     formData.append('mode', mode);
 
     return await fetchWithAuth(`/Auth/students/bulk-upload`, {
@@ -477,20 +431,49 @@ export const batchUploadStudents = async (file, defaultDepartment = '', mode = '
     });
 };
 
-export const bulkEnrollStudents = async (file, defaultDepartment = '') => {
-    return await batchUploadStudents(file, defaultDepartment, 'enroll');
+export const bulkEnrollStudents = async (file) => {
+    return await batchUploadStudents(file, 'enroll');
 };
 
-export const registrarBulkEnrollStudents = async (file, department = '') => {
-    return await bulkEnrollStudents(file, department);
+export const registrarBulkEnrollStudents = async (file) => {
+    return await bulkEnrollStudents(file);
 };
 
-export const bulkUpdateStudents = async (file, defaultDepartment = '') => {
-    return await batchUploadStudents(file, defaultDepartment, 'update');
+export const bulkUpdateStudents = async (file) => {
+    return await batchUploadStudents(file, 'update');
 };
 
-export const registrarBulkUpdateStudents = async (file, department = '') => {
-    return await bulkUpdateStudents(file, department);
+export const registrarBulkUpdateStudents = async (file) => {
+    return await bulkUpdateStudents(file);
+};
+
+export const registrarAddTemporaryStudent = async (studentData) => {
+    return await fetchWithAuth(`/Auth/students/temporary`, {
+        method: 'POST',
+        body: JSON.stringify(studentData)
+    });
+};
+
+export const registrarBulkUploadFaculty = async (file, mode = 'enroll') => {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('mode', mode);
+
+    return await fetchWithAuth(`/Auth/faculty/bulk-upload`, {
+        method: 'POST',
+        body: formData
+    });
+};
+
+export const registrarBulkUploadChairperson = async (file, mode = 'enroll') => {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('mode', mode);
+
+    return await fetchWithAuth(`/Auth/admins/department/bulk-upload`, {
+        method: 'POST',
+        body: formData
+    });
 };
 
 export const bulkUploadMasterlist = async (file, department = '') => {

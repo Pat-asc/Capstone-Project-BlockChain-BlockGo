@@ -80,6 +80,5 @@ chaincode/.env
 !network/channel-artifacts-final/.gitkeep
 
 # Ignore Binaries but KEEP directory
+network/bin/*
 !network/bin/.gitkeep
-
-# Fabric CA generated keys and databases

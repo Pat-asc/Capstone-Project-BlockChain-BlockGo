@@ -450,3 +450,4 @@ C:/Users/pascu/Documents/GitHub2/GitHub/Casptone 1/Capstone-Project-BlockChain-B
 /app/bin/Debug/net8.0/Microsoft.NET.StringTools.dll
 /app/bin/Debug/net8.0/Pipelines.Sockets.Unofficial.dll
 /app/bin/Debug/net8.0/StackExchange.Redis.dll
+/app/bin/Debug/net8.0/appsettings.Development.json

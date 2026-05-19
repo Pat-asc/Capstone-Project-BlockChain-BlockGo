@@ -1,3 +1,9 @@
+# Copyright IBM Corp. All Rights Reserved.
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+
+---
 Organizations:
   - &OrdererOrg
     Name: OrdererMSP
@@ -9,8 +15,8 @@ Organizations:
       Admins: { Type: Signature, Rule: "OR('OrdererMSP.admin')" }
     OrdererEndpoints:
       - orderer.capstone.com:7050
-      - orderer2.capstone.com:8050
-      - orderer3.capstone.com:9050
+      - orderer2.capstone.com:7050
+      - orderer3.capstone.com:7050
 
   - &RegistrarOrg
     Name: RegistrarMSP
@@ -84,20 +90,20 @@ Orderer: &OrdererDefaults
         Consenters:
             - Host: orderer.capstone.com
               Port: 7050
-              ClientTLSCert: /etc/hyperledger/fabric/crypto-config-final-v2/ordererOrganizations/capstone.com/orderers/orderer.capstone.com/tls/server.crt
-              ServerTLSCert: /etc/hyperledger/fabric/crypto-config-final-v2/ordererOrganizations/capstone.com/orderers/orderer.capstone.com/tls/server.crt
+              ClientTLSCert: ../crypto-config-final-v2/ordererOrganizations/capstone.com/orderers/orderer.capstone.com/tls/server.crt
+              ServerTLSCert: ../crypto-config-final-v2/ordererOrganizations/capstone.com/orderers/orderer.capstone.com/tls/server.crt
             - Host: orderer2.capstone.com
-              Port: 8050
-              ClientTLSCert: /etc/hyperledger/fabric/crypto-config-final-v2/ordererOrganizations/capstone.com/orderers/orderer2.capstone.com/tls/server.crt
-              ServerTLSCert: /etc/hyperledger/fabric/crypto-config-final-v2/ordererOrganizations/capstone.com/orderers/orderer2.capstone.com/tls/server.crt
+              Port: 7050
+              ClientTLSCert: ../crypto-config-final-v2/ordererOrganizations/capstone.com/orderers/orderer2.capstone.com/tls/server.crt
+              ServerTLSCert: ../crypto-config-final-v2/ordererOrganizations/capstone.com/orderers/orderer2.capstone.com/tls/server.crt
             - Host: orderer3.capstone.com
-              Port: 9050
-              ClientTLSCert: /etc/hyperledger/fabric/crypto-config-final-v2/ordererOrganizations/capstone.com/orderers/orderer3.capstone.com/tls/server.crt
-              ServerTLSCert: /etc/hyperledger/fabric/crypto-config-final-v2/ordererOrganizations/capstone.com/orderers/orderer3.capstone.com/tls/server.crt
+              Port: 7050
+              ClientTLSCert: ../crypto-config-final-v2/ordererOrganizations/capstone.com/orderers/orderer3.capstone.com/tls/server.crt
+              ServerTLSCert: ../crypto-config-final-v2/ordererOrganizations/capstone.com/orderers/orderer3.capstone.com/tls/server.crt
     Addresses:
         - orderer.capstone.com:7050
-        - orderer2.capstone.com:8050
-        - orderer3.capstone.com:9050
+        - orderer2.capstone.com:7050
+        - orderer3.capstone.com:7050
     BatchTimeout: 2s
     BatchSize:
         MaxMessageCount: 10
@@ -105,10 +111,18 @@ Orderer: &OrdererDefaults
         PreferredMaxBytes: 512 KB
     Organizations:
     Policies:
-        Readers: { Type: ImplicitMeta, Rule: "ANY Readers" }
-        Writers: { Type: ImplicitMeta, Rule: "ANY Writers" }
-        Admins: { Type: ImplicitMeta, Rule: "MAJORITY Admins" }
-        BlockValidation: { Type: ImplicitMeta, Rule: "ANY Writers" }
+        Readers:
+            Type: ImplicitMeta
+            Rule: "ANY Readers"
+        Writers:
+            Type: ImplicitMeta
+            Rule: "ANY Writers"
+        Admins:
+            Type: ImplicitMeta
+            Rule: "MAJORITY Admins"
+        BlockValidation:
+            Type: ImplicitMeta
+            Rule: "ANY Writers"
 
 Profiles:
   UniversityGenesis:
@@ -129,6 +143,12 @@ Profiles:
   RegistrarChannel:
     Consortium: UniversityConsortium
     <<: *ChannelDefaults
+    Orderer:
+      <<: *OrdererDefaults
+      Organizations:
+        - *OrdererOrg
+      Capabilities:
+        <<: *OrdererCapabilities
     Application:
       <<: *ApplicationDefaults
       Organizations:

@@ -22,7 +22,7 @@ echo ""
 # Fail-proof manifest applicator
 apply_manifest() {
     if [ -f "$1" ]; then
-        kubectl $ACTION -f "$1"
+        kubectl $ACTION -f "$1" || true
     else
         echo "Manifest $1 not found. Skipping safely."
     fi
@@ -206,8 +206,8 @@ deploy_manifests() {
     fi
 
     apply_manifest "$TMP_K8S_DIR/04a-postgres-primary.yaml"
-    apply_manifest "$TMP_K8S_DIR/04b-postgres-replica-annex.yaml"
-    apply_manifest "$TMP_K8S_DIR/04c-postgres-replica-pubad.yaml"
+    # apply_manifest "$TMP_K8S_DIR/04b-postgres-replica-annex.yaml"
+    # apply_manifest "$TMP_K8S_DIR/04c-postgres-replica-pubad.yaml"
     apply_manifest "$TMP_K8S_DIR/05-fabric-ca.yaml"
     apply_manifest "$TMP_K8S_DIR/06-orderer-1.yaml"
     apply_manifest "$TMP_K8S_DIR/06-orderer-2.yaml"
@@ -233,6 +233,8 @@ deploy_manifests() {
     apply_manifest "$TMP_K8S_DIR/14-client-app.yaml"
     
     apply_manifest "$TMP_K8S_DIR/15-main-ingress.yaml"
+    apply_manifest "$TMP_K8S_DIR/15-couchdb-backup.yaml"
+    apply_manifest "$TMP_K8S_DIR/16-postgres-backup.yaml"
     
     echo "Manifests deployed"
 }
@@ -264,6 +266,11 @@ wait_deployments() {
     kubectl rollout status statefulset/ipfs-node -n plv-fabric --timeout=5m || true
 
     echo "✓ All deployments ready"
+    
+    echo "Bootstrapping Root Registrar Account..."
+    sleep 5
+    MIDDLEWARE_POD=$(kubectl get pods -n plv-fabric -l app=middleware-api -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || true)
+    if [ -n "$MIDDLEWARE_POD" ]; then kubectl exec $MIDDLEWARE_POD -n plv-fabric -- curl -s http://localhost:4000/api/bootstrap; echo ""; fi
 }
 
 # Main execution

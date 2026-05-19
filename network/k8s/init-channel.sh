@@ -37,7 +37,7 @@ echo ""
 # Step 3: Create channel via osnadmin
 echo ""
 echo "Step 3: Creating channel via osnadmin..."
-kubectl exec $CLI_POD -c cli -n plv-main-campus -- \
+MSYS_NO_PATHCONV=1 kubectl exec $CLI_POD -c cli -n plv-main-campus -- \
     osnadmin channel join --client-cert /var/hyperledger/orderer/tls/server.crt \
     --client-key /var/hyperledger/orderer/tls/server.key \
     --ca-file /var/hyperledger/orderer/tls/ca.crt \
@@ -54,7 +54,7 @@ fi
 # Step 4: Verify channel
 echo ""
 echo "Step 4: Verifying channel..."
-kubectl exec $CLI_POD -c cli -n plv-main-campus -- \
+MSYS_NO_PATHCONV=1 kubectl exec $CLI_POD -c cli -n plv-main-campus -- \
     osnadmin channel list --client-cert /var/hyperledger/orderer/tls/server.crt \
     --client-key /var/hyperledger/orderer/tls/server.key \
     --ca-file /var/hyperledger/orderer/tls/ca.crt \

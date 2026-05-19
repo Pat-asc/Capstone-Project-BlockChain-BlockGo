@@ -37,7 +37,7 @@ join_peer() {
             kubectl cp ./crypto-config-final-v2/peerOrganizations/${DOMAIN}/users/Admin@${DOMAIN}/msp $NAMESPACE/$POD_NAME:/tmp/admin-msp 2>/dev/null || true
 
             set +e
-            local OUTPUT=$(kubectl exec deployment/$DEPLOY_NAME -n $NAMESPACE -- env CORE_PEER_MSPCONFIGPATH=/tmp/admin-msp CORE_PEER_TLS_SERVERHOSTOVERRIDE=$OVERRIDE CORE_PEER_ADDRESS=127.0.0.1:7051 peer channel join -b /tmp/${CHANNEL_NAME}.block 2>&1)
+            local OUTPUT=$(MSYS_NO_PATHCONV=1 kubectl exec deployment/$DEPLOY_NAME -n $NAMESPACE -- env CORE_PEER_MSPCONFIGPATH=/tmp/admin-msp CORE_PEER_TLS_SERVERHOSTOVERRIDE=$OVERRIDE CORE_PEER_ADDRESS=127.0.0.1:7051 peer channel join -b /tmp/${CHANNEL_NAME}.block 2>&1)
             local EXIT_CODE=$?
             set -e
 

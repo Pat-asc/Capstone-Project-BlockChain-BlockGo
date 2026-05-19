@@ -117,7 +117,7 @@ csr:
       O: Hyperledger
       OU: Fabric
   hosts:
-    - Ana-EPTC
+    - Madookee
 
 #############################################################################
 #  Registration section used to register a new identity with fabric-ca server

@@ -1,5 +1,4 @@
 ---
-# Monitoring: Prometheus ServiceMonitor (requires Prometheus Operator)
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -39,7 +38,6 @@ data:
       - targets: ['middleware-api:4000']
       metrics_path: /metrics
 ---
-# Pod Disruption Budget (for high availability)
 apiVersion: policy/v1
 kind: PodDisruptionBudget
 metadata:
@@ -62,7 +60,6 @@ spec:
     matchLabels:
       app: orderer
 ---
-# Resource Quota
 apiVersion: v1
 kind: ResourceQuota
 metadata:
@@ -91,7 +88,6 @@ spec:
     pods: "30"
     persistentvolumeclaims: "5"
 ---
-# LimitRange
 apiVersion: v1
 kind: LimitRange
 metadata:

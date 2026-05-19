@@ -1,5 +1,4 @@
 ---
-# NetworkPolicy: Deny all ingress by default
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -10,7 +9,6 @@ spec:
   policyTypes:
   - Ingress
 ---
-# NetworkPolicy: Allow external ingress to web-facing services
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:

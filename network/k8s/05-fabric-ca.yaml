@@ -21,7 +21,7 @@ spec:
       - name: init-ca
         image: alpine:latest
         imagePullPolicy: IfNotPresent
-        command: ["sh", "-c", "mkdir -p /data/msp/keystore && cp -L /raw/ca-cert.pem /data/ca-cert.pem && cp -L /raw/tls-cert.pem /data/tls-cert.pem && cp -L /raw/ca-key.pem /data/msp/keystore/key_sk && chmod -R 777 /data"]
+        command: ["sh", "-c", "mkdir -p /data/msp/keystore && cp -L /raw/ca-cert.pem /data/ca-cert.pem && cp -L /raw/tls-cert.pem /data/tls-cert.pem && cp -L /raw/ca-key.pem /data/msp/keystore/key_sk && cp -L /raw/tls-key.pem /data/msp/keystore/tls_key_sk && chmod -R 777 /data"]
         volumeMounts:
         - name: raw-identity
           mountPath: /raw
@@ -30,7 +30,7 @@ spec:
       containers:
       - name: fabric-ca
         image: hyperledger/fabric-ca:1.5.7
-        command: ["sh", "-c", "fabric-ca-server start -b admin:${BOOTSTRAP_PASS} --ca.certfile /etc/hyperledger/fabric-ca-server/ca-cert.pem --ca.keyfile /etc/hyperledger/fabric-ca-server/msp/keystore/key_sk --tls.certfile /etc/hyperledger/fabric-ca-server/tls-cert.pem --tls.keyfile /etc/hyperledger/fabric-ca-server/msp/keystore/key_sk -d"]
+        command: ["sh", "-c", "fabric-ca-server start -b admin:${BOOTSTRAP_PASS} --ca.certfile /etc/hyperledger/fabric-ca-server/ca-cert.pem --ca.keyfile /etc/hyperledger/fabric-ca-server/msp/keystore/key_sk --tls.certfile /etc/hyperledger/fabric-ca-server/tls-cert.pem --tls.keyfile /etc/hyperledger/fabric-ca-server/msp/keystore/tls_key_sk -d"]
         ports:
         - containerPort: 7054
           name: ca-port
@@ -90,7 +90,7 @@ spec:
       - name: init-ca
         image: alpine:latest
         imagePullPolicy: IfNotPresent
-        command: ["sh", "-c", "mkdir -p /data/msp/keystore && cp -L /raw/ca-cert.pem /data/ca-cert.pem && cp -L /raw/tls-cert.pem /data/tls-cert.pem && cp -L /raw/ca-key.pem /data/msp/keystore/key_sk && chmod -R 777 /data"]
+        command: ["sh", "-c", "mkdir -p /data/msp/keystore && cp -L /raw/ca-cert.pem /data/ca-cert.pem && cp -L /raw/tls-cert.pem /data/tls-cert.pem && cp -L /raw/ca-key.pem /data/msp/keystore/key_sk && cp -L /raw/tls-key.pem /data/msp/keystore/tls_key_sk && chmod -R 777 /data"]
         volumeMounts:
         - name: raw-identity
           mountPath: /raw
@@ -99,7 +99,7 @@ spec:
       containers:
       - name: fabric-ca
         image: hyperledger/fabric-ca:1.5.7
-        command: ["sh", "-c", "fabric-ca-server start -b admin:${BOOTSTRAP_PASS} --ca.certfile /etc/hyperledger/fabric-ca-server/ca-cert.pem --ca.keyfile /etc/hyperledger/fabric-ca-server/msp/keystore/key_sk --tls.certfile /etc/hyperledger/fabric-ca-server/tls-cert.pem --tls.keyfile /etc/hyperledger/fabric-ca-server/msp/keystore/key_sk -d"]
+        command: ["sh", "-c", "fabric-ca-server start -b admin:${BOOTSTRAP_PASS} --ca.certfile /etc/hyperledger/fabric-ca-server/ca-cert.pem --ca.keyfile /etc/hyperledger/fabric-ca-server/msp/keystore/key_sk --tls.certfile /etc/hyperledger/fabric-ca-server/tls-cert.pem --tls.keyfile /etc/hyperledger/fabric-ca-server/msp/keystore/tls_key_sk -d"]
         ports:
         - containerPort: 7054
         env:
@@ -158,7 +158,7 @@ spec:
       - name: init-ca
         image: alpine:latest
         imagePullPolicy: IfNotPresent
-        command: ["sh", "-c", "mkdir -p /data/msp/keystore && cp -L /raw/ca-cert.pem /data/ca-cert.pem && cp -L /raw/tls-cert.pem /data/tls-cert.pem && cp -L /raw/ca-key.pem /data/msp/keystore/key_sk && chmod -R 777 /data"]
+        command: ["sh", "-c", "mkdir -p /data/msp/keystore && cp -L /raw/ca-cert.pem /data/ca-cert.pem && cp -L /raw/tls-cert.pem /data/tls-cert.pem && cp -L /raw/ca-key.pem /data/msp/keystore/key_sk && cp -L /raw/tls-key.pem /data/msp/keystore/tls_key_sk && chmod -R 777 /data"]
         volumeMounts:
         - name: raw-identity
           mountPath: /raw
@@ -167,7 +167,7 @@ spec:
       containers:
       - name: fabric-ca
         image: hyperledger/fabric-ca:1.5.7
-        command: ["sh", "-c", "fabric-ca-server start -b admin:${BOOTSTRAP_PASS} --ca.certfile /etc/hyperledger/fabric-ca-server/ca-cert.pem --ca.keyfile /etc/hyperledger/fabric-ca-server/msp/keystore/key_sk --tls.certfile /etc/hyperledger/fabric-ca-server/tls-cert.pem --tls.keyfile /etc/hyperledger/fabric-ca-server/msp/keystore/key_sk -d"]
+        command: ["sh", "-c", "fabric-ca-server start -b admin:${BOOTSTRAP_PASS} --ca.certfile /etc/hyperledger/fabric-ca-server/ca-cert.pem --ca.keyfile /etc/hyperledger/fabric-ca-server/msp/keystore/key_sk --tls.certfile /etc/hyperledger/fabric-ca-server/tls-cert.pem --tls.keyfile /etc/hyperledger/fabric-ca-server/msp/keystore/tls_key_sk -d"]
         ports:
         - containerPort: 7054
         env:

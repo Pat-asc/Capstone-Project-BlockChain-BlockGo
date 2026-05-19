@@ -315,7 +315,6 @@ csr:
    names:
       - C: US
         ST: "North Carolina"
-        L:
         O: Hyperledger
         OU: Fabric
    hosts:

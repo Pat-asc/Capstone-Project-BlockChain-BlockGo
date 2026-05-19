@@ -13,7 +13,7 @@
 ################################################################################
 General:
     # Listen address: The IP on which to bind to listen.
-    ListenAddress: 0.0.0.0
+    ListenAddress: 127.0.0.1
 
     # Listen port: The port on which to bind to listen.
     ListenPort: 7050
@@ -309,7 +309,7 @@ Debug:
 ################################################################################
 Operations:
     # host and port for the operations server
-    ListenAddress: 0.0.0.0:8443
+    ListenAddress: 127.0.0.1:8443
 
     # TLS configuration for the operations endpoint
     TLS:
@@ -365,7 +365,7 @@ Metrics:
 ################################################################################
 Admin:
     # host and port for the admin server
-    ListenAddress: 0.0.0.0:9443
+    ListenAddress: 127.0.0.1:9443
 
     # TLS configuration for the admin endpoint
     TLS:

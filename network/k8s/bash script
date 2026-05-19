@@ -52,7 +52,3 @@ rm connection.json metadata.json code.tar.gz
 
 echo "Successfully generated ${ORG}.tar.gz!"
 echo "Ready to install on the $ORG peers."
-
-
-export IMAGE_REGISTRY=us-central1-docker.pkg.dev/YOUR_PROJECT/plv-repo
-./network/k8s/deploy-k8s.sh plv-fabric apply
