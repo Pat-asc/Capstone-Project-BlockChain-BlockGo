@@ -48,6 +48,10 @@ latest applied requests / traceback
 - [x] Student portal: added previous semester grades filter with school year dropdown and semester dropdown.
 - [x] Student portal: added TOR preview, print, and save PDF flow.
 - [x] Student portal: TOR print/save is blocked with "complete your course years before printing" when 4 course years are not complete.
+- [x] Student portal: incomplete TOR preview, print, and PDF download now show a large "NOT YET COMPLETE" watermark instead of blocking the output.
+- [x] Student portal: added a Word-compatible TOR watermark sample file for preview.
+- [x] Student portal: corrected incomplete TOR behavior so only PDF download gets the "NOT YET COMPLETE" watermark while print/preview stays blocked until grades are complete.
+- [x] Student portal: centered the incomplete TOR PDF watermark on the paper background for every downloaded incomplete TOR page.
 - [x] Faculty grading: attendance grade is optional and grade computation still works when attendance is blank.
 - [x] Faculty grading: remarks is now a dropdown only: D, UD, U, W.
 - [x] Faculty grading: missing midterm or final grade automatically marks remarks as INC / incomplete.

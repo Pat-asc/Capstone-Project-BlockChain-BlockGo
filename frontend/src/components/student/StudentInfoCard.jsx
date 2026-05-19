@@ -79,7 +79,7 @@ const StudentInfoCard = ({ studentData, onPreviewTOR, onSaveTOR, torDisabled }) 
       </div>
       {torDisabled ? (
         <p className="mt-2 text-xs font-semibold text-red-600">
-          complete your course years before printing
+          TOR is not yet complete. Printing is locked, but PDF download will include a "NOT YET COMPLETE" watermark.
         </p>
       ) : null}
     </div>

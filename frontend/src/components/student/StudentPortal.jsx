@@ -181,9 +181,39 @@ const StudentPortal = ({ studentData, onLogout }) => {
 
   const completedCourseYears = new Set(grades.map(extractYearLevel).filter(Boolean));
   const canPrintTOR = ['1', '2', '3', '4'].every((year) => completedCourseYears.has(year));
+  const isTorIncomplete = !canPrintTOR;
+  const torWatermarkText = 'NOT YET COMPLETE';
+
+  useEffect(() => {
+    if (isTorIncomplete && isTorPreviewOpen) {
+      setIsTorPreviewOpen(false);
+    }
+  }, [isTorIncomplete, isTorPreviewOpen, setIsTorPreviewOpen]);
 
   const showTorIncompleteMessage = () => {
     alert('complete your course years before printing');
+  };
+
+  const drawTorWatermark = (doc) => {
+    if (!isTorIncomplete) return;
+
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+    const canUseOpacity = typeof doc.GState === 'function' && typeof doc.setGState === 'function';
+
+    try {
+      if (typeof doc.saveGraphicsState === 'function') doc.saveGraphicsState();
+      if (canUseOpacity) doc.setGState(new doc.GState({ opacity: 0.16 }));
+      doc.setTextColor(220, 38, 38);
+      doc.setFontSize(42);
+      doc.setFont(undefined, 'bold');
+      doc.text(torWatermarkText, pageWidth / 2, pageHeight / 2, {
+        align: 'center',
+        angle: -32,
+      });
+    } finally {
+      if (typeof doc.restoreGraphicsState === 'function') doc.restoreGraphicsState();
+    }
   };
 
   const buildTorRows = () => grades.map((grade) => {
@@ -210,7 +240,7 @@ const StudentPortal = ({ studentData, onLogout }) => {
   });
 
   const handlePreviewTOR = () => {
-    if (!canPrintTOR) {
+    if (isTorIncomplete) {
       showTorIncompleteMessage();
       return;
     }
@@ -218,10 +248,6 @@ const StudentPortal = ({ studentData, onLogout }) => {
   };
 
   const handleSaveTOR = () => {
-    if (!canPrintTOR) {
-      showTorIncompleteMessage();
-      return;
-    }
     try {
       const { jsPDF } = window.jspdf;
       const doc = new jsPDF();
@@ -254,6 +280,9 @@ const StudentPortal = ({ studentData, onLogout }) => {
         ]),
         headStyles: { fillColor: [0, 51, 102], fontSize: 8 },
         bodyStyles: { fontSize: 8 },
+        willDrawPage: () => {
+          drawTorWatermark(doc);
+        },
       });
 
       doc.save(`${studentData.studentNo || 'student'}_TOR.pdf`);
@@ -263,7 +292,7 @@ const StudentPortal = ({ studentData, onLogout }) => {
   };
 
   const handlePrintTOR = () => {
-    if (!canPrintTOR) {
+    if (isTorIncomplete) {
       showTorIncompleteMessage();
       return;
     }
@@ -280,28 +309,49 @@ const StudentPortal = ({ studentData, onLogout }) => {
             h1 { color: #003366; font-size: 20px; margin: 0; }
             h2 { font-size: 15px; margin: 4px 0 18px; }
             .meta { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px 24px; font-size: 12px; margin-bottom: 18px; }
+            .tor-page { position: relative; min-height: 900px; }
+            .watermark {
+              position: fixed;
+              left: 50%;
+              top: 50%;
+              transform: translate(-50%, -50%) rotate(-28deg);
+              width: 100%;
+              text-align: center;
+              color: rgba(220, 38, 38, 0.18);
+              font-size: 56px;
+              font-weight: 800;
+              letter-spacing: 2px;
+              pointer-events: none;
+              z-index: 0;
+            }
+            .tor-content { position: relative; z-index: 1; }
             table { width: 100%; border-collapse: collapse; font-size: 11px; }
             th { background: #003366; color: white; text-align: left; }
             th, td { border: 1px solid #cbd5e1; padding: 7px; }
           </style>
         </head>
         <body>
-          <h1>PAMANTASAN NG LUNGSOD NG VALENZUELA</h1>
-          <h2>Transcript of Records</h2>
-          <div class="meta">
-            <div><strong>Student:</strong> ${[firstName, storedMiddleName, lastName].filter(Boolean).join(' ')}</div>
-            <div><strong>Student No:</strong> ${studentData.studentNo || 'N/A'}</div>
-            <div><strong>Program:</strong> ${studentData.department || 'N/A'}</div>
-            <div><strong>Section:</strong> ${studentData.section || 'N/A'}</div>
+          <div class="tor-page">
+            ${isTorIncomplete ? `<div class="watermark">${torWatermarkText}</div>` : ''}
+            <div class="tor-content">
+              <h1>PAMANTASAN NG LUNGSOD NG VALENZUELA</h1>
+              <h2>Transcript of Records</h2>
+              <div class="meta">
+                <div><strong>Student:</strong> ${[firstName, storedMiddleName, lastName].filter(Boolean).join(' ')}</div>
+                <div><strong>Student No:</strong> ${studentData.studentNo || 'N/A'}</div>
+                <div><strong>Program:</strong> ${studentData.department || 'N/A'}</div>
+                <div><strong>Section:</strong> ${studentData.section || 'N/A'}</div>
+              </div>
+              <table>
+                <thead>
+                  <tr><th>School Year</th><th>Semester</th><th>Code</th><th>Subject</th><th>Units</th><th>Grade</th><th>Equivalent</th><th>Remarks</th></tr>
+                </thead>
+                <tbody>
+                  ${rows.map((row) => `<tr><td>${row.schoolYear}</td><td>${row.semester}</td><td>${row.code}</td><td>${row.name}</td><td>${row.units}</td><td>${row.finalGrade}</td><td>${row.equivalent}</td><td>${row.remarks}</td></tr>`).join('')}
+                </tbody>
+              </table>
+            </div>
           </div>
-          <table>
-            <thead>
-              <tr><th>School Year</th><th>Semester</th><th>Code</th><th>Subject</th><th>Units</th><th>Grade</th><th>Equivalent</th><th>Remarks</th></tr>
-            </thead>
-            <tbody>
-              ${rows.map((row) => `<tr><td>${row.schoolYear}</td><td>${row.semester}</td><td>${row.code}</td><td>${row.name}</td><td>${row.units}</td><td>${row.finalGrade}</td><td>${row.equivalent}</td><td>${row.remarks}</td></tr>`).join('')}
-            </tbody>
-          </table>
         </body>
       </html>
     `);
@@ -415,7 +465,7 @@ const StudentPortal = ({ studentData, onLogout }) => {
           }}
           onPreviewTOR={handlePreviewTOR}
           onSaveTOR={handleSaveTOR}
-          torDisabled={!canPrintTOR}
+          torDisabled={isTorIncomplete}
         />
 
         <div className="mx-4 mt-5 grid gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm md:mx-6 md:grid-cols-2">
@@ -491,7 +541,11 @@ const StudentPortal = ({ studentData, onLogout }) => {
             <div className="sticky top-0 flex flex-col gap-3 border-b border-slate-200 bg-white p-4 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <h3 className="text-lg font-bold text-[#003366]">Transcript of Records Preview</h3>
-                <p className="text-sm text-slate-500">Mock TOR layout for review before printing.</p>
+                <p className="text-sm text-slate-500">
+                  {isTorIncomplete
+                    ? 'Incomplete TOR downloads include a NOT YET COMPLETE watermark. Printing is locked until complete.'
+                    : 'Mock TOR layout for review before printing.'}
+                </p>
               </div>
               <div className="flex flex-wrap gap-2">
                 <button type="button" onClick={handlePrintTOR} className="rounded-lg bg-[#003366] px-4 py-2 text-sm font-bold text-white">Print</button>
@@ -500,44 +554,53 @@ const StudentPortal = ({ studentData, onLogout }) => {
               </div>
             </div>
             <div className="p-5">
-              <div className="border border-slate-300 p-5">
-                <h1 className="text-xl font-extrabold text-[#003366]">PAMANTASAN NG LUNGSOD NG VALENZUELA</h1>
-                <p className="mt-1 text-sm font-semibold text-slate-700">Transcript of Records</p>
-                <div className="mt-5 grid gap-3 text-sm sm:grid-cols-2">
-                  <p><strong>Student:</strong> {[firstName, storedMiddleName, lastName].filter(Boolean).join(' ')}</p>
-                  <p><strong>Student No:</strong> {studentData.studentNo || 'N/A'}</p>
-                  <p><strong>Program:</strong> {studentData.department || 'N/A'}</p>
-                  <p><strong>Section:</strong> {studentData.section || 'N/A'}</p>
-                </div>
-                <div className="mt-5 overflow-x-auto">
-                  <table className="w-full min-w-[760px] border-collapse text-sm">
-                    <thead className="bg-[#003366] text-white">
-                      <tr>
-                        <th className="border p-2 text-left">School Year</th>
-                        <th className="border p-2 text-left">Semester</th>
-                        <th className="border p-2 text-left">Code</th>
-                        <th className="border p-2 text-left">Subject</th>
-                        <th className="border p-2 text-center">Units</th>
-                        <th className="border p-2 text-center">Grade</th>
-                        <th className="border p-2 text-center">Equivalent</th>
-                        <th className="border p-2 text-center">Remarks</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {buildTorRows().map((row, index) => (
-                        <tr key={`${row.code}-${index}`}>
-                          <td className="border p-2">{row.schoolYear}</td>
-                          <td className="border p-2">{row.semester}</td>
-                          <td className="border p-2 font-semibold text-[#003366]">{row.code}</td>
-                          <td className="border p-2">{row.name}</td>
-                          <td className="border p-2 text-center">{row.units}</td>
-                          <td className="border p-2 text-center">{row.finalGrade}</td>
-                          <td className="border p-2 text-center">{row.equivalent}</td>
-                          <td className="border p-2 text-center">{row.remarks}</td>
+              <div className="relative overflow-hidden border border-slate-300 p-5">
+                {isTorIncomplete ? (
+                  <div className="pointer-events-none absolute inset-0 z-0 flex items-center justify-center">
+                    <span className="-rotate-[28deg] text-center text-4xl font-extrabold tracking-wide text-red-600/20 sm:text-6xl">
+                      {torWatermarkText}
+                    </span>
+                  </div>
+                ) : null}
+                <div className="relative z-10">
+                  <h1 className="text-xl font-extrabold text-[#003366]">PAMANTASAN NG LUNGSOD NG VALENZUELA</h1>
+                  <p className="mt-1 text-sm font-semibold text-slate-700">Transcript of Records</p>
+                  <div className="mt-5 grid gap-3 text-sm sm:grid-cols-2">
+                    <p><strong>Student:</strong> {[firstName, storedMiddleName, lastName].filter(Boolean).join(' ')}</p>
+                    <p><strong>Student No:</strong> {studentData.studentNo || 'N/A'}</p>
+                    <p><strong>Program:</strong> {studentData.department || 'N/A'}</p>
+                    <p><strong>Section:</strong> {studentData.section || 'N/A'}</p>
+                  </div>
+                  <div className="mt-5 overflow-x-auto">
+                    <table className="w-full min-w-[760px] border-collapse text-sm">
+                      <thead className="bg-[#003366] text-white">
+                        <tr>
+                          <th className="border p-2 text-left">School Year</th>
+                          <th className="border p-2 text-left">Semester</th>
+                          <th className="border p-2 text-left">Code</th>
+                          <th className="border p-2 text-left">Subject</th>
+                          <th className="border p-2 text-center">Units</th>
+                          <th className="border p-2 text-center">Grade</th>
+                          <th className="border p-2 text-center">Equivalent</th>
+                          <th className="border p-2 text-center">Remarks</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody>
+                        {buildTorRows().map((row, index) => (
+                          <tr key={`${row.code}-${index}`}>
+                            <td className="border p-2">{row.schoolYear}</td>
+                            <td className="border p-2">{row.semester}</td>
+                            <td className="border p-2 font-semibold text-[#003366]">{row.code}</td>
+                            <td className="border p-2">{row.name}</td>
+                            <td className="border p-2 text-center">{row.units}</td>
+                            <td className="border p-2 text-center">{row.finalGrade}</td>
+                            <td className="border p-2 text-center">{row.equivalent}</td>
+                            <td className="border p-2 text-center">{row.remarks}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               </div>
             </div>
