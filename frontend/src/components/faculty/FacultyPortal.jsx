@@ -84,7 +84,7 @@ const REMARK_OPTIONS = [
   { value: "", label: "None", standing: STUDENT_STATUS_ACTIVE },
   { value: "D", label: "D - Dropped", standing: "dropped" },
   { value: "UD", label: "UD - Unofficially Dropped", standing: "unofficially_dropped" },
-  { value: "U", label: "U - Unknown Reason", standing: "unknown_reason" },
+  { value: "INC", label: "INC - Incomplete", standing: "incomplete" },
   { value: "W", label: "W - Withdrawal", standing: "withdrawn" },
 ];
 const REMARK_STANDING_BY_VALUE = REMARK_OPTIONS.reduce((acc, option) => {

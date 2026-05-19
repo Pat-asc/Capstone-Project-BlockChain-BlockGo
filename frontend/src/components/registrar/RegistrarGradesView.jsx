@@ -623,8 +623,6 @@ const RegistrarGradesView = ({
                 return 'Dropped (D)';
             case 'unofficially_dropped':
                 return 'Unofficial Dropped (UD)';
-            case 'unknown_reason':
-                return 'Unknown Reason (U)';
             case 'withdrawn':
                 return 'Withdrawn (W)';
             case 'incomplete':
