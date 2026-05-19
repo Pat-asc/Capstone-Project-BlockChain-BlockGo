@@ -6,6 +6,8 @@ function ChairpersonSidebar({ activeTab, setActiveTab }) {
     { id: "sectioning", label: "Department Sections" },
     { id: "assignment", label: "Academic Assignment" },
     { id: "forReview", label: "For Review" },
+    { id: "returned", label: "Returned" },
+    { id: "forwarded", label: "Forwarded" },
   ];
 
   return (

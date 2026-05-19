@@ -61,6 +61,13 @@ export const getProgramSectionPrefix = (program = "") =>
 export const getDefaultSectionName = (program = "", sectionCode = "") =>
   `${getProgramSectionPrefix(program)} ${sectionCode}`.trim();
 
+export const getDisplaySectionName = (sectionName = "", fallbackName = "") => {
+  const rawName = String(sectionName || "").trim();
+  const cleanedName = rawName.replace(/\s*\([A-Za-z]{2,}\s*\d+[A-Za-z0-9-]*\)\s*$/i, "");
+
+  return cleanedName || fallbackName;
+};
+
 const normalizeHeader = (value = "") =>
   String(value)
     .replace(/^\uFEFF/, "")

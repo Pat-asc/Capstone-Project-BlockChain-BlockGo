@@ -1,5 +1,6 @@
 import React from "react";
 import ReviewStatusBanner from "../chairperson/ReviewStatusBanner";
+import { getDisplaySectionName } from "../../utils/studentSectioningHelpers";
 
 const ProgramCard = ({
   sectionName,
@@ -16,14 +17,17 @@ const ProgramCard = ({
   const isStarted = progress > 0;
   const isCompleted = progress >= 100;
   const isReturned = reviewStatus === "returned";
+  const isRegistrarRejected = reviewStatus === "registrar_rejected";
   const isSubmitted = reviewStatus === "submitted";
   const isApproved = reviewStatus === "approved";
   const isForwarded = reviewStatus === "forwarded";
+  const displaySectionName = getDisplaySectionName(sectionName, sectionName);
 
   const getSubmitLabel = () => {
-    if (isForwarded) return "Sent to Registrar";
+    if (isForwarded) return "Submitted to Registrar";
     if (isApproved) return "Approved by Chairperson";
     if (isSubmitted) return "Submitted to Chairperson";
+    if (isRegistrarRejected) return "Resubmit to Chairperson";
     if (isReturned) return "Resubmit to Chairperson";
     return "Submit to Chairperson";
   };
@@ -64,7 +68,7 @@ const ProgramCard = ({
       </h2>
 
       <div className="mb-3 flex flex-wrap items-center gap-2">
-        <span className="font-bold text-[#003366]">{sectionName}</span>
+        <span className="font-bold text-[#003366]">{displaySectionName}</span>
         <span className="rounded-lg bg-violet-50 px-3 py-1 text-xs text-violet-700">
           {sectionData.sectionCourse}
         </span>

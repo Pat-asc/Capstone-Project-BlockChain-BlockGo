@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { fetchAllGrades, finalizeGrade, fetchPendingRequests, approveRegistrationRequest, denyRegistrationRequest, fetchApprovedStudents, assignStudent, fetchApprovedAdmins, assignDepartmentAdmin, revokeDepartmentAdmin, fetchApprovedFaculties, assignFaculty, dropStudent, revokeFaculty, getDecryptedIpfsUrl, fetchStagedGrades, finalizeStagedGrades, getSystemSetting, registrarBulkEnrollStudents, registrarBulkUpdateStudents, resetEncodingSeason } from '../../services/api';
+import { fetchAllGrades, finalizeGrade, returnGrade, fetchPendingRequests, approveRegistrationRequest, denyRegistrationRequest, fetchApprovedStudents, assignStudent, fetchApprovedAdmins, assignDepartmentAdmin, revokeDepartmentAdmin, fetchApprovedFaculties, assignFaculty, dropStudent, revokeFaculty, getDecryptedIpfsUrl, fetchStagedGrades, finalizeStagedGrades, getSystemSetting, registrarBulkEnrollStudents, registrarBulkUpdateStudents, registrarBulkUploadFaculty, registrarBulkUploadChairperson, resetEncodingSeason } from '../../services/api';
 import RegistrarHeader from './RegistrarHeader';
 import RegistrarSidebar from './RegistrarSidebar';
 import RegistrarDashboard from './RegistrarDashboard';
@@ -43,7 +43,7 @@ const RegistrarGradesView = ({
         { id: 'grades', label: 'Grades Ledger' },
         { id: 'Requests', label: 'Pending Requests' },
         { id: 'assigning', label: 'Assigning' },
-        { id: 'bulkEnroll', label: 'Register Students' },
+        { id: 'bulkEnroll', label: 'Register Users' },
         { id: 'revokeAccounts', label: 'Account Revocation' },
     ];
     const [grades, setGrades] = useState([]);
@@ -67,6 +67,10 @@ const RegistrarGradesView = ({
     const [activeSemester, setActiveSemester] = useState('2nd Semester');
     const [bulkEnrollLoading, setBulkEnrollLoading] = useState(false);
     const [bulkEnrollResult, setBulkEnrollResult] = useState(null);
+    const [facultyBulkUploadLoading, setFacultyBulkUploadLoading] = useState(false);
+    const [facultyBulkUploadResult, setFacultyBulkUploadResult] = useState(null);
+    const [chairpersonBulkUploadLoading, setChairpersonBulkUploadLoading] = useState(false);
+    const [chairpersonBulkUploadResult, setChairpersonBulkUploadResult] = useState(null);
 
     const [filterDept, setFilterDept] = useState('All');
     const [filterYear, setFilterYear] = useState('All');
@@ -98,6 +102,9 @@ const RegistrarGradesView = ({
     const [vaultPassword, setVaultPassword] = useState("");
     const [showVaultPassword, setShowVaultPassword] = useState(false);
     const [confirmModal, setConfirmModal] = useState({ isOpen: false, title: "", message: "", onConfirm: null, isDestructive: false });
+    const [registrarRejectModal, setRegistrarRejectModal] = useState({ isOpen: false, section: null });
+    const [registrarRejectNote, setRegistrarRejectNote] = useState('');
+    const [registrarRejectLoading, setRegistrarRejectLoading] = useState(false);
     const [chairpersonSearchTerm, setChairpersonSearchTerm] = useState('');
     const [facultySearchTerm, setFacultySearchTerm] = useState('');
     const [showChairpersonAccounts, setShowChairpersonAccounts] = useState(false);
@@ -450,45 +457,6 @@ const RegistrarGradesView = ({
         } catch (error) { alert(`Finalization failed: ${error.message}`); }
     };
 
-    const groupedStagedGrades = useMemo(() => {
-        const groups = {};
-        stagedGrades.forEach(g => {
-            const key = `${g.course}-${g.yearLevel}-${g.section}-${g.subjectCode}`;
-            if (!groups[key]) {
-                groups[key] = {
-                    course: g.course,
-                    yearLevel: g.yearLevel,
-                    section: g.section,
-                    subjectCode: g.subjectCode,
-                    records: []
-                };
-            }
-            groups[key].records.push(g);
-        });
-        
-        return Object.values(groups).sort((a, b) => 
-            String(a.course).localeCompare(String(b.course)) || 
-            String(a.yearLevel).localeCompare(String(b.yearLevel)) || 
-            String(a.section).localeCompare(String(b.section)) ||
-            String(a.subjectCode).localeCompare(String(b.subjectCode))
-        );
-    }, [stagedGrades]);
-
-    const handleFinalizeBatch = async (records) => {
-        if (!window.confirm(`Are you sure you want to commit all ${records.length} grades in this section to the blockchain ledger?`)) return;
-        
-        try {
-            for (const g of records) {
-                await finalizeGrade(g.stagingId, loggedInEmail);
-            }
-            alert("Section grades officially committed to the ledger!");
-            loadStagedGrades();
-            loadGrades(true);
-        } catch (err) {
-            alert(`Finalization failed: ${err.message}`);
-        }
-    };
-
     const handleViewIpfs = (cid) => {
         setIpfsCid(cid);
         setVaultPassword("");
@@ -639,6 +607,280 @@ const RegistrarGradesView = ({
         }
     }, []);
 
+    const getGradeEquivalent = useCallback((grade) => {
+        const numericGrade = Number(grade);
+        if (Number.isNaN(numericGrade)) return '';
+        if (numericGrade >= 98.5) return '1.00';
+        if (numericGrade >= 94) return '1.25';
+        if (numericGrade >= 91) return '1.50';
+        if (numericGrade >= 88) return '1.75';
+        if (numericGrade >= 85) return '2.00';
+        if (numericGrade >= 82) return '2.25';
+        if (numericGrade >= 79) return '2.50';
+        if (numericGrade >= 75) return '3.00';
+        return '5.00';
+    }, []);
+
+    const formatStagedGradeDisplay = useCallback((rawGrade) => {
+        const payload = parseGradePayload(rawGrade);
+        const parts = [];
+        const numericMidterm = Number(payload.midterm);
+        const numericFinals = Number(payload.finals);
+        const hasMidterm = payload.midterm !== undefined && payload.midterm !== null && payload.midterm !== '';
+        const hasFinals = payload.finals !== undefined && payload.finals !== null && payload.finals !== '';
+
+        if (hasMidterm) {
+            parts.push(`Midterm: ${payload.midterm}`);
+        }
+
+        if (hasFinals) {
+            parts.push(`Finals: ${payload.finals}`);
+        }
+
+        let resolvedAverage = payload.finalAverage;
+        if ((resolvedAverage === undefined || resolvedAverage === null || resolvedAverage === '') && hasMidterm && hasFinals) {
+            if (!Number.isNaN(numericMidterm) && !Number.isNaN(numericFinals)) {
+                resolvedAverage = ((numericMidterm + numericFinals) / 2).toFixed(2);
+            }
+        }
+
+        if (resolvedAverage !== undefined && resolvedAverage !== null && resolvedAverage !== '') {
+            parts.push(`Average: ${resolvedAverage}`);
+            const equivalent = getGradeEquivalent(resolvedAverage);
+            if (equivalent) {
+                parts.push(`Equivalent: ${equivalent}`);
+            }
+        }
+
+        if (payload.standing && payload.standing !== 'active') {
+            parts.push(formatStudentStanding(payload.standing));
+        }
+
+        return parts.length ? parts.join(' | ') : String(rawGrade || '-');
+    }, [formatStudentStanding, getGradeEquivalent, parseGradePayload]);
+
+    const parseReviewTimestamp = useCallback((value) => {
+        if (!value) return 0;
+        const parsed = new Date(value).getTime();
+        return Number.isFinite(parsed) ? parsed : 0;
+    }, []);
+
+    const normalizeRegistrarReviewStatus = useCallback((status) => {
+        const normalized = String(status || '').trim().toLowerCase();
+        if (!normalized) return 'draft';
+        if (normalized.includes('registrarrejected') || normalized.includes('registrar_rejected')) return 'registrar_rejected';
+        if (normalized.includes('finalized')) return 'finalized';
+        if (normalized.includes('departmentapproved') || normalized.includes('forwarded') || normalized.includes('approved')) return 'forwarded';
+        if (normalized.includes('returned')) return 'returned';
+        if (normalized.includes('submitted') || normalized.includes('issued')) return 'submitted';
+        return 'draft';
+    }, []);
+
+    const getRegistrarReviewSummary = useCallback((records) => {
+        const meaningfulRecords = records
+            .map((record, index) => ({
+                record,
+                index,
+                timestamp: parseReviewTimestamp(record.date || record.Date),
+                normalizedStatus: normalizeRegistrarReviewStatus(record.status || record.Status),
+            }))
+            .filter(({ normalizedStatus }) => normalizedStatus !== 'draft');
+
+        const latestRecordEntry = meaningfulRecords.reduce((current, next) => {
+            if (!current) return next;
+            if (next.timestamp !== current.timestamp) {
+                return next.timestamp > current.timestamp ? next : current;
+            }
+
+            return next.index > current.index ? next : current;
+        }, null);
+
+        const status = latestRecordEntry?.normalizedStatus || 'draft';
+        const note =
+            status === 'returned' || status === 'registrar_rejected'
+                ? latestRecordEntry?.record?.note || latestRecordEntry?.record?.Note || ''
+                : '';
+
+        if (status === 'registrar_rejected') {
+            return {
+                status,
+                note,
+                label: 'Registrar Rejected',
+                toneClass: 'bg-rose-100 text-rose-700',
+            };
+        }
+
+        if (status === 'forwarded') {
+            return {
+                status,
+                note,
+                label: 'Submitted to Registrar',
+                toneClass: 'bg-violet-100 text-violet-700',
+            };
+        }
+
+        if (status === 'returned') {
+            return {
+                status,
+                note,
+                label: 'Returned to Faculty',
+                toneClass: 'bg-red-100 text-red-700',
+            };
+        }
+
+        if (status === 'submitted') {
+            return {
+                status,
+                note,
+                label: 'Submitted to Chairperson',
+                toneClass: 'bg-blue-100 text-blue-700',
+            };
+        }
+
+        if (status === 'finalized') {
+            return {
+                status,
+                note,
+                label: 'Finalized to Ledger',
+                toneClass: 'bg-emerald-100 text-emerald-700',
+            };
+        }
+
+        return {
+            status: 'draft',
+            note: '',
+            label: 'Draft',
+            toneClass: 'bg-slate-100 text-slate-700',
+        };
+    }, [normalizeRegistrarReviewStatus, parseReviewTimestamp]);
+
+    const getSectionEncodingSummary = useCallback((records) => {
+        const exemptStandings = ['dropped', 'unofficially_dropped', 'withdrawn', 'incomplete'];
+        const relevantRecords = records.filter((record) => {
+            const standing = String(record.standing || 'active').trim().toLowerCase();
+            return !exemptStandings.includes(standing);
+        });
+
+        const missingFinalsCount = relevantRecords.filter((record) => {
+            const finalsValue = record.finals;
+            const finalsNumber = Number(finalsValue);
+            return (
+                finalsValue === undefined ||
+                finalsValue === null ||
+                finalsValue === '' ||
+                Number.isNaN(finalsNumber) ||
+                finalsNumber <= 0
+            );
+        }).length;
+
+        if (relevantRecords.length === 0) {
+            return {
+                label: 'No Active Finals Needed',
+                toneClass: 'bg-slate-100 text-slate-700',
+                helperText: 'All listed students are under exempt standing.',
+            };
+        }
+
+        if (missingFinalsCount > 0) {
+            return {
+                label: 'Finals Missing',
+                toneClass: 'bg-amber-100 text-amber-800',
+                helperText: `${missingFinalsCount} student${missingFinalsCount === 1 ? '' : 's'} still missing finals grade.`,
+            };
+        }
+
+        return {
+            label: 'Grades Complete',
+            toneClass: 'bg-emerald-100 text-emerald-700',
+            helperText: 'All active students have finals grades encoded.',
+        };
+    }, []);
+
+    const groupedStagedGrades = useMemo(() => {
+        const canRecordBeFinalized = (record) => {
+            const payload = parseGradePayload(record.grade);
+            const standing = String(payload.standing || payload.remarks || 'active').trim().toLowerCase();
+            const finalsValue = payload.finals;
+            const finalsNumber = Number(finalsValue);
+            const hasFinalsGrade =
+                finalsValue !== undefined &&
+                finalsValue !== null &&
+                finalsValue !== '' &&
+                !Number.isNaN(finalsNumber) &&
+                finalsNumber > 0;
+
+            if (['dropped', 'unofficially_dropped', 'withdrawn', 'incomplete'].includes(standing)) {
+                return true;
+            }
+
+            return hasFinalsGrade;
+        };
+
+        const groups = {};
+        stagedGrades.forEach(g => {
+            const key = `${g.course}-${g.yearLevel}-${g.section}-${g.subjectCode}`;
+            if (!groups[key]) {
+                groups[key] = {
+                    course: g.course,
+                    yearLevel: g.yearLevel,
+                    section: g.section,
+                    subjectCode: g.subjectCode,
+                    records: []
+                };
+            }
+            groups[key].records.push(g);
+        });
+
+        Object.values(groups).forEach((group) => {
+            group.canFinalize = group.records.every(canRecordBeFinalized);
+        });
+        
+        return Object.values(groups).sort((a, b) => 
+            String(a.course).localeCompare(String(b.course)) || 
+            String(a.yearLevel).localeCompare(String(b.yearLevel)) || 
+            String(a.section).localeCompare(String(b.section)) ||
+            String(a.subjectCode).localeCompare(String(b.subjectCode))
+        );
+    }, [parseGradePayload, stagedGrades]);
+
+    const handleFinalizeBatch = async (records) => {
+        const hasIncompleteFinals = records.some((record) => {
+            const payload = parseGradePayload(record.grade);
+            const standing = String(payload.standing || payload.remarks || 'active').trim().toLowerCase();
+            const finalsValue = payload.finals;
+            const finalsNumber = Number(finalsValue);
+            const hasFinalsGrade =
+                finalsValue !== undefined &&
+                finalsValue !== null &&
+                finalsValue !== '' &&
+                !Number.isNaN(finalsNumber) &&
+                finalsNumber > 0;
+
+            if (['dropped', 'unofficially_dropped', 'withdrawn', 'incomplete'].includes(standing)) {
+                return false;
+            }
+
+            return !hasFinalsGrade;
+        });
+
+        if (hasIncompleteFinals) {
+            alert("Finalize to ledger is only available after finals grades are completed for this section.");
+            return;
+        }
+        if (!window.confirm(`Are you sure you want to commit all ${records.length} grades in this section to the blockchain ledger?`)) return;
+        
+        try {
+            for (const g of records) {
+                await finalizeGrade(g.stagingId, loggedInEmail);
+            }
+            alert("Section grades officially committed to the ledger!");
+            loadStagedGrades();
+            loadGrades(true);
+        } catch (err) {
+            alert(`Finalization failed: ${err.message}`);
+        }
+    };
+
     const facultyNameLookup = useMemo(
         () =>
             approvedFaculties.reduce((acc, faculty) => {
@@ -673,10 +915,11 @@ const RegistrarGradesView = ({
                     midterm: payload.midterm || '',
                     finals: payload.finals || '',
                     finalAverage: payload.finalAverage || payload.final || payload.grade || '',
+                    gradeEquivalent: getGradeEquivalent(payload.finalAverage || payload.final || payload.grade || ''),
                     flagged: !!payload.flagged,
                 };
             }),
-        [filteredGrades, parseGradePayload, facultyNameLookup, formatStudentStanding]
+        [filteredGrades, parseGradePayload, facultyNameLookup, formatStudentStanding, getGradeEquivalent]
     );
 
     const facultyMonitoringList = useMemo(() => {
@@ -701,14 +944,20 @@ const RegistrarGradesView = ({
                     faculty.records.reduce((acc, record) => {
                         const sectionKey = `${record.sectionName}|||${record.course || ''}`;
                         if (!acc[sectionKey]) {
+                            const encodingSummary = getSectionEncodingSummary([record]);
+                            const reviewSummary = getRegistrarReviewSummary([record]);
                             acc[sectionKey] = {
                                 sectionKey,
                                 sectionName: record.sectionName,
                                 department: record.course || 'N/A',
                                 records: [],
+                                encodingSummary,
+                                reviewSummary,
                             };
                         }
                         acc[sectionKey].records.push(record);
+                        acc[sectionKey].encodingSummary = getSectionEncodingSummary(acc[sectionKey].records);
+                        acc[sectionKey].reviewSummary = getRegistrarReviewSummary(acc[sectionKey].records);
                         return acc;
                     }, {})
                 ).sort((left, right) => {
@@ -732,7 +981,7 @@ const RegistrarGradesView = ({
                 right.priorityCount - left.priorityCount ||
                 left.facultyName.localeCompare(right.facultyName)
             );
-    }, [facultyMonitoringRecords]);
+    }, [facultyMonitoringRecords, getRegistrarReviewSummary, getSectionEncodingSummary]);
 
     const selectedFacultyMonitoringData = useMemo(() => {
         if (!selectedFacultyReview) return facultyMonitoringList[0] || null;
@@ -755,6 +1004,44 @@ const RegistrarGradesView = ({
             ...prev,
             [sectionKey]: !prev[sectionKey],
         }));
+    };
+
+    const openRegistrarRejectModal = (section) => {
+        setRegistrarRejectNote(section?.reviewSummary?.note || '');
+        setRegistrarRejectModal({ isOpen: true, section });
+    };
+
+    const closeRegistrarRejectModal = () => {
+        if (registrarRejectLoading) return;
+        setRegistrarRejectModal({ isOpen: false, section: null });
+        setRegistrarRejectNote('');
+    };
+
+    const handleRegistrarRejectSection = async () => {
+        const selectedSection = registrarRejectModal.section;
+        const trimmedNote = registrarRejectNote.trim();
+
+        if (!selectedSection) return;
+        if (!trimmedNote) {
+            alert('A rejection note is required before rejecting grades.');
+            return;
+        }
+
+        setRegistrarRejectLoading(true);
+        try {
+            for (const record of selectedSection.records) {
+                await returnGrade(record.id, trimmedNote, loggedInEmail);
+            }
+            alert('Section grades rejected back to faculty successfully.');
+            setRegistrarRejectLoading(false);
+            setRegistrarRejectModal({ isOpen: false, section: null });
+            setRegistrarRejectNote('');
+            loadGrades(true);
+        } catch (error) {
+            alert(`Failed to reject section grades: ${error.message}`);
+        } finally {
+            setRegistrarRejectLoading(false);
+        }
     };
 
     const handleDownloadLedgerPDF = () => {
@@ -917,8 +1204,8 @@ const RegistrarGradesView = ({
 
             try {
                 const result = mode === 'update'
-                    ? await registrarBulkUpdateStudents(file, sectioningDepartment)
-                    : await registrarBulkEnrollStudents(file, sectioningDepartment);
+                    ? await registrarBulkUpdateStudents(file)
+                    : await registrarBulkEnrollStudents(file);
                 setBulkEnrollResult(result);
                 alert(result.message || 'Bulk enrollment completed.');
             } catch (error) {
@@ -935,6 +1222,100 @@ const RegistrarGradesView = ({
 
     const handleBulkEnroll = () => handleStudentCsvAction('enroll');
     const handleBulkUpdateInfo = () => handleStudentCsvAction('update');
+
+    const handleDownloadFacultyUploadTemplate = () => {
+        const rows = [
+            ['email', 'first_name', 'last_name', 'department', 'birthday'],
+            ['ana.cruz@plv.edu.ph', 'Ana', 'Cruz', 'Bachelor of Science in Information Technology', '03/14/1990'],
+            ['marco.reyes@plv.edu.ph', 'Marco', 'Reyes', 'Bachelor of Science in Civil Engineering', '11/02/1988'],
+        ];
+
+        downloadCsvFile(
+            buildCsvContent(rows),
+            'bulk-faculty-template.csv'
+        );
+    };
+
+    const handleFacultyCsvAction = (mode) => {
+        if (facultyBulkUploadLoading) return;
+
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = '.csv,.xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel';
+
+        input.onchange = async (event) => {
+            const file = event.target.files?.[0];
+            if (!file) return;
+
+            setFacultyBulkUploadLoading(true);
+            setFacultyBulkUploadResult(null);
+
+            try {
+                const result = await registrarBulkUploadFaculty(file, mode);
+                setFacultyBulkUploadResult(result);
+                alert(result.message || 'Faculty upload completed.');
+                loadApprovedFaculties();
+            } catch (error) {
+                const message = error.message || 'Faculty upload failed.';
+                setFacultyBulkUploadResult({ status: 'Error', message, failed: 1, successful: 0 });
+                alert(message);
+            } finally {
+                setFacultyBulkUploadLoading(false);
+            }
+        };
+
+        input.click();
+    };
+
+    const handleBulkFacultyUpload = () => handleFacultyCsvAction('enroll');
+    const handleBulkFacultyUpdateInfo = () => handleFacultyCsvAction('update');
+
+    const handleDownloadChairpersonUploadTemplate = () => {
+        const rows = [
+            ['email', 'first_name', 'last_name', 'department', 'birthday'],
+            ['chair.it@plv.edu.ph', 'Carla', 'Reyes', 'Bachelor of Science in Information Technology', '04/20/1987'],
+            ['chair.ce@plv.edu.ph', 'Miguel', 'Santos', 'Bachelor of Science in Civil Engineering', '09/11/1983'],
+        ];
+
+        downloadCsvFile(
+            buildCsvContent(rows),
+            'bulk-chairperson-template.csv'
+        );
+    };
+
+    const handleChairpersonCsvAction = (mode) => {
+        if (chairpersonBulkUploadLoading) return;
+
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = '.csv,.xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel';
+
+        input.onchange = async (event) => {
+            const file = event.target.files?.[0];
+            if (!file) return;
+
+            setChairpersonBulkUploadLoading(true);
+            setChairpersonBulkUploadResult(null);
+
+            try {
+                const result = await registrarBulkUploadChairperson(file, mode);
+                setChairpersonBulkUploadResult(result);
+                alert(result.message || 'Chairperson upload completed.');
+                loadApprovedAdmins();
+            } catch (error) {
+                const message = error.message || 'Chairperson upload failed.';
+                setChairpersonBulkUploadResult({ status: 'Error', message, failed: 1, successful: 0 });
+                alert(message);
+            } finally {
+                setChairpersonBulkUploadLoading(false);
+            }
+        };
+
+        input.click();
+    };
+
+    const handleBulkChairpersonUpload = () => handleChairpersonCsvAction('enroll');
+    const handleBulkChairpersonUpdateInfo = () => handleChairpersonCsvAction('update');
 
     const isSystemAdministrationView = systemAdminTabs.includes(mainTab);
 
@@ -1060,6 +1441,124 @@ const RegistrarGradesView = ({
                                     </button>
                                 </div>
                             </div>
+                            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                                <div className="flex flex-col gap-4">
+                                    <div className="max-w-3xl">
+                                        <h3 className="text-xl font-bold text-[#003366]">Register Faculty</h3>
+                                        <p className="mt-1 text-sm text-slate-500">
+                                            Required columns: email, first name, last name, department, and birthday. Missing required fields will be rejected. Birthday must use `MM/DD/YYYY` and becomes the faculty member&apos;s default password for first login.
+                                        </p>
+                                        <p className="mt-1 text-xs text-slate-500">
+                                            For updates, email is required. You can update name, birthday, and department. When department changes, the faculty member&apos;s department assignments move to the new department automatically.
+                                        </p>
+                                    </div>
+                                </div>
+                                {facultyBulkUploadResult ? (
+                                    <div className={`mt-4 rounded-xl border p-4 text-sm ${facultyBulkUploadResult.status === 'Error' || facultyBulkUploadResult.failed > 0 ? 'border-yellow-300 bg-yellow-50 text-yellow-800' : 'border-emerald-200 bg-emerald-50 text-emerald-800'}`}>
+                                        <p className="font-semibold">{facultyBulkUploadResult.status}</p>
+                                        <p>{facultyBulkUploadResult.message}</p>
+                                        {typeof facultyBulkUploadResult.successful !== 'undefined' ? (
+                                            <p className="mt-1">Successful: {facultyBulkUploadResult.successful} | Failed: {facultyBulkUploadResult.failed || 0}</p>
+                                        ) : null}
+                                        {Array.isArray(facultyBulkUploadResult.errors) && facultyBulkUploadResult.errors.length > 0 ? (
+                                            <div className="mt-3 rounded-lg border border-yellow-200 bg-white/70 p-3">
+                                                <p className="font-semibold text-slate-800">Row Issues</p>
+                                                <ul className="mt-2 space-y-1 text-slate-700">
+                                                    {facultyBulkUploadResult.errors.slice(0, 10).map((errorItem, index) => (
+                                                        <li key={`${errorItem.row || 'row'}-${index}`}>
+                                                            Row {errorItem.row || '?'} ({errorItem.identifier || 'Unknown'}): {errorItem.reason}
+                                                        </li>
+                                                    ))}
+                                                </ul>
+                                            </div>
+                                        ) : null}
+                                    </div>
+                                ) : null}
+                                <div className="mt-5 flex flex-wrap gap-3 border-t border-slate-200 pt-4">
+                                    <button
+                                        type="button"
+                                        onClick={handleDownloadFacultyUploadTemplate}
+                                        className={downloadTemplateButtonClass}
+                                    >
+                                        Download Template
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={handleBulkFacultyUpload}
+                                        disabled={facultyBulkUploadLoading}
+                                        className="inline-flex items-center justify-center rounded-xl bg-[#003366] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#00264d]"
+                                    >
+                                        {facultyBulkUploadLoading ? 'Uploading...' : 'Upload Faculty'}
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={handleBulkFacultyUpdateInfo}
+                                        disabled={facultyBulkUploadLoading}
+                                        className="inline-flex items-center justify-center rounded-xl border border-[#003366] bg-white px-5 py-3 text-sm font-semibold text-[#003366] transition hover:bg-slate-50"
+                                    >
+                                        {facultyBulkUploadLoading ? 'Uploading...' : 'Update Faculty Info'}
+                                    </button>
+                                </div>
+                            </div>
+                            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                                <div className="flex flex-col gap-4">
+                                    <div className="max-w-3xl">
+                                        <h3 className="text-xl font-bold text-[#003366]">Register Chairperson</h3>
+                                        <p className="mt-1 text-sm text-slate-500">
+                                            Required columns: email, first name, last name, department, and birthday. Missing required fields will be rejected. Birthday must use `MM/DD/YYYY` and becomes the chairperson&apos;s default password for first login.
+                                        </p>
+                                        <p className="mt-1 text-xs text-slate-500">
+                                            For updates, email is required. You can update name, birthday, and department. Uploaded chairperson accounts are created as department chairperson users automatically.
+                                        </p>
+                                    </div>
+                                </div>
+                                {chairpersonBulkUploadResult ? (
+                                    <div className={`mt-4 rounded-xl border p-4 text-sm ${chairpersonBulkUploadResult.status === 'Error' || chairpersonBulkUploadResult.failed > 0 ? 'border-yellow-300 bg-yellow-50 text-yellow-800' : 'border-emerald-200 bg-emerald-50 text-emerald-800'}`}>
+                                        <p className="font-semibold">{chairpersonBulkUploadResult.status}</p>
+                                        <p>{chairpersonBulkUploadResult.message}</p>
+                                        {typeof chairpersonBulkUploadResult.successful !== 'undefined' ? (
+                                            <p className="mt-1">Successful: {chairpersonBulkUploadResult.successful} | Failed: {chairpersonBulkUploadResult.failed || 0}</p>
+                                        ) : null}
+                                        {Array.isArray(chairpersonBulkUploadResult.errors) && chairpersonBulkUploadResult.errors.length > 0 ? (
+                                            <div className="mt-3 rounded-lg border border-yellow-200 bg-white/70 p-3">
+                                                <p className="font-semibold text-slate-800">Row Issues</p>
+                                                <ul className="mt-2 space-y-1 text-slate-700">
+                                                    {chairpersonBulkUploadResult.errors.slice(0, 10).map((errorItem, index) => (
+                                                        <li key={`${errorItem.row || 'row'}-${index}`}>
+                                                            Row {errorItem.row || '?'} ({errorItem.identifier || 'Unknown'}): {errorItem.reason}
+                                                        </li>
+                                                    ))}
+                                                </ul>
+                                            </div>
+                                        ) : null}
+                                    </div>
+                                ) : null}
+                                <div className="mt-5 flex flex-wrap gap-3 border-t border-slate-200 pt-4">
+                                    <button
+                                        type="button"
+                                        onClick={handleDownloadChairpersonUploadTemplate}
+                                        className={downloadTemplateButtonClass}
+                                    >
+                                        Download Template
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={handleBulkChairpersonUpload}
+                                        disabled={chairpersonBulkUploadLoading}
+                                        className="inline-flex items-center justify-center rounded-xl bg-[#003366] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#00264d]"
+                                    >
+                                        {chairpersonBulkUploadLoading ? 'Uploading...' : 'Upload Chairperson'}
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={handleBulkChairpersonUpdateInfo}
+                                        disabled={chairpersonBulkUploadLoading}
+                                        className="inline-flex items-center justify-center rounded-xl border border-[#003366] bg-white px-5 py-3 text-sm font-semibold text-[#003366] transition hover:bg-slate-50"
+                                    >
+                                        {chairpersonBulkUploadLoading ? 'Uploading...' : 'Update Chairperson Info'}
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     )}
                     {mainTab === 'sectionsCreated' && <RegistrarSectionsCreated />}
@@ -1081,14 +1580,6 @@ const RegistrarGradesView = ({
                                             <option value="All">All Departments</option>
                                             {departments.map(d => <option key={d} value={d}>{d}</option>)}
                                         </select>
-                                        <select value={filterYear} onChange={(e) => setFilterYear(e.target.value)} className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold outline-none focus:border-[#003366]">
-                                            <option value="All">All Year Level</option>
-                                            <option value="1">1st Year</option><option value="2">2nd Year</option><option value="3">3rd Year</option><option value="4">4th Year</option>
-                                        </select>
-                                        <select value={filterSection} onChange={(e) => setFilterSection(e.target.value)} className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold outline-none focus:border-[#003366]">
-                                            <option value="All">All Sections</option>
-                                            {[...Array(15)].map((_, i) => <option key={i+1} value={String(i+1)}>{i+1}</option>)}
-                                        </select>
                                     </div>
                                     <div className="flex gap-3">
                                         <button onClick={handleDownloadLedgerPDF} className="rounded-xl bg-emerald-600 px-5 py-2 text-sm font-bold text-white transition hover:bg-emerald-700">Export PDF</button>
@@ -1096,11 +1587,10 @@ const RegistrarGradesView = ({
                                     </div>
                                 </div>
                             </div>
-                            <div className="grid gap-6 xl:grid-cols-[340px_minmax(0,1fr)]">
-                                <aside className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+                            <div className="grid gap-6 xl:grid-cols-[250px_minmax(0,1fr)]">
+                                <aside className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm xl:max-w-[280px]">
                                     <div className="border-b border-slate-200 px-5 py-4">
-                                        <h3 className="text-lg font-bold text-[#003366]">Faculty Encoding Monitoring</h3>
-                                        <p className="mt-1 text-sm text-slate-500">Faculty with `D`, `UD`, `W`, or `INC` records are prioritized at the top.</p>
+                                        <h3 className="text-lg font-bold text-[#003366]">Faculty Encoded Grades</h3>
                                     </div>
                                     <div className="max-h-[720px] overflow-y-auto p-4">
                                         {facultyMonitoringList.length === 0 ? (
@@ -1131,12 +1621,6 @@ const RegistrarGradesView = ({
                                                             </span>
                                                         ) : null}
                                                     </div>
-                                                    <div className="mt-3 flex flex-wrap gap-2 text-[11px] font-semibold text-slate-600">
-                                                        <span className="rounded-full bg-white px-3 py-1">Sections: {faculty.totalSections}</span>
-                                                        <span className="rounded-full bg-white px-3 py-1">Records: {faculty.totalRecords}</span>
-                                                        <span className="rounded-full bg-white px-3 py-1">Special Status: {faculty.priorityCount}</span>
-                                                        <span className="rounded-full bg-white px-3 py-1">Flagged: {faculty.flaggedCount}</span>
-                                                    </div>
                                                 </button>
                                             );
                                         })}
@@ -1155,15 +1639,9 @@ const RegistrarGradesView = ({
                                                     <h3 className="text-xl font-bold text-[#003366]">{selectedFacultyMonitoringData.facultyName}</h3>
                                                     <p className="text-sm text-slate-500">{selectedFacultyMonitoringData.facultyEmail}</p>
                                                 </div>
-                                                <div className="flex flex-wrap gap-2 text-xs font-semibold text-slate-600">
-                                                    <span className="rounded-full bg-slate-100 px-3 py-2">Sections: {selectedFacultyMonitoringData.totalSections}</span>
-                                                    <span className="rounded-full bg-slate-100 px-3 py-2">Records: {selectedFacultyMonitoringData.totalRecords}</span>
-                                                    <span className="rounded-full bg-red-50 px-3 py-2 text-red-700">D / UD / W / INC: {selectedFacultyMonitoringData.priorityCount}</span>
-                                                    <span className="rounded-full bg-amber-50 px-3 py-2 text-amber-700">Flagged: {selectedFacultyMonitoringData.flaggedCount}</span>
-                                                </div>
                                                 <div className="flex flex-wrap gap-2 mt-2 lg:mt-0">
                                                     <button onClick={() => handleExportFacultySummaryPDF(selectedFacultyMonitoringData)} className="rounded-xl border border-[#003366] bg-white px-4 py-2 text-sm font-bold text-[#003366] transition hover:bg-[#003366] hover:text-white">
-                                                        Export Summary for Signing
+                                                        Export for Signing
                                                     </button>
                                                 </div>
                                             </div>
@@ -1178,11 +1656,43 @@ const RegistrarGradesView = ({
                                                                 <div>
                                                                     <p className="text-base font-bold text-slate-900">{section.sectionName}</p>
                                                                     <p className="text-sm text-slate-500">{section.department}</p>
+                                                                    <div className="mt-2 flex flex-wrap items-center gap-2">
+                                                                        <span className={`rounded-full px-3 py-1 text-[11px] font-bold ${section.encodingSummary.toneClass}`}>
+                                                                            {section.encodingSummary.label}
+                                                                        </span>
+                                                                        <span className={`rounded-full px-3 py-1 text-[11px] font-bold ${section.reviewSummary.toneClass}`}>
+                                                                            {section.reviewSummary.label}
+                                                                        </span>
+                                                                        <span className="text-xs text-slate-500">
+                                                                            {section.encodingSummary.helperText}
+                                                                        </span>
+                                                                    </div>
+                                                                    {section.reviewSummary.note ? (
+                                                                        <div className={`mt-3 rounded-xl border px-3 py-2 text-xs ${
+                                                                            section.reviewSummary.status === 'registrar_rejected'
+                                                                                ? 'border-rose-200 bg-rose-50 text-rose-700'
+                                                                                : 'border-slate-200 bg-white text-slate-600'
+                                                                        }`}>
+                                                                            <span className="font-semibold">
+                                                                                {section.reviewSummary.status === 'registrar_rejected' ? 'Registrar Note:' : 'Review Note:'}
+                                                                            </span>{' '}
+                                                                            {section.reviewSummary.note}
+                                                                        </div>
+                                                                    ) : null}
                                                                 </div>
                                                                 <div className="flex flex-wrap items-center gap-2">
                                                                     <span className="rounded-full bg-white px-3 py-2 text-[11px] font-semibold text-slate-600">Encoded Grades: {section.records.length}</span>
                                                                     {sectionPriorityCount > 0 ? (
                                                                         <span className="rounded-full bg-red-100 px-3 py-2 text-[11px] font-semibold text-red-700">Special Status: {sectionPriorityCount}</span>
+                                                                    ) : null}
+                                                                    {section.reviewSummary.status === 'forwarded' ? (
+                                                                        <button
+                                                                            type="button"
+                                                                            onClick={() => openRegistrarRejectModal(section)}
+                                                                            className="rounded-xl border border-rose-300 bg-rose-50 px-4 py-2 text-sm font-bold text-rose-700 transition hover:bg-rose-100"
+                                                                        >
+                                                                            Reject to Faculty
+                                                                        </button>
                                                                     ) : null}
                                                                     <button
                                                                         type="button"
@@ -1206,8 +1716,8 @@ const RegistrarGradesView = ({
                                                                                 <th className="p-4">Finals</th>
                                                                                 <th className="p-4">Final Rating</th>
                                                                                 <th className="p-4">Student Status</th>
+                                                                                <th className="p-4">Grade Equivalent</th>
                                                                                 <th className="p-4">Record Status</th>
-                                                                                <th className="p-4">Flags</th>
                                                                                 <th className="p-4">Actions</th>
                                                                             </tr>
                                                                         </thead>
@@ -1233,17 +1743,11 @@ const RegistrarGradesView = ({
                                                                                                 {record.standingLabel}
                                                                                             </span>
                                                                                         </td>
+                                                                                        <td className="p-4 font-semibold text-slate-700">{record.gradeEquivalent || '--'}</td>
                                                                                         <td className="p-4">
                                                                                             <span className="rounded-full bg-slate-100 px-3 py-1 text-[10px] font-bold uppercase text-slate-700">
                                                                                                 {record.status || 'N/A'}
                                                                                             </span>
-                                                                                        </td>
-                                                                                        <td className="p-4">
-                                                                                            {record.flagged ? (
-                                                                                                <span className="rounded-full bg-amber-100 px-3 py-1 text-[10px] font-bold uppercase text-amber-700">Flagged</span>
-                                                                                            ) : (
-                                                                                                <span className="text-xs text-slate-400">--</span>
-                                                                                            )}
                                                                                         </td>
                                                                                         <td className="p-4">
                                                                                             {(record.ipfs_cid || record.IpfsCID) ? (
@@ -1290,19 +1794,20 @@ const RegistrarGradesView = ({
                                                         <h4 className="font-bold text-[#003366] text-lg">
                                                             {group.course} — {group.yearLevel} / {group.section}
                                                         </h4>
-                                                        <p className="text-sm font-semibold text-slate-500 mt-1">
-                                                            Subject: <span className="text-blue-600">{group.subjectCode}</span> 
-                                                            <span className="mx-2">•</span> 
-                                                            {group.records.length} pending grade(s)
-                                                        </p>
                                                     </div>
                                                     <button 
                                                         onClick={() => handleFinalizeBatch(group.records)}
-                                                        className="mt-3 md:mt-0 rounded-lg bg-emerald-600 px-5 py-2.5 text-sm font-bold text-white transition hover:bg-emerald-700 shadow-sm"
+                                                        disabled={!group.canFinalize}
+                                                        className="mt-3 md:mt-0 rounded-lg bg-emerald-600 px-5 py-2.5 text-sm font-bold text-white transition hover:bg-emerald-700 shadow-sm disabled:cursor-not-allowed disabled:bg-slate-300"
                                                     >
                                                         Finalize All to Ledger
                                                     </button>
                                                 </div>
+                                                {!group.canFinalize ? (
+                                                    <div className="border-b border-amber-200 bg-amber-50 px-5 py-3 text-sm font-semibold text-amber-800">
+                                                        Finals grades must be completed before this section can be finalized to the ledger.
+                                                    </div>
+                                                ) : null}
                                                 <div className="overflow-x-auto">
                                                     <table className="w-full text-left text-sm">
                                                         <thead>
@@ -1316,7 +1821,9 @@ const RegistrarGradesView = ({
                                                             {group.records.map((sg) => (
                                                                 <tr key={sg.stagingId} className="border-b border-slate-50 hover:bg-slate-50">
                                                                     <td className="p-4 font-mono text-[11px] text-slate-600">{sg.studentHash}</td>
-                                                                    <td className="p-4 font-black text-blue-700 text-center text-base">{sg.grade}</td>
+                                                                    <td className="p-4 text-center text-sm font-semibold text-blue-700">
+                                                                        {formatStagedGradeDisplay(sg.grade)}
+                                                                    </td>
                                                                     <td className="p-4 text-center">
                                                                         <span className="rounded-full bg-emerald-100 px-3 py-1 text-[10px] font-bold uppercase text-emerald-700">
                                                                             {sg.status}
@@ -1734,7 +2241,48 @@ const RegistrarGradesView = ({
                         <button onClick={submitIpfsPassword} className="rounded-xl bg-[#003366] px-5 py-2.5 text-sm font-bold text-white transition hover:bg-[#00264d]">Decrypt & View</button>
                     </div>
                 </div>
-            </Modal>            
+            </Modal>
+            <Modal isOpen={registrarRejectModal.isOpen} onClose={closeRegistrarRejectModal} title="Reject Section Grades">
+                <div className="flex flex-col gap-4">
+                    <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+                        A rejection note is required before sending these grades back to faculty.
+                    </div>
+                    <div>
+                        <p className="text-sm font-semibold text-slate-800">
+                            {registrarRejectModal.section?.sectionName || 'Selected Section'}
+                        </p>
+                        <p className="mt-1 text-xs text-slate-500">
+                            {registrarRejectModal.section?.facultyName || ''} {registrarRejectModal.section?.department ? `• ${registrarRejectModal.section.department}` : ''}
+                        </p>
+                    </div>
+                    <label className="block">
+                        <span className="mb-2 block text-sm font-semibold text-slate-700">Registrar Note</span>
+                        <textarea
+                            value={registrarRejectNote}
+                            onChange={(event) => setRegistrarRejectNote(event.target.value)}
+                            rows={5}
+                            placeholder="Enter the correction request or rejection reason here..."
+                            className="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-[#003366]"
+                        />
+                    </label>
+                    <div className="flex justify-end gap-3 mt-2">
+                        <button
+                            onClick={closeRegistrarRejectModal}
+                            disabled={registrarRejectLoading}
+                            className="rounded-xl border border-slate-300 bg-white px-5 py-2.5 text-sm font-bold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            onClick={handleRegistrarRejectSection}
+                            disabled={registrarRejectLoading}
+                            className="rounded-xl bg-rose-600 px-5 py-2.5 text-sm font-bold text-white transition hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                            {registrarRejectLoading ? 'Rejecting...' : 'Reject to Faculty'}
+                        </button>
+                    </div>
+                </div>
+            </Modal>
             <Modal isOpen={confirmModal.isOpen} onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })} title={confirmModal.title}>
                 <div className="flex flex-col gap-4">
                     <p className="text-sm text-slate-600">{confirmModal.message}</p>

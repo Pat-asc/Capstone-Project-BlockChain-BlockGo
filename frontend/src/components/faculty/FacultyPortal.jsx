@@ -28,6 +28,27 @@ const normalizeYearLabel = (value) => {
 };
 
 const normalizeText = (value = "") => String(value || "").trim().toLowerCase();
+const extractSectionCode = (value = "") => {
+  const match = String(value || "").match(/\b([1-4]-\d+)\b/i);
+  return match ? normalizeText(match[1]) : "";
+};
+const normalizeSectionIdentity = (value = "") =>
+  normalizeText(String(value || "").replace(/\([^)]*\)/g, " ").replace(/\s+/g, " ").trim());
+const sectionsMatch = (left = "", right = "") => {
+  const normalizedLeft = normalizeSectionIdentity(left);
+  const normalizedRight = normalizeSectionIdentity(right);
+  const leftCode = extractSectionCode(left);
+  const rightCode = extractSectionCode(right);
+
+  if (!normalizedLeft || !normalizedRight) return false;
+  if (normalizedLeft === normalizedRight) return true;
+  if (normalizedLeft.includes(normalizedRight) || normalizedRight.includes(normalizedLeft)) {
+    return true;
+  }
+  if (leftCode && rightCode && leftCode === rightCode) return true;
+
+  return false;
+};
 const getOptionalAssignmentValue = (value) => {
   const normalizedValue = String(value || "").trim();
   return normalizedValue || "Not Available";
@@ -57,7 +78,8 @@ const NON_ACTIVE_STATUSES = [
   "withdrawn",
   "incomplete",
 ];
-const RETURNED_SECTION_STATUSES = ["returned", "rejected"];
+const RETURNED_SECTION_STATUSES = ["returned"];
+const REGISTRAR_REJECTED_SECTION_STATUSES = ["registrarrejected", "registrar_rejected"];
 const LOCKED_SECTION_STATUSES = ["submitted", "approved", "forwarded", "finalized"];
 const KNOWN_SECTION_STATUSES = [
   "draft",
@@ -66,10 +88,12 @@ const KNOWN_SECTION_STATUSES = [
   "forwarded",
   "finalized",
   "returned",
+  "registrar_rejected",
 ];
 const SECTION_STATUS_PRIORITY = {
   draft: 0,
   returned: 1,
+  registrar_rejected: 1,
   submitted: 2,
   approved: 3,
   forwarded: 4,
@@ -82,8 +106,9 @@ const createDefaultSectionTermStatuses = () => ({
 const normalizeEncodingTerm = (term) => (term === "finals" ? "finals" : "midterm");
 const normalizeSectionStatusValue = (status) => {
   const normalized = normalizeText(status);
+  if (REGISTRAR_REJECTED_SECTION_STATUSES.includes(normalized)) return "registrar_rejected";
   if (normalized.includes("issued") || normalized.includes("submitted")) return "submitted";
-  if (normalized.includes("departmentapproved") || normalized.includes("approved")) return "approved";
+  if (normalized.includes("departmentapproved") || normalized.includes("approved")) return "forwarded";
   if (normalized.includes("finalized") || normalized.includes("forwarded")) return "forwarded";
   if (RETURNED_SECTION_STATUSES.includes(normalized)) return "returned";
   return KNOWN_SECTION_STATUSES.includes(normalized) ? normalized : "draft";
@@ -107,15 +132,24 @@ const mergeSectionTermStatuses = (previousEntry, nextEntry) => {
   const previous = normalizeSectionStatusEntry(previousEntry);
   const next = normalizeSectionStatusEntry(nextEntry);
   const shouldOverrideLockedStatus = (nextStatus) =>
-    nextStatus === "returned" || nextStatus === "draft";
+    nextStatus === "returned" || nextStatus === "registrar_rejected" || nextStatus === "draft";
+  const shouldPromoteLockedStatus = (previousStatus, nextStatus) => {
+    const previousPriority = SECTION_STATUS_PRIORITY[normalizeSectionStatusValue(previousStatus)] ?? 0;
+    const nextPriority = SECTION_STATUS_PRIORITY[normalizeSectionStatusValue(nextStatus)] ?? 0;
+    return nextPriority > previousPriority;
+  };
 
   return {
     midterm:
-      isLockedSectionStatus(previous.midterm) && !shouldOverrideLockedStatus(next.midterm)
+      isLockedSectionStatus(previous.midterm) &&
+      !shouldOverrideLockedStatus(next.midterm) &&
+      !shouldPromoteLockedStatus(previous.midterm, next.midterm)
         ? previous.midterm
         : next.midterm,
     finals:
-      isLockedSectionStatus(previous.finals) && !shouldOverrideLockedStatus(next.finals)
+      isLockedSectionStatus(previous.finals) &&
+      !shouldOverrideLockedStatus(next.finals) &&
+      !shouldPromoteLockedStatus(previous.finals, next.finals)
         ? previous.finals
         : next.finals,
   };
@@ -543,7 +577,7 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
 
         const latestStatus = latestRecordEntry?.normalizedStatus || "draft";
         const reviewNote =
-          latestStatus === "returned"
+          latestStatus === "returned" || latestStatus === "registrar_rejected"
             ? latestRecordEntry?.record?.note ||
               latestRecordEntry?.record?.Note ||
               ""
@@ -611,8 +645,8 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
         const savedSectionSnapshot = savedGradeSnapshots[sectionKey] || {};
         const sectionGrades = actualGrades.filter((grade) => {
           const gradeSubjectKey = normalizeText(getGradeSubjectKey(grade));
-          const gradeRecordSectionKey = normalizeText(getGradeRecordSectionKey(grade));
-          const gradeDisplaySectionKey = normalizeText(grade.section || grade.Section || "");
+          const gradeRecordSectionKey = getGradeRecordSectionKey(grade);
+          const gradeDisplaySectionKey = grade.section || grade.Section || "";
           const expectedSubjectCode = normalizeText(
             matchedAssignment?.subjectCode || sec.subject
           );
@@ -624,9 +658,11 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
             .map((value) => normalizeText(value))
             .filter(Boolean);
 
-          const sectionMatches =
-            expectedSectionKeys.includes(gradeRecordSectionKey) ||
-            expectedSectionKeys.includes(gradeDisplaySectionKey);
+          const sectionMatches = expectedSectionKeys.some(
+            (expectedSectionKey) =>
+              sectionsMatch(expectedSectionKey, gradeRecordSectionKey) ||
+              sectionsMatch(expectedSectionKey, gradeDisplaySectionKey)
+          );
           const subjectMatches =
             !expectedSubjectCode || gradeSubjectKey === expectedSubjectCode;
 
@@ -735,6 +771,11 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
             flagged: !!savedValues.flagged,
             customGrades: {}
           };
+        }).filter((student, index, array) => {
+          const studentKey = normalizeText(student.studentNo || student.id || student.email);
+          return array.findIndex((candidate) =>
+            normalizeText(candidate.studentNo || candidate.id || candidate.email) === studentKey
+          ) === index;
         });
 
         newSections[sectionKey] = {
@@ -936,7 +977,6 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
   };
 
   const handleGradeChange = useCallback((sectionName, index, field, value) => {
-    if (bulkUploadedSections[sectionName]) return;
     if (isLockedSectionStatus(getSectionTermStatus(sectionName))) return;
     if (field === 'midterm' && encodingTerm !== 'midterm') return;
     if (field === 'finals' && encodingTerm !== 'finals') return;
@@ -953,7 +993,7 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
     
     setSections(updated);
     setRowSaveState(prev => ({ ...prev, [sectionName]: { ...(prev[sectionName] || {}), [index]: 'idle' } }));
-  }, [sections, encodingTerm, getSectionTermStatus, bulkUploadedSections]);
+  }, [sections, encodingTerm, getSectionTermStatus]);
 
   const handleStudentStatusChange = useCallback((sectionName, index, value) => {
     if (isLockedSectionStatus(getSectionTermStatus(sectionName))) return;
@@ -1330,8 +1370,7 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
   const currentStatus = activeSection ? getSectionTermStatus(activeSection) : null;
   const isFinalized = currentStatus === 'finalized' || currentStatus === 'forwarded';
   const isSubmittedToChairperson = isLockedSectionStatus(currentStatus);
-  const isBulkUploadedSection = activeSection ? !!bulkUploadedSections[activeSection] : false;
-  const isGradeEncodingLocked = isSubmittedToChairperson || isBulkUploadedSection;
+  const isGradeEncodingLocked = isSubmittedToChairperson;
   const isMidtermLocked = encodingTerm !== 'midterm';
   const isFinalsLocked = encodingTerm !== 'finals';
 
@@ -1433,6 +1472,9 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
                     onClick={() => setActiveSection(sectionName)}
                     progress={progressPct}
                     reviewStatus={
+                      secStatus === 'registrar_rejected'
+                        ? 'registrar_rejected'
+                        : 
                       secStatus === 'returned'
                         ? 'returned'
                         : secStatus === 'approved'
@@ -1472,19 +1514,25 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
                 {currentStatus && (
                   <span className={`ml-3 rounded-full px-3 py-1 text-xs font-bold ${
                     currentStatus === 'draft' ? 'bg-yellow-100 text-yellow-800' :
+                    currentStatus === 'registrar_rejected' ? 'bg-rose-100 text-rose-700' :
                     currentStatus === 'returned' ? 'bg-red-100 text-red-700' :
                     currentStatus === 'submitted' ? 'bg-blue-100 text-blue-800' :
                     currentStatus === 'approved' ? 'bg-emerald-100 text-emerald-800' :
+                    currentStatus === 'forwarded' ? 'bg-violet-100 text-violet-800' :
                     'bg-green-100 text-green-800'
                   }`}>
                     {currentStatus === 'draft'
                       ? 'Draft Saved'
+                      : currentStatus === 'registrar_rejected'
+                      ? 'Registrar Rejected'
                       : currentStatus === 'returned'
                       ? 'Returned'
                       : currentStatus === 'submitted'
-                      ? 'Submitted'
+                      ? 'Submitted to Chairperson'
                       : currentStatus === 'approved'
                       ? 'Approved'
+                      : currentStatus === 'forwarded'
+                      ? 'Submitted to Registrar'
                       : 'Finalized'}
                   </span>
                 )}
@@ -1524,22 +1572,24 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
 
             {isSubmittedToChairperson && (
               <div className="border-b border-red-200 bg-red-50 p-4 text-center text-sm font-semibold text-red-700">
-                 These grades have already been uploaded to chairperson and are now locked from further encoding.
+                 {currentStatus === 'forwarded'
+                   ? 'These grades have already been submitted to registrar and are now locked from further encoding.'
+                   : 'These grades have already been submitted to chairperson and are now locked from further encoding.'}
               </div>
             )}
 
-            {currentStatus === 'returned' && sections[activeSection]?.reviewNote ? (
-              <div className="border-b border-red-200 bg-red-50 p-4 text-sm text-red-700">
-                <p className="font-semibold">Returned by chairperson</p>
+            {(currentStatus === 'returned' || currentStatus === 'registrar_rejected') && sections[activeSection]?.reviewNote ? (
+              <div className={`border-b p-4 text-sm ${
+                currentStatus === 'registrar_rejected'
+                  ? 'border-rose-200 bg-rose-50 text-rose-700'
+                  : 'border-red-200 bg-red-50 text-red-700'
+              }`}>
+                <p className="font-semibold">
+                  {currentStatus === 'registrar_rejected' ? 'Rejected by registrar' : 'Returned by chairperson'}
+                </p>
                 <p className="mt-1">{sections[activeSection].reviewNote}</p>
               </div>
             ) : null}
-
-            {!isSubmittedToChairperson && isBulkUploadedSection && (
-              <div className="border-b border-amber-200 bg-amber-50 p-4 text-center text-sm font-semibold text-amber-800">
-                 Manual encoding is locked because this section was bulk uploaded. To edit grades, upload an updated grading sheet.
-              </div>
-            )}
 
             <div className="overflow-x-auto">
               <table className="w-full min-w-[800px] text-left text-sm">
@@ -1582,7 +1632,7 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
                               max="100"
                               value={stu.midterm}
                               onChange={(e) => handleGradeChange(activeSection, i, 'midterm', e.target.value)}
-                              disabled={isGradeEncodingLocked || isMidtermLocked || isStudentLocked}
+                              disabled={isGradeEncodingLocked || isMidtermLocked || isStudentLocked || isClosed}
                               className={`h-10 w-20 rounded-xl border px-2 text-center outline-none focus:ring-2 focus:ring-[#003366]/20 ${
                                 errors.midterm ? 'border-red-500 bg-red-50' : 'border-slate-300 bg-white'
                               } disabled:bg-slate-100 disabled:text-slate-400`}
@@ -1600,7 +1650,7 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
                               max="100"
                               value={stu.finals}
                               onChange={(e) => handleGradeChange(activeSection, i, 'finals', e.target.value)}
-                              disabled={isGradeEncodingLocked || isFinalsLocked || isStudentLocked}
+                              disabled={isGradeEncodingLocked || isFinalsLocked || isStudentLocked || isClosed}
                               className={`h-10 w-20 rounded-xl border px-2 text-center outline-none focus:ring-2 focus:ring-[#003366]/20 ${
                                 errors.finals ? 'border-red-500 bg-red-50' : 'border-slate-300 bg-white'
                               } disabled:bg-slate-100 disabled:text-slate-400`}
@@ -1626,7 +1676,7 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
                           <select
                             value={studentStatus}
                             onChange={(e) => handleStudentStatusChange(activeSection, i, e.target.value)}
-                            disabled={isGradeEncodingLocked}
+                            disabled={isGradeEncodingLocked || isClosed}
                             className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium outline-none text-slate-700 disabled:bg-slate-100 disabled:text-slate-400"
                           >
                             <option value="active">Active</option>
@@ -1641,7 +1691,7 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
                           <button
                             type="button"
                             onClick={() => toggleStudentFlag(activeSection, i)}
-                            disabled={isGradeEncodingLocked}
+                            disabled={isGradeEncodingLocked || isClosed}
                             className={`rounded-lg px-3 py-2 text-sm font-bold transition ${
                               isFlagged ? 'bg-amber-100 text-amber-700 hover:bg-amber-200' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                             } disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400`}

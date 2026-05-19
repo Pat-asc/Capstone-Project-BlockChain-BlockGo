@@ -465,10 +465,9 @@ export const batchEnrollStudentsToSection = async (file, sectionId) => {
     });
 };
 
-export const batchUploadStudents = async (file, defaultDepartment = '', mode = 'enroll') => {
+export const batchUploadStudents = async (file, mode = 'enroll') => {
     const formData = new FormData();
     formData.append('file', file);
-    if (defaultDepartment) formData.append('defaultDepartment', defaultDepartment);
     formData.append('mode', mode);
 
     return await fetchWithAuth(`/Auth/students/bulk-upload`, {
@@ -477,20 +476,42 @@ export const batchUploadStudents = async (file, defaultDepartment = '', mode = '
     });
 };
 
-export const bulkEnrollStudents = async (file, defaultDepartment = '') => {
-    return await batchUploadStudents(file, defaultDepartment, 'enroll');
+export const bulkEnrollStudents = async (file) => {
+    return await batchUploadStudents(file, 'enroll');
 };
 
-export const registrarBulkEnrollStudents = async (file, department = '') => {
-    return await bulkEnrollStudents(file, department);
+export const registrarBulkEnrollStudents = async (file) => {
+    return await bulkEnrollStudents(file);
 };
 
-export const bulkUpdateStudents = async (file, defaultDepartment = '') => {
-    return await batchUploadStudents(file, defaultDepartment, 'update');
+export const bulkUpdateStudents = async (file) => {
+    return await batchUploadStudents(file, 'update');
 };
 
-export const registrarBulkUpdateStudents = async (file, department = '') => {
-    return await bulkUpdateStudents(file, department);
+export const registrarBulkUpdateStudents = async (file) => {
+    return await bulkUpdateStudents(file);
+};
+
+export const registrarBulkUploadFaculty = async (file, mode = 'enroll') => {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('mode', mode);
+
+    return await fetchWithAuth(`/Auth/faculty/bulk-upload`, {
+        method: 'POST',
+        body: formData
+    });
+};
+
+export const registrarBulkUploadChairperson = async (file, mode = 'enroll') => {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('mode', mode);
+
+    return await fetchWithAuth(`/Auth/admins/department/bulk-upload`, {
+        method: 'POST',
+        body: formData
+    });
 };
 
 export const bulkUploadMasterlist = async (file, department = '') => {

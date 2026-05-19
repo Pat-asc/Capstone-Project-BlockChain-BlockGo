@@ -1,8 +1,10 @@
-import React, { createContext, useState, useCallback, useContext } from 'react';
+import React, { createContext, useState, useCallback, useContext, useRef } from 'react';
 
 const NotificationContext = createContext({
     addNotification: (message, type) => console.warn("NotificationProvider missing! Message:", message)
 });
+
+const DISMISS_SUPPRESSION_MS = 10000;
 
 export const useNotification = () => useContext(NotificationContext);
 
@@ -22,16 +24,30 @@ const Notification = ({ message, type, onDismiss }) => {
 
 export const NotificationProvider = ({ children }) => {
     const [notifications, setNotifications] = useState([]);
+    const dismissedMessagesRef = useRef(new Map());
 
     const addNotification = useCallback((message, type = 'success') => {
+        const normalizedMessage = String(message || '').trim();
+        if (!normalizedMessage) return;
+
+        const dismissedAt = dismissedMessagesRef.current.get(normalizedMessage);
+        if (dismissedAt && Date.now() - dismissedAt < DISMISS_SUPPRESSION_MS) {
+            return;
+        }
+
         const id = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-        setNotifications((prev) => [...prev, { id, message, type }].slice(-4));
+        setNotifications((prev) => {
+            const alreadyVisible = prev.some((notification) => notification.message === normalizedMessage);
+            if (alreadyVisible) return prev;
+            return [...prev, { id, message: normalizedMessage, type }].slice(-4);
+        });
         setTimeout(() => {
             setNotifications((prev) => prev.filter((notification) => notification.id !== id));
         }, 5000); // Auto-dismiss after 5 seconds
     }, []);
 
-    const dismissNotification = (id) => {
+    const dismissNotification = (id, message) => {
+        dismissedMessagesRef.current.set(String(message || '').trim(), Date.now());
         setNotifications((prev) => prev.filter((notification) => notification.id !== id));
     };
 
@@ -45,7 +61,7 @@ export const NotificationProvider = ({ children }) => {
                             key={notification.id}
                             message={notification.message}
                             type={notification.type}
-                            onDismiss={() => dismissNotification(notification.id)}
+                            onDismiss={() => dismissNotification(notification.id, notification.message)}
                         />
                     ))}
                 </div>

@@ -22,6 +22,7 @@ using System.Security.Cryptography;
 using System.Security.Claims;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Text.Json.Serialization;
 using Client_app.Services;
 using Client_app.Controllers;
 using Microsoft.AspNetCore.SignalR;
@@ -80,6 +81,84 @@ namespace BlockGo.Controllers
             public string Status { get; set; } = string.Empty;
         }
 
+        private sealed class EncodingPeriodSetting
+        {
+            [JsonPropertyName("semester")]
+            public string Semester { get; set; } = string.Empty;
+
+            [JsonPropertyName("startDate")]
+            public string StartDate { get; set; } = string.Empty;
+
+            [JsonPropertyName("endDate")]
+            public string EndDate { get; set; } = string.Empty;
+
+            [JsonPropertyName("term")]
+            public string Term { get; set; } = "midterm";
+        }
+
+        private async Task<(bool Allowed, string? Message)> ValidateEncodingPeriodAsync(
+            NpgsqlConnection conn,
+            string? requestedTerm = null,
+            string? requestedSemester = null)
+        {
+            using var cmd = new NpgsqlCommand("SELECT value FROM SystemSettings WHERE key = 'encoding_period' LIMIT 1", conn);
+            var rawValue = await cmd.ExecuteScalarAsync() as string;
+
+            if (string.IsNullOrWhiteSpace(rawValue))
+            {
+                return (false, "Grade encoding period is not open.");
+            }
+
+            EncodingPeriodSetting? setting;
+            try
+            {
+                setting = JsonSerializer.Deserialize<EncodingPeriodSetting>(
+                    rawValue,
+                    new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+            }
+            catch
+            {
+                return (false, "Grade encoding period is not open.");
+            }
+
+            if (setting == null ||
+                string.IsNullOrWhiteSpace(setting.StartDate) ||
+                string.IsNullOrWhiteSpace(setting.EndDate) ||
+                !DateTime.TryParse(setting.StartDate, CultureInfo.InvariantCulture, DateTimeStyles.AssumeLocal, out var startDate) ||
+                !DateTime.TryParse(setting.EndDate, CultureInfo.InvariantCulture, DateTimeStyles.AssumeLocal, out var endDate))
+            {
+                return (false, "Grade encoding period is not open.");
+            }
+
+            startDate = startDate.Date;
+            endDate = endDate.Date.AddDays(1).AddTicks(-1);
+
+            var now = DateTime.Now;
+            if (now < startDate || now > endDate)
+            {
+                return (false, $"Grade encoding period is closed. Allowed window: {startDate:MMMM dd, yyyy} to {endDate:MMMM dd, yyyy}.");
+            }
+
+            var activeTerm = string.Equals(setting.Term, "finals", StringComparison.OrdinalIgnoreCase) ? "finals" : "midterm";
+            if (!string.IsNullOrWhiteSpace(requestedTerm))
+            {
+                var normalizedRequestedTerm = string.Equals(requestedTerm, "finals", StringComparison.OrdinalIgnoreCase) ? "finals" : "midterm";
+                if (!string.Equals(activeTerm, normalizedRequestedTerm, StringComparison.OrdinalIgnoreCase))
+                {
+                    return (false, $"Only {activeTerm} encoding is currently allowed.");
+                }
+            }
+
+            if (!string.IsNullOrWhiteSpace(requestedSemester) &&
+                !string.IsNullOrWhiteSpace(setting.Semester) &&
+                !string.Equals(setting.Semester.Trim(), requestedSemester.Trim(), StringComparison.OrdinalIgnoreCase))
+            {
+                return (false, $"Encoding is currently open only for {setting.Semester}.");
+            }
+
+            return (true, null);
+        }
+
         private async Task<(string? Department, string? Identity)> ResolveApprovedAcademicIdentityAsync(
             NpgsqlConnection conn,
             string? preferredIdentity,
@@ -123,6 +202,12 @@ namespace BlockGo.Controllers
             {
                 using var conn = new NpgsqlConnection(_connectionString);
                 await conn.OpenAsync();
+
+                var encodingValidation = await ValidateEncodingPeriodAsync(conn);
+                if (!encodingValidation.Allowed)
+                {
+                    return StatusCode(403, new { status = "Error", message = encodingValidation.Message });
+                }
 
                 var jwtUser = User.Identity?.Name
                     ?? User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Email)?.Value
@@ -390,6 +475,12 @@ namespace BlockGo.Controllers
                 using var conn = new NpgsqlConnection(_connectionString);
                 await conn.OpenAsync();
 
+                var encodingValidation = await ValidateEncodingPeriodAsync(conn);
+                if (!encodingValidation.Allowed)
+                {
+                    return StatusCode(403, new { status = "Error", message = encodingValidation.Message });
+                }
+
                 var resolvedFaculty = await ResolveApprovedAcademicIdentityAsync(
                     conn,
                     facultyId,
@@ -532,6 +623,20 @@ namespace BlockGo.Controllers
             if (rawAverage >= 79) return 2.50;
             if (rawAverage >= 75) return 3.00;
             return 5.00;
+        }
+
+        private static string GetJsonElementValueAsString(JsonElement element)
+        {
+            return element.ValueKind switch
+            {
+                JsonValueKind.String => element.GetString() ?? "",
+                JsonValueKind.Number => element.ToString(),
+                JsonValueKind.True => bool.TrueString,
+                JsonValueKind.False => bool.FalseString,
+                JsonValueKind.Null => "",
+                JsonValueKind.Undefined => "",
+                _ => element.ToString()
+            };
         }
 
         private static string BuildUploadedGradePayload(string? rawGrade, string? rawMidterm, string? rawFinals, string? term)
@@ -804,6 +909,16 @@ namespace BlockGo.Controllers
 
             try
             {
+                using (var periodConn = new NpgsqlConnection(_connectionString))
+                {
+                    await periodConn.OpenAsync();
+                    var encodingValidation = await ValidateEncodingPeriodAsync(periodConn, term, semester);
+                    if (!encodingValidation.Allowed)
+                    {
+                        return StatusCode(403, new { status = "Error", message = encodingValidation.Message });
+                    }
+                }
+
                 var successCount = 0;
                 var failureCount = 0;
                 var errors = new List<BulkUploadError>();
@@ -823,8 +938,9 @@ namespace BlockGo.Controllers
                     using (var fileStream = new FileStream(tempFile, FileMode.Create))
                         await file.CopyToAsync(fileStream);
 
-                    // Keep midterm uploads staged only. Distribution happens once finals are being processed.
-                    if (string.Equals(term, "finals", StringComparison.OrdinalIgnoreCase))
+                    // Persist every bulk-uploaded grading sheet to the IPFS vault so reviewers
+                    // can always open the attachment for the section, regardless of term.
+                    if (file.Length > 0)
                     {
                         try
                         {
@@ -1186,8 +1302,8 @@ namespace BlockGo.Controllers
                             string uploadedMidterm = "", uploadedFinals = "";
                             if (!string.IsNullOrEmpty(record.Grade) && record.Grade.TrimStart().StartsWith("{")) {
                                 using var doc = JsonDocument.Parse(record.Grade);
-                                if (doc.RootElement.TryGetProperty("midterm", out var m)) uploadedMidterm = m.GetString() ?? "";
-                                if (doc.RootElement.TryGetProperty("finals", out var f)) uploadedFinals = f.GetString() ?? "";
+                                if (doc.RootElement.TryGetProperty("midterm", out var m)) uploadedMidterm = GetJsonElementValueAsString(m);
+                                if (doc.RootElement.TryGetProperty("finals", out var f)) uploadedFinals = GetJsonElementValueAsString(f);
                             } else {
                                 if (string.Equals(term, "finals", StringComparison.OrdinalIgnoreCase)) uploadedFinals = record.Grade ?? "";
                                 else uploadedMidterm = record.Grade ?? "";
@@ -1196,8 +1312,8 @@ namespace BlockGo.Controllers
                             string mergedMidterm = uploadedMidterm, mergedFinals = uploadedFinals;
                             if (!string.IsNullOrEmpty(existingGradeJson) && existingGradeJson.TrimStart().StartsWith("{")) {
                                 using var doc = JsonDocument.Parse(existingGradeJson);
-                                if (string.IsNullOrEmpty(mergedMidterm) && doc.RootElement.TryGetProperty("midterm", out var m)) mergedMidterm = m.GetString() ?? "";
-                                if (string.IsNullOrEmpty(mergedFinals) && doc.RootElement.TryGetProperty("finals", out var f)) mergedFinals = f.GetString() ?? "";
+                                if (string.IsNullOrEmpty(mergedMidterm) && doc.RootElement.TryGetProperty("midterm", out var m)) mergedMidterm = GetJsonElementValueAsString(m);
+                                if (string.IsNullOrEmpty(mergedFinals) && doc.RootElement.TryGetProperty("finals", out var f)) mergedFinals = GetJsonElementValueAsString(f);
                             } else if (!string.IsNullOrEmpty(existingGradeJson)) {
                                 if (string.Equals(term, "finals", StringComparison.OrdinalIgnoreCase) && string.IsNullOrEmpty(mergedMidterm)) mergedMidterm = existingGradeJson;
                             }
@@ -1247,7 +1363,7 @@ namespace BlockGo.Controllers
                                         grade = EXCLUDED.grade,
                                         faculty_id = EXCLUDED.faculty_id,
                                         date = EXCLUDED.date,
-                                        ipfs_cid = EXCLUDED.ipfs_cid,
+                                        ipfs_cid = COALESCE(NULLIF(EXCLUDED.ipfs_cid, ''), pending_grade_records.ipfs_cid),
                             status = 'Draft';", conn, transaction);
                                 cmdStage.Parameters.AddWithValue("id", blockchainRecord.Id ?? Guid.NewGuid().ToString());
                                 cmdStage.Parameters.AddWithValue("sh", blockchainRecord.StudentHash ?? "");
@@ -1866,7 +1982,7 @@ namespace BlockGo.Controllers
                     using var gradePayloadDoc = JsonDocument.Parse(gradeRecord.Grade);
                     if (gradePayloadDoc.RootElement.TryGetProperty("midterm", out var midtermProp))
                     {
-                        midtermGradeStr = midtermProp.GetString() ?? "";
+                        midtermGradeStr = GetJsonElementValueAsString(midtermProp);
                     }
                 }
                 else
@@ -2020,12 +2136,25 @@ namespace BlockGo.Controllers
             try
             {
                 var invokerId = request.InvokerId ?? User.Identity?.Name ?? "Unknown";
+                var note = (request.Note ?? string.Empty).Trim();
+                var isRegistrar = User.IsInRole("registrar");
+                var nextStatus = isRegistrar ? "RegistrarRejected" : "Returned";
+                var oldStatusLabel = isRegistrar ? "Forwarded to Registrar" : "Forwarded";
+                var newStatusLabel = isRegistrar ? "Registrar Rejected" : "Returned";
+                var successMessage = isRegistrar
+                    ? "Grade rejected by registrar with notes."
+                    : "Grade returned to faculty with notes.";
+                if (string.IsNullOrWhiteSpace(note))
+                {
+                    return BadRequest(new { status = "Error", message = "A return note is required." });
+                }
                 
                 using var conn = new NpgsqlConnection(_connectionString);
                 await conn.OpenAsync();
                 
-                using var cmd = new NpgsqlCommand("UPDATE pending_grade_records SET status = 'Returned', note = @note, date = @dt WHERE id = @id RETURNING id", conn);
-                cmd.Parameters.AddWithValue("note", request.Note ?? "");
+                using var cmd = new NpgsqlCommand("UPDATE pending_grade_records SET status = @status, note = @note, date = @dt WHERE id = @id RETURNING id", conn);
+                cmd.Parameters.AddWithValue("status", nextStatus);
+                cmd.Parameters.AddWithValue("note", note);
                 cmd.Parameters.AddWithValue("dt", DateTime.UtcNow.ToString("o"));
                 cmd.Parameters.AddWithValue("id", recordId);
                 var res = await cmd.ExecuteScalarAsync();
@@ -2033,17 +2162,17 @@ namespace BlockGo.Controllers
                 if (res != null)
                 {
                     using var cmdLog = new NpgsqlCommand(@"
-                        INSERT INTO gradecorrectionlogs (recordid, oldgrade, newgrade, reasontext, approvedby, timestamp) 
+                    INSERT INTO gradecorrectionlogs (recordid, oldgrade, newgrade, reasontext, approvedby, timestamp) 
                         VALUES (@rid, @old, @new, @reason, @appr, CURRENT_TIMESTAMP)", conn);
                     cmdLog.Parameters.AddWithValue("rid", recordId);
-                    cmdLog.Parameters.AddWithValue("old", "Forwarded");
-                    cmdLog.Parameters.AddWithValue("new", "Returned");
-                    cmdLog.Parameters.AddWithValue("reason", request.Note ?? "Returned for revision");
+                    cmdLog.Parameters.AddWithValue("old", oldStatusLabel);
+                    cmdLog.Parameters.AddWithValue("new", newStatusLabel);
+                    cmdLog.Parameters.AddWithValue("reason", note);
                     cmdLog.Parameters.AddWithValue("appr", invokerId);
                     await cmdLog.ExecuteNonQueryAsync();
 
                     await NotifyAcademicDataChangedAsync("grade_returned", null, invokerId);
-                    return Ok(new { status = "Success", message = "Grade returned to faculty with notes (Staged)." });
+                    return Ok(new { status = "Success", message = $"{successMessage} (Staged)." });
                 }
 
                 var gradeJson = await _blockchainService.GetGradeAsync(recordId, invokerId);
@@ -2052,11 +2181,11 @@ namespace BlockGo.Controllers
                 if (gradeToUpdate == null) return NotFound(new { status = "Error", message = "Grade not found" });
 
                 // Update status and attach note
-                gradeToUpdate.Status = "Returned";
+                gradeToUpdate.Status = nextStatus;
                 gradeToUpdate.Date = DateTime.UtcNow.ToString("yyyy-MM-dd");
                 
                 // We use the 'Note' field in the blockchain record to store the revision instructions
-                gradeToUpdate.Note = request.Note;
+                gradeToUpdate.Note = note;
 
                 await _blockchainService.UpdateGradeAsync(gradeToUpdate, invokerId);
 
@@ -2065,14 +2194,14 @@ namespace BlockGo.Controllers
                     INSERT INTO gradecorrectionlogs (recordid, oldgrade, newgrade, reasontext, approvedby, timestamp) 
                     VALUES (@rid, @old, @new, @reason, @appr, CURRENT_TIMESTAMP)", conn);
                 cmdLogBlockchain.Parameters.AddWithValue("rid", recordId);
-                cmdLogBlockchain.Parameters.AddWithValue("old", "Forwarded");
-                cmdLogBlockchain.Parameters.AddWithValue("new", "Returned");
-                cmdLogBlockchain.Parameters.AddWithValue("reason", request.Note ?? "Returned for revision");
+                cmdLogBlockchain.Parameters.AddWithValue("old", oldStatusLabel);
+                cmdLogBlockchain.Parameters.AddWithValue("new", newStatusLabel);
+                cmdLogBlockchain.Parameters.AddWithValue("reason", note);
                 cmdLogBlockchain.Parameters.AddWithValue("appr", invokerId);
                 await cmdLogBlockchain.ExecuteNonQueryAsync();
 
                 await NotifyAcademicDataChangedAsync("grade_returned", gradeToUpdate.Course, invokerId);
-                return Ok(new { status = "Success", message = "Grade returned to faculty with notes." });
+                return Ok(new { status = "Success", message = successMessage });
             }
             catch (Exception ex)
             {

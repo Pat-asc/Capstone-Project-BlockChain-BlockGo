@@ -4,6 +4,7 @@ import StudentNavbar from './StudentNavbar';
 import StudentInfoCard from './StudentInfoCard';
 import StudentSummary from './StudentSummary';
 import StudentGradesTable from './StudentGradesTable';
+import { getPLVPoint } from '../../utils/studentHelpers';
 
 const StudentPortal = ({ studentData, onLogout }) => {
   const [grades, setGrades] = useState([]);
@@ -128,12 +129,41 @@ const StudentPortal = ({ studentData, onLogout }) => {
 
   const totalUnits = grades.length * 3; // Assuming 3 units per subject block for now
   
-  const totalWeight = grades.reduce((sum, sub) => sum + ((parseFloat(parseGradePayload(sub).finalAverage) || 0) * 3), 0);
+  const totalWeight = grades.reduce((sum, sub) => {
+    const parsed = parseGradePayload(sub);
+    const mid = parseFloat(parsed.midterm);
+    const fin = parseFloat(parsed.finals);
+    const numericAverage =
+      !isNaN(mid) && !isNaN(fin)
+        ? (mid + fin) / 2
+        : parseFloat(parsed.finalAverage);
+    const equivalent = !isNaN(numericAverage) ? getPLVPoint(numericAverage, numericAverage) : 0;
+    return sum + (equivalent * 3);
+  }, 0);
 
   const calculatedGWA = totalUnits > 0 ? (totalWeight / totalUnits).toFixed(2) : "0.00";
 
-  const isDeansLister = grades.length > 0 && Number(calculatedGWA) <= 1.75 && grades.every(s => parseFloat(parseGradePayload(s).finalAverage) <= 2.25);
-  const failedSubjectsCount = grades.filter(s => parseFloat(parseGradePayload(s).finalAverage) > 3.0 || parseFloat(parseGradePayload(s).finalAverage) === 5.0).length;
+  const isDeansLister = grades.length > 0 && Number(calculatedGWA) <= 1.75 && grades.every(s => {
+    const parsed = parseGradePayload(s);
+    const mid = parseFloat(parsed.midterm);
+    const fin = parseFloat(parsed.finals);
+    const numericAverage =
+      !isNaN(mid) && !isNaN(fin)
+        ? (mid + fin) / 2
+        : parseFloat(parsed.finalAverage);
+    const equivalent = !isNaN(numericAverage) ? getPLVPoint(numericAverage, numericAverage) : Infinity;
+    return equivalent <= 2.25;
+  });
+  const failedSubjectsCount = grades.filter(s => {
+    const parsed = parseGradePayload(s);
+    const mid = parseFloat(parsed.midterm);
+    const fin = parseFloat(parsed.finals);
+    const numericAverage =
+      !isNaN(mid) && !isNaN(fin)
+        ? (mid + fin) / 2
+        : parseFloat(parsed.finalAverage);
+    return !isNaN(numericAverage) && numericAverage < 75;
+  }).length;
 
   let mappedSubjects = grades.map(g => {
     const parsed = parseGradePayload(g);
@@ -150,9 +180,13 @@ const StudentPortal = ({ studentData, onLogout }) => {
         rawAverage = fin.toFixed(2);
     }
 
+    const numericAverage = parseFloat(rawAverage);
+    const computedEquivalent =
+      !isNaN(numericAverage) ? getPLVPoint(numericAverage, numericAverage).toFixed(2) : "---";
+
     let computedRemarks = "Pending";
-    if (!isNaN(parseFloat(parsed.finalAverage))) {
-        computedRemarks = parseFloat(parsed.finalAverage) <= 3.0 ? "Passed" : "Failed";
+    if (!isNaN(numericAverage)) {
+        computedRemarks = numericAverage >= 75 ? "Passed" : "Failed";
     }
 
     return {
@@ -162,7 +196,7 @@ const StudentPortal = ({ studentData, onLogout }) => {
       midterm: parsed.midterm,
       finals: parsed.finals,
       finalGrade: rawAverage !== "---" ? rawAverage : parsed.finalAverage,
-      equivalent: parsed.finalAverage,
+      equivalent: computedEquivalent,
       remarks: computedRemarks
     };
   });
