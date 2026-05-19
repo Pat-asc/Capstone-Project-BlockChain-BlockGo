@@ -1,7 +1,7 @@
 import React from "react";
 
 function RegistrarSidebar({ activeTab, setActiveTab, chatUnreadCount = 0, latestChatNotice = null, onOpenChat }) {
-  const systemAdminTabs = ["monitoring", "grades", "Requests", "assignStudents", "assignAdmins", "assignFaculties"];
+  const systemAdminTabs = ["monitoring", "grades", "assignStudents", "assignAdmins", "assignFaculties"];
   const menuItems = [
   { id: "dashboard", label: "Dashboard" },
   { id: "encoding", label: "Encoding Period" },
@@ -13,7 +13,7 @@ function RegistrarSidebar({ activeTab, setActiveTab, chatUnreadCount = 0, latest
 ];
 
   return (
-    <aside className="w-full max-w-[260px] self-start rounded-2xl border border-slate-200 bg-white p-4 shadow-sm lg:sticky lg:top-6">
+    <aside className="w-full max-w-none self-start rounded-2xl border border-slate-200 bg-white p-4 shadow-sm lg:sticky lg:top-6 lg:max-w-[260px]">
       <div className="mb-4 border-b border-slate-200 pb-3">
         <h2 className="text-lg font-bold text-[#003366]">Registrar Panel</h2>
 
@@ -40,7 +40,7 @@ function RegistrarSidebar({ activeTab, setActiveTab, chatUnreadCount = 0, latest
         )}
       </div>
 
-      <nav className="flex flex-col gap-2">
+      <nav className="flex gap-2 overflow-x-auto pb-1 lg:flex-col lg:overflow-visible lg:pb-0">
         {menuItems.map((item) => {
           const isManagementItem = item.id === "monitoring";
           const isActive = isManagementItem
@@ -51,7 +51,7 @@ function RegistrarSidebar({ activeTab, setActiveTab, chatUnreadCount = 0, latest
             <button
               key={item.id}
               onClick={() => setActiveTab(isManagementItem ? "grades" : item.id)}
-              className={`w-full rounded-xl border-b-2 px-4 py-3 text-left text-sm font-medium transition ${
+              className={`min-w-[160px] rounded-xl border-b-2 px-4 py-3 text-left text-sm font-medium transition lg:w-full lg:min-w-0 ${
                 isActive
                   ? "border-yellow-400 bg-[#003366] text-yellow-400 shadow-sm"
                   : "border-transparent text-slate-700 hover:bg-slate-100"

@@ -4,6 +4,7 @@ import {
   STUDENT_BATCHES_KEY,
   YEAR_LEVEL_PREFIXES,
   downloadStudentCsvFile,
+  getDisplaySectionName,
   getDefaultSectionName,
   getStudentMiddleName,
   parseStudentIdSpreadsheet,
@@ -105,6 +106,8 @@ function RegistrarSectionsCreated() {
     firstName: "",
     middleName: "",
   });
+  const [isEditingRoster, setIsEditingRoster] = useState(false);
+  const [editingStudents, setEditingStudents] = useState({});
   const [promotionSummary, setPromotionSummary] = useState(null);
   const [changedDepartments, setChangedDepartments] = useState(() => new Set());
 
@@ -264,6 +267,112 @@ function RegistrarSectionsCreated() {
       ),
       lastSectionedAt: new Date().toISOString(),
     }));
+  };
+
+  const buildEditableRoster = () =>
+    Object.fromEntries(
+      sectionStudents.map((student) => [
+        student.studentId,
+        {
+          studentId: student.studentId || "",
+          sex: student.sex || "",
+          lastName: student.lastName || "",
+          firstName: student.firstName || "",
+          middleName: getStudentMiddleName(student) || "",
+          sectionCode: student.sectionCode || "",
+        },
+      ])
+    );
+
+  const handleStartRosterEdit = () => {
+    if (!selectedSection) return;
+    setEditingStudents(buildEditableRoster());
+    setIsEditingRoster(true);
+  };
+
+  const handleCancelRosterEdit = () => {
+    setIsEditingRoster(false);
+    setEditingStudents({});
+  };
+
+  const handleRosterFieldChange = (studentId, field, value) => {
+    setEditingStudents((current) => ({
+      ...current,
+      [studentId]: {
+        ...(current[studentId] || {}),
+        [field]: value,
+      },
+    }));
+  };
+
+  const handleSaveRosterEdit = () => {
+    if (!selectedBatch || !selectedSection) return;
+
+    const drafts = Object.values(editingStudents);
+    if (!drafts.length) {
+      handleCancelRosterEdit();
+      return;
+    }
+
+    const seenStudentIds = new Set();
+    for (const draft of drafts) {
+      const trimmedStudentId = String(draft.studentId || "").trim();
+      const trimmedLastName = String(draft.lastName || "").trim();
+      const trimmedFirstName = String(draft.firstName || "").trim();
+      const trimmedMiddleName = String(draft.middleName || "").trim();
+
+      if (
+        !trimmedStudentId ||
+        !draft.sex ||
+        !trimmedLastName ||
+        !trimmedFirstName ||
+        !trimmedMiddleName
+      ) {
+        alert("Complete student ID, sex, and name fields before saving.");
+        return;
+      }
+
+      const normalizedStudentId = trimmedStudentId.toLowerCase();
+      if (seenStudentIds.has(normalizedStudentId)) {
+        alert("Duplicate student IDs found in the edited roster.");
+        return;
+      }
+      seenStudentIds.add(normalizedStudentId);
+    }
+
+    updateSelectedBatch((batch) => {
+      const selectedSectionStudentIds = new Set(
+        (sectionStudents || []).map((student) => student.studentId)
+      );
+
+      return {
+        ...batch,
+        students: (batch.students || []).map((student) => {
+          if (!selectedSectionStudentIds.has(student.studentId)) return student;
+
+          const draft = editingStudents[student.studentId];
+          if (!draft) return student;
+
+          return {
+            ...student,
+            studentId: String(draft.studentId || "").trim(),
+            sex: draft.sex,
+            lastName: String(draft.lastName || "").trim(),
+            firstName: String(draft.firstName || "").trim(),
+            middleName: String(draft.middleName || "").trim(),
+            middleInitial: String(draft.middleName || "").trim(),
+            sectionCode: draft.sectionCode || student.sectionCode || "",
+            sectionName:
+              (yearSections.find((section) => section.sectionCode === draft.sectionCode)
+                ?.sectionName) ||
+              student.sectionName,
+          };
+        }),
+        lastSectionedAt: new Date().toISOString(),
+      };
+    });
+
+    handleCancelRosterEdit();
   };
 
   const handleDeleteSection = () => {
@@ -717,104 +826,122 @@ function RegistrarSectionsCreated() {
           <div className="mt-6 grid grid-cols-1 gap-5 2xl:grid-cols-[240px_1fr]">
             <aside className="rounded-xl border border-slate-200 bg-slate-50 p-4">
               <p className="text-sm font-bold text-[#003366]">Departments</p>
-              <div className="mt-3 space-y-2">
-                {departments.map((department) => {
-                  const isActive = selectedDepartment === department;
-                  const departmentSectionCount = sectionedBatches
-                    .filter((batch) => batch.program === department)
-                    .reduce(
-                      (total, batch) => total + (batch.sectionPlans || []).length,
-                      0
-                    );
+              <div className="mt-3 space-y-3">
+                <select
+                  value={selectedDepartment}
+                  onChange={(event) => {
+                    setActiveDepartment(event.target.value);
+                    setSelectedBatchKey("");
+                    setSelectedSectionCode("");
+                  }}
+                  className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm font-semibold text-slate-700 outline-none focus:border-[#003366]"
+                >
+                  {departments.map((department) => (
+                    <option key={department} value={department}>
+                      {department}
+                    </option>
+                  ))}
+                </select>
 
-                  return (
-                    <button
-                      key={department}
-                      type="button"
-                      onClick={() => {
-                        setActiveDepartment(department);
-                        setSelectedBatchKey("");
-                        setSelectedSectionCode("");
-                      }}
-                      className={`w-full rounded-xl px-3 py-2.5 text-left transition ${
-                        isActive
-                          ? "bg-[#003366] text-white shadow-sm"
-                          : "bg-white text-slate-700 hover:bg-slate-100"
-                      }`}
-                      title={department}
-                    >
-                      <span className="block truncate text-sm font-bold">
-                        {department}
+                {selectedDepartment ? (
+                  <div className="rounded-xl border border-slate-200 bg-white px-4 py-3">
+                    <p className="truncate text-sm font-bold text-slate-800">
+                      {selectedDepartment}
+                    </p>
+                    <p className="mt-1 text-xs text-slate-500">
+                      {sectionedBatches
+                        .filter((batch) => batch.program === selectedDepartment)
+                        .reduce(
+                          (total, batch) => total + (batch.sectionPlans || []).length,
+                          0
+                        )}{" "}
+                      section
+                      {sectionedBatches
+                        .filter((batch) => batch.program === selectedDepartment)
+                        .reduce(
+                          (total, batch) => total + (batch.sectionPlans || []).length,
+                          0
+                        ) === 1
+                        ? ""
+                        : "s"}
+                    </p>
+                    {changedDepartments.has(selectedDepartment) ? (
+                      <span className="mt-2 inline-flex rounded-full bg-emerald-100 px-2 py-1 text-xs font-semibold text-emerald-700">
+                        Changes pending
                       </span>
-                      <span
-                        className={`mt-1 block text-xs ${
-                          isActive ? "text-white/80" : "text-slate-500"
-                        }`}
-                      >
-                        {departmentSectionCount} section
-                        {departmentSectionCount === 1 ? "" : "s"}
-                      </span>
-                      {changedDepartments.has(department) ? (
-                        <span
-                          className={`mt-2 inline-flex rounded-full px-2 py-1 text-xs font-semibold ${
-                            isActive
-                              ? "bg-white/15 text-white"
-                              : "bg-emerald-100 text-emerald-700"
-                          }`}
-                        >
-                          Changes pending
-                        </span>
-                      ) : null}
-                    </button>
-                  );
-                })}
+                    ) : null}
+                  </div>
+                ) : null}
               </div>
             </aside>
 
             <div className="space-y-5">
-              <div className="rounded-xl border border-slate-200 bg-white p-4">
-                <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+              <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+                <div className="bg-gradient-to-r from-[#003366] via-[#0a4b8f] to-[#0e7490] px-5 py-4 text-white">
+                  <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-[0.2em] text-white/70">
+                        Department Overview
+                      </p>
+                      <p className="mt-1 text-lg font-bold">
+                        {selectedDepartment || "Choose a department"}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex flex-col gap-3 px-5 py-4 lg:flex-row lg:items-center lg:justify-between">
                   <div>
-                    <p className="text-sm font-bold text-[#003366]">
-                      {selectedDepartment}
-                    </p>
-                    <p className="text-sm text-slate-500">
-                      {activeYearSectionCount} section
-                      {activeYearSectionCount === 1 ? "" : "s"} in{" "}
-                      {activeYearLevel}
-                    </p>
+                    <p className="text-sm font-bold text-slate-800">Year Level View</p>
                   </div>
 
-                  <div className="flex flex-wrap gap-2">
-                    {AVAILABLE_YEAR_LEVELS.map((yearLevel) => {
-                      const yearCount = departmentBatches.reduce(
-                        (total, batch) =>
-                          total +
-                          (batch.sectionPlans || []).filter((section) =>
-                            sectionMatchesYearLevel(section, yearLevel)
-                          ).length,
-                        0
-                      );
+                  <div className="flex flex-wrap items-center gap-3">
+                    <div className="relative min-w-[240px]">
+                      <select
+                        value={activeYearLevel}
+                        onChange={(event) => {
+                          setActiveYearLevel(event.target.value);
+                          setSelectedBatchKey("");
+                          setSelectedSectionCode("");
+                        }}
+                        className="w-full appearance-none rounded-xl border border-slate-300 bg-white px-4 py-3 pr-10 text-sm font-semibold text-slate-700 outline-none focus:border-[#003366]"
+                      >
+                        {AVAILABLE_YEAR_LEVELS.map((yearLevel) => {
+                          const yearCount = departmentBatches.reduce(
+                            (total, batch) =>
+                              total +
+                              (batch.sectionPlans || []).filter((section) =>
+                                sectionMatchesYearLevel(section, yearLevel)
+                              ).length,
+                            0
+                          );
 
-                      return (
-                        <button
-                          key={yearLevel}
-                          type="button"
-                          onClick={() => {
-                            setActiveYearLevel(yearLevel);
-                            setSelectedBatchKey("");
-                            setSelectedSectionCode("");
-                          }}
-                          className={`rounded-lg px-3 py-2 text-sm font-semibold ${
-                            activeYearLevel === yearLevel
-                              ? "bg-[#003366] text-white"
-                              : "border border-slate-300 text-slate-700 hover:bg-slate-50"
-                          }`}
+                          return (
+                            <option key={yearLevel} value={yearLevel}>
+                              {yearLevel} ({yearCount})
+                            </option>
+                          );
+                        })}
+                      </select>
+                      <span className="pointer-events-none absolute inset-y-0 right-4 flex items-center text-slate-400">
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          viewBox="0 0 20 20"
+                          fill="currentColor"
+                          className="h-4 w-4"
                         >
-                          {yearLevel} ({yearCount})
-                        </button>
-                      );
-                    })}
+                          <path
+                            fillRule="evenodd"
+                            d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z"
+                            clipRule="evenodd"
+                          />
+                        </svg>
+                      </span>
+                    </div>
+                    <div className="rounded-full bg-slate-100 px-3 py-2 text-xs font-semibold text-slate-600">
+                      {activeYearSectionCount} section
+                      {activeYearSectionCount === 1 ? "" : "s"}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -861,19 +988,23 @@ function RegistrarSectionsCreated() {
                                       : "border-slate-200 bg-white text-slate-700 hover:bg-slate-100"
                                   }`}
                                   title={
-                                    section.sectionName ||
-                                    getDefaultSectionName(
-                                      batch.program,
-                                      section.sectionCode
+                                    getDisplaySectionName(
+                                      section.sectionName,
+                                      getDefaultSectionName(
+                                        batch.program,
+                                        section.sectionCode
+                                      )
                                     )
                                   }
                                 >
                                   <span className="block truncate font-semibold">
-                                    {section.sectionName ||
+                                    {getDisplaySectionName(
+                                      section.sectionName,
                                       getDefaultSectionName(
                                         batch.program,
                                         section.sectionCode
-                                      )}
+                                      )
+                                    )}
                                   </span>
                                   <span
                                     className={`mt-1 block text-xs ${
@@ -901,14 +1032,16 @@ function RegistrarSectionsCreated() {
 
                 <main className="space-y-5">
                   <section className="rounded-xl border border-slate-200 bg-white p-4">
-                    <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                    <div className="flex flex-row flex-wrap items-start justify-between gap-3">
                       <div>
                         <h4 className="text-lg font-bold text-[#003366]">
                           {selectedSection
-                            ? selectedSection.sectionName ||
-                              getDefaultSectionName(
-                                selectedBatch.program,
-                                selectedSection.sectionCode
+                            ? getDisplaySectionName(
+                                selectedSection.sectionName,
+                                getDefaultSectionName(
+                                  selectedBatch.program,
+                                  selectedSection.sectionCode
+                                )
                               )
                             : "Select a section"}
                         </h4>
@@ -921,31 +1054,67 @@ function RegistrarSectionsCreated() {
                         </p>
                       </div>
                       {selectedSection ? (
-                        <div className="flex flex-wrap gap-2">
+                        <div className="flex flex-wrap items-center justify-end gap-2">
+                          {isEditingRoster ? (
+                            <div className="flex flex-nowrap items-center gap-2">
+                              <button
+                                type="button"
+                                onClick={handleSaveRosterEdit}
+                                className="whitespace-nowrap rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700"
+                              >
+                                Save Changes
+                              </button>
+                              <button
+                                type="button"
+                                onClick={handleCancelRosterEdit}
+                                className="whitespace-nowrap rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                              >
+                                Cancel Edit
+                              </button>
+                            </div>
+                          ) : null}
                           <button
                             type="button"
                             onClick={handleExportSectionCsv}
-                            className="rounded-lg border border-[#003366] px-3 py-2 text-sm font-semibold text-[#003366] hover:bg-[#003366] hover:text-white"
+                            disabled={isEditingRoster}
+                            className="whitespace-nowrap rounded-lg border border-[#003366] px-4 py-2 text-sm font-semibold text-[#003366] hover:bg-[#003366] hover:text-white disabled:border-slate-200 disabled:text-slate-400 disabled:hover:bg-transparent disabled:hover:text-slate-400"
                           >
                             Export CSV
                           </button>
                           <button
                             type="button"
                             onClick={handleImportSectionCsv}
-                            className="rounded-lg border border-emerald-300 px-3 py-2 text-sm font-semibold text-emerald-700 hover:bg-emerald-50"
+                            disabled={isEditingRoster}
+                            className="whitespace-nowrap rounded-lg border border-emerald-300 px-4 py-2 text-sm font-semibold text-emerald-700 hover:bg-emerald-50 disabled:border-slate-200 disabled:text-slate-400 disabled:hover:bg-transparent"
                           >
                             Import CSV
                           </button>
                           <button
                             type="button"
                             onClick={handleDeleteSection}
-                            className="rounded-lg border border-red-200 px-3 py-2 text-sm font-semibold text-red-600 hover:bg-red-50"
+                            disabled={isEditingRoster}
+                            className="whitespace-nowrap rounded-lg border border-red-200 px-4 py-2 text-sm font-semibold text-red-600 hover:bg-red-50 disabled:border-slate-200 disabled:text-slate-400 disabled:hover:bg-transparent"
                           >
                             Delete Section
                           </button>
+                          {!isEditingRoster ? (
+                            <button
+                              type="button"
+                              onClick={handleStartRosterEdit}
+                              className="whitespace-nowrap rounded-lg border border-amber-300 bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-800 hover:bg-amber-100"
+                            >
+                              Edit Students
+                            </button>
+                          ) : null}
                         </div>
                       ) : null}
                     </div>
+
+                    {isEditingRoster ? (
+                      <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                        Edit mode is on. You can update student ID, full name, sex, and section placement before saving.
+                      </div>
+                    ) : null}
 
                     {pendingRemoval ? (
                       <div className="mt-4 rounded-xl border border-red-200 bg-red-50 p-4">
@@ -1012,60 +1181,143 @@ function RegistrarSectionsCreated() {
                         </thead>
                         <tbody>
                           {sectionStudents.length ? (
-                            sectionStudents.map((student) => (
-                              <tr key={student.studentId} className="border-b">
-                                <td className="px-4 py-3 font-semibold text-slate-800">
-                                  {student.studentId}
-                                </td>
-                                <td className="px-4 py-3 text-slate-700">
-                                  {buildStudentName(student)}
-                                </td>
-                                <td className="px-4 py-3 text-slate-600">
-                                  {student.sex || "--"}
-                                </td>
-                                <td className="px-4 py-3">
-                                  <select
-                                    value={student.sectionCode || ""}
-                                    onChange={(event) =>
-                                      handleMoveStudent(
-                                        student.studentId,
-                                        event.target.value
-                                      )
-                                    }
-                                    className="w-full min-w-44 rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#003366]"
-                                  >
-                                    {yearSections.map((section) => (
-                                      <option
-                                        key={section.sectionCode}
-                                        value={section.sectionCode}
+                            sectionStudents.map((student) => {
+                              const draft = editingStudents[student.studentId] || {
+                                studentId: student.studentId || "",
+                                sex: student.sex || "",
+                                lastName: student.lastName || "",
+                                firstName: student.firstName || "",
+                                middleName: getStudentMiddleName(student) || "",
+                                sectionCode: student.sectionCode || "",
+                              };
+
+                              return (
+                                <tr key={student.studentId} className="border-b align-top">
+                                  <td className="px-4 py-3 font-semibold text-slate-800">
+                                    {isEditingRoster ? (
+                                      <input
+                                        type="text"
+                                        value={draft.studentId}
+                                        onChange={(event) =>
+                                          handleRosterFieldChange(student.studentId, "studentId", event.target.value)
+                                        }
+                                        className="w-full min-w-28 rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#003366]"
+                                      />
+                                    ) : (
+                                      student.studentId
+                                    )}
+                                  </td>
+                                  <td className="px-4 py-3 text-slate-700">
+                                    {isEditingRoster ? (
+                                      <div className="grid gap-2">
+                                        <input
+                                          type="text"
+                                          value={draft.lastName}
+                                          onChange={(event) =>
+                                            handleRosterFieldChange(student.studentId, "lastName", event.target.value)
+                                          }
+                                          placeholder="Last name"
+                                          className="rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#003366]"
+                                        />
+                                        <input
+                                          type="text"
+                                          value={draft.firstName}
+                                          onChange={(event) =>
+                                            handleRosterFieldChange(student.studentId, "firstName", event.target.value)
+                                          }
+                                          placeholder="First name"
+                                          className="rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#003366]"
+                                        />
+                                        <input
+                                          type="text"
+                                          value={draft.middleName}
+                                          onChange={(event) =>
+                                            handleRosterFieldChange(student.studentId, "middleName", event.target.value)
+                                          }
+                                          placeholder="Middle name"
+                                          className="rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#003366]"
+                                        />
+                                      </div>
+                                    ) : (
+                                      <p className="font-semibold text-slate-800">
+                                        {buildStudentName(student)}
+                                      </p>
+                                    )}
+                                  </td>
+                                  <td className="px-4 py-3 text-slate-600">
+                                    {isEditingRoster ? (
+                                      <select
+                                        value={draft.sex}
+                                        onChange={(event) =>
+                                          handleRosterFieldChange(student.studentId, "sex", event.target.value)
+                                        }
+                                        className="w-full min-w-28 rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#003366]"
                                       >
-                                        {section.sectionName ||
-                                          getDefaultSectionName(
-                                            selectedBatch.program,
-                                            section.sectionCode
-                                          )}
-                                      </option>
-                                    ))}
-                                  </select>
-                                </td>
-                                <td className="px-4 py-3">
-                                  <button
-                                    type="button"
-                                    onClick={() =>
-                                      setPendingRemoval({
-                                        studentId: student.studentId,
-                                        studentName: buildStudentName(student),
-                                        reason: REMOVAL_REASONS[0],
-                                        note: "",
-                                      })
-                                    }
-                                    className="rounded-lg border border-red-200 px-3 py-2 text-sm font-semibold text-red-600 hover:bg-red-50"
-                                  >
-                                    Remove
-                                  </button>
-                                </td>
-                              </tr>
-                            ))
+                                        <option value="">Sex</option>
+                                        <option value="Male">Male</option>
+                                        <option value="Female">Female</option>
+                                      </select>
+                                    ) : (
+                                      student.sex || "--"
+                                    )}
+                                  </td>
+                                  <td className="px-4 py-3">
+                                    <select
+                                      value={isEditingRoster ? draft.sectionCode : student.sectionCode || ""}
+                                      onChange={(event) =>
+                                        isEditingRoster
+                                          ? handleRosterFieldChange(student.studentId, "sectionCode", event.target.value)
+                                          : handleMoveStudent(
+                                              student.studentId,
+                                              event.target.value
+                                            )
+                                      }
+                                      className="w-full min-w-44 rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#003366]"
+                                    >
+                                      {yearSections.map((section) => (
+                                        <option
+                                          key={section.sectionCode}
+                                          value={section.sectionCode}
+                                        >
+                                          {section.sectionName ||
+                                            getDisplaySectionName(
+                                              section.sectionName,
+                                              getDefaultSectionName(
+                                                selectedBatch.program,
+                                                section.sectionCode
+                                              )
+                                            )}
+                                        </option>
+                                      ))}
+                                    </select>
+                                  </td>
+                                  <td className="px-4 py-3">
+                                    {isEditingRoster ? (
+                                      <span className="text-sm font-medium text-slate-400">
+                                        Editing
+                                      </span>
+                                    ) : (
+                                      <div className="flex flex-wrap gap-2">
+                                        <button
+                                          type="button"
+                                          onClick={() =>
+                                            setPendingRemoval({
+                                              studentId: student.studentId,
+                                              studentName: buildStudentName(student),
+                                              reason: REMOVAL_REASONS[0],
+                                              note: "",
+                                            })
+                                          }
+                                          className="rounded-lg border border-red-200 px-3 py-2 text-sm font-semibold text-red-600 hover:bg-red-50"
+                                        >
+                                          Remove
+                                        </button>
+                                      </div>
+                                    )}
+                                  </td>
+                                </tr>
+                              );
+                            })
                           ) : (
                             <tr>
                               <td colSpan="5" className="py-8 text-center text-slate-500">

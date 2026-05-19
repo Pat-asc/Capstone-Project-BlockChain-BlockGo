@@ -46,12 +46,16 @@ const buildFullName = (student = {}) =>
 const buildEnrollmentFile = (students = [], sectionCode = "section") => {
   const rows = students.map((student) => [
     student.studentId || "",
-    student.email || student.studentEmail || "",
+    student.email || student.studentEmail || student.studentId || "",
     buildFullName(student),
+    student.firstName || "",
+    getStudentMiddleName(student),
+    student.lastName || "",
+    student.sex || "",
     "",
   ]);
   const csv = buildCsvContent([
-    ["student_id", "email", "full_name", "dob"],
+    ["student_id", "email", "full_name", "first_name", "middle_name", "last_name", "sex", "dob"],
     ...rows,
   ]);
 
@@ -73,6 +77,17 @@ const getDepartmentSections = async (department) => {
   return response.data || response.sections || [];
 };
 
+const mapStudentsForSectionCreate = (students = []) =>
+  students.map((student) => ({
+    studentId: student.studentId || "",
+    sex: student.sex || "",
+    lastName: student.lastName || "",
+    firstName: student.firstName || "",
+    middleName: getStudentMiddleName(student),
+    email: student.email || student.studentEmail || student.studentId || "",
+    dob: student.dob || student.dateOfBirth || "",
+  }));
+
 export const syncSectioningBatchToBackend = async (batch = {}) => {
   const department = batch.program || "";
   const sectionPlans = batch.sectionPlans || [];
@@ -89,6 +104,14 @@ export const syncSectioningBatchToBackend = async (batch = {}) => {
     const yearLevel = yearLevelNumberFrom(section.yearLevel, section.sectionCode);
     const sectionNum = sectionNumberFrom(section.sectionCode);
     if (!yearLevel || !sectionNum) continue;
+    const sectionStudents = (batch.students || []).filter(
+      (student) =>
+        student.sectionCode === section.sectionCode &&
+        normalizeSectionValue(
+          yearLevelNumberFrom(student.yearLevel || section.yearLevel, section.sectionCode)
+        ) === normalizeSectionValue(yearLevel)
+    );
+    let studentsSyncedWithCreate = false;
 
     let backendSection = findBackendSection(
       backendSections,
@@ -103,8 +126,11 @@ export const syncSectioningBatchToBackend = async (batch = {}) => {
           department,
           yearLevel,
           sectionNum,
+          students: mapStudentsForSectionCreate(sectionStudents),
         });
         sectionsSynced += 1;
+        studentsSynced += created.studentsSaved || 0;
+        studentsSyncedWithCreate = (created.studentsSaved || 0) > 0;
         backendSection = {
           id: created.id,
           department,
@@ -124,15 +150,8 @@ export const syncSectioningBatchToBackend = async (batch = {}) => {
       }
     }
 
-    const sectionStudents = (batch.students || []).filter(
-      (student) =>
-        student.sectionCode === section.sectionCode &&
-        normalizeSectionValue(
-          yearLevelNumberFrom(student.yearLevel || section.yearLevel, section.sectionCode)
-        ) === normalizeSectionValue(yearLevel)
-    );
-
     if (!backendSection?.id || !sectionStudents.length) continue;
+    if (studentsSyncedWithCreate) continue;
 
     const enrollmentFile = buildEnrollmentFile(sectionStudents, section.sectionCode);
     await batchEnrollStudentsToSection(enrollmentFile, backendSection.id);

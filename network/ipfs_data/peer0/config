@@ -59,7 +59,7 @@
     "Enabled": false
   },
   "Bitswap": {},
-  "Bootstrap": [],
+  "Bootstrap": null,
   "DNS": {
     "Resolvers": {}
   },
