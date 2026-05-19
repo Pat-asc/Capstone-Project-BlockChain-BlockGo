@@ -44,6 +44,10 @@ function App() {
     localStorage.removeItem("blockgo-allGrades");
     localStorage.removeItem(CHAIRPERSON_REVIEW_KEY);
     localStorage.removeItem("registrarAssignments");
+    localStorage.removeItem("studentSections");
+    localStorage.removeItem("irregularSubjectAssignments");
+    localStorage.removeItem("chairpersonStudentBatches");
+    localStorage.removeItem("chairpersonSectionReviews");
     setAllGrades({});
   };
 

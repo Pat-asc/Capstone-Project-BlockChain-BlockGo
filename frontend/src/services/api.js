@@ -492,6 +492,13 @@ export const registrarBulkUpdateStudents = async (file) => {
     return await bulkUpdateStudents(file);
 };
 
+export const registrarAddTemporaryStudent = async (studentData) => {
+    return await fetchWithAuth(`/Auth/students/temporary`, {
+        method: 'POST',
+        body: JSON.stringify(studentData)
+    });
+};
+
 export const registrarBulkUploadFaculty = async (file, mode = 'enroll') => {
     const formData = new FormData();
     formData.append('file', file);

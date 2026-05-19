@@ -14,7 +14,7 @@ function EncodingPeriod({ onResetEncodingSeason }) {
   const isSuccessStatusMessage =
     statusMessage === "Encoding period saved successfully." ||
     statusMessage ===
-      "Encoding season reset successfully. Faculty assigned sections were cleared, saved sections were kept, and the encoding period was closed.";
+      "Encoding season reset successfully. Sections, faculty assignments, temporary students, and pending grades were cleared.";
 
   useEffect(() => {
     const loadSavedPeriod = async () => {
@@ -88,7 +88,7 @@ function EncodingPeriod({ onResetEncodingSeason }) {
 
   const handleResetSeason = async () => {
     const shouldReset = window.confirm(
-      "Reset this encoding season? This will clear assigned faculty sections for the current encoding cycle, but will keep the saved student sections."
+      "Reset this encoding season? This will clear sections, faculty assignments, temporary students, pending grades, and sectioning state."
     );
 
     if (!shouldReset) return;
@@ -103,10 +103,10 @@ function EncodingPeriod({ onResetEncodingSeason }) {
         term: "midterm",
       });
       setStatusMessage(
-        "Encoding season reset successfully. Faculty assigned sections were cleared, saved sections were kept, and the encoding period was closed."
+        "Encoding season reset successfully. Sections, faculty assignments, temporary students, and pending grades were cleared."
       );
       alert(
-        "Encoding season has been reset. Faculty assigned sections are now cleared, saved sections were kept, and the encoding period is now closed."
+        "Encoding season has been reset. Sections, faculty assignments, temporary students, pending grades, and sectioning state are now cleared."
       );
     } catch (error) {
       setStatusMessage(

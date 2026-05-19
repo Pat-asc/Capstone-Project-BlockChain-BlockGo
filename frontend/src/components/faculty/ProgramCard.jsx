@@ -133,7 +133,7 @@ const ProgramCard = ({
             e.stopPropagation();
             onSubmit?.();
           }}
-          disabled={!isCompleted || isSubmitted || isApproved || isForwarded}
+          disabled={isSubmitted || isApproved || isForwarded}
           className="h-12 rounded-xl border border-green-200 bg-green-50 font-bold text-green-700 transition hover:bg-green-500 hover:text-white disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-400"
         >
           {getSubmitLabel()}

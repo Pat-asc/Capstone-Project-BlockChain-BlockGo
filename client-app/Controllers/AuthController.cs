@@ -10,6 +10,7 @@ using Npgsql;
 using Client_app.Models;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Net.Http;
 using System.Net.Mail;
 using System.IO;
@@ -90,6 +91,12 @@ namespace Client_app.Controllers
                         END IF;
                         IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='studentprofiles' AND column_name='student_email') THEN
                             ALTER TABLE studentprofiles ADD COLUMN student_email VARCHAR(255);
+                        END IF;
+                        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='studentprofiles' AND column_name='is_temporary') THEN
+                            ALTER TABLE studentprofiles ADD COLUMN is_temporary BOOLEAN DEFAULT FALSE;
+                        END IF;
+                        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='studentprofiles' AND column_name='student_status') THEN
+                            ALTER TABLE studentprofiles ADD COLUMN student_status VARCHAR(50) DEFAULT 'regular';
                         END IF;
                     END $$;
 
@@ -571,7 +578,8 @@ namespace Client_app.Controllers
                 var students = new List<object>();
 
                 using (var cmd = new NpgsqlCommand(@"
-                    SELECT u.id, sp.full_name, u.email, sp.department, sp.student_no, sp.section, sp.assignment_status 
+                    SELECT u.id, sp.full_name, u.email, sp.department, sp.student_no, sp.section, sp.assignment_status,
+                           COALESCE(sp.student_status, 'regular'), COALESCE(sp.is_temporary, FALSE)
                     FROM Users u JOIN StudentProfiles sp ON u.id = sp.user_id 
                     WHERE u.role = 'student' AND u.status = 'APPROVED'", conn))
                 using (var reader = await cmd.ExecuteReaderAsync())
@@ -585,7 +593,9 @@ namespace Client_app.Controllers
                             department = reader.IsDBNull(3) ? null : reader.GetString(3),
                             studentno = reader.IsDBNull(4) ? null : reader.GetString(4),
                             section = reader.IsDBNull(5) ? null : reader.GetString(5),
-                            assignmentStatus = reader.IsDBNull(6) ? "Unassigned" : reader.GetString(6)
+                            assignmentStatus = reader.IsDBNull(6) ? "Unassigned" : reader.GetString(6),
+                            studentStatus = reader.IsDBNull(7) ? "regular" : reader.GetString(7),
+                            isTemporary = !reader.IsDBNull(8) && reader.GetBoolean(8)
                         });
                     }
                 }
@@ -639,6 +649,225 @@ namespace Client_app.Controllers
 
                 await NotifyAcademicDataChangedAsync("student_assigned", request.Department, userEmail);
                 return Ok(new { status = "Success", message = "Student assigned and automatically enrolled." });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = "Error", message = ex.Message });
+            }
+        }
+
+        public class TemporaryStudentRequest
+        {
+            public string StudentNo { get; set; } = string.Empty;
+            public string FirstName { get; set; } = string.Empty;
+            public string MiddleName { get; set; } = string.Empty;
+            public string LastName { get; set; } = string.Empty;
+            public string FullName { get; set; } = string.Empty;
+            public string Email { get; set; } = string.Empty;
+            public string Department { get; set; } = string.Empty;
+            public string Section { get; set; } = string.Empty;
+            public string Birthday { get; set; } = string.Empty;
+            public string Sex { get; set; } = string.Empty;
+        }
+
+        [HttpPost("students/temporary")]
+        [Authorize(Roles = "registrar,admin")]
+        public async Task<IActionResult> AddTemporaryStudent([FromBody] TemporaryStudentRequest request)
+        {
+            try
+            {
+                if (request == null)
+                    return BadRequest(new { status = "Error", message = "Invalid temporary student data." });
+
+                var department = request.Department?.Trim() ?? "";
+                var section = request.Section?.Trim() ?? "";
+                if (string.IsNullOrWhiteSpace(department))
+                    return BadRequest(new { status = "Error", message = "Department is required." });
+                if (string.IsNullOrWhiteSpace(section))
+                    return BadRequest(new { status = "Error", message = "Section is required." });
+
+                var studentNo = string.IsNullOrWhiteSpace(request.StudentNo)
+                    ? $"TEMP-{DateTime.UtcNow:yyyyMMddHHmmss}"
+                    : request.StudentNo.Trim();
+                var email = string.IsNullOrWhiteSpace(request.Email)
+                    ? $"{studentNo.ToLowerInvariant()}@temporary.plv.edu.ph"
+                    : request.Email.Trim().ToLowerInvariant();
+                var fullName = !string.IsNullOrWhiteSpace(request.FullName)
+                    ? request.FullName.Trim()
+                    : $"{request.FirstName} {request.MiddleName} {request.LastName}".Replace("  ", " ").Trim();
+                if (string.IsNullOrWhiteSpace(fullName))
+                    return BadRequest(new { status = "Error", message = "Student name is required." });
+
+                var birthday = string.IsNullOrWhiteSpace(request.Birthday) ? "01/01/2005" : request.Birthday.Trim();
+                DateTime? dobDate = null;
+                if (DateTime.TryParseExact(birthday, "MM/dd/yyyy", CultureInfo.InvariantCulture, DateTimeStyles.None, out var parsedDob))
+                {
+                    dobDate = parsedDob.Date;
+                }
+                else if (DateTime.TryParse(birthday, out var fallbackDob))
+                {
+                    dobDate = fallbackDob.Date;
+                    birthday = fallbackDob.ToString("MM/dd/yyyy");
+                }
+
+                if (!dobDate.HasValue)
+                    return BadRequest(new { status = "Error", message = "Birthday must use MM/DD/YYYY." });
+
+                using var conn = new NpgsqlConnection(_connectionString);
+                await conn.OpenAsync();
+
+                using var ensureColumnsCmd = new NpgsqlCommand(@"
+                    ALTER TABLE StudentProfiles
+                        ADD COLUMN IF NOT EXISTS is_temporary BOOLEAN DEFAULT FALSE,
+                        ADD COLUMN IF NOT EXISTS student_status VARCHAR(50) DEFAULT 'regular';", conn);
+                await ensureColumnsCmd.ExecuteNonQueryAsync();
+
+                int userId = 0;
+                bool existingUser = false;
+                string existingRole = "";
+                using (var checkCmd = new NpgsqlCommand("SELECT id, COALESCE(role, '') FROM Users WHERE LOWER(email) = LOWER(@email) LIMIT 1", conn))
+                {
+                    checkCmd.Parameters.AddWithValue("email", email);
+                    using var reader = await checkCmd.ExecuteReaderAsync();
+                    if (await reader.ReadAsync())
+                    {
+                        existingUser = true;
+                        userId = reader.GetInt32(0);
+                        existingRole = reader.GetString(1);
+                    }
+                }
+
+                using var tx = await conn.BeginTransactionAsync();
+
+                if (existingUser)
+                {
+                    if (!string.Equals(existingRole, "student", StringComparison.OrdinalIgnoreCase))
+                    {
+                        throw new Exception("An account with this email already exists under a different role.");
+                    }
+
+                    using var updateUserCmd = new NpgsqlCommand(@"
+                        UPDATE Users
+                        SET status = 'APPROVED',
+                            password_hash = crypt(@password, gen_salt('bf', 12))
+                        WHERE id = @id", conn, tx);
+                    updateUserCmd.Parameters.AddWithValue("id", userId);
+                    updateUserCmd.Parameters.AddWithValue("password", birthday);
+                    await updateUserCmd.ExecuteNonQueryAsync();
+
+                    using var updateProfileCmd = new NpgsqlCommand(@"
+                        UPDATE StudentProfiles
+                        SET full_name = @name,
+                            student_no = @studentNo,
+                            department = @dept,
+                            section = @section,
+                            date_of_birth = @dob,
+                            student_email = @email,
+                            middle_name = @middleName,
+                            sex = @sex,
+                            assignment_status = 'Irregular',
+                            is_temporary = TRUE,
+                            student_status = 'irregular'
+                        WHERE user_id = @uid", conn, tx);
+                    updateProfileCmd.Parameters.AddWithValue("uid", userId);
+                    updateProfileCmd.Parameters.AddWithValue("name", fullName);
+                    updateProfileCmd.Parameters.AddWithValue("studentNo", studentNo);
+                    updateProfileCmd.Parameters.AddWithValue("dept", department);
+                    updateProfileCmd.Parameters.AddWithValue("section", section);
+                    updateProfileCmd.Parameters.AddWithValue("dob", dobDate.Value);
+                    updateProfileCmd.Parameters.AddWithValue("email", email);
+                    updateProfileCmd.Parameters.AddWithValue("middleName", request.MiddleName?.Trim() ?? "");
+                    updateProfileCmd.Parameters.AddWithValue("sex", request.Sex?.Trim() ?? "");
+                    var updatedProfileRows = await updateProfileCmd.ExecuteNonQueryAsync();
+
+                    if (updatedProfileRows == 0)
+                    {
+                        using var insertProfileCmd = new NpgsqlCommand(@"
+                            INSERT INTO StudentProfiles (user_id, full_name, student_no, department, section, date_of_birth, student_email, middle_name, sex, assignment_status, is_temporary, student_status)
+                            VALUES (@uid, @name, @studentNo, @dept, @section, @dob, @email, @middleName, @sex, 'Irregular', TRUE, 'irregular')", conn, tx);
+                        insertProfileCmd.Parameters.AddWithValue("uid", userId);
+                        insertProfileCmd.Parameters.AddWithValue("name", fullName);
+                        insertProfileCmd.Parameters.AddWithValue("studentNo", studentNo);
+                        insertProfileCmd.Parameters.AddWithValue("dept", department);
+                        insertProfileCmd.Parameters.AddWithValue("section", section);
+                        insertProfileCmd.Parameters.AddWithValue("dob", dobDate.Value);
+                        insertProfileCmd.Parameters.AddWithValue("email", email);
+                        insertProfileCmd.Parameters.AddWithValue("middleName", request.MiddleName?.Trim() ?? "");
+                        insertProfileCmd.Parameters.AddWithValue("sex", request.Sex?.Trim() ?? "");
+                        await insertProfileCmd.ExecuteNonQueryAsync();
+                    }
+                }
+                else
+                {
+                    using var cmdUser = new NpgsqlCommand(@"
+                        INSERT INTO Users (email, password_hash, role, status)
+                        VALUES (@email, crypt(@password, gen_salt('bf', 12)), 'student', 'APPROVED')
+                        RETURNING id", conn, tx);
+                    cmdUser.Parameters.AddWithValue("email", email);
+                    cmdUser.Parameters.AddWithValue("password", birthday);
+                    userId = (int)(await cmdUser.ExecuteScalarAsync() ?? throw new Exception("Failed to create temporary student user."));
+
+                    using var cmdProfile = new NpgsqlCommand(@"
+                        INSERT INTO StudentProfiles (user_id, full_name, student_no, department, section, date_of_birth, student_email, middle_name, sex, assignment_status, is_temporary, student_status)
+                        VALUES (@uid, @name, @studentNo, @dept, @section, @dob, @email, @middleName, @sex, 'Irregular', TRUE, 'irregular')", conn, tx);
+                    cmdProfile.Parameters.AddWithValue("uid", userId);
+                    cmdProfile.Parameters.AddWithValue("name", fullName);
+                    cmdProfile.Parameters.AddWithValue("studentNo", studentNo);
+                    cmdProfile.Parameters.AddWithValue("dept", department);
+                    cmdProfile.Parameters.AddWithValue("section", section);
+                    cmdProfile.Parameters.AddWithValue("dob", dobDate.Value);
+                    cmdProfile.Parameters.AddWithValue("email", email);
+                    cmdProfile.Parameters.AddWithValue("middleName", request.MiddleName?.Trim() ?? "");
+                    cmdProfile.Parameters.AddWithValue("sex", request.Sex?.Trim() ?? "");
+                    await cmdProfile.ExecuteNonQueryAsync();
+                }
+
+                await tx.CommitAsync();
+
+                if (!existingUser)
+                {
+                    try
+                    {
+                        using var client = _httpClientFactory.CreateClient("FabricCAClient");
+                        var apiKey = Environment.GetEnvironmentVariable("INTERNAL_API_KEY") ?? _configuration["InternalApiKey"];
+                        if (!string.IsNullOrWhiteSpace(apiKey))
+                        {
+                            client.DefaultRequestHeaders.Add("x-api-key", apiKey);
+                        }
+                        var middlewareUrl = _configuration["Middleware:Url"] ?? _configuration["MIDDLEWARE_URL"] ?? "http://127.0.0.1:4000";
+                        var payload = new { email, role = "student", password = birthday };
+                        var content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
+                        var response = await client.PostAsync($"{middlewareUrl}/api/fabric/register-user", content);
+                        if (!response.IsSuccessStatusCode)
+                        {
+                            _logger.LogWarning("Temporary student wallet registration failed for {Email}: {Error}", email, await response.Content.ReadAsStringAsync());
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Temporary student wallet registration failed for {Email}.", email);
+                    }
+                }
+
+                _cache.Remove("approved_students");
+                await NotifyAcademicDataChangedAsync("temporary_student_added", department, email);
+                return Ok(new
+                {
+                    status = "Success",
+                    message = "Temporary irregular student added.",
+                    student = new
+                    {
+                        id = userId,
+                        fullname = fullName,
+                        email,
+                        department,
+                        studentno = studentNo,
+                        section,
+                        assignmentStatus = "Irregular",
+                        studentStatus = "irregular",
+                        isTemporary = true
+                    }
+                });
             }
             catch (Exception ex)
             {
@@ -1216,7 +1445,8 @@ namespace Client_app.Controllers
                 // Fetch all approved students matching ANY of the faculty's assigned sections across multiple departments
                 var students = new List<object>();
                 using var cmdStudents = new NpgsqlCommand(@"
-                    SELECT u.id, sp.full_name, u.email, sp.student_no, sp.assignment_status, sp.department, sp.section, matched_fs.section, matched_fs.year_level
+                    SELECT u.id, sp.full_name, u.email, sp.student_no, sp.assignment_status, sp.department, sp.section, matched_fs.section, matched_fs.year_level,
+                           COALESCE(sp.student_status, 'regular'), COALESCE(sp.is_temporary, FALSE)
                     FROM Users u 
                     JOIN StudentProfiles sp ON u.id = sp.user_id
                     JOIN LATERAL (
@@ -1238,7 +1468,7 @@ namespace Client_app.Controllers
                         LIMIT 1
                     ) matched_fs ON TRUE
                     WHERE u.role = 'student' AND u.status = 'APPROVED'
-                      AND sp.assignment_status IN ('Enrolled', 'Pending Department Approval')
+                      AND sp.assignment_status IN ('Enrolled', 'Pending Department Approval', 'Irregular')
                     ORDER BY u.id", conn);
                 
                 cmdStudents.Parameters.AddWithValue("email", email);
@@ -1256,7 +1486,9 @@ namespace Client_app.Controllers
                             department = reader.IsDBNull(5) ? "N/A" : reader.GetString(5),
                             section = reader.IsDBNull(6) ? "N/A" : reader.GetString(6),
                             sectionNum = reader.IsDBNull(7) ? "N/A" : reader.GetString(7),
-                            yearLevel = reader.IsDBNull(8) ? "N/A" : reader.GetString(8)
+                            yearLevel = reader.IsDBNull(8) ? "N/A" : reader.GetString(8),
+                            studentStatus = reader.IsDBNull(9) ? "regular" : reader.GetString(9),
+                            isTemporary = !reader.IsDBNull(10) && reader.GetBoolean(10)
                         });
                     }
                 }

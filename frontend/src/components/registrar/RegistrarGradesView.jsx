@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { fetchAllGrades, finalizeGrade, returnGrade, fetchPendingRequests, approveRegistrationRequest, denyRegistrationRequest, fetchApprovedStudents, assignStudent, fetchApprovedAdmins, assignDepartmentAdmin, revokeDepartmentAdmin, fetchApprovedFaculties, assignFaculty, dropStudent, revokeFaculty, getDecryptedIpfsUrl, fetchStagedGrades, finalizeStagedGrades, getSystemSetting, registrarBulkEnrollStudents, registrarBulkUpdateStudents, registrarBulkUploadFaculty, registrarBulkUploadChairperson, resetEncodingSeason } from '../../services/api';
+import { fetchAllGrades, finalizeGrade, returnGrade, fetchPendingRequests, approveRegistrationRequest, denyRegistrationRequest, fetchApprovedStudents, assignStudent, fetchApprovedAdmins, assignDepartmentAdmin, revokeDepartmentAdmin, fetchApprovedFaculties, assignFaculty, dropStudent, revokeFaculty, getDecryptedIpfsUrl, fetchStagedGrades, finalizeStagedGrades, getSystemSetting, registrarBulkEnrollStudents, registrarBulkUpdateStudents, registrarAddTemporaryStudent, registrarBulkUploadFaculty, registrarBulkUploadChairperson, resetEncodingSeason } from '../../services/api';
 import RegistrarHeader from './RegistrarHeader';
 import RegistrarSidebar from './RegistrarSidebar';
 import RegistrarDashboard from './RegistrarDashboard';
@@ -67,6 +67,18 @@ const RegistrarGradesView = ({
     const [activeSemester, setActiveSemester] = useState('2nd Semester');
     const [bulkEnrollLoading, setBulkEnrollLoading] = useState(false);
     const [bulkEnrollResult, setBulkEnrollResult] = useState(null);
+    const [temporaryStudentLoading, setTemporaryStudentLoading] = useState(false);
+    const [temporaryStudentForm, setTemporaryStudentForm] = useState({
+        studentNo: '',
+        firstName: '',
+        middleName: '',
+        lastName: '',
+        email: '',
+        department: '',
+        section: '',
+        birthday: '',
+        sex: '',
+    });
     const [facultyBulkUploadLoading, setFacultyBulkUploadLoading] = useState(false);
     const [facultyBulkUploadResult, setFacultyBulkUploadResult] = useState(null);
     const [chairpersonBulkUploadLoading, setChairpersonBulkUploadLoading] = useState(false);
@@ -347,6 +359,10 @@ const RegistrarGradesView = ({
                 term: 'midterm',
             });
             localStorage.removeItem('registrarAssignments');
+            localStorage.removeItem('studentSections');
+            localStorage.removeItem('irregularSubjectAssignments');
+            localStorage.removeItem('chairpersonStudentBatches');
+            localStorage.removeItem('chairpersonSectionReviews');
             localStorage.setItem('encodingPeriod', resetEncodingPeriod);
             localStorage.setItem('facultyLoadResetAt', new Date().toISOString());
             window.dispatchEvent(
@@ -363,12 +379,13 @@ const RegistrarGradesView = ({
                 })
             );
             await loadApprovedFaculties();
+            await loadApprovedStudents();
             await loadGrades(true);
         } catch (error) {
             alert(error.message || 'Failed to reset encoding season.');
             throw error;
         }
-    }, [loadApprovedFaculties, loadGrades]);
+    }, [loadApprovedFaculties, loadApprovedStudents, loadGrades]);
 
     useEffect(() => { loadGrades(); }, [loadGrades]);
 
@@ -593,18 +610,36 @@ const RegistrarGradesView = ({
     }, []);
 
     const formatStudentStanding = useCallback((standing) => {
+        const normalizedStanding = String(standing || '').trim().toLowerCase();
+        if (normalizedStanding.startsWith('irreg:')) {
+            const status = normalizedStanding.split(':')[1]?.toUpperCase() || 'INC';
+            return `irreg:${status}`;
+        }
+        if (normalizedStanding === 'inc') {
+            return 'Incomplete (INC)';
+        }
         switch (standing) {
             case 'dropped':
                 return 'Dropped (D)';
             case 'unofficially_dropped':
                 return 'Unofficial Dropped (UD)';
+            case 'unknown_reason':
+                return 'Unknown Reason (U)';
             case 'withdrawn':
                 return 'Withdrawn (W)';
             case 'incomplete':
                 return 'Incomplete (INC)';
+            case 'inactive':
+                return 'Inactive';
             default:
                 return 'Active';
         }
+    }, []);
+
+    const isNonActiveStanding = useCallback((standing) => {
+        const normalizedStanding = String(standing || '').trim().toLowerCase();
+        return normalizedStanding.startsWith('irreg:') ||
+            ['dropped', 'unofficially_dropped', 'unknown_reason', 'withdrawn', 'incomplete', 'inc', 'inactive'].includes(normalizedStanding);
     }, []);
 
     const getGradeEquivalent = useCallback((grade) => {
@@ -755,10 +790,9 @@ const RegistrarGradesView = ({
     }, [normalizeRegistrarReviewStatus, parseReviewTimestamp]);
 
     const getSectionEncodingSummary = useCallback((records) => {
-        const exemptStandings = ['dropped', 'unofficially_dropped', 'withdrawn', 'incomplete'];
         const relevantRecords = records.filter((record) => {
             const standing = String(record.standing || 'active').trim().toLowerCase();
-            return !exemptStandings.includes(standing);
+            return !isNonActiveStanding(standing);
         });
 
         const missingFinalsCount = relevantRecords.filter((record) => {
@@ -794,7 +828,7 @@ const RegistrarGradesView = ({
             toneClass: 'bg-emerald-100 text-emerald-700',
             helperText: 'All active students have finals grades encoded.',
         };
-    }, []);
+    }, [isNonActiveStanding]);
 
     const groupedStagedGrades = useMemo(() => {
         const canRecordBeFinalized = (record) => {
@@ -809,7 +843,7 @@ const RegistrarGradesView = ({
                 !Number.isNaN(finalsNumber) &&
                 finalsNumber > 0;
 
-            if (['dropped', 'unofficially_dropped', 'withdrawn', 'incomplete'].includes(standing)) {
+            if (isNonActiveStanding(standing)) {
                 return true;
             }
 
@@ -841,7 +875,7 @@ const RegistrarGradesView = ({
             String(a.section).localeCompare(String(b.section)) ||
             String(a.subjectCode).localeCompare(String(b.subjectCode))
         );
-    }, [parseGradePayload, stagedGrades]);
+    }, [isNonActiveStanding, parseGradePayload, stagedGrades]);
 
     const handleFinalizeBatch = async (records) => {
         const hasIncompleteFinals = records.some((record) => {
@@ -856,7 +890,7 @@ const RegistrarGradesView = ({
                 !Number.isNaN(finalsNumber) &&
                 finalsNumber > 0;
 
-            if (['dropped', 'unofficially_dropped', 'withdrawn', 'incomplete'].includes(standing)) {
+            if (isNonActiveStanding(standing)) {
                 return false;
             }
 
@@ -906,7 +940,7 @@ const RegistrarGradesView = ({
                     payload,
                     standing,
                     standingLabel: formatStudentStanding(standing),
-                    hasPriorityStatus: ['dropped', 'unofficially_dropped', 'withdrawn', 'incomplete'].includes(standing),
+                    hasPriorityStatus: isNonActiveStanding(standing),
                     facultyEmail,
                     facultyName,
                     sectionName,
@@ -919,7 +953,7 @@ const RegistrarGradesView = ({
                     flagged: !!payload.flagged,
                 };
             }),
-        [filteredGrades, parseGradePayload, facultyNameLookup, formatStudentStanding, getGradeEquivalent]
+        [filteredGrades, parseGradePayload, facultyNameLookup, formatStudentStanding, getGradeEquivalent, isNonActiveStanding]
     );
 
     const facultyMonitoringList = useMemo(() => {
@@ -1223,6 +1257,40 @@ const RegistrarGradesView = ({
     const handleBulkEnroll = () => handleStudentCsvAction('enroll');
     const handleBulkUpdateInfo = () => handleStudentCsvAction('update');
 
+    const updateTemporaryStudentField = (field, value) => {
+        setTemporaryStudentForm((current) => ({ ...current, [field]: value }));
+    };
+
+    const handleAddTemporaryStudent = async (event) => {
+        event.preventDefault();
+        if (temporaryStudentLoading) return;
+
+        try {
+            setTemporaryStudentLoading(true);
+            const result = await registrarAddTemporaryStudent({
+                ...temporaryStudentForm,
+                department: temporaryStudentForm.department || departments[0],
+            });
+            alert(result.message || 'Temporary irregular student added.');
+            setTemporaryStudentForm({
+                studentNo: '',
+                firstName: '',
+                middleName: '',
+                lastName: '',
+                email: '',
+                department: '',
+                section: '',
+                birthday: '',
+                sex: '',
+            });
+            await loadApprovedStudents();
+        } catch (error) {
+            alert(error.message || 'Failed to add temporary student.');
+        } finally {
+            setTemporaryStudentLoading(false);
+        }
+    };
+
     const handleDownloadFacultyUploadTemplate = () => {
         const rows = [
             ['email', 'first_name', 'last_name', 'department', 'birthday'],
@@ -1388,7 +1456,7 @@ const RegistrarGradesView = ({
                             <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
                                 <div className="flex flex-col gap-4">
                                     <div className="max-w-2xl">
-                                        <h3 className="text-xl font-bold text-[#003366]">Register Students</h3>
+                                        <h3 className="text-xl font-bold text-[#003366]">Register User</h3>
                                         <p className="mt-1 text-sm text-slate-500">
                                             Required columns: student ID, first name, last name, middle name, sex, email, number, address, and birthday. Student ID must use `xx-xxxx`, and birthday must use `MM/DD/YYYY`.
                                         </p>
@@ -1440,13 +1508,105 @@ const RegistrarGradesView = ({
                                         {bulkEnrollLoading ? 'Uploading...' : 'Update Student Info'}
                                     </button>
                                 </div>
+                                <form onSubmit={handleAddTemporaryStudent} className="mt-6 border-t border-slate-200 pt-5">
+                                    <div className="mb-4">
+                                        <h4 className="text-base font-bold text-[#003366]">Add Temporary Student</h4>
+                                        <p className="mt-1 text-xs text-slate-500">
+                                            Temporary students are marked irregular and are removed when the encoding season is reset.
+                                        </p>
+                                    </div>
+                                    <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                                        <input
+                                            type="text"
+                                            value={temporaryStudentForm.studentNo}
+                                            onChange={(event) => updateTemporaryStudentField('studentNo', event.target.value)}
+                                            placeholder="Temporary Student No."
+                                            className="rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-[#003366]"
+                                        />
+                                        <input
+                                            type="text"
+                                            value={temporaryStudentForm.firstName}
+                                            onChange={(event) => updateTemporaryStudentField('firstName', event.target.value)}
+                                            placeholder="First name"
+                                            required
+                                            className="rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-[#003366]"
+                                        />
+                                        <input
+                                            type="text"
+                                            value={temporaryStudentForm.middleName}
+                                            onChange={(event) => updateTemporaryStudentField('middleName', event.target.value)}
+                                            placeholder="Middle name"
+                                            className="rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-[#003366]"
+                                        />
+                                        <input
+                                            type="text"
+                                            value={temporaryStudentForm.lastName}
+                                            onChange={(event) => updateTemporaryStudentField('lastName', event.target.value)}
+                                            placeholder="Last name"
+                                            required
+                                            className="rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-[#003366]"
+                                        />
+                                        <input
+                                            type="email"
+                                            value={temporaryStudentForm.email}
+                                            onChange={(event) => updateTemporaryStudentField('email', event.target.value)}
+                                            placeholder="Email"
+                                            className="rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-[#003366]"
+                                        />
+                                        <input
+                                            type="text"
+                                            value={temporaryStudentForm.section}
+                                            onChange={(event) => updateTemporaryStudentField('section', event.target.value)}
+                                            placeholder="Section"
+                                            required
+                                            className="rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-[#003366]"
+                                        />
+                                        <select
+                                            value={temporaryStudentForm.department}
+                                            onChange={(event) => updateTemporaryStudentField('department', event.target.value)}
+                                            className="rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none focus:border-[#003366] md:col-span-2 xl:col-span-1"
+                                        >
+                                            <option value="">Select department</option>
+                                            {departments.map((department) => (
+                                                <option key={department} value={department}>
+                                                    {department}
+                                                </option>
+                                            ))}
+                                        </select>
+                                        <input
+                                            type="text"
+                                            value={temporaryStudentForm.birthday}
+                                            onChange={(event) => updateTemporaryStudentField('birthday', event.target.value)}
+                                            placeholder="Birthday MM/DD/YYYY"
+                                            className="rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-[#003366]"
+                                        />
+                                        <select
+                                            value={temporaryStudentForm.sex}
+                                            onChange={(event) => updateTemporaryStudentField('sex', event.target.value)}
+                                            className="rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none focus:border-[#003366]"
+                                        >
+                                            <option value="">Sex</option>
+                                            <option value="Female">Female</option>
+                                            <option value="Male">Male</option>
+                                        </select>
+                                    </div>
+                                    <div className="mt-4 flex justify-end">
+                                        <button
+                                            type="submit"
+                                            disabled={temporaryStudentLoading}
+                                            className="inline-flex items-center justify-center rounded-xl bg-amber-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-amber-700 disabled:cursor-not-allowed disabled:bg-slate-300"
+                                        >
+                                            {temporaryStudentLoading ? 'Adding...' : 'Add Temporary Student'}
+                                        </button>
+                                    </div>
+                                </form>
                             </div>
                             <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
                                 <div className="flex flex-col gap-4">
                                     <div className="max-w-3xl">
                                         <h3 className="text-xl font-bold text-[#003366]">Register Faculty</h3>
                                         <p className="mt-1 text-sm text-slate-500">
-                                            Required columns: email, first name, last name, department, and birthday. Missing required fields will be rejected. Birthday must use `MM/DD/YYYY` and becomes the faculty member&apos;s default password for first login.
+                                            Required columns: email, first name, last name, department, and birthday. No faculty ID number is required. Birthday must use `MM/DD/YYYY` and becomes the faculty member&apos;s default password for first login.
                                         </p>
                                         <p className="mt-1 text-xs text-slate-500">
                                             For updates, email is required. You can update name, birthday, and department. When department changes, the faculty member&apos;s department assignments move to the new department automatically.
@@ -1912,7 +2072,16 @@ const RegistrarGradesView = ({
                                                             <p className="text-base font-bold text-slate-800">{student.fullname}</p>
                                                             <p className="text-sm text-slate-500">Student No. {student.studentno}</p>
                                                         </div>
-                                                        <span className={`inline-block rounded-full px-3 py-1 text-xs font-bold ${student.assignmentStatus === 'Unassigned' ? 'bg-yellow-100 text-yellow-800' : 'bg-blue-100 text-blue-800'}`}>{student.assignmentStatus}</span>
+                                                        <div className="flex flex-wrap gap-2">
+                                                            <span className={`inline-block rounded-full px-3 py-1 text-xs font-bold ${student.assignmentStatus === 'Unassigned' ? 'bg-yellow-100 text-yellow-800' : student.studentStatus === 'irregular' ? 'bg-amber-100 text-amber-800' : 'bg-blue-100 text-blue-800'}`}>
+                                                                {student.studentStatus === 'irregular' ? 'Irregular' : student.assignmentStatus}
+                                                            </span>
+                                                            {student.isTemporary ? (
+                                                                <span className="inline-block rounded-full bg-slate-200 px-3 py-1 text-xs font-bold text-slate-700">
+                                                                    Temporary
+                                                                </span>
+                                                            ) : null}
+                                                        </div>
                                                     </div>
 
                                                     <div className="grid flex-1 gap-3 lg:max-w-3xl lg:grid-cols-[minmax(0,1.8fr)_minmax(0,1fr)_auto]">

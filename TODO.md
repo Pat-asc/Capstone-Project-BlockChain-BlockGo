@@ -41,3 +41,57 @@ to do
 - status of encoded grades [/]
 - add a indication that encoded grades has inc information [/]
 - registrar can now reject grades [/]
+
+###
+latest applied requests / traceback
+
+- [x] Student portal: added previous semester grades filter with school year dropdown and semester dropdown.
+- [x] Student portal: added TOR preview, print, and save PDF flow.
+- [x] Student portal: TOR print/save is blocked with "complete your course years before printing" when 4 course years are not complete.
+- [x] Faculty grading: attendance grade is optional and grade computation still works when attendance is blank.
+- [x] Faculty grading: remarks is now a dropdown only: D, UD, U, W.
+- [x] Faculty grading: missing midterm or final grade automatically marks remarks as INC / incomplete.
+- [x] Faculty grading: flagging is automatic only, no manual flag button.
+- [x] Faculty grading: students are flagged only when they have missing grades or selected remarks.
+- [x] Faculty grading: warning modal remains before submitting missing-grade records, with Cancel, red Submit, then Yes/Cancel confirmation.
+- [x] Registrar / ledger: missing attendance becomes "not applicable" in IPFS/ledger output.
+- [x] Registrar: "Register Students" changed to "Register User".
+- [x] Registrar: faculty bulk upload added/checked and does not require faculty ID number.
+- [x] Auth: signup/request access flow removed from login page.
+- [x] Responsive UI: updated affected student/faculty/registrar screens to avoid desktop-only behavior.
+- [x] Access rule: when both midterm and final grades are missing, student is considered inactive and access revocation is triggered on submit.
+- [x] Access rule: students with complete midterm and final grades and no remarks remain active.
+
+###
+possible next issues to verify
+
+- [ ] Run frontend build when Node/npm is available.
+- [ ] Run backend build when dotnet is available.
+- [ ] Test real registrar finalize-to-ledger flow and confirm attendance displays as "not applicable" in IPFS.
+- [ ] Test missing both midterm/final grades with a real student account and confirm login access is revoked after submit.
+- [ ] Test missing only one grade and confirm student becomes incomplete/flagged but access is not revoked.
+- [ ] Test selected remarks D, UD, U, W and confirm flag/status reaches chairperson and registrar review correctly.
+- [ ] Test TOR PDF generation in browser with jsPDF loaded.
+
+###
+latest applied requests / traceback - reset season and irregular students
+
+- [x] Reset encoding season now clears pending grade records.
+- [x] Reset encoding season now clears faculty assigned sections.
+- [x] Reset encoding season now clears created academic sections.
+- [x] Reset encoding season now clears sectioning shared state such as registrar assignments, student sections, irregular assignments, and chairperson section reviews.
+- [x] Reset encoding season now removes temporary students marked as temporary/irregular.
+- [x] Registrar side now has an Add Temporary Student form under Register User.
+- [x] Temporary students are saved as irregular and temporary.
+- [x] Faculty/registrar student queries now carry temporary and irregular status fields.
+- [x] Missing midterm or final grade now uses irregular status format such as irreg:INC.
+- [x] Registrar grade monitoring recognizes irreg:* records as priority/non-active records.
+
+###
+possible next issues to verify - reset season and irregular students
+
+- [ ] Test Reset Encoding Season in registrar and confirm AcademicSections and FacultySections are empty after reset.
+- [ ] Test Reset Encoding Season and confirm temporary irregular student accounts are removed.
+- [ ] Test Add Temporary Student and confirm the student appears as Irregular/Temporary on registrar side.
+- [ ] Test a temporary student assigned to an existing section and confirm the faculty can see the student in grade encoding.
+- [ ] Test missing midterm only, missing final only, and both missing to confirm registrar status shows irreg:INC.

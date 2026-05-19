@@ -338,6 +338,14 @@ namespace BlockGo.Controllers
                 blockchainRecord.StudentHash = stuEmail;
                 blockchainRecord.StudentNo = stuNumber;
                 blockchainRecord.StudentName = stuName;
+
+                await RevokeInactiveStudentAccessIfNeededAsync(
+                    conn,
+                    blockchainRecord.StudentHash,
+                    blockchainRecord.StudentNo,
+                    blockchainRecord.Grade,
+                    effectiveFacultyId
+                );
                 
                 using var transaction = await conn.BeginTransactionAsync();
                 try
@@ -639,10 +647,214 @@ namespace BlockGo.Controllers
             };
         }
 
-        private static string BuildUploadedGradePayload(string? rawGrade, string? rawMidterm, string? rawFinals, string? term)
+        private static string NormalizeAttendanceValue(string? value)
+        {
+            return string.IsNullOrWhiteSpace(value) ? "not applicable" : value.Trim();
+        }
+
+        private static string? ComputeWeightedGrade(
+            string? quizzes,
+            string? assignments,
+            string? attendance,
+            string? exam)
+        {
+            if (!double.TryParse(quizzes, out var quizScore) ||
+                !double.TryParse(assignments, out var assignmentScore) ||
+                !double.TryParse(exam, out var examScore))
+            {
+                return null;
+            }
+
+            var hasAttendance = double.TryParse(attendance, out var attendanceScore);
+            var weighted = (quizScore * 0.20) + (assignmentScore * 0.10) + (examScore * 0.60);
+            var divisor = 0.90;
+
+            if (hasAttendance)
+            {
+                weighted += attendanceScore * 0.10;
+                divisor = 1.00;
+            }
+
+            return (weighted / divisor).ToString("0.##");
+        }
+
+        private static string NormalizeAttendanceForLedger(string? rawPayload)
+        {
+            if (string.IsNullOrWhiteSpace(rawPayload)) return rawPayload ?? "";
+
+            try
+            {
+                if (!rawPayload.TrimStart().StartsWith("{"))
+                {
+                    return JsonSerializer.Serialize(new
+                    {
+                        finalAverage = rawPayload,
+                        attendance = "not applicable"
+                    });
+                }
+
+                var node = System.Text.Json.Nodes.JsonNode.Parse(rawPayload)?.AsObject() ?? new System.Text.Json.Nodes.JsonObject();
+                if (!node.ContainsKey("attendance") || string.IsNullOrWhiteSpace(node["attendance"]?.ToString()))
+                {
+                    node["attendance"] = "not applicable";
+                }
+                if (!node.ContainsKey("midtermAttendance") || string.IsNullOrWhiteSpace(node["midtermAttendance"]?.ToString()))
+                {
+                    node["midtermAttendance"] = "not applicable";
+                }
+                if (!node.ContainsKey("finalAttendance") || string.IsNullOrWhiteSpace(node["finalAttendance"]?.ToString()))
+                {
+                    node["finalAttendance"] = "not applicable";
+                }
+                return node.ToJsonString();
+            }
+            catch
+            {
+                return rawPayload;
+            }
+        }
+
+        private static bool ShouldRevokeStudentAccessForGradePayload(string? rawPayload)
+        {
+            if (string.IsNullOrWhiteSpace(rawPayload) || !rawPayload.TrimStart().StartsWith("{"))
+            {
+                return false;
+            }
+
+            try
+            {
+                using var gradeDoc = JsonDocument.Parse(rawPayload);
+                var root = gradeDoc.RootElement;
+
+                if (root.TryGetProperty("accessRevoked", out var accessRevokedProp) &&
+                    accessRevokedProp.ValueKind == JsonValueKind.True)
+                {
+                    return true;
+                }
+
+                if (root.TryGetProperty("standing", out var standingProp) &&
+                    string.Equals(GetJsonElementValueAsString(standingProp), "inactive", StringComparison.OrdinalIgnoreCase))
+                {
+                    return true;
+                }
+
+                return false;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        private async Task RevokeInactiveStudentAccessIfNeededAsync(
+            NpgsqlConnection conn,
+            string? studentEmail,
+            string? studentNo,
+            string? gradePayload,
+            string? actor)
+        {
+            if (!ShouldRevokeStudentAccessForGradePayload(gradePayload)) return;
+
+            try
+            {
+                int userId = 0;
+                string resolvedEmail = studentEmail ?? "";
+
+                using (var findCmd = new NpgsqlCommand(@"
+                    SELECT u.id, u.email
+                    FROM Users u
+                    LEFT JOIN StudentProfiles sp ON u.id = sp.user_id
+                    WHERE u.role = 'student'
+                      AND (
+                        LOWER(u.email) = LOWER(@studentEmail)
+                        OR sp.student_no = @studentNo
+                        OR LOWER(u.email) = LOWER(@studentNo)
+                      )
+                    LIMIT 1", conn))
+                {
+                    findCmd.Parameters.AddWithValue("studentEmail", (object?)studentEmail ?? DBNull.Value);
+                    findCmd.Parameters.AddWithValue("studentNo", (object?)studentNo ?? DBNull.Value);
+                    using var reader = await findCmd.ExecuteReaderAsync();
+                    if (!await reader.ReadAsync()) return;
+
+                    userId = reader.IsDBNull(0) ? 0 : reader.GetInt32(0);
+                    resolvedEmail = reader.IsDBNull(1) ? resolvedEmail : reader.GetString(1);
+                }
+
+                if (userId <= 0 || string.IsNullOrWhiteSpace(resolvedEmail)) return;
+
+                try
+                {
+                    using var client = _httpClientFactory.CreateClient("FabricCAClient");
+                    var apiKey = Environment.GetEnvironmentVariable("INTERNAL_API_KEY") ?? _configuration["InternalApiKey"];
+                    if (!string.IsNullOrWhiteSpace(apiKey))
+                    {
+                        client.DefaultRequestHeaders.Add("x-api-key", apiKey);
+                    }
+
+                    var middlewareUrl = _configuration["Middleware:Url"] ?? _configuration["MIDDLEWARE_URL"] ?? "http://127.0.0.1:4000";
+                    var revokePayload = new { username = resolvedEmail, role = "student" };
+                    var content = new StringContent(JsonSerializer.Serialize(revokePayload), Encoding.UTF8, "application/json");
+                    var response = await client.PostAsync($"{middlewareUrl}/api/revoke", content);
+
+                    if (!response.IsSuccessStatusCode)
+                    {
+                        var errBody = await response.Content.ReadAsStringAsync();
+                        if (!errBody.Contains("already revoked", StringComparison.OrdinalIgnoreCase) &&
+                            !errBody.Contains("already inactive", StringComparison.OrdinalIgnoreCase))
+                        {
+                            _logger.LogWarning("Student Fabric revocation failed for {Email}: {Error}", resolvedEmail, errBody);
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Student Fabric revocation failed for {Email}.", resolvedEmail);
+                }
+
+                using (var updateCmd = new NpgsqlCommand(@"
+                    UPDATE Users SET status = 'INACTIVE' WHERE id = @id AND role = 'student';
+                    UPDATE StudentProfiles SET assignment_status = 'Inactive' WHERE user_id = @id;", conn))
+                {
+                    updateCmd.Parameters.AddWithValue("id", userId);
+                    await updateCmd.ExecuteNonQueryAsync();
+                }
+
+                try
+                {
+                    using var auditCmd = new NpgsqlCommand(@"
+                        INSERT INTO gradecorrectionlogs (recordid, oldgrade, newgrade, reasontext, approvedby, timestamp)
+                        VALUES (@recordId, @oldValue, @newValue, @reason, @approvedBy, CURRENT_TIMESTAMP)", conn);
+                    auditCmd.Parameters.AddWithValue("recordId", studentNo ?? resolvedEmail);
+                    auditCmd.Parameters.AddWithValue("oldValue", "APPROVED");
+                    auditCmd.Parameters.AddWithValue("newValue", "INACTIVE");
+                    auditCmd.Parameters.AddWithValue("reason", "Student access revoked because both midterm and final grades are missing.");
+                    auditCmd.Parameters.AddWithValue("approvedBy", (object?)actor ?? DBNull.Value);
+                    await auditCmd.ExecuteNonQueryAsync();
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Inactive student audit log insert failed for {Email}.", resolvedEmail);
+                }
+
+                await NotifyAcademicDataChangedAsync("student_inactivated_missing_grades", null, actor);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to inactivate student with missing midterm/final grades.");
+            }
+        }
+
+        private static string BuildUploadedGradePayload(
+            string? rawGrade,
+            string? rawMidterm,
+            string? rawFinals,
+            string? term,
+            string? rawMidtermAttendance = null,
+            string? rawFinalAttendance = null)
         {
             if (string.IsNullOrWhiteSpace(rawGrade) && string.IsNullOrWhiteSpace(rawMidterm) && string.IsNullOrWhiteSpace(rawFinals)) return "";
-            if (!string.IsNullOrWhiteSpace(rawGrade) && rawGrade.TrimStart().StartsWith("{")) return rawGrade;
+            if (!string.IsNullOrWhiteSpace(rawGrade) && rawGrade.TrimStart().StartsWith("{")) return NormalizeAttendanceForLedger(rawGrade);
 
             var activeTerm = string.Equals(term, "finals", StringComparison.OrdinalIgnoreCase) ? "finals" : "midterm";
             var midterm = double.TryParse(rawMidterm, out var parsedMidterm) ? parsedMidterm : 0;
@@ -657,12 +869,19 @@ namespace BlockGo.Controllers
             var rawAverage = activeTerm == "finals"
                 ? (midterm > 0 ? (midterm + finals) / 2 : finals)
                 : midterm;
+            var hasMissingRequiredGrade = midterm <= 0 || finals <= 0;
 
             return JsonSerializer.Serialize(new
             {
                 midterm = midterm > 0 ? midterm.ToString("0.##") : "",
                 finals = finals > 0 ? finals.ToString("0.##") : "",
-                finalAverage = ToUniversityGrade(rawAverage).ToString("0.00")
+                finalAverage = ToUniversityGrade(rawAverage).ToString("0.00"),
+                attendance = "not applicable",
+                midtermAttendance = NormalizeAttendanceValue(rawMidtermAttendance),
+                finalAttendance = NormalizeAttendanceValue(rawFinalAttendance),
+                standing = hasMissingRequiredGrade ? "irreg:INC" : "active",
+                flagged = hasMissingRequiredGrade,
+                remarks = hasMissingRequiredGrade ? "INC" : ""
             });
         }
 
@@ -671,9 +890,26 @@ namespace BlockGo.Controllers
         private static string? GetUploadedTermGrade(GetValDelegate getVal, string? term)
         {
             var activeTerm = string.Equals(term, "finals", StringComparison.OrdinalIgnoreCase) ? "finals" : "midterm";
-            return activeTerm == "finals"
+            var uploadedGrade = activeTerm == "finals"
                 ? getVal("final_rating", "final_grade", "finals_grade", "grade", "rating")
                 : getVal("midterm_grade", "midterm_rating", "midterm");
+
+            if (!string.IsNullOrWhiteSpace(uploadedGrade) && double.TryParse(uploadedGrade, out _))
+            {
+                return uploadedGrade;
+            }
+
+            return activeTerm == "finals"
+                ? ComputeWeightedGrade(
+                    getVal("final_quizzes", "final_quiz", "quizzes_final"),
+                    getVal("final_assignments", "final_assignment", "assignments_final"),
+                    getVal("final_attendance", "attendance_final"),
+                    getVal("final_exam", "finals_exam", "exam_final"))
+                : ComputeWeightedGrade(
+                    getVal("quizzes", "quiz", "midterm_quizzes"),
+                    getVal("assignments", "assignment", "midterm_assignments"),
+                    getVal("attendance", "midterm_attendance"),
+                    getVal("midterm_exam", "exam", "midterm"));
         }
 
         private static string? GetUploadedMidtermGrade(GetValDelegate getVal, string? term)
@@ -1038,7 +1274,9 @@ namespace BlockGo.Controllers
                                     GetUploadedTermGrade(GetVal, term),
                                     GetUploadedMidtermGrade(GetVal, term),
                                     GetUploadedFinalGrade(GetVal, term),
-                                    term),
+                                    term,
+                                    GetVal("attendance", "midterm_attendance"),
+                                    GetVal("final_attendance", "attendance_final")),
                                 SubjectCode = GetVal("subject_code", "course_code", "code", "subject") ?? course ?? "Unknown",
                                 SubjectName = GetVal("subject_name", "descriptive_title", "course") ?? course ?? "Unknown",
                                 Course = GetVal("course", "department", "program") ?? course ?? "Unknown",
@@ -1103,7 +1341,9 @@ namespace BlockGo.Controllers
                                         GetUploadedTermGrade(GetVal, term),
                                         GetUploadedMidtermGrade(GetVal, term),
                                         GetUploadedFinalGrade(GetVal, term),
-                                        term),
+                                        term,
+                                        GetVal("attendance", "midterm_attendance"),
+                                        GetVal("final_attendance", "attendance_final")),
                                     SubjectCode = GetVal("subject_code", "course_code", "code", "subject") ?? course ?? "Unknown",
                                     SubjectName = GetVal("subject_name", "descriptive_title", "course") ?? course ?? "Unknown",
                                     Course = GetVal("course", "department", "program") ?? course ?? "Unknown",
@@ -1899,6 +2139,7 @@ namespace BlockGo.Controllers
 
                 if (pendingRecord != null)
                 {
+                    pendingRecord.Grade = NormalizeAttendanceForLedger(pendingRecord.Grade);
                     var facId = string.IsNullOrEmpty(pendingRecord.FacultyId) ? invokerId : pendingRecord.FacultyId;
                     
                     bool isExistingOnLedger = false;
@@ -2585,12 +2826,25 @@ namespace BlockGo.Controllers
                         var headers = lines[0].Split(separator);
                         foreach (var h in headers) viewerHtml += $"<th>{System.Net.WebUtility.HtmlEncode(h)}</th>";
                         viewerHtml += "</tr></thead><tbody>";
+                        var attendanceColumnIndexes = headers
+                            .Select((header, index) => new { Header = header, Index = index })
+                            .Where(item => item.Header.Contains("attendance", StringComparison.OrdinalIgnoreCase))
+                            .Select(item => item.Index)
+                            .ToHashSet();
                         
                         for (int i = 1; i < lines.Length; i++)
                         {
                             viewerHtml += "<tr>";
                             var cells = lines[i].Split(separator);
-                            foreach (var c in cells) viewerHtml += $"<td>{System.Net.WebUtility.HtmlEncode(c)}</td>";
+                            for (int cellIndex = 0; cellIndex < headers.Length; cellIndex++)
+                            {
+                                var cellValue = cellIndex < cells.Length ? cells[cellIndex] : "";
+                                if (attendanceColumnIndexes.Contains(cellIndex) && string.IsNullOrWhiteSpace(cellValue))
+                                {
+                                    cellValue = "not applicable";
+                                }
+                                viewerHtml += $"<td>{System.Net.WebUtility.HtmlEncode(cellValue)}</td>";
+                            }
                             viewerHtml += "</tr>";
                         }
                     }
