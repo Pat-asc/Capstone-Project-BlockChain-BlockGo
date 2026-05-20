@@ -53,6 +53,25 @@ inject_configs() {
     # Ensure namespaces exist first
     kubectl apply -f ./k8s/00-namespace.yaml >/dev/null 2>&1
     
+    # Shrink-Ray: Apply strict LimitRange to prevent GKE Autopilot from defaulting to 500m/512Mi per container
+    for ns in plv-fabric plv-main-campus plv-annex-campus plv-pubad-campus; do
+        cat <<EOF | kubectl apply -n $ns -f -
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: autopilot-shrink-ray
+spec:
+  limits:
+  - default:
+      cpu: "50m"
+      memory: "128Mi"
+    defaultRequest:
+      cpu: "50m"
+      memory: "128Mi"
+    type: Container
+EOF
+    done
+
     # Inject ConfigMaps from OFFICIAL local files
     kubectl create configmap fabric-common-config --from-file=core.yaml=./config/core.yaml --from-file=orderer.yaml=./config/orderer.yaml -n plv-main-campus --dry-run=client -o yaml | kubectl apply -f -
     kubectl create configmap fabric-common-config --from-file=core.yaml=./config/core.yaml --from-file=orderer.yaml=./config/orderer.yaml -n plv-annex-campus --dry-run=client -o yaml | kubectl apply -f -
@@ -67,15 +86,15 @@ inject_configs() {
         kubectl create configmap postgres-init-script --from-file=init.sql=./init-db-schema.sql -n $ns --dry-run=client -o yaml | kubectl apply -f -
     done
 
+    if [ -f "./swarm.key" ] && grep -q "\-e" "./swarm.key"; then
+        echo "Corrupted swarm.key detected. Deleting..."
+        rm -f ./swarm.key
+    fi
+
     # Inject IPFS swarm.key
     if [ ! -f "./swarm.key" ]; then
         echo "Generating missing IPFS swarm.key..."
         echo -e "/key/swarm/psk/1.0.0/\n/base16/\n1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2a" > ./swarm.key
-    fi
-
-    if [ -f "./swarm.key" ] && grep -q "\-e" "./swarm.key"; then
-        echo "Corrupted swarm.key detected. Deleting..."
-        rm -f ./swarm.key
     fi
 
     if [ -f "./swarm.key" ]; then
@@ -117,6 +136,8 @@ inject_configs() {
     grep -q "^CHAINCODE_ID_REGISTRAR=" "$CLEAN_ENV" || echo "CHAINCODE_ID_REGISTRAR=registrar_1.0:missing-package-id" >> "$CLEAN_ENV"
     grep -q "^CHAINCODE_ID_FACULTY=" "$CLEAN_ENV" || echo "CHAINCODE_ID_FACULTY=registrar_1.0:missing-package-id" >> "$CLEAN_ENV"
     grep -q "^CHAINCODE_ID_DEPARTMENT=" "$CLEAN_ENV" || echo "CHAINCODE_ID_DEPARTMENT=registrar_1.0:missing-package-id" >> "$CLEAN_ENV"
+    grep -q "^COUCHDB_USER=" "$CLEAN_ENV" || echo "COUCHDB_USER=capstone" >> "$CLEAN_ENV"
+    grep -q "^COUCHDB_PASS=" "$CLEAN_ENV" || echo "COUCHDB_PASS=pass123" >> "$CLEAN_ENV"
 
     # Inject GKE Internal DNS URLs to connect microservices across namespaces
     grep -q "^MIDDLEWARE_URL=" "$CLEAN_ENV" || echo "MIDDLEWARE_URL=http://middleware-api.plv-fabric.svc.cluster.local:4000" >> "$CLEAN_ENV"
@@ -169,47 +190,33 @@ deploy_manifests() {
         exit 1
     fi
 
-    # Temporary directory for processed manifests
     TMP_K8S_DIR="./k8s/.tmp-k8s"
     rm -rf "$TMP_K8S_DIR" && mkdir -p "$TMP_K8S_DIR"
     cp ./k8s/*.yaml "$TMP_K8S_DIR/"
 
-    # GKE pulls images from Artifact Registry; placeholder image names are rewritten in the temp manifests.
     sed -i "s|image: registry.example.com/plv-repo/fabric-middleware:latest|image: $IMAGE_REGISTRY/fabric-middleware:latest|g" "$TMP_K8S_DIR"/*.yaml
     sed -i "s|image: registry.example.com/plv-repo/frontend:latest|image: $IMAGE_REGISTRY/frontend:latest|g" "$TMP_K8S_DIR"/*.yaml
     sed -i "s|image: registry.example.com/plv-repo/client-app:latest|image: $IMAGE_REGISTRY/client-app:latest|g" "$TMP_K8S_DIR"/*.yaml
     sed -i "s|image: registry.example.com/plv-repo/registrar-chaincode:latest|image: $IMAGE_REGISTRY/registrar-chaincode:latest|g" "$TMP_K8S_DIR"/*.yaml
     sed -i "s|image: registry.example.com/plv-repo/faculty-chaincode:latest|image: $IMAGE_REGISTRY/faculty-chaincode:latest|g" "$TMP_K8S_DIR"/*.yaml
     sed -i "s|image: registry.example.com/plv-repo/department-chaincode:latest|image: $IMAGE_REGISTRY/department-chaincode:latest|g" "$TMP_K8S_DIR"/*.yaml
-
-    # Force all orderers to skip system channel bootstrap (fixes OSN Admin 405 error)
     sed -i 's/value: file/value: none/g' "$TMP_K8S_DIR"/06-orderer*.yaml 2>/dev/null || true
-
-    # Let K8s use the default storage class by removing explicit storageClassName declarations
-    sed -i '/storageClassName: /d' "$TMP_K8S_DIR"/*.yaml 2>/dev/null || true
-
-    # Drastically reduce storage claims across all manifests to save costs while keeping High Availability
-    sed -i 's/storage: 100Gi/storage: 5Gi/g' "$TMP_K8S_DIR"/*.yaml 2>/dev/null || true
-    sed -i 's/storage: 50Gi/storage: 2Gi/g' "$TMP_K8S_DIR"/*.yaml 2>/dev/null || true
-    sed -i 's/storage: 30Gi/storage: 2Gi/g' "$TMP_K8S_DIR"/*.yaml 2>/dev/null || true
-    sed -i 's/storage: 20Gi/storage: 2Gi/g' "$TMP_K8S_DIR"/*.yaml 2>/dev/null || true
-    sed -i 's/storage: 10Gi/storage: 2Gi/g' "$TMP_K8S_DIR"/*.yaml 2>/dev/null || true
-
-    # Route all pods to GKE Spot Instances to reduce compute costs by ~70%
+    sed -i 's/storage: 100Gi/storage: 10Gi/g' "$TMP_K8S_DIR"/*.yaml 2>/dev/null || true
+    sed -i 's/storage: 50Gi/storage: 10Gi/g' "$TMP_K8S_DIR"/*.yaml 2>/dev/null || true
+    sed -i 's/storage: 30Gi/storage: 10Gi/g' "$TMP_K8S_DIR"/*.yaml 2>/dev/null || true
+    sed -i 's/storage: 20Gi/storage: 10Gi/g' "$TMP_K8S_DIR"/*.yaml 2>/dev/null || true
+    sed -i 's/initialDelaySeconds: 30/initialDelaySeconds: 60/g' "$TMP_K8S_DIR"/*.yaml 2>/dev/null || true
+    sed -i 's/initialDelaySeconds: 10/initialDelaySeconds: 30/g' "$TMP_K8S_DIR"/*.yaml 2>/dev/null || true
     sed -i 's/^\( *\)containers:/\1nodeSelector:\n\1  cloud.google.com\/gke-spot: "true"\n\1containers:/g' "$TMP_K8S_DIR"/*.yaml 2>/dev/null || true
-
-    # Apply in order
     apply_manifest "$TMP_K8S_DIR/00-namespace.yaml"
     apply_manifest "$TMP_K8S_DIR/01a-storage-class.yaml"
     apply_manifest "$TMP_K8S_DIR/02-configmap-secret.yaml"
     apply_manifest "$TMP_K8S_DIR/04a-postgres-configmap.yaml"
-
     if [ -f "$TMP_K8S_DIR/03-Abac.yaml" ]; then
         apply_manifest "$TMP_K8S_DIR/03-Abac.yaml"
     else
         apply_manifest "$TMP_K8S_DIR/03-rbac.yaml"
     fi
-
     apply_manifest "$TMP_K8S_DIR/04a-postgres-primary.yaml"
     # apply_manifest "$TMP_K8S_DIR/04b-postgres-replica-annex.yaml"
     # apply_manifest "$TMP_K8S_DIR/04c-postgres-replica-pubad.yaml"
@@ -223,10 +230,8 @@ deploy_manifests() {
     apply_manifest "$TMP_K8S_DIR/08-middleware-api.yaml"
     apply_manifest "$TMP_K8S_DIR/09-ipfs.yaml"
 
-    # Fix IPFS HostPath permission issues on Windows/WSL by running as root with IPFS_ALLOW_ROOT
     kubectl patch statefulset ipfs-node -n plv-fabric -p '{"spec":{"template":{"spec":{"securityContext":{"runAsUser":0,"runAsGroup":0,"fsGroup":0}}}}}' 2>/dev/null || true
     kubectl set env statefulset/ipfs-node IPFS_ALLOW_ROOT=true -n plv-fabric 2>/dev/null || true
-
     apply_manifest "$TMP_K8S_DIR/10-ingress-network-policy.yaml"
     # apply_manifest "$TMP_K8S_DIR/11-monitoring-pdb-quotas.yaml"
     apply_manifest "$TMP_K8S_DIR/12-frontend-ha.yaml"
@@ -241,10 +246,11 @@ deploy_manifests() {
     apply_manifest "$TMP_K8S_DIR/15-couchdb-backup.yaml"
     apply_manifest "$TMP_K8S_DIR/16-postgres-backup.yaml"
     
+    kubectl rollout restart deployment middleware-api client-app frontend -n plv-fabric 2>/dev/null || true
+
     echo "Manifests deployed"
 }
 
-# Function to wait for deployments
 wait_deployments() {
     echo ""
     echo "Waiting for deployments to be ready..."
@@ -276,7 +282,7 @@ wait_deployments() {
     echo "✓ All deployments ready"
     
     echo "Bootstrapping Root Registrar Account..."
-    MIDDLEWARE_POD=$(kubectl get pods -n plv-fabric -l app=middleware-api -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || true)
+    MIDDLEWARE_POD=$(kubectl get pods -n plv-fabric -l app=middleware-api --field-selector=status.phase=Running -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || true)
     if [ -n "$MIDDLEWARE_POD" ]; then kubectl exec $MIDDLEWARE_POD -n plv-fabric -- node -e "require('http').get('http://localhost:4000/api/bootstrap', res => res.pipe(process.stdout))"; echo ""; fi
 }
 

@@ -94,7 +94,7 @@ spec:
         - name: ConnectionStrings__MasterConnection
           value: "Host=postgres.plv-main-campus.svc.cluster.local;Port=5432;Database=$(POSTGRES_DB);Username=$(POSTGRES_USER);Password=$(POSTGRES_PASS)"
         - name: ConnectionStrings__ReplicaConnection
-          value: "Host=postgres-replica-annex.plv-annex-campus.svc.cluster.local;Port=5432;Database=$(POSTGRES_DB);Username=$(POSTGRES_USER);Password=$(POSTGRES_PASS)"
+          value: "Host=postgres.plv-main-campus.svc.cluster.local;Port=5432;Database=$(POSTGRES_DB);Username=$(POSTGRES_USER);Password=$(POSTGRES_PASS)"
         - name: ConnectionStrings__PostgresConnection
           value: "Host=postgres.plv-main-campus.svc.cluster.local;Port=5432;Database=$(POSTGRES_DB);Username=$(POSTGRES_USER);Password=$(POSTGRES_PASS)"
         - name: REDIS_CONNECTION_STRING
@@ -133,7 +133,7 @@ spec:
     kind: Deployment
     name: client-app
   minReplicas: 1
-  maxReplicas: 5
+  maxReplicas: 3
   metrics:
   - type: Resource
     resource:
