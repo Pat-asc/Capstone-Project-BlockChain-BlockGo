@@ -37,24 +37,24 @@ spec:
         env:
         - name: POSTGRESQL_REPLICATION_MODE
           value: master
-        - name: POSTGRESQL_USERNAME
+        - name: POSTGRES_USER
           valueFrom:
             secretKeyRef:
               name: blockgo-secrets
               key: POSTGRES_USER
-        - name: POSTGRESQL_PASSWORD
+        - name: POSTGRES_PASSWORD
           valueFrom:
             secretKeyRef:
               name: blockgo-secrets
               key: POSTGRES_PASS
-        - name: POSTGRESQL_DATABASE
+        - name: POSTGRES_DB
           valueFrom:
             secretKeyRef:
               name: blockgo-secrets
               key: POSTGRES_DB
-        - name: POSTGRESQL_REPLICATION_USER
+        - name: POSTGRES_REPLICATION_USER
           value: repl_user
-        - name: POSTGRESQL_REPLICATION_PASSWORD
+        - name: POSTGRES_REPLICATION_PASSWORD
           valueFrom:
             secretKeyRef:
               name: blockgo-secrets

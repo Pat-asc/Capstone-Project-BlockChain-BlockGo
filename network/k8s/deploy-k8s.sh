@@ -68,6 +68,11 @@ inject_configs() {
     done
 
     # Inject IPFS swarm.key
+    if [ ! -f "./swarm.key" ]; then
+        echo "Generating missing IPFS swarm.key..."
+        echo -e "/key/swarm/psk/1.0.0/\n/base16/\n1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2a" > ./swarm.key
+    fi
+
     if [ -f "./swarm.key" ] && grep -q "\-e" "./swarm.key"; then
         echo "Corrupted swarm.key detected. Deleting..."
         rm -f ./swarm.key
@@ -180,8 +185,8 @@ deploy_manifests() {
     # Force all orderers to skip system channel bootstrap (fixes OSN Admin 405 error)
     sed -i 's/value: file/value: none/g' "$TMP_K8S_DIR"/06-orderer*.yaml 2>/dev/null || true
 
-    # Force GKE Autopilot compatible storage class
-    sed -i 's/storageClassName: .*/storageClassName: standard-rwo/g' "$TMP_K8S_DIR"/*.yaml 2>/dev/null || true
+    # Let K8s use the default storage class by removing explicit storageClassName declarations
+    sed -i '/storageClassName: /d' "$TMP_K8S_DIR"/*.yaml 2>/dev/null || true
 
     # Drastically reduce storage claims across all manifests to save costs while keeping High Availability
     sed -i 's/storage: 100Gi/storage: 5Gi/g' "$TMP_K8S_DIR"/*.yaml 2>/dev/null || true

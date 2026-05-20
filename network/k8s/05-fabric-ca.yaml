@@ -21,7 +21,7 @@ spec:
       - name: init-ca
         image: alpine:latest
         imagePullPolicy: IfNotPresent
-        command: ["sh", "-c", "mkdir -p /data/msp/keystore && cp -L /raw/ca-cert.pem /data/ca-cert.pem && cp -L /raw/tls-cert.pem /data/tls-cert.pem && cp -L /raw/ca-key.pem /data/msp/keystore/key_sk && cp -L /raw/tls-key.pem /data/msp/keystore/tls_key_sk && chmod -R 777 /data"]
+        command: ["sh", "-c", "mkdir -p /data/msp/keystore && (cp -L /raw/ca-cert.pem /data/ca-cert.pem 2>/dev/null || true) && (cp -L /raw/tls-cert.pem /data/tls-cert.pem 2>/dev/null || true) && (cp -L /raw/ca-key.pem /data/msp/keystore/key_sk 2>/dev/null || true) && (cp -L /raw/tls-key.pem /data/msp/keystore/tls_key_sk 2>/dev/null || true) && chmod -R 777 /data"]
         volumeMounts:
         - name: raw-identity
           mountPath: /raw
@@ -90,7 +90,7 @@ spec:
       - name: init-ca
         image: alpine:latest
         imagePullPolicy: IfNotPresent
-        command: ["sh", "-c", "mkdir -p /data/msp/keystore && cp -L /raw/ca-cert.pem /data/ca-cert.pem && cp -L /raw/tls-cert.pem /data/tls-cert.pem && cp -L /raw/ca-key.pem /data/msp/keystore/key_sk && cp -L /raw/tls-key.pem /data/msp/keystore/tls_key_sk && chmod -R 777 /data"]
+        command: ["sh", "-c", "mkdir -p /data/msp/keystore && (cp -L /raw/ca-cert.pem /data/ca-cert.pem 2>/dev/null || true) && (cp -L /raw/tls-cert.pem /data/tls-cert.pem 2>/dev/null || true) && (cp -L /raw/ca-key.pem /data/msp/keystore/key_sk 2>/dev/null || true) && (cp -L /raw/tls-key.pem /data/msp/keystore/tls_key_sk 2>/dev/null || true) && chmod -R 777 /data"]
         volumeMounts:
         - name: raw-identity
           mountPath: /raw
@@ -158,7 +158,7 @@ spec:
       - name: init-ca
         image: alpine:latest
         imagePullPolicy: IfNotPresent
-        command: ["sh", "-c", "mkdir -p /data/msp/keystore && cp -L /raw/ca-cert.pem /data/ca-cert.pem && cp -L /raw/tls-cert.pem /data/tls-cert.pem && cp -L /raw/ca-key.pem /data/msp/keystore/key_sk && cp -L /raw/tls-key.pem /data/msp/keystore/tls_key_sk && chmod -R 777 /data"]
+        command: ["sh", "-c", "mkdir -p /data/msp/keystore && (cp -L /raw/ca-cert.pem /data/ca-cert.pem 2>/dev/null || true) && (cp -L /raw/tls-cert.pem /data/tls-cert.pem 2>/dev/null || true) && (cp -L /raw/ca-key.pem /data/msp/keystore/key_sk 2>/dev/null || true) && (cp -L /raw/tls-key.pem /data/msp/keystore/tls_key_sk 2>/dev/null || true) && chmod -R 777 /data"]
         volumeMounts:
         - name: raw-identity
           mountPath: /raw
