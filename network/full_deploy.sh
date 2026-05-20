@@ -247,7 +247,7 @@ enroll_orderer_identities() {
     fabric-ca-client enroll -u https://orderer:ordererpw@localhost:${PORT} --caname ca-registrar -M "${ORDERER_DIR}/orderers/orderer.${DOMAIN}/msp" --tls.certfiles "${TLS_CERT}" --home "${ORDERER_DIR}"
 
     # Enroll for TLS (This is what configtxgen needs!)
-    fabric-ca-client enroll -u https://orderer:ordererpw@localhost:${PORT} --caname ca-registrar -M "${ORDERER_DIR}/orderers/orderer.${DOMAIN}/tls" --enrollment.profile tls --csr.hosts "orderer.capstone.com,localhost" --tls.certfiles "${TLS_CERT}" --home "${ORDERER_DIR}"
+    fabric-ca-client enroll -u https://orderer:ordererpw@localhost:${PORT} --caname ca-registrar -M "${ORDERER_DIR}/orderers/orderer.${DOMAIN}/tls" --enrollment.profile tls --csr.hosts "orderer.capstone.com,localhost,orderer-1.plv-main-campus.svc.cluster.local" --tls.certfiles "${TLS_CERT}" --home "${ORDERER_DIR}"
 
     # Normalize TLS filenames for Fabric
     cp "${ORDERER_DIR}/orderers/orderer.${DOMAIN}/tls/signcerts/"* "${ORDERER_DIR}/orderers/orderer.${DOMAIN}/tls/server.crt"
@@ -263,7 +263,7 @@ enroll_orderer_identities() {
     # === ORDERER 2 (Annex) ===
     fabric-ca-client register --caname ca-registrar --id.name orderer2 --id.secret ordererpw --id.type orderer --tls.certfiles "${TLS_CERT}" --home "${ORDERER_DIR}"
     fabric-ca-client enroll -u https://orderer2:ordererpw@localhost:${PORT} --caname ca-registrar -M "${ORDERER_DIR}/orderers/orderer2.${DOMAIN}/msp" --tls.certfiles "${TLS_CERT}" --home "${ORDERER_DIR}"
-    fabric-ca-client enroll -u https://orderer2:ordererpw@localhost:${PORT} --caname ca-registrar -M "${ORDERER_DIR}/orderers/orderer2.${DOMAIN}/tls" --enrollment.profile tls --csr.hosts "orderer2.capstone.com,localhost" --tls.certfiles "${TLS_CERT}" --home "${ORDERER_DIR}"
+    fabric-ca-client enroll -u https://orderer2:ordererpw@localhost:${PORT} --caname ca-registrar -M "${ORDERER_DIR}/orderers/orderer2.${DOMAIN}/tls" --enrollment.profile tls --csr.hosts "orderer2.capstone.com,localhost,orderer-2.plv-main-campus.svc.cluster.local" --tls.certfiles "${TLS_CERT}" --home "${ORDERER_DIR}"
     cp "${ORDERER_DIR}/orderers/orderer2.${DOMAIN}/tls/signcerts/"* "${ORDERER_DIR}/orderers/orderer2.${DOMAIN}/tls/server.crt"
     cp "${ORDERER_DIR}/orderers/orderer2.${DOMAIN}/tls/keystore/"* "${ORDERER_DIR}/orderers/orderer2.${DOMAIN}/tls/server.key"
     cp "${ORDERER_DIR}/msp/cacerts/localhost-7054-ca-registrar.pem" "${ORDERER_DIR}/orderers/orderer2.${DOMAIN}/tls/ca.crt"
@@ -273,7 +273,7 @@ enroll_orderer_identities() {
     # === ORDERER 3 (Pubad) ===
     fabric-ca-client register --caname ca-registrar --id.name orderer3 --id.secret ordererpw --id.type orderer --tls.certfiles "${TLS_CERT}" --home "${ORDERER_DIR}"
     fabric-ca-client enroll -u https://orderer3:ordererpw@localhost:${PORT} --caname ca-registrar -M "${ORDERER_DIR}/orderers/orderer3.${DOMAIN}/msp" --tls.certfiles "${TLS_CERT}" --home "${ORDERER_DIR}"
-    fabric-ca-client enroll -u https://orderer3:ordererpw@localhost:${PORT} --caname ca-registrar -M "${ORDERER_DIR}/orderers/orderer3.${DOMAIN}/tls" --enrollment.profile tls --csr.hosts "orderer3.capstone.com,localhost" --tls.certfiles "${TLS_CERT}" --home "${ORDERER_DIR}"
+    fabric-ca-client enroll -u https://orderer3:ordererpw@localhost:${PORT} --caname ca-registrar -M "${ORDERER_DIR}/orderers/orderer3.${DOMAIN}/tls" --enrollment.profile tls --csr.hosts "orderer3.capstone.com,localhost,orderer-3.plv-annex-campus.svc.cluster.local" --tls.certfiles "${TLS_CERT}" --home "${ORDERER_DIR}"
     cp "${ORDERER_DIR}/orderers/orderer3.${DOMAIN}/tls/signcerts/"* "${ORDERER_DIR}/orderers/orderer3.${DOMAIN}/tls/server.crt"
     cp "${ORDERER_DIR}/orderers/orderer3.${DOMAIN}/tls/keystore/"* "${ORDERER_DIR}/orderers/orderer3.${DOMAIN}/tls/server.key"
     cp "${ORDERER_DIR}/msp/cacerts/localhost-7054-ca-registrar.pem" "${ORDERER_DIR}/orderers/orderer3.${DOMAIN}/tls/ca.crt"
