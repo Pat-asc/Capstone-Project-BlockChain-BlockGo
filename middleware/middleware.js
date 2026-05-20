@@ -226,7 +226,7 @@ if (mainIp === 'host-gateway') mainIp = '127.0.0.1';
 
 const dbWrite = new Pool({
     user: process.env.POSTGRES_USER || 'postgres',
-    host: mainIp || process.env.POSTGRES_HOST || '127.0.0.1',
+    host: process.env.POSTGRES_HOST === 'postgres' ? (mainIp || '127.0.0.1') : (process.env.POSTGRES_HOST || mainIp || '127.0.0.1'),
     database: process.env.POSTGRES_DB || 'ActivityLogs',
     password: process.env.POSTGRES_PASS || 'password',
     port: process.env.POSTGRES_PORT || 5432,

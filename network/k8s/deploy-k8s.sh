@@ -120,7 +120,7 @@ inject_configs() {
 
     # Inject GKE Internal DNS URLs to connect microservices across namespaces
     grep -q "^MIDDLEWARE_URL=" "$CLEAN_ENV" || echo "MIDDLEWARE_URL=http://middleware-api.plv-fabric.svc.cluster.local:4000" >> "$CLEAN_ENV"
-    grep -q "^POSTGRES_HOST=" "$CLEAN_ENV" || echo "POSTGRES_HOST=postgres-primary.plv-main-campus.svc.cluster.local" >> "$CLEAN_ENV"
+    grep -q "^POSTGRES_HOST=" "$CLEAN_ENV" || echo "POSTGRES_HOST=postgres.plv-main-campus.svc.cluster.local" >> "$CLEAN_ENV"
     
     grep -q "^COUCHDB_WALLET_REGISTRAR_URL=" "$CLEAN_ENV" || echo "COUCHDB_WALLET_REGISTRAR_URL=http://capstone:pass123@couchdb-registrar.plv-main-campus.svc.cluster.local:5984" >> "$CLEAN_ENV"
     grep -q "^COUCHDB_WALLET_FACULTY_URL=" "$CLEAN_ENV" || echo "COUCHDB_WALLET_FACULTY_URL=http://capstone:pass123@couchdb-faculty.plv-annex-campus.svc.cluster.local:5984" >> "$CLEAN_ENV"
