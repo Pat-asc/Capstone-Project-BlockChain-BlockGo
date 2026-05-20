@@ -207,7 +207,9 @@ deploy_manifests() {
     sed -i 's/storage: 20Gi/storage: 10Gi/g' "$TMP_K8S_DIR"/*.yaml 2>/dev/null || true
     sed -i 's/initialDelaySeconds: 30/initialDelaySeconds: 60/g' "$TMP_K8S_DIR"/*.yaml 2>/dev/null || true
     sed -i 's/initialDelaySeconds: 10/initialDelaySeconds: 30/g' "$TMP_K8S_DIR"/*.yaml 2>/dev/null || true
-    sed -i 's/^\( *\)containers:/\1nodeSelector:\n\1  cloud.google.com\/gke-spot: "true"\n\1containers:/g' "$TMP_K8S_DIR"/*.yaml 2>/dev/null || true
+    if [ "${USE_GKE_SPOT:-false}" = "true" ]; then
+        sed -i 's/^\( *\)containers:/\1nodeSelector:\n\1  cloud.google.com\/gke-spot: "true"\n\1containers:/g' "$TMP_K8S_DIR"/*.yaml 2>/dev/null || true
+    fi
     apply_manifest "$TMP_K8S_DIR/00-namespace.yaml"
     apply_manifest "$TMP_K8S_DIR/01a-storage-class.yaml"
     apply_manifest "$TMP_K8S_DIR/02-configmap-secret.yaml"
