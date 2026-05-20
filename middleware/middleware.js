@@ -1549,3 +1549,9 @@ process.on('SIGINT', () => {
     userGatewayCache.forEach(cached => cached.gateway.disconnect());
     process.exit(0);
 });
+
+process.on('SIGTERM', () => {
+    console.log('\nReceived SIGTERM from Kubernetes. Gracefully shutting down...');
+    userGatewayCache.forEach(cached => cached.gateway.disconnect());
+    process.exit(0);
+});

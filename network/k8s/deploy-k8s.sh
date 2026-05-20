@@ -63,11 +63,11 @@ metadata:
 spec:
   limits:
   - default:
-      cpu: "50m"
-      memory: "128Mi"
+      cpu: "250m"
+      memory: "512Mi"
     defaultRequest:
-      cpu: "50m"
-      memory: "128Mi"
+      cpu: "250m"
+      memory: "512Mi"
     type: Container
 EOF
     done
