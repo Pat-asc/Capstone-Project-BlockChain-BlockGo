@@ -232,7 +232,7 @@ namespace Client_app.Controllers
                         ('STUDENT_BATCHES_KEY', '[]'::jsonb, NOW()),
                         ('STUDENT_SUBMISSION_LOGS_KEY', '[]'::jsonb, NOW()),
                         ('studentPublishedGrades', '{}'::jsonb, NOW()),
-                        ('facultyLoadResetAt', TO_JSONB(NOW())),
+                        ('facultyLoadResetAt', TO_JSONB(NOW()), NOW()),
                         ('sessionRecoveryDrafts', '{}'::jsonb, NOW()),
                         ('chairpersonSubmissionLogs', '[]'::jsonb, NOW()),
                         ('studentMasterlist', '[]'::jsonb, NOW())
