@@ -107,8 +107,6 @@ namespace Client_app.Controllers
                 using var conn = new NpgsqlConnection(_connectionString);
                 await conn.OpenAsync();
                 using var tx = await conn.BeginTransactionAsync();
-                var clearedAt = DateTime.UtcNow.ToString("o");
-
                 using var cmdEnsureResetTables = new NpgsqlCommand(@"
                     CREATE TABLE IF NOT EXISTS pending_grade_records (
                         id VARCHAR(255) PRIMARY KEY,
@@ -199,19 +197,6 @@ namespace Client_app.Controllers
                 ", conn, tx);
                 await cmdClearGrades.ExecuteNonQueryAsync();
 
-                using var cmdClearFacSections = new NpgsqlCommand(@"
-                    DELETE FROM FacultySections;
-                    UPDATE FacultyProfiles SET section = NULL, year_level = NULL;
-                ", conn, tx);
-                await cmdClearFacSections.ExecuteNonQueryAsync();
-
-                using var cmdClearAcademicSections = new NpgsqlCommand(@"
-                    DELETE FROM AcademicSections;
-                    DELETE FROM sectioningstate;
-                    UPDATE StudentProfiles SET section = NULL, assignment_status = 'Unassigned';
-                ", conn, tx);
-                await cmdClearAcademicSections.ExecuteNonQueryAsync();
-
                 using var cmdEnsureSharedState = new NpgsqlCommand(@"
                     CREATE TABLE IF NOT EXISTS shared_client_state (
                         key TEXT PRIMARY KEY,
@@ -221,53 +206,22 @@ namespace Client_app.Controllers
                     );", conn, tx);
                 await cmdEnsureSharedState.ExecuteNonQueryAsync();
 
-                using var cmdClearSharedSectioningState = new NpgsqlCommand(@"
-                    INSERT INTO shared_client_state (key, value, updated_at)
-                    VALUES 
-                        ('registrarAssignments', '[]'::jsonb, NOW()),
-                        ('studentSections', '[]'::jsonb, NOW()),
-                        ('irregularSubjectAssignments', '[]'::jsonb, NOW()),
-                        ('chairpersonStudentBatches', '[]'::jsonb, NOW()),
-                        ('chairpersonSectionReviews', '{}'::jsonb, NOW()),
-                        ('graduatingStudents', '[]'::jsonb, NOW()),
-                        ('STUDENT_BATCHES_KEY', '[]'::jsonb, NOW()),
-                        ('STUDENT_SUBMISSION_LOGS_KEY', '[]'::jsonb, NOW()),
-                        ('studentPublishedGrades', '{}'::jsonb, NOW()),
-                        ('facultyLoadResetAt', TO_JSONB(NOW()), NOW()),
-                        ('sessionRecoveryDrafts', '{}'::jsonb, NOW()),
-                        ('chairpersonSubmissionLogs', '[]'::jsonb, NOW()),
-                        ('studentMasterlist', '[]'::jsonb, NOW())
-                    ON CONFLICT (key) DO UPDATE SET 
-                        value = EXCLUDED.value,
-                        updated_at = EXCLUDED.updated_at;", conn, tx);
-                await cmdClearSharedSectioningState.ExecuteNonQueryAsync();
-
                 const string resetEncodingPeriod = "{\"semester\":\"2nd Semester\",\"startDate\":\"\",\"endDate\":\"\",\"term\":\"midterm\"}";
-                using var cmdSeedClearedSharedState = new NpgsqlCommand(@"
+                using var cmdSeedSeasonResetState = new NpgsqlCommand(@"
                     INSERT INTO shared_client_state (key, value, updated_at, updated_by)
                     VALUES
-                        ('registrarAssignments', '[]'::jsonb, CURRENT_TIMESTAMP, @updatedBy),
-                        ('studentSections', '[]'::jsonb, CURRENT_TIMESTAMP, @updatedBy),
-                        ('irregularSubjectAssignments', '[]'::jsonb, CURRENT_TIMESTAMP, @updatedBy),
-                        ('chairpersonStudentBatches', '[]'::jsonb, CURRENT_TIMESTAMP, @updatedBy),
-                        ('chairpersonSectionReviews', '{}'::jsonb, CURRENT_TIMESTAMP, @updatedBy),
-                        ('graduatingStudents', '[]'::jsonb, CURRENT_TIMESTAMP, @updatedBy),
-                        ('STUDENT_BATCHES_KEY', '[]'::jsonb, CURRENT_TIMESTAMP, @updatedBy),
                         ('STUDENT_SUBMISSION_LOGS_KEY', '[]'::jsonb, CURRENT_TIMESTAMP, @updatedBy),
                         ('studentPublishedGrades', '{}'::jsonb, CURRENT_TIMESTAMP, @updatedBy),
-                        ('facultyLoadResetAt', @clearedAt::jsonb, CURRENT_TIMESTAMP, @updatedBy),
                         ('sessionRecoveryDrafts', '{}'::jsonb, CURRENT_TIMESTAMP, @updatedBy),
                         ('chairpersonSubmissionLogs', '[]'::jsonb, CURRENT_TIMESTAMP, @updatedBy),
-                        ('studentMasterlist', '[]'::jsonb, CURRENT_TIMESTAMP, @updatedBy),
                         ('encodingPeriod', @encodingPeriod::jsonb, CURRENT_TIMESTAMP, @updatedBy)
                     ON CONFLICT (key)
                     DO UPDATE SET value = EXCLUDED.value,
                                   updated_at = EXCLUDED.updated_at,
                                   updated_by = EXCLUDED.updated_by;", conn, tx);
-                cmdSeedClearedSharedState.Parameters.AddWithValue("updatedBy", (object?)User.Identity?.Name ?? DBNull.Value);
-                cmdSeedClearedSharedState.Parameters.AddWithValue("clearedAt", $"\"{clearedAt}\"");
-                cmdSeedClearedSharedState.Parameters.AddWithValue("encodingPeriod", resetEncodingPeriod);
-                await cmdSeedClearedSharedState.ExecuteNonQueryAsync();
+                cmdSeedSeasonResetState.Parameters.AddWithValue("updatedBy", (object?)User.Identity?.Name ?? DBNull.Value);
+                cmdSeedSeasonResetState.Parameters.AddWithValue("encodingPeriod", resetEncodingPeriod);
+                await cmdSeedSeasonResetState.ExecuteNonQueryAsync();
 
                 using var cmdClearTemporaryStudents = new NpgsqlCommand(@"
                     WITH temp_users AS (
@@ -312,7 +266,7 @@ namespace Client_app.Controllers
                 return Ok(new
                 {
                     status = "Success",
-                    message = $"Encoding season reset. Sections, faculty loads, pending grades, temporary students, and sectioning state were cleared. Temporary students removed: {temporaryStudentsCleared}."
+                    message = $"Encoding season reset. Pending grades, submitted grade batches, temporary students, and grade submission state were cleared. Sections and student assignments were preserved. Temporary students removed: {temporaryStudentsCleared}."
                 });
             }
             catch (Exception ex)
