@@ -103,7 +103,9 @@ function AcademicAssignment({ chairpersonDepartment = "" }) {
   const [facultyLoadingSummary, setFacultyLoadingSummary] = useState(null);
   const [approvedFaculties, setApprovedFaculties] = useState([]);
 
-  const [savedAssignments, setSavedAssignments] = useState(() => {
+  const [sharedDataVersion, setSharedDataVersion] = useState(0);
+
+  const savedAssignments = useMemo(() => {
     try {
       const saved = localStorage.getItem("registrarAssignments");
       const parsed = saved ? JSON.parse(saved) : [];
@@ -111,9 +113,7 @@ function AcademicAssignment({ chairpersonDepartment = "" }) {
     } catch {
       return [];
     }
-  });
-
-  const [sharedDataVersion, setSharedDataVersion] = useState(0);
+  }, [sharedDataVersion]);
 
   useEffect(() => {
     const handleSharedStateChanged = (event) => {
@@ -124,15 +124,6 @@ function AcademicAssignment({ chairpersonDepartment = "" }) {
         keys.includes(STUDENT_BATCHES_KEY)
       ) {
         setSharedDataVersion((v) => v + 1);
-        if (keys.includes("registrarAssignments")) {
-          try {
-            const saved = localStorage.getItem("registrarAssignments");
-            const parsed = saved ? JSON.parse(saved) : [];
-            setSavedAssignments(Array.isArray(parsed) ? parsed : []);
-          } catch {
-            setSavedAssignments([]);
-          }
-        }
       }
     };
 
@@ -143,14 +134,6 @@ function AcademicAssignment({ chairpersonDepartment = "" }) {
         event.key === STUDENT_BATCHES_KEY
       ) {
         setSharedDataVersion((v) => v + 1);
-        if (event.key === "registrarAssignments") {
-          try {
-            const parsed = event.newValue ? JSON.parse(event.newValue) : [];
-            setSavedAssignments(Array.isArray(parsed) ? parsed : []);
-          } catch {
-            setSavedAssignments([]);
-          }
-        }
       }
     };
 
@@ -385,11 +368,11 @@ function AcademicAssignment({ chairpersonDepartment = "" }) {
       };
 
       const updatedAssignments = [...savedAssignments, newAssignment];
-      setSavedAssignments(updatedAssignments);
       localStorage.setItem(
         "registrarAssignments",
         JSON.stringify(updatedAssignments)
       );
+      setSharedDataVersion((v) => v + 1);
       pushAssignmentsSharedState();
       syncFacultyLoadToBackend(newAssignment);
 
@@ -693,8 +676,8 @@ function AcademicAssignment({ chairpersonDepartment = "" }) {
 
     const updatedAssignments = Array.from(assignmentMap.values());
 
-    setSavedAssignments(updatedAssignments);
     localStorage.setItem("registrarAssignments", JSON.stringify(updatedAssignments));
+    setSharedDataVersion((v) => v + 1);
     pushAssignmentsSharedState();
     importedAssignments.forEach(syncFacultyLoadToBackend);
     setFacultyLoadingFile(null);
@@ -710,11 +693,11 @@ function AcademicAssignment({ chairpersonDepartment = "" }) {
 
   const handleDeleteAssignment = (id) => {
     const updatedAssignments = savedAssignments.filter((item) => item.id !== id);
-    setSavedAssignments(updatedAssignments);
     localStorage.setItem(
       "registrarAssignments",
       JSON.stringify(updatedAssignments)
     );
+    setSharedDataVersion((v) => v + 1);
     pushAssignmentsSharedState();
   };
 
