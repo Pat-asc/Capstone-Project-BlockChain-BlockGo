@@ -107,6 +107,7 @@ namespace Client_app.Controllers
                 using var conn = new NpgsqlConnection(_connectionString);
                 await conn.OpenAsync();
                 using var tx = await conn.BeginTransactionAsync();
+                var clearedAt = DateTime.UtcNow.ToString("o");
 
                 using var cmdEnsureResetTables = new NpgsqlCommand(@"
                     CREATE TABLE IF NOT EXISTS pending_grade_records (
@@ -241,6 +242,33 @@ namespace Client_app.Controllers
                         updated_at = EXCLUDED.updated_at;", conn, tx);
                 await cmdClearSharedSectioningState.ExecuteNonQueryAsync();
 
+                const string resetEncodingPeriod = "{\"semester\":\"2nd Semester\",\"startDate\":\"\",\"endDate\":\"\",\"term\":\"midterm\"}";
+                using var cmdSeedClearedSharedState = new NpgsqlCommand(@"
+                    INSERT INTO shared_client_state (key, value, updated_at, updated_by)
+                    VALUES
+                        ('registrarAssignments', '[]'::jsonb, CURRENT_TIMESTAMP, @updatedBy),
+                        ('studentSections', '[]'::jsonb, CURRENT_TIMESTAMP, @updatedBy),
+                        ('irregularSubjectAssignments', '[]'::jsonb, CURRENT_TIMESTAMP, @updatedBy),
+                        ('chairpersonStudentBatches', '[]'::jsonb, CURRENT_TIMESTAMP, @updatedBy),
+                        ('chairpersonSectionReviews', '{}'::jsonb, CURRENT_TIMESTAMP, @updatedBy),
+                        ('graduatingStudents', '[]'::jsonb, CURRENT_TIMESTAMP, @updatedBy),
+                        ('STUDENT_BATCHES_KEY', '[]'::jsonb, CURRENT_TIMESTAMP, @updatedBy),
+                        ('STUDENT_SUBMISSION_LOGS_KEY', '[]'::jsonb, CURRENT_TIMESTAMP, @updatedBy),
+                        ('studentPublishedGrades', '{}'::jsonb, CURRENT_TIMESTAMP, @updatedBy),
+                        ('facultyLoadResetAt', @clearedAt::jsonb, CURRENT_TIMESTAMP, @updatedBy),
+                        ('sessionRecoveryDrafts', '{}'::jsonb, CURRENT_TIMESTAMP, @updatedBy),
+                        ('chairpersonSubmissionLogs', '[]'::jsonb, CURRENT_TIMESTAMP, @updatedBy),
+                        ('studentMasterlist', '[]'::jsonb, CURRENT_TIMESTAMP, @updatedBy),
+                        ('encodingPeriod', @encodingPeriod::jsonb, CURRENT_TIMESTAMP, @updatedBy)
+                    ON CONFLICT (key)
+                    DO UPDATE SET value = EXCLUDED.value,
+                                  updated_at = EXCLUDED.updated_at,
+                                  updated_by = EXCLUDED.updated_by;", conn, tx);
+                cmdSeedClearedSharedState.Parameters.AddWithValue("updatedBy", (object?)User.Identity?.Name ?? DBNull.Value);
+                cmdSeedClearedSharedState.Parameters.AddWithValue("clearedAt", $"\"{clearedAt}\"");
+                cmdSeedClearedSharedState.Parameters.AddWithValue("encodingPeriod", resetEncodingPeriod);
+                await cmdSeedClearedSharedState.ExecuteNonQueryAsync();
+
                 using var cmdClearTemporaryStudents = new NpgsqlCommand(@"
                     WITH temp_users AS (
                         SELECT u.id
@@ -258,7 +286,6 @@ namespace Client_app.Controllers
                     WHERE id IN (SELECT id FROM temp_users);", conn, tx);
                 var temporaryStudentsCleared = await cmdClearTemporaryStudents.ExecuteNonQueryAsync();
 
-                const string resetEncodingPeriod = "{\"semester\":\"2nd Semester\",\"startDate\":\"\",\"endDate\":\"\",\"term\":\"midterm\"}";
                 using var cmdResetEncodingPeriod = new NpgsqlCommand(@"
                     INSERT INTO SystemSettings (key, value) VALUES ('encoding_period', @value)
                     ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value", conn, tx);
