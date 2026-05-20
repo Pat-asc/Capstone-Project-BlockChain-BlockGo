@@ -496,7 +496,8 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
       const savedAssignments = (() => {
         try {
           const saved = localStorage.getItem("registrarAssignments");
-          return saved ? JSON.parse(saved) : [];
+          const parsed = saved ? JSON.parse(saved) : [];
+          return Array.isArray(parsed) ? parsed : [];
         } catch (error) {
           console.warn("Failed to parse saved registrar assignments.", error);
           return [];

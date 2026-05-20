@@ -43,7 +43,7 @@ MSYS_NO_PATHCONV=1 kubectl exec $CLI_POD -c cli -n plv-main-campus -- \
     --ca-file /var/hyperledger/orderer/tls/ca.crt \
     --channelID $CHANNEL_NAME \
     --config-block /opt/fabric-config/network/channel-artifacts/registrar-channel.block \
-    -o orderer-1.plv-main-campus.svc.cluster.local:7053
+    -o orderer.capstone.com:7053
     
 if [ $? -eq 0 ]; then
     echo "Channel created successfully"
@@ -58,7 +58,7 @@ MSYS_NO_PATHCONV=1 kubectl exec $CLI_POD -c cli -n plv-main-campus -- \
     osnadmin channel list --client-cert /var/hyperledger/orderer/tls/server.crt \
     --client-key /var/hyperledger/orderer/tls/server.key \
     --ca-file /var/hyperledger/orderer/tls/ca.crt \
-    -o orderer-1.plv-main-campus.svc.cluster.local:7053
+    -o orderer.capstone.com:7053
 
 echo ""
 echo "Channel initialization complete"

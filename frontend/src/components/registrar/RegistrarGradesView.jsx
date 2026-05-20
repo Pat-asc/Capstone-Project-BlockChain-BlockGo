@@ -13,6 +13,7 @@ import RegistrarSectionsCreated from './RegistrarSectionsCreated';
 import { downloadTemplateButtonClass } from '../shared/downloadButtonStyles';
 import { buildCsvContent, downloadCsvFile } from '../../utils/studentSectioningHelpers';
 import { useRecoveredState } from '../../utils/sessionRecovery';
+import { clearAllSharedClientState } from '../../utils/sharedClientState';
 
 const HoverableID = ({ fullId, isAuthorized }) => {
     const [isRevealed, setIsRevealed] = useState(false);
@@ -342,27 +343,8 @@ const RegistrarGradesView = ({
     const handleResetEncodingSeason = useCallback(async () => {
         try {
             await resetEncodingSeason();
-            const resetEncodingPeriod = JSON.stringify({
-                semester: '2nd Semester',
-                startDate: '',
-                endDate: '',
-                term: 'midterm',
-            });
-            localStorage.removeItem('registrarAssignments');
-            localStorage.removeItem('studentSections');
-            localStorage.removeItem('irregularSubjectAssignments');
-            localStorage.removeItem('chairpersonStudentBatches');
-            localStorage.removeItem('chairpersonSectionReviews');
-            localStorage.setItem('encodingPeriod', resetEncodingPeriod);
-            localStorage.setItem('facultyLoadResetAt', new Date().toISOString());
-            window.dispatchEvent(
-                new CustomEvent('blockgo:system-setting-changed', {
-                    detail: {
-                        key: 'encoding_period',
-                        value: resetEncodingPeriod,
-                    },
-                })
-            );
+            await clearAllSharedClientState();
+
             window.dispatchEvent(
                 new CustomEvent('blockgo:faculty-load-reset', {
                     detail: { clearedAt: new Date().toISOString() },

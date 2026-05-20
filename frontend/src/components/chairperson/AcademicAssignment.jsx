@@ -104,20 +104,53 @@ function AcademicAssignment({ chairpersonDepartment = "" }) {
   const [approvedFaculties, setApprovedFaculties] = useState([]);
 
   const [savedAssignments, setSavedAssignments] = useState(() => {
-    const saved = localStorage.getItem("registrarAssignments");
-    return saved ? JSON.parse(saved) : [];
+    try {
+      const saved = localStorage.getItem("registrarAssignments");
+      const parsed = saved ? JSON.parse(saved) : [];
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
   });
+
+  const [sharedDataVersion, setSharedDataVersion] = useState(0);
 
   useEffect(() => {
     const handleSharedStateChanged = (event) => {
       const keys = event.detail?.keys || [];
-      if (!keys.includes("registrarAssignments")) return;
+      if (
+        keys.includes("registrarAssignments") ||
+        keys.includes("studentSections") ||
+        keys.includes(STUDENT_BATCHES_KEY)
+      ) {
+        setSharedDataVersion((v) => v + 1);
+        if (keys.includes("registrarAssignments")) {
+          try {
+            const saved = localStorage.getItem("registrarAssignments");
+            const parsed = saved ? JSON.parse(saved) : [];
+            setSavedAssignments(Array.isArray(parsed) ? parsed : []);
+          } catch {
+            setSavedAssignments([]);
+          }
+        }
+      }
+    };
 
-      try {
-        const saved = localStorage.getItem("registrarAssignments");
-        setSavedAssignments(saved ? JSON.parse(saved) : []);
-      } catch (error) {
-        console.warn("Failed to refresh assignments from shared state.", error);
+    const handleStorage = (event) => {
+      if (
+        event.key === "registrarAssignments" ||
+        event.key === "studentSections" ||
+        event.key === STUDENT_BATCHES_KEY
+      ) {
+        setSharedDataVersion((v) => v + 1);
+        if (event.key === "registrarAssignments") {
+          try {
+            const parsed = event.newValue ? JSON.parse(event.newValue) : [];
+            setSavedAssignments(Array.isArray(parsed) ? parsed : []);
+          } catch {
+            setSavedAssignments([]);
+          }
+        }
       }
     };
 
@@ -125,75 +158,98 @@ function AcademicAssignment({ chairpersonDepartment = "" }) {
       "blockgo:shared-client-state-changed",
       handleSharedStateChanged
     );
+    window.addEventListener("storage", handleStorage);
 
-    return () =>
+    return () => {
       window.removeEventListener(
         "blockgo:shared-client-state-changed",
         handleSharedStateChanged
       );
+      window.removeEventListener("storage", handleStorage);
+    };
   }, []);
 
-  const studentSections =
-    JSON.parse(localStorage.getItem("studentSections")) || [];
-  const studentBatches =
-    JSON.parse(localStorage.getItem(STUDENT_BATCHES_KEY)) || [];
+  const studentSections = useMemo(() => {
+    try {
+      const saved = localStorage.getItem("studentSections");
+      const parsed = saved ? JSON.parse(saved) : [];
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  }, [sharedDataVersion]);
 
-  const createdSections = studentBatches
-    .filter((batch) => batch.status !== "Promoted")
-    .flatMap((batch) =>
-      (batch.sectionPlans || []).map((section) => {
-        const sectionName =
-          section.sectionName ||
-          getDefaultSectionName(batch.program, section.sectionCode);
-        const yearLevel = section.yearLevel || "";
+  const studentBatches = useMemo(() => {
+    try {
+      const saved = localStorage.getItem(STUDENT_BATCHES_KEY);
+      const parsed = saved ? JSON.parse(saved) : [];
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  }, [sharedDataVersion]);
 
-        return {
-          key: [
-            batch.program,
+  const createdSections = useMemo(() => {
+    return studentBatches
+      .filter((batch) => batch.status !== "Promoted")
+      .flatMap((batch) =>
+        (batch.sectionPlans || []).map((section) => {
+          const sectionName =
+            section.sectionName ||
+            getDefaultSectionName(batch.program, section.sectionCode);
+          const yearLevel = section.yearLevel || "";
+
+          return {
+            key: [
+              batch.program,
+              yearLevel,
+              sectionName,
+              batch.batchYear,
+              batch.semester || "",
+            ].join("|"),
+            program: batch.program,
             yearLevel,
-            sectionName,
-            batch.batchYear,
-            batch.semester || "",
-          ].join("|"),
-          program: batch.program,
-          yearLevel,
-          section: sectionName,
-          schoolYear: batch.batchYear,
-          semester: batch.semester || "",
-          students: (batch.students || [])
-            .filter(
-              (student) =>
-                student.sectionCode === section.sectionCode &&
-                (student.yearLevel || yearLevel) === yearLevel
-            )
-            .map((student) => ({
-              studentId: student.studentId,
-              sex: student.sex || "",
-              firstName: student.firstName || "",
-              lastName: student.lastName || "",
-              middleInitial: student.middleInitial || "",
-              studentType: student.studentType || "Regular",
-              remarks: student.remarks || "",
-              repeatedSubjects: student.repeatedSubjects || "",
-              irregularSubjects: student.irregularSubjects || [],
-            })),
-        };
-      })
-    );
-  const sectionOptions = [
-    ...studentSections,
-    ...createdSections.filter(
-      (createdSection) =>
-        !studentSections.some(
-          (section) =>
-            section.program === createdSection.program &&
-            section.yearLevel === createdSection.yearLevel &&
-            section.section === createdSection.section &&
-            section.schoolYear === createdSection.schoolYear &&
-            (section.semester || "") === (createdSection.semester || "")
-        )
-    ),
-  ];
+            section: sectionName,
+            schoolYear: batch.batchYear,
+            semester: batch.semester || "",
+            students: (batch.students || [])
+              .filter(
+                (student) =>
+                  student.sectionCode === section.sectionCode &&
+                  (student.yearLevel || yearLevel) === yearLevel
+              )
+              .map((student) => ({
+                studentId: student.studentId,
+                sex: student.sex || "",
+                firstName: student.firstName || "",
+                lastName: student.lastName || "",
+                middleInitial: student.middleInitial || "",
+                studentType: student.studentType || "Regular",
+                remarks: student.remarks || "",
+                repeatedSubjects: student.repeatedSubjects || "",
+                irregularSubjects: student.irregularSubjects || [],
+              })),
+          };
+        })
+      );
+  }, [studentBatches]);
+
+  const sectionOptions = useMemo(() => {
+    return [
+      ...studentSections,
+      ...createdSections.filter(
+        (createdSection) =>
+          !studentSections.some(
+            (section) =>
+              section.program === createdSection.program &&
+              section.yearLevel === createdSection.yearLevel &&
+              section.section === createdSection.section &&
+              section.schoolYear === createdSection.schoolYear &&
+              (section.semester || "") === (createdSection.semester || "")
+          )
+      ),
+    ];
+  }, [studentSections, createdSections]);
 
   const selectedProgram = chairpersonDepartment;
 

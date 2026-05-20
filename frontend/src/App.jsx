@@ -7,14 +7,24 @@ import ChairpersonPortal from "./pages/ChairpersonPortal";
 import { CHAIRPERSON_REVIEW_KEY } from "./utils/chairpersonHelpers";
 import { getPublishedGradesForStudent } from "./utils/publishedGradesHelpers";
 import { clearSessionRecovery, useSessionRecovery } from "./utils/sessionRecovery";
+import { clearAllSharedClientState } from "./utils/sharedClientState";
+
+import { resetEncodingSeason } from "./services/api";
 
 function App() {
   useSessionRecovery();
   const [userRole, setUserRole] = useState(localStorage.getItem("userRole"));
 
   const [allGrades, setAllGrades] = useState(() => {
-    const saved = localStorage.getItem("blockgo-allGrades");
-    return saved ? JSON.parse(saved) : {};
+    try {
+      const saved = localStorage.getItem("blockgo-allGrades");
+      const parsed = saved ? JSON.parse(saved) : {};
+      return parsed && typeof parsed === "object" && !Array.isArray(parsed)
+        ? parsed
+        : {};
+    } catch {
+      return {};
+    }
   });
 
   useEffect(() => {
@@ -43,15 +53,21 @@ function App() {
     setUserRole(null);
   };
 
-  const handleResetEncodingSeason = () => {
-    localStorage.removeItem("blockgo-allGrades");
-    localStorage.removeItem(CHAIRPERSON_REVIEW_KEY);
-    localStorage.removeItem("registrarAssignments");
-    localStorage.removeItem("studentSections");
-    localStorage.removeItem("irregularSubjectAssignments");
-    localStorage.removeItem("chairpersonStudentBatches");
-    localStorage.removeItem("chairpersonSectionReviews");
-    setAllGrades({});
+  const handleResetEncodingSeason = async () => {
+    try {
+      await resetEncodingSeason();
+      await clearAllSharedClientState();
+      
+      localStorage.removeItem("blockgo-allGrades");
+      localStorage.removeItem("encodingPeriod");
+      setAllGrades({});
+    } catch (error) {
+      console.error("Failed to reset encoding season:", error);
+      await clearAllSharedClientState();
+      localStorage.removeItem("blockgo-allGrades");
+      localStorage.removeItem("encodingPeriod");
+      setAllGrades({});
+    }
   };
 
   const studentData = {

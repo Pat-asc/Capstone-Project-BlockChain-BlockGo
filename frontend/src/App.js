@@ -13,6 +13,7 @@ import { startNginxFailoverMonitor } from './services/nginxFailover';
 import { BrowserRouter as Router } from 'react-router-dom';
 import { NotificationProvider, useNotification } from './services/NotificationContext';
 import { clearSessionRecovery, useRecoveredState, useSessionRecovery } from './utils/sessionRecovery';
+import { pullSharedClientState } from './utils/sharedClientState';
 
 const normalizeAppRole = (role) => {
   const normalized = String(role || '').trim().toLowerCase().replace(/[\s-]+/g, '_');
@@ -140,6 +141,22 @@ function AppContent() {
       onFailover: handleNginxFailover,
     });
   }, [handleNginxFailover]);
+
+  useEffect(() => {
+    if (!user) return;
+
+    pullSharedClientState().catch((error) => {
+      console.warn("[App] Initial shared state pull failed:", error);
+    });
+
+    const timer = setInterval(() => {
+      pullSharedClientState().catch((error) => {
+        console.warn("[App] Periodic shared state pull failed:", error);
+      });
+    }, 30000);
+
+    return () => clearInterval(timer);
+  }, [user]);
 
   const handleUnreadChange = useCallback((totalUnread) => {
     setChatUnreadTotal(totalUnread);

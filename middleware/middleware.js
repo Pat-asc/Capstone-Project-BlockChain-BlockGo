@@ -645,9 +645,9 @@ const getCallerIdentity = (req) => {
 };  
 
 const loginLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000, // 15 minutes
+    windowMs: 60 * 1000, // 1 minute
     max: 5, // Limit each IP to 5 requests per windowMs
-    message: { error: 'Too many login attempts from this IP, please try again after 15 minutes.' },
+    message: { error: 'Too many login attempts from this IP, please try again after 1 minute.' },
     standardHeaders: true,
     legacyHeaders: false,
 });

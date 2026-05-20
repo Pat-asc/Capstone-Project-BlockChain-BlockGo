@@ -28,6 +28,8 @@ spec:
       labels:
         app: postgres-replica-annex
     spec:
+      securityContext:
+        fsGroup: 1001
       serviceAccountName: fabric-sa
       containers:
       - name: postgres
