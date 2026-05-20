@@ -7,13 +7,27 @@ import ChairpersonPortal from "./pages/ChairpersonPortal";
 import { CHAIRPERSON_REVIEW_KEY } from "./utils/chairpersonHelpers";
 import { getPublishedGradesForStudent } from "./utils/publishedGradesHelpers";
 import { clearSessionRecovery, useSessionRecovery } from "./utils/sessionRecovery";
-import { clearAllSharedClientState } from "./utils/sharedClientState";
+import { clearAllSharedClientState, pullSharedClientState } from "./utils/sharedClientState";
 
 import { resetEncodingSeason } from "./services/api";
 
 function App() {
   useSessionRecovery();
   const [userRole, setUserRole] = useState(localStorage.getItem("userRole"));
+
+  useEffect(() => {
+    if (!userRole) return;
+    
+    // Initial pull of shared state from server
+    pullSharedClientState().catch(err => console.warn("Initial shared state pull failed:", err));
+
+    // Periodic pull every 30s as a fallback for real-time updates
+    const timer = setInterval(() => {
+      pullSharedClientState().catch(err => console.warn("Periodic shared state pull failed:", err));
+    }, 30000);
+
+    return () => clearInterval(timer);
+  }, [userRole]);
 
   const [allGrades, setAllGrades] = useState(() => {
     try {

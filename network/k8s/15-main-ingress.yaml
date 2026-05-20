@@ -32,8 +32,85 @@ spec:
   - host: plv-blockgo.com
     http:
       paths:
-      - path: /
-        pathType: Prefix
+      - path: /api/Grades/*
+        pathType: ImplementationSpecific
+        backend:
+          service:
+            name: client-app-service
+            port:
+              number: 5000
+      - path: /api/Student/*
+        pathType: ImplementationSpecific
+        backend:
+          service:
+            name: client-app-service
+            port:
+              number: 5000
+      - path: /api/GradeTemplate/*
+        pathType: ImplementationSpecific
+        backend:
+          service:
+            name: client-app-service
+            port:
+              number: 5000
+      - path: /api/Auth/*
+        pathType: ImplementationSpecific
+        backend:
+          service:
+            name: client-app-service
+            port:
+              number: 5000
+      - path: /api/registrar/*
+        pathType: ImplementationSpecific
+        backend:
+          service:
+            name: client-app-service
+            port:
+              number: 5000
+      - path: /api/SystemSettings/*
+        pathType: ImplementationSpecific
+        backend:
+          service:
+            name: client-app-service
+            port:
+              number: 5000
+      - path: /api/BulkUpload/*
+        pathType: ImplementationSpecific
+        backend:
+          service:
+            name: client-app-service
+            port:
+              number: 5000
+      - path: /api/RegistrarDashboard/*
+        pathType: ImplementationSpecific
+        backend:
+          service:
+            name: client-app-service
+            port:
+              number: 5000
+      - path: /chatHub
+        pathType: ImplementationSpecific
+        backend:
+          service:
+            name: client-app-service
+            port:
+              number: 5000
+      - path: /chatHub/*
+        pathType: ImplementationSpecific
+        backend:
+          service:
+            name: client-app-service
+            port:
+              number: 5000
+      - path: /api/*
+        pathType: ImplementationSpecific
+        backend:
+          service:
+            name: middleware-api
+            port:
+              number: 4000
+      - path: /*
+        pathType: ImplementationSpecific
         backend:
           service:
             name: frontend-service
