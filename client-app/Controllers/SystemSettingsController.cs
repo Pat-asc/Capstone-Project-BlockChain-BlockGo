@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Microsoft.AspNetCore.SignalR;
 
+
 namespace Client_app.Controllers
 {
     [Authorize]
