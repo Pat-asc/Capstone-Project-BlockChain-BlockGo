@@ -18,6 +18,7 @@ using System.Linq;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Security.Cryptography;
 using ClosedXML.Excel;
@@ -37,6 +38,15 @@ namespace Client_app.Controllers
         private readonly IHttpClientFactory _httpClientFactory;
         private readonly ILogger<AuthController> _logger;
         private readonly IHubContext<ChatHub> _chatHubContext;
+        private static readonly SemaphoreSlim SharedClientStateTableLock = new(1, 1);
+        private static bool _sharedClientStateTableReady;
+        private const string SharedClientStateCachePrefix = "shared-client-state:";
+
+        private sealed class SharedClientStateCacheEntry
+        {
+            public string? RawValue { get; init; }
+            public DateTime? UpdatedAt { get; init; }
+        }
 
         public AuthController(IConfiguration configuration, IMemoryCache memoryCache, IEmailService emailService, IHttpClientFactory httpClientFactory, ILogger<AuthController> logger, IHubContext<ChatHub> chatHubContext)
         {
@@ -3730,6 +3740,13 @@ namespace Client_app.Controllers
 
         private static async Task EnsureSharedClientStateTableAsync(NpgsqlConnection conn)
         {
+            if (_sharedClientStateTableReady) return;
+
+            await SharedClientStateTableLock.WaitAsync();
+            try
+            {
+                if (_sharedClientStateTableReady) return;
+
             using var cmd = new NpgsqlCommand(@"
                 CREATE TABLE IF NOT EXISTS shared_client_state (
                     key VARCHAR(120) PRIMARY KEY,
@@ -3738,6 +3755,12 @@ namespace Client_app.Controllers
                     updated_by VARCHAR(255)
                 );", conn);
             await cmd.ExecuteNonQueryAsync();
+                _sharedClientStateTableReady = true;
+            }
+            finally
+            {
+                SharedClientStateTableLock.Release();
+            }
         }
 
         [Authorize]
@@ -3749,6 +3772,21 @@ namespace Client_app.Controllers
 
             try
             {
+                var cacheKey = SharedClientStateCachePrefix + key;
+                if (_cache.TryGetValue(cacheKey, out SharedClientStateCacheEntry? cached) && cached is not null)
+                {
+                    if (cached.RawValue is null)
+                        return Ok(new { status = "Success", key, value = (object?)null, updatedAt = (DateTime?)null });
+
+                    return Ok(new
+                    {
+                        status = "Success",
+                        key,
+                        value = JsonSerializer.Deserialize<JsonElement>(cached.RawValue),
+                        updatedAt = cached.UpdatedAt
+                    });
+                }
+
                 using var conn = new NpgsqlConnection(_connectionString);
                 await conn.OpenAsync();
                 await EnsureSharedClientStateTableAsync(conn);
@@ -3758,16 +3796,21 @@ namespace Client_app.Controllers
                 using var reader = await cmd.ExecuteReaderAsync();
 
                 if (!await reader.ReadAsync())
+                {
+                    _cache.Set(cacheKey, new SharedClientStateCacheEntry(), TimeSpan.FromSeconds(5));
                     return Ok(new { status = "Success", key, value = (object?)null, updatedAt = (DateTime?)null });
+                }
 
                 var rawValue = reader.GetString(0);
+                var updatedAt = reader.GetDateTime(1);
+                _cache.Set(cacheKey, new SharedClientStateCacheEntry { RawValue = rawValue, UpdatedAt = updatedAt }, TimeSpan.FromSeconds(5));
                 var value = JsonSerializer.Deserialize<JsonElement>(rawValue);
                 return Ok(new
                 {
                     status = "Success",
                     key,
                     value,
-                    updatedAt = reader.GetDateTime(1)
+                    updatedAt
                 });
             }
             catch (Exception ex)
@@ -3801,6 +3844,11 @@ namespace Client_app.Controllers
                 cmd.Parameters.AddWithValue("value", valueJson);
                 cmd.Parameters.AddWithValue("updatedBy", (object?)User.Identity?.Name ?? DBNull.Value);
                 await cmd.ExecuteNonQueryAsync();
+
+                _cache.Set(
+                    SharedClientStateCachePrefix + key,
+                    new SharedClientStateCacheEntry { RawValue = valueJson, UpdatedAt = DateTime.UtcNow },
+                    TimeSpan.FromSeconds(5));
 
                 await NotifyAcademicDataChangedAsync("shared_client_state_updated", null, User.Identity?.Name);
                 return Ok(new { status = "Success", key });

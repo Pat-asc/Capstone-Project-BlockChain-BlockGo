@@ -30,6 +30,12 @@ spec:
         env:
         - name: ASPNETCORE_URLS
           value: "http://+:5000"
+        - name: ENABLE_FILE_LOGGING
+          value: "false"
+        - name: ENABLE_REQUEST_LOGGING
+          value: "false"
+        - name: DOTNET_ThreadPool_MinThreads
+          value: "16"
         - name: Jwt__Key
           valueFrom:
             secretKeyRef:
@@ -104,11 +110,11 @@ spec:
           value: "Host=postgres.plv-main-campus.svc.cluster.local;Port=5432;Database=$(POSTGRES_DB);Username=$(POSTGRES_USER);Password=$(POSTGRES_PASS)"
         resources:
           requests:
-            memory: "128Mi"
-            cpu: "100m"
+            memory: "256Mi"
+            cpu: "250m"
           limits:
-            memory: "512Mi"
-            cpu: "500m"
+            memory: "768Mi"
+            cpu: "1000m"
 ---
 apiVersion: v1
 kind: Service

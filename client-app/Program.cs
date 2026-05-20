@@ -14,15 +14,20 @@ using Microsoft.AspNetCore.HttpOverrides;
 
 AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
 
-Log.Logger = new LoggerConfiguration()
+var loggerConfig = new LoggerConfiguration()
     .MinimumLevel.Information()
     .WriteTo.Console()
-    .WriteTo.File(
+    .Enrich.FromLogContext();
+
+if (string.Equals(Environment.GetEnvironmentVariable("ENABLE_FILE_LOGGING"), "true", StringComparison.OrdinalIgnoreCase))
+{
+    loggerConfig = loggerConfig.WriteTo.File(
         "logs/app-.txt",
         rollingInterval: RollingInterval.Day,
-        outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {Message:lj}{NewLine}{Exception}")
-    .Enrich.FromLogContext()
-    .CreateLogger();
+        outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {Message:lj}{NewLine}{Exception}");
+}
+
+Log.Logger = loggerConfig.CreateLogger();
 
 try
 {
@@ -261,7 +266,10 @@ try
     app.UseForwardedHeaders(); // Must be first in the pipeline for Ingress
 
     app.UseExceptionHandler();
-    app.UseSerilogRequestLogging();
+    if (string.Equals(Environment.GetEnvironmentVariable("ENABLE_REQUEST_LOGGING"), "true", StringComparison.OrdinalIgnoreCase))
+    {
+        app.UseSerilogRequestLogging();
+    }
     app.UseSwagger();
     app.UseSwaggerUI();
     app.UseCors("AllowFrontend");

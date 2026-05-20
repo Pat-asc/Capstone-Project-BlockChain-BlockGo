@@ -14,8 +14,8 @@ spec:
   strategy:
     type: RollingUpdate
     rollingUpdate:
-      maxSurge: 1
-      maxUnavailable: 0
+      maxSurge: 0
+      maxUnavailable: 1
   template:
     metadata:
       labels:
@@ -53,6 +53,16 @@ spec:
           value: production
         - name: PORT
           value: "4000"
+        - name: PG_POOL_MAX
+          value: "20"
+        - name: PG_CONNECTION_TIMEOUT_MS
+          value: "3000"
+        - name: HTTP_KEEP_ALIVE_TIMEOUT_MS
+          value: "65000"
+        - name: HTTP_HEADERS_TIMEOUT_MS
+          value: "66000"
+        - name: HTTP_REQUEST_TIMEOUT_MS
+          value: "120000"
         - name: CSHARP_API_URL
           value: "http://client-app-service.plv-fabric.svc.cluster.local:5000"
         - name: IPFS_API_URL
@@ -120,8 +130,8 @@ spec:
             memory: "512Mi"
             cpu: "250m"
           limits:
-            memory: "512Mi"
-            cpu: "500m"
+            memory: "768Mi"
+            cpu: "1000m"
       volumes:
       - name: fabric-ca-roots
         secret:
@@ -136,6 +146,7 @@ metadata:
     app: middleware-api
   annotations:
     cloud.google.com/neg: '{"ingress": true}'
+    cloud.google.com/backend-config: '{"ports":{"4000":"middleware-api-backend-config"}}'
 spec:
   type: ClusterIP
   selector:
@@ -149,6 +160,18 @@ spec:
   sessionAffinityConfig:
     clientIP:
       timeoutSeconds: 10800
+---
+apiVersion: cloud.google.com/v1
+kind: BackendConfig
+metadata:
+  name: middleware-api-backend-config
+  namespace: plv-fabric
+spec:
+  timeoutSec: 120
+  healthCheck:
+    type: HTTP
+    requestPath: /api/health
+    port: 4000
 ---
 apiVersion: v1
 kind: Service
@@ -178,7 +201,7 @@ spec:
     kind: Deployment
     name: middleware-api
   minReplicas: 1
-  maxReplicas: 5
+  maxReplicas: 1
   metrics:
   - type: Resource
     resource:

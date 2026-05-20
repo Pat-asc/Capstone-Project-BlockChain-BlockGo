@@ -53,6 +53,8 @@ const parsePositiveInt = (value, fallback) => {
     return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
 };
 
+const isTruthy = (value) => ['1', 'true', 'yes', 'on'].includes(String(value || '').trim().toLowerCase());
+
 const IDLE_TIMEOUT_MS = parsePositiveInt(process.env.GATEWAY_IDLE_TIMEOUT_MS, 5 * 60 * 1000);
 const GATEWAY_PRUNE_INTERVAL_MS = parsePositiveInt(process.env.GATEWAY_PRUNE_INTERVAL_MS, 60 * 1000);
 
@@ -149,19 +151,24 @@ const getCAConfig = (role) => {
         }
     }
 
-    cacheKey = `${normalizedRole}:${(certPaths || []).map(getFileSignature).join('|')}`;
+    const insecureTls = isTruthy(process.env.FABRIC_CA_INSECURE_TLS);
+
+    cacheKey = `${normalizedRole}:${insecureTls}:${(certPaths || []).map(getFileSignature).join('|')}`;
     if (caConfigCache.has(cacheKey)) {
         return caConfigCache.get(cacheKey);
     }
 
     const tlsOptions = {
         trustedRoots: certPaths ? certPaths.map((certPath) => fs.readFileSync(certPath, 'utf8')) : [],
-        verify: certPaths && certPaths.length > 0
+        verify: !insecureTls && Boolean(certPaths && certPaths.length > 0)
     };
 
     const caClient = new FabricCAServices(caURL, tlsOptions, caName);
 
-    console.log(`[Fabric CA TLS] ${caName} trust roots: ${certPaths.map((certPath) => path.basename(path.dirname(certPath)) + '/' + path.basename(certPath)).join(', ')}`);
+    if (insecureTls) {
+        console.warn(`[Fabric CA TLS] Strict TLS hostname verification disabled for ${caName}.`);
+    }
+    console.log(`[Fabric CA TLS] ${caName} trust roots: ${(certPaths || []).map((certPath) => path.basename(path.dirname(certPath)) + '/' + path.basename(certPath)).join(', ') || 'none'}`);
 
     const config = { caURL, caName, adminLabel, mspId, certPaths, tlsOptions, caClient };
     caConfigCache.set(cacheKey, config);
@@ -217,8 +224,11 @@ const dbRead = new Pool({
     database: process.env.POSTGRES_DB || 'ActivityLogs',
     password: process.env.POSTGRES_PASS || 'password',
     port: process.env.POSTGRES_PORT || 5432,
-    max: 20,
-    idleTimeoutMillis: 30000
+    max: parsePositiveInt(process.env.PG_POOL_MAX, 20),
+    idleTimeoutMillis: parsePositiveInt(process.env.PG_IDLE_TIMEOUT_MS, 30000),
+    connectionTimeoutMillis: parsePositiveInt(process.env.PG_CONNECTION_TIMEOUT_MS, 3000),
+    keepAlive: true,
+    keepAliveInitialDelayMillis: parsePositiveInt(process.env.PG_KEEP_ALIVE_INITIAL_DELAY_MS, 10000)
 });
 
 let mainIp = process.env.MAIN_CAMPUS_IP;
@@ -230,8 +240,11 @@ const dbWrite = new Pool({
     database: process.env.POSTGRES_DB || 'ActivityLogs',
     password: process.env.POSTGRES_PASS || 'password',
     port: process.env.POSTGRES_PORT || 5432,
-    max: 20,
-    idleTimeoutMillis: 30000
+    max: parsePositiveInt(process.env.PG_POOL_MAX, 20),
+    idleTimeoutMillis: parsePositiveInt(process.env.PG_IDLE_TIMEOUT_MS, 30000),
+    connectionTimeoutMillis: parsePositiveInt(process.env.PG_CONNECTION_TIMEOUT_MS, 3000),
+    keepAlive: true,
+    keepAliveInitialDelayMillis: parsePositiveInt(process.env.PG_KEEP_ALIVE_INITIAL_DELAY_MS, 10000)
 });
 
 dbRead.on('error', (err, client) => {
@@ -652,6 +665,97 @@ const loginLimiter = rateLimit({
     legacyHeaders: false,
 });
 
+const getMspIdForRole = (role) => {
+    const normalizedRole = String(role || 'registrar').toLowerCase();
+    if (normalizedRole === 'faculty') return 'FacultyMSP';
+    if (normalizedRole === 'department_admin' || normalizedRole === 'deptadmin' || normalizedRole === 'department' || normalizedRole === 'admin' || normalizedRole === 'chairperson') {
+        return 'DepartmentMSP';
+    }
+    return 'RegistrarMSP';
+};
+
+async function recoverWalletIdentity(userRecord, walletIdentityName, password, wallet) {
+    const { caURL, caName, adminLabel, mspId, tlsOptions, caClient } = getCAConfig(userRecord.role);
+    const ca = caClient;
+
+    try {
+        const enrollment = await ca.enroll({
+            enrollmentID: walletIdentityName,
+            enrollmentSecret: password,
+            attr_reqs: [{ name: 'role', optional: true }, { name: 'grade.manage', optional: true }]
+        });
+        await wallet.put(walletIdentityName, {
+            credentials: { certificate: enrollment.certificate, privateKey: enrollment.key.toBytes() },
+            mspId: mspId,
+            type: 'X.509'
+        });
+        return;
+    } catch (enrollErr) {
+        console.log(`[Self-Healing] Enrollment failed, attempting to register ${walletIdentityName} into CA...`);
+    }
+
+    await ensureAdminEnrolled(caURL, caName, mspId, adminLabel, tlsOptions, caClient);
+
+    const adminIdentity = await wallet.get(adminLabel);
+    if (!adminIdentity) throw new Error(`Admin ${adminLabel} missing from wallet.`);
+
+    const provider = wallet.getProviderRegistry().getProvider(adminIdentity.type);
+    let adminUser = await provider.getUserContext(adminIdentity, 'admin');
+
+    const registerPayload = {
+        enrollmentID: walletIdentityName,
+        enrollmentSecret: password,
+        role: (userRecord.role === 'registrar' || userRecord.role === 'department_admin' || userRecord.role === 'deptAdmin' || userRecord.role === 'chairperson') ? 'admin' : 'client',
+        attrs: [
+            { name: 'role', value: userRecord.role, ecert: true },
+            { name: 'grade.manage', value: userRecord.role === 'faculty' ? 'true' : 'false', ecert: true }
+        ]
+    };
+
+    try {
+        await ca.register(registerPayload, adminUser);
+    } catch (regErr) {
+        if (regErr.toString().includes('code: 20') || regErr.toString().includes('Authentication failure')) {
+            console.warn(`[Self-Healing] Admin authentication failed for ${adminLabel}. Stale cert suspected. Re-enrolling...`);
+            await wallet.remove(adminLabel);
+            await ensureAdminEnrolled(caURL, caName, mspId, adminLabel, tlsOptions, caClient);
+
+            const newAdminIdentity = await wallet.get(adminLabel);
+            adminUser = await provider.getUserContext(newAdminIdentity, 'admin');
+            await ca.register(registerPayload, adminUser);
+        } else if (regErr.toString().includes('code: 74') || regErr.toString().includes('is already registered')) {
+            console.log(`[Self-Healing] ${walletIdentityName} already exists in CA. Re-registering for wallet recovery...`);
+            const identityService = ca.newIdentityService();
+            try {
+                const forceDeleteUrl = identityService._client.getBaseURL() + '/api/v1/identities/' + walletIdentityName + '?force=true';
+                await identityService._client.delete(forceDeleteUrl, adminUser);
+                await ca.register(registerPayload, adminUser);
+            } catch (e) {
+                console.log(`[Self-Healing] CA Force Delete failed: ${e.message}. Attempting forced update...`);
+                await identityService.update(walletIdentityName, {
+                    type: registerPayload.role,
+                    secret: password,
+                    max_enrollments: -1,
+                    attrs: registerPayload.attrs
+                }, adminUser);
+            }
+        } else {
+            throw regErr;
+        }
+    }
+
+    const newEnrollment = await ca.enroll({
+        enrollmentID: walletIdentityName,
+        enrollmentSecret: password,
+        attr_reqs: [{ name: 'role', optional: true }, { name: 'grade.manage', optional: true }]
+    });
+    await wallet.put(walletIdentityName, {
+        credentials: { certificate: newEnrollment.certificate, privateKey: newEnrollment.key.toBytes() },
+        mspId: mspId,
+        type: 'X.509'
+    });
+}
+
 app.post('/api/login', loginLimiter, async (req, res) => {
     try {
         const { username, password } = req.body;
@@ -689,92 +793,11 @@ app.post('/api/login', loginLimiter, async (req, res) => {
         let identity = await wallet.get(walletIdentityName);
         
         if (!identity) {
-            console.warn(`[Self-Healing] Wallet missing for ${walletIdentityName}. Attempting automatic recovery...`);
-            try {
-                const { caURL, caName, adminLabel, mspId, tlsOptions, caClient } = getCAConfig(userRecord.role);
-                const ca = caClient;
-                
-                try {
-                    const enrollment = await ca.enroll({
-                        enrollmentID: walletIdentityName,
-                        enrollmentSecret: password,
-                        attr_reqs: [{ name: 'role', optional: true }, { name: 'grade.manage', optional: true }]
-                    });
-                    await wallet.put(walletIdentityName, {
-                        credentials: { certificate: enrollment.certificate, privateKey: enrollment.key.toBytes() },
-                        mspId: mspId,
-                        type: 'X.509'
-                    });
-                } catch (enrollErr) {
-                    console.log(`[Self-Healing] Enrollment failed, attempting to register ${walletIdentityName} into CA...`);
-                    
-                    await ensureAdminEnrolled(caURL, caName, mspId, adminLabel, tlsOptions, caClient);
-                    
-                    const adminIdentity = await wallet.get(adminLabel);
-                    if (!adminIdentity) throw new Error(`Admin ${adminLabel} missing from wallet.`);
-                    
-                    const provider = wallet.getProviderRegistry().getProvider(adminIdentity.type);
-                    let adminUser = await provider.getUserContext(adminIdentity, 'admin');
-                    
-                    const registerPayload = {
-                        enrollmentID: walletIdentityName,
-                        enrollmentSecret: password,
-                        role: (userRecord.role === 'registrar' || userRecord.role === 'department_admin' || userRecord.role === 'deptAdmin' || userRecord.role === 'chairperson') ? 'admin' : 'client',
-                        attrs: [
-                            { name: 'role', value: userRecord.role, ecert: true },
-                            { name: 'grade.manage', value: userRecord.role === 'faculty' ? 'true' : 'false', ecert: true }
-                        ]
-                    };
-                    
-                    try {
-                        await ca.register(registerPayload, adminUser);
-                    } catch (regErr) {
-                        if (regErr.toString().includes('code: 20') || regErr.toString().includes('Authentication failure')) {
-                            console.warn(`[Self-Healing] Admin authentication failed for ${adminLabel}. Stale cert suspected. Re-enrolling...`);
-                            await wallet.remove(adminLabel);
-                            await ensureAdminEnrolled(caURL, caName, mspId, adminLabel, tlsOptions, caClient);
-                            
-                            const newAdminIdentity = await wallet.get(adminLabel);
-                            adminUser = await provider.getUserContext(newAdminIdentity, 'admin');
-                            await ca.register(registerPayload, adminUser);
-                        } else if (regErr.toString().includes('code: 74') || regErr.toString().includes('is already registered')) {
-                            console.log(`[Self-Healing] ${walletIdentityName} already exists in CA. Re-registering for wallet recovery...`);
-                            const identityService = ca.newIdentityService();
-                            try {
-                                const forceDeleteUrl = identityService._client.getBaseURL() + '/api/v1/identities/' + walletIdentityName + '?force=true';
-                                await identityService._client.delete(forceDeleteUrl, adminUser);
-                                await ca.register(registerPayload, adminUser);
-                            } catch (e) {
-                                console.log(`[Self-Healing] CA Force Delete failed: ${e.message}. Attempting forced update...`);
-                                await identityService.update(walletIdentityName, { 
-                                    type: registerPayload.role,
-                                    secret: password, 
-                                    max_enrollments: -1,
-                                    attrs: registerPayload.attrs 
-                                }, adminUser);
-                            }
-                        } else {
-                            throw regErr;
-                        }
-                    }
-                    
-                    const newEnrollment = await ca.enroll({
-                        enrollmentID: walletIdentityName,
-                        enrollmentSecret: password,
-                        attr_reqs: [{ name: 'role', optional: true }, { name: 'grade.manage', optional: true }]
-                    });
-                    await wallet.put(walletIdentityName, {
-                        credentials: { certificate: newEnrollment.certificate, privateKey: newEnrollment.key.toBytes() },
-                        mspId: mspId,
-                        type: 'X.509'
-                    });
-                }
-                console.log(`[Self-Healing] Successfully recovered wallet for ${walletIdentityName}`);
-                identity = await wallet.get(walletIdentityName);
-            } catch (recoveryErr) {
-                console.error(`[Self-Healing] Recovery failed: ${recoveryErr.message}`);
-                return res.status(401).json({ error: "Blockchain Identity not found, and automatic recovery failed. Please contact admin." });
-            }
+            console.warn(`[Self-Healing] Wallet missing for ${walletIdentityName}. Continuing login and repairing wallet in background...`);
+            identity = { mspId: getMspIdForRole(userRecord.role) };
+            recoverWalletIdentity(userRecord, walletIdentityName, password, wallet)
+                .then(() => console.log(`[Self-Healing] Successfully recovered wallet for ${walletIdentityName}`))
+                .catch((recoveryErr) => console.error(`[Self-Healing] Background recovery failed for ${walletIdentityName}: ${recoveryErr.message}`));
         }
 
 
@@ -1533,11 +1556,14 @@ const PORT = process.env.PORT || 4000;
 async function startServer() {
     importCryptogenAdmins().catch(e => console.error("Startup wallet sync failed:", e.message));
 
-    app.listen(PORT, '0.0.0.0', () => {
+    const server = app.listen(PORT, '0.0.0.0', () => {
         console.log(`\nMiddleware online on port ${PORT}`);
         console.log(`Mode: Production Security (OBAC/ABAC ACTIVE)`);
         console.log(` Dynamic Identity Loading: Enabled\n`);
     });
+    server.keepAliveTimeout = parsePositiveInt(process.env.HTTP_KEEP_ALIVE_TIMEOUT_MS, 65 * 1000);
+    server.headersTimeout = parsePositiveInt(process.env.HTTP_HEADERS_TIMEOUT_MS, 66 * 1000);
+    server.requestTimeout = parsePositiveInt(process.env.HTTP_REQUEST_TIMEOUT_MS, 120 * 1000);
 }
 
 startServer();
