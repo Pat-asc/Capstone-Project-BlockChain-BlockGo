@@ -25,7 +25,7 @@ metadata:
   namespace: plv-fabric
 spec:
   serviceName: ipfs-headless
-  replicas: 3
+  replicas: 1
   selector:
     matchLabels:
       app: ipfs-node

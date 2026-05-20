@@ -245,32 +245,34 @@ wait_deployments() {
     echo "Waiting for deployments to be ready..."
     
     echo "Waiting for PostgreSQL..."
-    kubectl rollout status statefulset/postgres-primary -n plv-main-campus --timeout=5m || true
-    kubectl rollout status statefulset/postgres-replica-annex -n plv-annex-campus --timeout=5m || true
-    kubectl rollout status statefulset/postgres-replica-pubad -n plv-pubad-campus --timeout=5m || true
+    kubectl rollout status statefulset/postgres-primary -n plv-main-campus --timeout=10m || true
+    # kubectl rollout status statefulset/postgres-replica-annex -n plv-annex-campus --timeout=10m || true
+    # kubectl rollout status statefulset/postgres-replica-pubad -n plv-pubad-campus --timeout=10m || true
     
     echo "Waiting for Fabric CA (Registrar)..."
-    kubectl rollout status deployment/fabric-ca-registrar -n plv-main-campus --timeout=5m || true
+    kubectl rollout status deployment/fabric-ca-registrar -n plv-main-campus --timeout=10m || true
     
     echo "Waiting for Orderers..."
-    kubectl rollout status deployment/orderer-1 -n plv-main-campus --timeout=5m || true
-    kubectl rollout status deployment/orderer-2 -n plv-main-campus --timeout=5m || true
-    kubectl rollout status deployment/orderer-3 -n plv-annex-campus --timeout=5m || true
+    kubectl rollout status deployment/orderer-1 -n plv-main-campus --timeout=10m || true
+    kubectl rollout status deployment/orderer-2 -n plv-main-campus --timeout=10m || true
+    kubectl rollout status deployment/orderer-3 -n plv-annex-campus --timeout=10m || true
     
     echo "Waiting for Peer (Registrar)..."
-    kubectl rollout status deployment/peer-registrar -n plv-main-campus --timeout=5m || true
-    kubectl rollout status deployment/peer-faculty -n plv-annex-campus --timeout=5m || true
-    kubectl rollout status deployment/peer-department -n plv-pubad-campus --timeout=5m || true
+    kubectl rollout status deployment/peer-registrar -n plv-main-campus --timeout=10m || true
+    kubectl rollout status deployment/peer-faculty -n plv-annex-campus --timeout=10m || true
+    kubectl rollout status deployment/peer-department -n plv-pubad-campus --timeout=10m || true
     
     echo "Waiting for IPFS Nodes..."
-    kubectl rollout status statefulset/ipfs-node -n plv-fabric --timeout=5m || true
+    kubectl rollout status statefulset/ipfs-node -n plv-fabric --timeout=10m || true
+
+    echo "Waiting for Middleware API (This takes ~60s due to health checks)..."
+    kubectl rollout status deployment/middleware-api -n plv-fabric --timeout=10m || true
 
     echo "✓ All deployments ready"
     
     echo "Bootstrapping Root Registrar Account..."
-    sleep 5
     MIDDLEWARE_POD=$(kubectl get pods -n plv-fabric -l app=middleware-api -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || true)
-    if [ -n "$MIDDLEWARE_POD" ]; then kubectl exec $MIDDLEWARE_POD -n plv-fabric -- curl -s http://localhost:4000/api/bootstrap; echo ""; fi
+    if [ -n "$MIDDLEWARE_POD" ]; then kubectl exec $MIDDLEWARE_POD -n plv-fabric -- node -e "require('http').get('http://localhost:4000/api/bootstrap', res => res.pipe(process.stdout))"; echo ""; fi
 }
 
 # Main execution

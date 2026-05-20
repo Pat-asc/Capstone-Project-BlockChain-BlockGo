@@ -112,19 +112,13 @@ spec:
           mountPath: /var/hyperledger/tls/ca.crt
           subPath: ca.crt
         livenessProbe:
-          exec:
-            command:
-            - /bin/bash
-            - -c
-            - "CORE_PEER_ADDRESS=127.0.0.1:7051 CORE_PEER_TLS_SERVERHOSTOVERRIDE=peer0.registrar.capstone.com peer node status || exit 1"
+          tcpSocket:
+            port: 7051
           initialDelaySeconds: 30
           periodSeconds: 10
         readinessProbe:
-          exec:
-            command:
-            - /bin/bash
-            - -c
-            - "CORE_PEER_ADDRESS=127.0.0.1:7051 CORE_PEER_TLS_SERVERHOSTOVERRIDE=peer0.registrar.capstone.com peer node status || exit 1"
+          tcpSocket:
+            port: 7051
           initialDelaySeconds: 10
           periodSeconds: 5
       volumes:

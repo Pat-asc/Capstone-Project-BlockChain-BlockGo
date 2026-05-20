@@ -32,8 +32,6 @@ spec:
       - name: postgres
         image: bitnami/postgresql:latest
         imagePullPolicy: IfNotPresent
-        securityContext:
-          runAsUser: 0
         ports:
         - containerPort: 5432
         env:

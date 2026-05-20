@@ -1533,11 +1533,7 @@ app.get('/api/health', (req, res) => res.status(200).json({ status: "operational
 const PORT = process.env.PORT || 4000;
 
 async function startServer() {
-    try {
-        await importCryptogenAdmins();
-    } catch (e) {
-        console.error("Startup wallet sync failed:", e.message);
-    }
+    importCryptogenAdmins().catch(e => console.error("Startup wallet sync failed:", e.message));
 
     app.listen(PORT, '0.0.0.0', () => {
         console.log(`\nMiddleware online on port ${PORT}`);
