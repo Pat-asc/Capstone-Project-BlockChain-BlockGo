@@ -1461,10 +1461,8 @@ app.post('/api/batch-issue-grade', async (req, res) => {
             });
         }
 
-        const { contract } = await getContractForUser(username, 'faculty'); // either faculty or department works for getting the contract
-
-        const records = req.body; // Expecting an array of AcademicRecord objects
-        const recordsJSON = JSON.stringify(records);
+        const { contract } = await getContractForUser(username, 'faculty'); 
+        const records = req.body;      const recordsJSON = JSON.stringify(records);
         console.log(`[BatchIssueGrade] Submitting as ${username}... Payload: ${recordsJSON.length} bytes`);
         
         const result = await contract.submitTransaction('IssueBatchGrades', recordsJSON);
