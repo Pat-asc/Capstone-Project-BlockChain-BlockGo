@@ -22,8 +22,6 @@ export const SHARED_CLIENT_STATE_KEYS = [
   "irregularSubjectAssignments",
   "encodingPeriod",
   "facultyLoadResetAt",
-  "STUDENT_BATCHES_KEY",
-  "STUDENT_SUBMISSION_LOGS_KEY",
 ];
 
 const parseLocalValue = (key) => {
@@ -88,6 +86,12 @@ export const clearAllSharedClientState = async () => {
     [STUDENT_PUBLISHED_GRADES_KEY]: {},
     graduatingStudents: [],
     irregularSubjectAssignments: [],
+    chairpersonStudentBatches: [],
+    chairpersonSubmissionLogs: [],
+    studentMasterlist: [],
+    studentSections: [],
+    [STUDENT_BATCHES_KEY]: [],
+    [STUDENT_SUBMISSION_LOGS_KEY]: [],
     encodingPeriod: {
       semester: "2nd Semester",
       startDate: "",

@@ -1,4 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import {
+  STUDENT_BATCHES_KEY,
+  STUDENT_SUBMISSION_LOGS_KEY,
+} from "../../utils/studentSectioningHelpers";
 import { uploadToIpfs, getDecryptedIpfsUrl } from "../../services/api";
 import Modal from "../../services/Modal";
 import { downloadTemplateButtonClass } from "../shared/downloadButtonStyles";
@@ -45,10 +49,10 @@ function StudentListImport() {
   const [showVaultPassword, setShowVaultPassword] = useState(false);
 
   const [submissionBatches, setSubmissionBatches] = useState(() => {
-    try { return JSON.parse(localStorage.getItem("STUDENT_BATCHES_KEY")) || []; } catch(e) { return []; }
+    try { return JSON.parse(localStorage.getItem(STUDENT_BATCHES_KEY)) || []; } catch(e) { return []; }
   });
   const [submissionLogs, setSubmissionLogs] = useState(() => {
-    try { return JSON.parse(localStorage.getItem("STUDENT_SUBMISSION_LOGS_KEY")) || []; } catch(e) { return []; }
+    try { return JSON.parse(localStorage.getItem(STUDENT_SUBMISSION_LOGS_KEY)) || []; } catch(e) { return []; }
   });
 
   useEffect(() => {
@@ -166,8 +170,8 @@ function StudentListImport() {
 
       setSubmissionBatches(updatedBatches);
       setSubmissionLogs(updatedLogs);
-      localStorage.setItem("STUDENT_BATCHES_KEY", JSON.stringify(updatedBatches));
-      localStorage.setItem("STUDENT_SUBMISSION_LOGS_KEY", JSON.stringify(updatedLogs));
+      localStorage.setItem(STUDENT_BATCHES_KEY, JSON.stringify(updatedBatches));
+      localStorage.setItem(STUDENT_SUBMISSION_LOGS_KEY, JSON.stringify(updatedLogs));
 
       setSelectedFile(null);
       alert("Student list forwarded to the chairperson successfully.");

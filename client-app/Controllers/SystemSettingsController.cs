@@ -221,22 +221,24 @@ namespace Client_app.Controllers
                 await cmdEnsureSharedState.ExecuteNonQueryAsync();
 
                 using var cmdClearSharedSectioningState = new NpgsqlCommand(@"
-                    DELETE FROM shared_client_state
-                    WHERE key IN (
-                        'registrarAssignments',
-                        'studentSections',
-                        'irregularSubjectAssignments',
-                        'chairpersonStudentBatches',
-                        'chairpersonSectionReviews',
-                        'graduatingStudents',
-                        'STUDENT_BATCHES_KEY',
-                        'STUDENT_SUBMISSION_LOGS_KEY',
-                        'studentPublishedGrades',
-                        'facultyLoadResetAt',
-                        'sessionRecoveryDrafts',
-                        'chairpersonSubmissionLogs',
-                        'studentMasterlist'
-                    );", conn, tx);
+                    INSERT INTO shared_client_state (key, value, updated_at)
+                    VALUES 
+                        ('registrarAssignments', '[]'::jsonb, NOW()),
+                        ('studentSections', '[]'::jsonb, NOW()),
+                        ('irregularSubjectAssignments', '[]'::jsonb, NOW()),
+                        ('chairpersonStudentBatches', '[]'::jsonb, NOW()),
+                        ('chairpersonSectionReviews', '{}'::jsonb, NOW()),
+                        ('graduatingStudents', '[]'::jsonb, NOW()),
+                        ('STUDENT_BATCHES_KEY', '[]'::jsonb, NOW()),
+                        ('STUDENT_SUBMISSION_LOGS_KEY', '[]'::jsonb, NOW()),
+                        ('studentPublishedGrades', '{}'::jsonb, NOW()),
+                        ('facultyLoadResetAt', TO_JSONB(NOW())),
+                        ('sessionRecoveryDrafts', '{}'::jsonb, NOW()),
+                        ('chairpersonSubmissionLogs', '[]'::jsonb, NOW()),
+                        ('studentMasterlist', '[]'::jsonb, NOW())
+                    ON CONFLICT (key) DO UPDATE SET 
+                        value = EXCLUDED.value,
+                        updated_at = EXCLUDED.updated_at;", conn, tx);
                 await cmdClearSharedSectioningState.ExecuteNonQueryAsync();
 
                 using var cmdClearTemporaryStudents = new NpgsqlCommand(@"
@@ -271,6 +273,13 @@ namespace Client_app.Controllers
                     Key = "encoding_period",
                     Value = resetEncodingPeriod,
                     UpdatedAt = DateTime.UtcNow
+                });
+
+                await _chatHubContext.Clients.All.SendAsync("AcademicDataChanged", new
+                {
+                    ChangeType = "season_reset",
+                    Department = (string?)null,
+                    Actor = User.Identity?.Name
                 });
 
                 return Ok(new
