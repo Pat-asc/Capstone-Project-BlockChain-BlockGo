@@ -3584,19 +3584,19 @@
     ]
   },
   "packageFolders": {
-    "/root/.nuget/packages/": {}
+    "/home/dricianfranciscordon/.nuget/packages/": {}
   },
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "/app/For_Testing_Only_Capstone.csproj",
+      "projectUniqueName": "/home/dricianfranciscordon/Capstone-Project-BlockChain-BlockGo/client-app/For_Testing_Only_Capstone.csproj",
       "projectName": "For_Testing_Only_Capstone",
-      "projectPath": "/app/For_Testing_Only_Capstone.csproj",
-      "packagesPath": "/root/.nuget/packages/",
-      "outputPath": "/app/obj/",
+      "projectPath": "/home/dricianfranciscordon/Capstone-Project-BlockChain-BlockGo/client-app/For_Testing_Only_Capstone.csproj",
+      "packagesPath": "/home/dricianfranciscordon/.nuget/packages/",
+      "outputPath": "/home/dricianfranciscordon/Capstone-Project-BlockChain-BlockGo/client-app/obj/",
       "projectStyle": "PackageReference",
       "configFilePaths": [
-        "/root/.nuget/NuGet/NuGet.Config"
+        "/home/dricianfranciscordon/.nuget/NuGet/NuGet.Config"
       ],
       "originalTargetFrameworks": [
         "net8.0"
@@ -3614,11 +3614,6 @@
         "warnAsError": [
           "NU1605"
         ]
-      },
-      "restoreAuditProperties": {
-        "enableAudit": "true",
-        "auditLevel": "low",
-        "auditMode": "direct"
       }
     },
     "frameworks": {
@@ -3709,7 +3704,7 @@
             "privateAssets": "all"
           }
         },
-        "runtimeIdentifierGraphPath": "/usr/share/dotnet/sdk/8.0.421/PortableRuntimeIdentifierGraph.json"
+        "runtimeIdentifierGraphPath": "/usr/lib/dotnet/sdk/8.0.126/PortableRuntimeIdentifierGraph.json"
       }
     }
   }
