@@ -21,6 +21,8 @@ spec:
   selector:
     matchLabels:
       app: peer-registrar
+  strategy:
+    type: Recreate
   template:
     metadata:
       labels:

@@ -109,6 +109,8 @@ spec:
   selector:
     matchLabels:
       app: peer-department
+  strategy:
+    type: Recreate
   template:
     metadata:
       labels:

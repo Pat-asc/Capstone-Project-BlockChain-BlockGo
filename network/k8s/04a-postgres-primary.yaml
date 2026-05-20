@@ -27,6 +27,8 @@ spec:
       labels:
         app: postgres-primary
     spec:
+      securityContext:
+        fsGroup: 1001
       serviceAccountName: fabric-sa
       containers:
       - name: postgres

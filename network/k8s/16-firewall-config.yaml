@@ -26,7 +26,7 @@ spec:
         matchExpressions:
           - key: app
             operator: In
-            values: [middleware-api, client-app, plv-client-app]
+            values: [middleware-api, client-app, plv-client-app, postgres-replica-annex, postgres-replica-pubad]
     ports:
     - protocol: TCP
       port: 5984

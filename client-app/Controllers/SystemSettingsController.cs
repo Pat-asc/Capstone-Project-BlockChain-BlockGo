@@ -140,6 +140,48 @@ namespace Client_app.Controllers
                         year_level INT NOT NULL,
                         section_num INT NOT NULL,
                         UNIQUE(department, year_level, section_num)
+                    );
+                    CREATE TABLE IF NOT EXISTS bulk_grade_staging (
+                        staging_id SERIAL PRIMARY KEY,
+                        batch_id VARCHAR(100) NOT NULL,
+                        student_hash VARCHAR(100) NOT NULL,
+                        course VARCHAR(100),
+                        subject_code VARCHAR(50),
+                        subject_name VARCHAR(255),
+                        grade VARCHAR(10),
+                        semester VARCHAR(20),
+                        school_year VARCHAR(20),
+                        year_level VARCHAR(10),
+                        section VARCHAR(50),
+                        faculty_id VARCHAR(100),
+                        status VARCHAR(50) DEFAULT 'PENDING_APPROVAL',
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    );
+                    CREATE TABLE IF NOT EXISTS sectioningstate (
+                        key VARCHAR(100) PRIMARY KEY,
+                        data_json JSONB NOT NULL,
+                        updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+                    );
+                    CREATE TABLE IF NOT EXISTS bulk_grade_uploads (
+                        upload_id SERIAL PRIMARY KEY,
+                        batch_id UUID UNIQUE DEFAULT gen_random_uuid(),
+                        faculty_email VARCHAR(255) NOT NULL,
+                        faculty_department VARCHAR(255) NOT NULL,
+                        total_records INTEGER DEFAULT 0,
+                        successful_records INTEGER DEFAULT 0,
+                        failed_records INTEGER DEFAULT 0,
+                        status VARCHAR(50) DEFAULT 'PENDING_APPROVAL',
+                        ipfs_cid VARCHAR(255),
+                        semester VARCHAR(50),
+                        school_year VARCHAR(10),
+                        uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        approved_by_dept_email VARCHAR(255),
+                        approved_by_dept_at TIMESTAMP,
+                        finalized_by_registrar_email VARCHAR(255),
+                        finalized_by_registrar_at TIMESTAMP,
+                        rejection_reason TEXT,
+                        rejected_at TIMESTAMP,
+                        rejected_by_email VARCHAR(255)
                     );", conn, tx);
                 await cmdEnsureResetTables.ExecuteNonQueryAsync();
 
@@ -149,13 +191,24 @@ namespace Client_app.Controllers
                         ADD COLUMN IF NOT EXISTS student_status VARCHAR(50) DEFAULT 'regular';", conn, tx);
                 await cmdEnsureTemporaryStudentColumns.ExecuteNonQueryAsync();
 
-                using var cmdClearGrades = new NpgsqlCommand("DELETE FROM pending_grade_records", conn, tx);
+                using var cmdClearGrades = new NpgsqlCommand(@"
+                    DELETE FROM pending_grade_records;
+                    DELETE FROM bulk_grade_staging;
+                    DELETE FROM bulk_grade_uploads;
+                ", conn, tx);
                 await cmdClearGrades.ExecuteNonQueryAsync();
 
-                using var cmdClearFacSections = new NpgsqlCommand("DELETE FROM FacultySections", conn, tx);
+                using var cmdClearFacSections = new NpgsqlCommand(@"
+                    DELETE FROM FacultySections;
+                    UPDATE FacultyProfiles SET section = NULL, year_level = NULL;
+                ", conn, tx);
                 await cmdClearFacSections.ExecuteNonQueryAsync();
 
-                using var cmdClearAcademicSections = new NpgsqlCommand("DELETE FROM AcademicSections", conn, tx);
+                using var cmdClearAcademicSections = new NpgsqlCommand(@"
+                    DELETE FROM AcademicSections;
+                    DELETE FROM sectioningstate;
+                    UPDATE StudentProfiles SET section = NULL, assignment_status = 'Unassigned';
+                ", conn, tx);
                 await cmdClearAcademicSections.ExecuteNonQueryAsync();
 
                 using var cmdEnsureSharedState = new NpgsqlCommand(@"
@@ -174,7 +227,15 @@ namespace Client_app.Controllers
                         'studentSections',
                         'irregularSubjectAssignments',
                         'chairpersonStudentBatches',
-                        'chairpersonSectionReviews'
+                        'chairpersonSectionReviews',
+                        'graduatingStudents',
+                        'STUDENT_BATCHES_KEY',
+                        'STUDENT_SUBMISSION_LOGS_KEY',
+                        'studentPublishedGrades',
+                        'facultyLoadResetAt',
+                        'sessionRecoveryDrafts',
+                        'chairpersonSubmissionLogs',
+                        'studentMasterlist'
                     );", conn, tx);
                 await cmdClearSharedSectioningState.ExecuteNonQueryAsync();
 
