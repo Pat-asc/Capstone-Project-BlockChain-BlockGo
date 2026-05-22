@@ -484,7 +484,12 @@ async function importCryptogenAdmins() {
     }
 }
 
-async function ensureAdminEnrolled(caURL, caName, mspId, adminLabel, tlsOptions, caClient) {
+const isFabricCaAuthFailure = (error) => {
+    const text = `${error?.message || ''} ${error?.stack || ''} ${error?.toString?.() || ''}`;
+    return text.includes('code: 20') || text.includes('Authentication failure');
+};
+
+async function ensureAdminEnrolled(caURL, caName, mspId, adminLabel, tlsOptions, caClient, options = {}) {
     try {
         let role = 'registrar';
         if (adminLabel === 'admin-faculty') role = 'faculty';
@@ -492,6 +497,12 @@ async function ensureAdminEnrolled(caURL, caName, mspId, adminLabel, tlsOptions,
         
         const wallet = await getWallet(role);
         let identity = await wallet.get(adminLabel);
+
+        if (identity && options.force) {
+            console.warn(`[Identity Guard] '${adminLabel}' exists but will be replaced because the CA rejected it.`);
+            await wallet.remove(adminLabel);
+            identity = null;
+        }
         
         // If identity exists, we should still verify if it's actually valid for the current CA
         // For now, if we get an Authentication Failure later, we know we need to re-enroll.
@@ -1062,7 +1073,7 @@ app.post('/api/revoke', authenticateJWT, requireRegistrarOrInternal, async (req,
         await ensureAdminEnrolled(caURL, caName, mspId, adminLabel, tlsOptions, caClient);
         
         const wallet = await getWallet(role);
-        const adminIdentity = await wallet.get(adminLabel);
+        let adminIdentity = await wallet.get(adminLabel);
 
         if (!adminIdentity) {
             console.error("Identity Guard Failed: Admin wallet missing from /wallet/ directory.");
@@ -1082,10 +1093,31 @@ app.post('/api/revoke', authenticateJWT, requireRegistrarOrInternal, async (req,
 
         const ca = caClient;
 
-        const provider = wallet.getProviderRegistry().getProvider(adminIdentity.type);
-        const adminUser = await provider.getUserContext(adminIdentity, 'admin');
+        const getAdminUser = async () => {
+            adminIdentity = await wallet.get(adminLabel);
+            if (!adminIdentity) throw new Error(`Admin ${adminLabel} missing from wallet.`);
+            const provider = wallet.getProviderRegistry().getProvider(adminIdentity.type);
+            return await provider.getUserContext(adminIdentity, 'admin');
+        };
 
-        await ca.revoke({ enrollmentID: username, reason: "Revoked by admin" }, adminUser);
+        let adminUser = await getAdminUser();
+
+        const revokeUser = async (user) => {
+            return await ca.revoke({ enrollmentID: username, reason: "Revoked by admin" }, user);
+        };
+
+        try {
+            await revokeUser(adminUser);
+        } catch (revokeErr) {
+            if (isFabricCaAuthFailure(revokeErr)) {
+                console.warn(`[Self-Healing] Admin authentication failed for ${adminLabel}. Stale cert suspected. Re-enrolling before revoke...`);
+                await ensureAdminEnrolled(caURL, caName, mspId, adminLabel, tlsOptions, caClient, { force: true });
+                adminUser = await getAdminUser();
+                await revokeUser(adminUser);
+            } else {
+                throw revokeErr;
+            }
+        }
         if (await wallet.get(username)) await wallet.remove(username);
 
         if (userGatewayCache.has(username)) {

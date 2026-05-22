@@ -20,8 +20,20 @@ log_error() { echo -e "${RED}[ERROR]${NC} $1"; exit 1; }
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
+export PATH="$PATH:$SCRIPT_DIR/bin"
 
 declare -a PIDS
+
+ensure_fabric_binaries() {
+    local missing=()
+
+    command -v fabric-ca-client >/dev/null 2>&1 || missing+=("fabric-ca-client")
+    command -v configtxgen >/dev/null 2>&1 || missing+=("configtxgen")
+
+    if [ ${#missing[@]} -gt 0 ]; then
+        log_error "Missing Fabric binaries: ${missing[*]}. Run: cd \"$SCRIPT_DIR\" && ./install_binaries.sh"
+    fi
+}
 
 cleanup_processes() {
     echo ""
@@ -117,6 +129,8 @@ load_env_vars
 if [ -z "$JWT_SECRET" ] || [ -z "$INTERNAL_API_KEY" ] || [ -z "$POSTGRES_PASS" ]; then
     log_error "Critical environment variables (JWT_SECRET, INTERNAL_API_KEY, POSTGRES_PASS) are not set. Please define them in your .env file."
 fi
+
+ensure_fabric_binaries
 
 spawn_couchdb_wallet() {
     log_info "Spawning standalone CouchDB Wallet container on port 5990..."
