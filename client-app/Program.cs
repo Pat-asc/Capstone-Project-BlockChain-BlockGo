@@ -208,6 +208,7 @@ try
     });
 
     builder.Services.AddHttpClient<IBlockchainService, BlockchainService>();
+    builder.Services.AddHostedService<LedgerSyncWorker>();
     builder.Services.AddScoped<IFabricCaAuthService, FabricCaAuthService>();
     builder.Services.AddScoped<IEmailService, EmailService>();
     builder.Services.AddSingleton<IChatMessageEncryption, ChatMessageEncryption>();
