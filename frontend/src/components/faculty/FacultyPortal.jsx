@@ -1479,7 +1479,9 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
     return Object.values(errs).some(row => row.midterm || row.finals);
   };
 
-  const currentStatus = activeSection ? getSectionTermStatus(activeSection) : null;
+  const activeSectionData = activeSection ? sections[activeSection] : null;
+  const activeSectionStudents = activeSectionData?.students || [];
+  const currentStatus = activeSectionData ? getSectionTermStatus(activeSection) : null;
   const isFinalized = currentStatus === 'finalized' || currentStatus === 'forwarded';
   const isSubmittedToChairperson = isLockedSectionStatus(currentStatus);
   const isGradeEncodingLocked = isSubmittedToChairperson;
@@ -1693,7 +1695,7 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
               </div>
             )}
 
-            {(currentStatus === 'returned' || currentStatus === 'registrar_rejected') && sections[activeSection]?.reviewNote ? (
+            {(currentStatus === 'returned' || currentStatus === 'registrar_rejected') && activeSectionData?.reviewNote ? (
               <div className={`border-b p-4 text-sm ${
                 currentStatus === 'registrar_rejected'
                   ? 'border-rose-200 bg-rose-50 text-rose-700'
@@ -1702,7 +1704,7 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
                 <p className="font-semibold">
                   {currentStatus === 'registrar_rejected' ? 'Rejected by registrar' : 'Returned by chairperson'}
                 </p>
-                <p className="mt-1">{sections[activeSection].reviewNote}</p>
+                <p className="mt-1">{activeSectionData.reviewNote}</p>
               </div>
             ) : null}
 
@@ -1723,7 +1725,7 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
                   </tr>
                 </thead>
                 <tbody>
-                  {sections[activeSection].students.map((stu, i) => {
+                  {activeSectionStudents.map((stu, i) => {
                     const finalAverage = calculateFinalAverage(stu);
                     const finalGradeText = finalAverage === null ? '-' : finalAverage.toFixed(2);
                     const gradeEquivalent = finalAverage === null ? '-' : getGradeEquivalent(finalAverage);
@@ -1833,10 +1835,10 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
                       </tr>
                     );
                   })}
-                  {sections[activeSection].students.length === 0 && (
+                  {activeSectionStudents.length === 0 && (
                     <tr>
                       <td colSpan="10" className="p-8 text-center text-slate-500 bg-slate-50 rounded-b-xl text-base">
-                        No students are assigned to this section yet.
+                        {isLoadingData ? 'Loading section students...' : 'No students are assigned to this section yet.'}
                       </td>
                     </tr>
                   )}
