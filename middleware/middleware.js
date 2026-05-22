@@ -489,6 +489,21 @@ const isFabricCaAuthFailure = (error) => {
     return text.includes('code: 20') || text.includes('Authentication failure');
 };
 
+const getCAAdminSecretCandidates = (adminLabel) => {
+    const roleSpecificEnv = {
+        'admin-registrar': process.env.FABRIC_CA_REGISTRAR_PASS,
+        'admin-faculty': process.env.FABRIC_CA_FACULTY_PASS,
+        'admin-department': process.env.FABRIC_CA_DEPARTMENT_PASS
+    };
+
+    return [
+        roleSpecificEnv[adminLabel],
+        process.env.BOOTSTRAP_REGISTRAR_PASS,
+        'adminpw',
+        'admin123'
+    ].filter((value, index, values) => value && values.indexOf(value) === index);
+};
+
 async function ensureAdminEnrolled(caURL, caName, mspId, adminLabel, tlsOptions, caClient, options = {}) {
     try {
         let role = 'registrar';
@@ -511,17 +526,29 @@ async function ensureAdminEnrolled(caURL, caName, mspId, adminLabel, tlsOptions,
             console.log(`[Identity Guard] '${adminLabel}' already in wallet.`);
             return; 
         }
-
+        
         console.log(`[Identity Guard] '${adminLabel}' missing from wallet. Attempting enrollment...`);
         
-        const enrollSecret = process.env.BOOTSTRAP_REGISTRAR_PASS || 'adminpw';
-        
         const ca = caClient || new FabricCAServices(caURL, tlsOptions, caName);
-        
-        const enrollment = await ca.enroll({
-            enrollmentID: 'admin',
-            enrollmentSecret: enrollSecret
-        });
+
+        let enrollment;
+        let lastEnrollError;
+        for (const enrollSecret of getCAAdminSecretCandidates(adminLabel)) {
+            try {
+                enrollment = await ca.enroll({
+                    enrollmentID: 'admin',
+                    enrollmentSecret: enrollSecret
+                });
+                break;
+            } catch (enrollErr) {
+                lastEnrollError = enrollErr;
+                console.warn(`[Identity Guard] '${adminLabel}' enrollment attempt failed with configured bootstrap secret candidate: ${enrollErr.message}`);
+            }
+        }
+
+        if (!enrollment) {
+            throw lastEnrollError || new Error(`No bootstrap secret candidates available for ${adminLabel}.`);
+        }
 
         const x509Identity = {
             credentials: { 

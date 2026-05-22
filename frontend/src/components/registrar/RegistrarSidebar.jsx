@@ -1,13 +1,13 @@
 import React from "react";
 
 function RegistrarSidebar({ activeTab, setActiveTab, chatUnreadCount = 0, latestChatNotice = null, onOpenChat }) {
-  const systemAdminTabs = ["monitoring", "grades", "assignStudents", "assignAdmins", "assignFaculties"];
+  const systemAdminTabs = ["grades", "assigning", "bulkEnroll", "revokeAccounts"];
   const menuItems = [
   { id: "dashboard", label: "Dashboard" },
   { id: "encoding", label: "Encoding Period" },
   { id: "sectioning", label: "Department Sections" },
   { id: "sectionsCreated", label: "Sections Created" },
-  { id: "monitoring", label: "Management" },
+  { id: "management", label: "Management" },
   { id: "finalization", label: "Grade Finalization" },
   { id: "reports", label: "Reports & PDF" },
 ];
@@ -42,15 +42,15 @@ function RegistrarSidebar({ activeTab, setActiveTab, chatUnreadCount = 0, latest
 
       <nav className="flex gap-2 overflow-x-auto pb-1 lg:flex-col lg:overflow-visible lg:pb-0">
         {menuItems.map((item) => {
-          const isManagementItem = item.id === "monitoring";
-          const isActive = isManagementItem
+          const isSystemAdminItem = item.id === "management";
+          const isActive = isSystemAdminItem
             ? systemAdminTabs.includes(activeTab)
             : activeTab === item.id;
 
           return (
             <button
               key={item.id}
-              onClick={() => setActiveTab(isManagementItem ? "grades" : item.id)}
+              onClick={() => setActiveTab(isSystemAdminItem ? "grades" : item.id)}
               className={`min-w-[160px] rounded-xl border-b-2 px-4 py-3 text-left text-sm font-medium transition lg:w-full lg:min-w-0 ${
                 isActive
                   ? "border-yellow-400 bg-[#003366] text-yellow-400 shadow-sm"

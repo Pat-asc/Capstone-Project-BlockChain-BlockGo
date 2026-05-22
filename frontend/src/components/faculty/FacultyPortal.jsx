@@ -312,6 +312,23 @@ const getAcademicStatus = (student = {}) => {
   return finalAverage >= 75 ? "Passed" : "Failed";
 };
 
+const getFacultyGradeStatus = (student = {}) => {
+  const effectiveRemark = getEffectiveRemark(student);
+  if (effectiveRemark === "INC") return "Incomplete";
+  return getAcademicStatus(student);
+};
+
+const getStudentStatusLabel = (standing = "") => {
+  const normalized = String(standing || STUDENT_STATUS_ACTIVE).trim().toLowerCase();
+  if (isIrregularStanding(normalized)) return "Irregular";
+  if (normalized === "dropped") return "Dropped";
+  if (normalized === "unofficially_dropped") return "Unofficially Dropped";
+  if (normalized === "withdrawn") return "Withdrawn";
+  if (normalized === "incomplete") return "Incomplete";
+  if (normalized === "inactive") return "Inactive";
+  return "Regular";
+};
+
 const getTemporarySheetHeader = () => [
   "Student ID",
   "Student Name",
@@ -1682,7 +1699,7 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
             ) : null}
 
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[800px] text-left text-sm">
+              <table className="w-full min-w-[1120px] text-left text-sm">
                 <thead className="bg-[#003366] text-white">
                   <tr>
                     <th className="p-4">Student ID</th>
@@ -1692,6 +1709,8 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
                     <th className="p-4 text-center">Final Grade</th>
                     <th className="p-4 text-center">Grade Equivalent</th>
                     <th className="p-4 text-center">Status</th>
+                    <th className="p-4 text-center">Student Status</th>
+                    <th className="p-4 text-center">Flagging Status</th>
                     <th className="p-4 text-center">Remarks</th>
                   </tr>
                 </thead>
@@ -1700,13 +1719,13 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
                     const finalAverage = calculateFinalAverage(stu);
                     const finalGradeText = finalAverage === null ? '-' : finalAverage.toFixed(2);
                     const gradeEquivalent = finalAverage === null ? '-' : getGradeEquivalent(finalAverage);
-                    const academicStatus = getAcademicStatus(stu);
+                    const gradeStatus = getFacultyGradeStatus(stu);
                     const explicitRemark = normalizeRemarkValue(stu.remarks);
                     const derivedStanding = getDerivedStudentStanding(stu);
+                    const studentStatusLabel = getStudentStatusLabel(derivedStanding);
                     const effectiveRemark = getEffectiveRemark(stu);
                     const isStudentLocked = explicitRemark && derivedStanding !== STUDENT_STATUS_ACTIVE;
                     const isFlagged = isAutomaticallyFlagged(stu);
-                    const isAccessRevoked = shouldRevokeStudentAccess(stu);
                     const rowState = rowSaveState[activeSection]?.[i] || 'idle';
                     const errors = validationErrors[activeSection]?.[i] || {};
                     const hasError = errors.midterm || errors.finals;
@@ -1756,11 +1775,28 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
                         <td className="p-4 text-center font-bold text-slate-700">{gradeEquivalent}</td>
                         <td className="p-4 text-center">
                           <span className={`inline-flex rounded-full px-3 py-1 text-[10px] font-bold uppercase ${
-                            academicStatus === 'Passed' ? 'bg-green-100 text-green-700' :
-                            academicStatus === 'Failed' ? 'bg-red-100 text-red-700' :
+                            gradeStatus === 'Passed' ? 'bg-green-100 text-green-700' :
+                            gradeStatus === 'Failed' ? 'bg-red-100 text-red-700' :
+                            gradeStatus === 'Incomplete' ? 'bg-amber-100 text-amber-700' :
                             'bg-slate-100 text-slate-700'
                           }`}>
-                            {academicStatus}
+                            {gradeStatus}
+                          </span>
+                        </td>
+                        <td className="p-4 text-center">
+                          <span className={`inline-flex rounded-full px-3 py-1 text-[10px] font-bold uppercase ${
+                            studentStatusLabel === 'Regular' ? 'bg-emerald-100 text-emerald-700' :
+                            studentStatusLabel === 'Irregular' ? 'bg-slate-200 text-slate-700' :
+                            'bg-red-100 text-red-700'
+                          }`}>
+                            {studentStatusLabel}
+                          </span>
+                        </td>
+                        <td className="p-4 text-center">
+                          <span className={`inline-flex rounded-full px-3 py-1 text-[10px] font-bold uppercase ${
+                            isFlagged ? 'bg-red-100 text-red-700' : 'bg-emerald-100 text-emerald-700'
+                          }`}>
+                            {isFlagged ? 'Auto Flagged' : 'Clear'}
                           </span>
                         </td>
                         <td className="p-4 text-center">
@@ -1780,27 +1816,11 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
                                 </option>
                               ))}
                             </select>
-                            <div className="flex flex-wrap justify-center gap-2">
-                              {effectiveRemark ? (
-                                <span className="rounded-full bg-amber-100 px-2.5 py-1 text-[10px] font-bold uppercase text-amber-700">
-                                  {getRemarkDisplayLabel(effectiveRemark)}
-                                </span>
-                              ) : (
-                                <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-[10px] font-bold uppercase text-emerald-700">
-                                  Clear
-                                </span>
-                              )}
-                              {isFlagged && (
-                                <span className="rounded-full bg-red-100 px-2.5 py-1 text-[10px] font-bold uppercase text-red-700">
-                                  Auto Flagged
-                                </span>
-                              )}
-                              {isAccessRevoked && (
-                                <span className="rounded-full bg-slate-200 px-2.5 py-1 text-[10px] font-bold uppercase text-slate-700">
-                                  Irregular
-                                </span>
-                              )}
-                            </div>
+                            <span className={`mx-auto inline-flex rounded-full px-2.5 py-1 text-[10px] font-bold uppercase ${
+                              effectiveRemark ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'
+                            }`}>
+                              {effectiveRemark ? getRemarkDisplayLabel(effectiveRemark) : 'None'}
+                            </span>
                           </div>
                         </td>
 
@@ -1809,7 +1829,7 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
                   })}
                   {sections[activeSection].students.length === 0 && (
                     <tr>
-                      <td colSpan="8" className="p-8 text-center text-slate-500 bg-slate-50 rounded-b-xl text-base">
+                      <td colSpan="10" className="p-8 text-center text-slate-500 bg-slate-50 rounded-b-xl text-base">
                         No students are assigned to this section yet.
                       </td>
                     </tr>

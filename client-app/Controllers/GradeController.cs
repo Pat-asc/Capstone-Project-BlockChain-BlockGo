@@ -783,34 +783,39 @@ namespace BlockGo.Controllers
 
                 if (userId <= 0 || string.IsNullOrWhiteSpace(resolvedEmail)) return;
 
-                try
+                var emailForRevocation = resolvedEmail;
+                _ = Task.Run(async () =>
                 {
-                    using var client = _httpClientFactory.CreateClient("FabricCAClient");
-                    var apiKey = Environment.GetEnvironmentVariable("INTERNAL_API_KEY") ?? _configuration["InternalApiKey"];
-                    if (!string.IsNullOrWhiteSpace(apiKey))
+                    try
                     {
-                        client.DefaultRequestHeaders.Add("x-api-key", apiKey);
-                    }
-
-                    var middlewareUrl = _configuration["Middleware:Url"] ?? _configuration["MIDDLEWARE_URL"] ?? "http://127.0.0.1:4000";
-                    var revokePayload = new { username = resolvedEmail, role = "student" };
-                    var content = new StringContent(JsonSerializer.Serialize(revokePayload), Encoding.UTF8, "application/json");
-                    var response = await client.PostAsync($"{middlewareUrl}/api/revoke", content);
-
-                    if (!response.IsSuccessStatusCode)
-                    {
-                        var errBody = await response.Content.ReadAsStringAsync();
-                        if (!errBody.Contains("already revoked", StringComparison.OrdinalIgnoreCase) &&
-                            !errBody.Contains("already inactive", StringComparison.OrdinalIgnoreCase))
+                        using var client = _httpClientFactory.CreateClient("FabricCAClient");
+                        client.Timeout = TimeSpan.FromSeconds(8);
+                        var apiKey = Environment.GetEnvironmentVariable("INTERNAL_API_KEY") ?? _configuration["InternalApiKey"];
+                        if (!string.IsNullOrWhiteSpace(apiKey))
                         {
-                            _logger.LogWarning("Student Fabric revocation failed for {Email}: {Error}", resolvedEmail, errBody);
+                            client.DefaultRequestHeaders.Add("x-api-key", apiKey);
+                        }
+
+                        var middlewareUrl = _configuration["Middleware:Url"] ?? _configuration["MIDDLEWARE_URL"] ?? "http://127.0.0.1:4000";
+                        var revokePayload = new { username = emailForRevocation, role = "student" };
+                        var content = new StringContent(JsonSerializer.Serialize(revokePayload), Encoding.UTF8, "application/json");
+                        var response = await client.PostAsync($"{middlewareUrl}/api/revoke", content);
+
+                        if (!response.IsSuccessStatusCode)
+                        {
+                            var errBody = await response.Content.ReadAsStringAsync();
+                            if (!errBody.Contains("already revoked", StringComparison.OrdinalIgnoreCase) &&
+                                !errBody.Contains("already inactive", StringComparison.OrdinalIgnoreCase))
+                            {
+                                _logger.LogWarning("Student Fabric revocation failed for {Email}: {Error}", emailForRevocation, errBody);
+                            }
                         }
                     }
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogWarning(ex, "Student Fabric revocation failed for {Email}.", resolvedEmail);
-                }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Student Fabric revocation failed for {Email}.", emailForRevocation);
+                    }
+                });
 
                 using (var updateCmd = new NpgsqlCommand(@"
                     UPDATE Users SET status = 'INACTIVE' WHERE id = @id AND role = 'student';
@@ -983,6 +988,16 @@ namespace BlockGo.Controllers
         private static string EnsurePendingGradeRecordIdentityColumnsSql() => @"
             DO $$
             BEGIN
+                IF EXISTS (
+                    SELECT 1 FROM information_schema.columns
+                    WHERE table_name = 'pending_grade_records'
+                      AND column_name = 'id'
+                      AND data_type <> 'character varying'
+                ) THEN
+                    ALTER TABLE pending_grade_records ALTER COLUMN id DROP DEFAULT;
+                    ALTER TABLE pending_grade_records ALTER COLUMN id TYPE VARCHAR(255) USING id::text;
+                END IF;
+
                 IF NOT EXISTS (
                     SELECT 1 FROM information_schema.columns
                     WHERE table_name = 'pending_grade_records' AND column_name = 'student_no'

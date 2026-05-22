@@ -33,6 +33,37 @@ const HoverableID = ({ fullId, isAuthorized }) => {
     );
 };
 
+const buildLedgerHash = (input) => {
+    const source = String(input || 'PLV-BLOCKGO');
+    const parts = [];
+
+    for (let round = 0; round < 8; round += 1) {
+        let hash = 2166136261 ^ round;
+        const roundSource = `${source}|${round}`;
+
+        for (let i = 0; i < roundSource.length; i += 1) {
+            hash ^= roundSource.charCodeAt(i);
+            hash = Math.imul(hash, 16777619);
+        }
+
+        parts.push((hash >>> 0).toString(16).padStart(8, '0'));
+    }
+
+    return parts.join('');
+};
+
+const isFinalizedLedgerStatus = (status) => {
+    const normalized = String(status || '').trim().toLowerCase();
+    return normalized.includes('finalized') || normalized.includes('ledger') || normalized.includes('blockchain');
+};
+
+const formatLedgerTimestamp = (value) => {
+    if (!value) return 'Pending timestamp';
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) return String(value);
+    return parsed.toLocaleString();
+};
+
 const RegistrarGradesView = ({
     loggedInEmail = '',
     loggedInName = '',
@@ -883,6 +914,75 @@ const RegistrarGradesView = ({
         [filteredGrades, parseGradePayload, facultyNameLookup, formatStudentStanding, getGradeEquivalent, isNonActiveStanding]
     );
 
+    const ledgerBlocks = useMemo(() => {
+        const genesisHash = buildLedgerHash(`PLV-BLOCKGO|GENESIS|registrar-channel|${activeSemester}`);
+        const committedRecords = filteredGrades
+            .filter((grade) => isFinalizedLedgerStatus(grade.status || grade.Status))
+            .slice()
+            .sort((left, right) => {
+                const leftTime = parseReviewTimestamp(left.date || left.Date || left.updatedAt || left.createdAt);
+                const rightTime = parseReviewTimestamp(right.date || right.Date || right.updatedAt || right.createdAt);
+                if (leftTime !== rightTime) return leftTime - rightTime;
+                return String(left.id || '').localeCompare(String(right.id || ''));
+            });
+
+        let previousHash = genesisHash;
+        const gradeBlocks = committedRecords.map((grade, index) => {
+            const payload = parseGradePayload(grade.grade);
+            const blockSeed = JSON.stringify({
+                index: index + 1,
+                previousHash,
+                id: grade.id,
+                student: grade.student_hash || grade.student_no || grade.studentNo,
+                subject: grade.subject_code || grade.subjectCode,
+                grade: payload,
+                status: grade.status || grade.Status,
+                timestamp: grade.date || grade.Date || grade.updatedAt || grade.createdAt || ''
+            });
+            const blockHash = buildLedgerHash(blockSeed);
+            const block = {
+                index: index + 1,
+                type: 'grade',
+                title: 'Finalized Grade Block',
+                recordId: grade.id || `ledger-record-${index + 1}`,
+                student: grade.student_no || grade.studentNo || grade.student_hash || 'Hashed student',
+                studentName: grade.student_name || grade.studentName || 'Protected student record',
+                subject: grade.subject_code || grade.subjectCode || 'N/A',
+                section: grade.section || 'N/A',
+                course: grade.course || 'N/A',
+                status: grade.status || grade.Status || 'Finalized',
+                timestamp: grade.date || grade.Date || grade.updatedAt || grade.createdAt,
+                previousHash,
+                blockHash,
+                ipfsCid: grade.ipfs_cid || grade.IpfsCID || grade.ipfsCid || '',
+                gradeSummary: formatStagedGradeDisplay(grade.grade)
+            };
+            previousHash = blockHash;
+            return block;
+        });
+
+        return [
+            {
+                index: 0,
+                type: 'genesis',
+                title: 'Genesis Block',
+                recordId: 'PLV-BLOCKGO-GENESIS',
+                student: 'System',
+                studentName: 'Academic ledger initialized',
+                subject: 'Network Root',
+                section: 'Registrar Channel',
+                course: 'PLV BLOCKGO',
+                status: 'Immutable Root',
+                timestamp: 'Created at network boot',
+                previousHash: '0'.repeat(64),
+                blockHash: genesisHash,
+                ipfsCid: '',
+                gradeSummary: 'Anchor block for all future finalized grade blocks.'
+            },
+            ...gradeBlocks
+        ];
+    }, [activeSemester, filteredGrades, formatStagedGradeDisplay, parseGradePayload, parseReviewTimestamp]);
+
     const facultyMonitoringList = useMemo(() => {
         const grouped = facultyMonitoringRecords.reduce((acc, record) => {
             const key = String(record.facultyEmail || 'n/a').trim().toLowerCase();
@@ -1582,10 +1682,98 @@ const RegistrarGradesView = ({
                                     </div>
                                 </div>
                             </div>
+                            <section className="mb-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                                <div className="flex flex-col gap-3 border-b border-slate-200 pb-4 lg:flex-row lg:items-center lg:justify-between">
+                                    <div>
+                                        <h3 className="text-xl font-bold text-[#003366]">PLV Grades Ledger Chain</h3>
+                                        <p className="mt-1 text-sm text-slate-500">
+                                            Block 0 anchors the ledger. Finalized grade records are appended as linked blocks.
+                                        </p>
+                                    </div>
+                                    <div className="flex flex-wrap gap-2 text-xs font-bold uppercase">
+                                        <span className="rounded-full bg-[#003366] px-3 py-2 text-white">
+                                            Blocks: {ledgerBlocks.length}
+                                        </span>
+                                        <span className="rounded-full bg-emerald-100 px-3 py-2 text-emerald-700">
+                                            Grade Blocks: {Math.max(ledgerBlocks.length - 1, 0)}
+                                        </span>
+                                    </div>
+                                </div>
+
+                                <div className="mt-5 space-y-4">
+                                    {ledgerBlocks.map((block, index) => (
+                                        <div
+                                            key={`${block.type}-${block.index}-${block.recordId}`}
+                                            className={`rounded-2xl border p-4 ${
+                                                block.type === 'genesis'
+                                                    ? 'border-[#003366] bg-[#003366]/5'
+                                                    : 'border-slate-200 bg-slate-50'
+                                            }`}
+                                        >
+                                            <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                                                <div>
+                                                    <div className="flex flex-wrap items-center gap-2">
+                                                        <span className={`rounded-full px-3 py-1 text-xs font-black uppercase ${
+                                                            block.type === 'genesis'
+                                                                ? 'bg-[#003366] text-yellow-300'
+                                                                : 'bg-emerald-100 text-emerald-700'
+                                                        }`}>
+                                                            Block #{block.index}
+                                                        </span>
+                                                        <h4 className="text-lg font-bold text-slate-900">{block.title}</h4>
+                                                    </div>
+                                                    <p className="mt-2 text-sm text-slate-600">
+                                                        {block.course} / {block.section} / {block.subject}
+                                                    </p>
+                                                    <p className="mt-1 text-sm font-semibold text-slate-800">
+                                                        {block.studentName} ({block.student})
+                                                    </p>
+                                                </div>
+                                                <div className="text-left lg:text-right">
+                                                    <p className="text-xs font-bold uppercase text-slate-500">Status</p>
+                                                    <p className="mt-1 text-sm font-black text-[#003366]">{block.status}</p>
+                                                    <p className="mt-1 text-xs text-slate-500">{formatLedgerTimestamp(block.timestamp)}</p>
+                                                </div>
+                                            </div>
+
+                                            <div className="mt-4 grid gap-3 text-xs md:grid-cols-2">
+                                                <div className="rounded-xl border border-slate-200 bg-white p-3">
+                                                    <p className="font-bold uppercase text-slate-500">Previous Hash</p>
+                                                    <p className="mt-2 break-all font-mono text-slate-700">{block.previousHash}</p>
+                                                </div>
+                                                <div className="rounded-xl border border-slate-200 bg-white p-3">
+                                                    <p className="font-bold uppercase text-slate-500">Block Hash</p>
+                                                    <p className="mt-2 break-all font-mono text-slate-900">{block.blockHash}</p>
+                                                </div>
+                                            </div>
+
+                                            <div className="mt-4 flex flex-col gap-3 border-t border-slate-200 pt-4 text-sm md:flex-row md:items-center md:justify-between">
+                                                <div>
+                                                    <p className="font-semibold text-slate-700">Record: {block.recordId}</p>
+                                                    <p className="mt-1 text-slate-500">{block.gradeSummary}</p>
+                                                </div>
+                                                {block.ipfsCid ? (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleViewIpfs(block.ipfsCid)}
+                                                        className="rounded-xl border border-[#003366] px-4 py-2 text-sm font-bold text-[#003366] transition hover:bg-[#003366] hover:text-white"
+                                                    >
+                                                        View IPFS File
+                                                    </button>
+                                                ) : null}
+                                            </div>
+
+                                            {index < ledgerBlocks.length - 1 ? (
+                                                <div className="mx-auto mt-4 h-6 w-px bg-slate-300" />
+                                            ) : null}
+                                        </div>
+                                    ))}
+                                </div>
+                            </section>
                             <div className="grid gap-6 xl:grid-cols-[250px_minmax(0,1fr)]">
                                 <aside className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm xl:max-w-[280px]">
                                     <div className="border-b border-slate-200 px-5 py-4">
-                                        <h3 className="text-lg font-bold text-[#003366]">Faculty Encoded Grades</h3>
+                                        <h3 className="text-lg font-bold text-[#003366]">Faculty Submission Review</h3>
                                     </div>
                                     <div className="max-h-[720px] overflow-y-auto p-4">
                                         {facultyMonitoringList.length === 0 ? (
