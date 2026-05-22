@@ -143,6 +143,14 @@ create_admin_secret "registrar" "registrar.capstone.com" "${NAMESPACE_MAIN}"
 create_admin_secret "faculty" "faculty.capstone.com" "${NAMESPACE_ANNEX}"
 create_admin_secret "department" "department.capstone.com" "${NAMESPACE_PUBAD}"
 
+# The fabric-cli pod runs in plv-main-campus. Duplicate the cross-org
+# admin and peer TLS secrets there so lifecycle commands can install and
+# approve chaincode for every organization from one CLI pod.
+create_admin_secret "faculty" "faculty.capstone.com" "${NAMESPACE_MAIN}"
+create_admin_secret "department" "department.capstone.com" "${NAMESPACE_MAIN}"
+create_node_secret "peer" "faculty" "faculty.capstone.com" "${NAMESPACE_MAIN}" "peer0.faculty.capstone.com"
+create_node_secret "peer" "department" "department.capstone.com" "${NAMESPACE_MAIN}" "peer0.department.capstone.com"
+
 # 5. Chaincode-as-a-Service TLS material
 create_chaincode_tls_secret "registrar" "${NAMESPACE_MAIN}"
 create_chaincode_tls_secret "faculty" "${NAMESPACE_ANNEX}"

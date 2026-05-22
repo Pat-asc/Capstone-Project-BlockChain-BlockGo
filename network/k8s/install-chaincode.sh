@@ -1,6 +1,15 @@
 #!/bin/bash
-set -e
+set -euo pipefail
 cd "$(dirname "$0")/.."
+
+CHANNEL_NAME="${CHANNEL_NAME:-registrar-channel}"
+CHAINCODE_NAME="${CHAINCODE_NAME:-registrar}"
+CHAINCODE_VERSION="${CHAINCODE_VERSION:-1.0}"
+CHAINCODE_SEQUENCE="${CHAINCODE_SEQUENCE:-1}"
+CHAINCODE_LABEL="${CHAINCODE_NAME}_${CHAINCODE_VERSION}"
+ORDERER_HOST="orderer.capstone.com"
+ORDERER_ADDRESS="${ORDERER_HOST}:7050"
+ORDERER_TLS_CA="/var/hyperledger/crypto/orderer/tls/ca.crt"
 
 echo "======================================"
 echo "Fabric Chaincode Installation (CCaaS)"
@@ -9,83 +18,171 @@ echo "======================================"
 CLI_POD=$(kubectl get pods -n plv-main-campus -l app=fabric-cli -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || true)
 if [ -z "$CLI_POD" ]; then
   echo "ERROR: Could not find fabric-cli pod!"
+  echo "Run: kubectl apply -f k8s/13-cli.yaml && kubectl -n plv-main-campus rollout status deploy/fabric-cli --timeout=5m"
   exit 1
 fi
 
-echo "[INFO] Packaging Chaincode properties locally..."
-mkdir -p cc-pkg
-ROOT_CERT=$(cat ./crypto-config-final-v2/chaincode-tls/ca-bundle/ca-bundle.pem | base64 | tr -d '\n' | tr -d '\r')
+if ! kubectl get pod -n plv-main-campus "$CLI_POD" -o jsonpath='{.status.phase}' | grep -q '^Running$'; then
+  echo "ERROR: fabric-cli pod exists but is not Running."
+  kubectl get pods -n plv-main-campus -l app=fabric-cli
+  exit 1
+fi
 
-for org in registrar faculty department; do
-  if [ "$org" == "registrar" ]; then NS="plv-main-campus"; fi
-  if [ "$org" == "faculty" ]; then NS="plv-annex-campus"; fi
-  if [ "$org" == "department" ]; then NS="plv-pubad-campus"; fi
-  
+ROOT_CERT_FILE="./crypto-config-final-v2/chaincode-tls/ca-bundle/ca-bundle.pem"
+if [ ! -f "$ROOT_CERT_FILE" ]; then
+  echo "ERROR: Missing chaincode TLS root certificate: $ROOT_CERT_FILE"
+  echo "Run the crypto generation step and then bash k8s/create-crypto-secrets.sh first."
+  exit 1
+fi
+
+ROOT_CERT=$(base64 < "$ROOT_CERT_FILE" | tr -d '\n' | tr -d '\r')
+
+org_names=(registrar faculty department)
+declare -A org_label=(
+  [registrar]="Registrar"
+  [faculty]="Faculty"
+  [department]="Department"
+)
+declare -A org_msp=(
+  [registrar]="RegistrarMSP"
+  [faculty]="FacultyMSP"
+  [department]="DepartmentMSP"
+)
+declare -A peer_host=(
+  [registrar]="peer0.registrar.capstone.com"
+  [faculty]="peer0.faculty.capstone.com"
+  [department]="peer0.department.capstone.com"
+)
+declare -A peer_service=(
+  [registrar]="peer-registrar.plv-main-campus.svc.cluster.local"
+  [faculty]="peer-faculty.plv-annex-campus.svc.cluster.local"
+  [department]="peer-department.plv-pubad-campus.svc.cluster.local"
+)
+declare -A chaincode_ns=(
+  [registrar]="plv-main-campus"
+  [faculty]="plv-annex-campus"
+  [department]="plv-pubad-campus"
+)
+declare -A admin_msp=(
+  [registrar]="/var/hyperledger/crypto/registrar/admin/msp"
+  [faculty]="/var/hyperledger/crypto/faculty/admin/msp"
+  [department]="/var/hyperledger/crypto/department/admin/msp"
+)
+declare -A peer_tls_ca=(
+  [registrar]="/var/hyperledger/crypto/registrar/peer/tls/ca.crt"
+  [faculty]="/var/hyperledger/crypto/faculty/peer/tls/ca.crt"
+  [department]="/var/hyperledger/crypto/department/peer/tls/ca.crt"
+)
+declare -A package_id
+
+exec_cli() {
+  MSYS_NO_PATHCONV=1 kubectl exec "$CLI_POD" -n plv-main-campus -- bash -c "$1"
+}
+
+peer_env() {
+  local org=$1
+  printf 'CORE_PEER_ADDRESS=%s:7051 CORE_PEER_LOCALMSPID=%s CORE_PEER_MSPCONFIGPATH=%s CORE_PEER_TLS_ROOTCERT_FILE=%s CORE_PEER_TLS_SERVERHOSTOVERRIDE=%s' \
+    "${peer_host[$org]}" "${org_msp[$org]}" "${admin_msp[$org]}" "${peer_tls_ca[$org]}" "${peer_host[$org]}"
+}
+
+peer_args=()
+for org in "${org_names[@]}"; do
+  peer_args+=(--peerAddresses "${peer_host[$org]}:7051" --tlsRootCertFiles "${peer_tls_ca[$org]}")
+done
+
+echo "[INFO] Preparing DNS aliases inside fabric-cli pod..."
+exec_cli "set -e
+add_host() {
+  local service=\"\$1\"
+  local host=\"\$2\"
+  local ip
+  ip=\$(getent hosts \"\$service\" | awk '{print \$1}' | head -n 1)
+  if [ -z \"\$ip\" ]; then
+    echo \"ERROR: Cannot resolve \$service\" >&2
+    exit 1
+  fi
+  sed -i \"/[[:space:]]\$host\$/d\" /etc/hosts
+  echo \"\$ip \$host\" >> /etc/hosts
+}
+add_host orderer-1.plv-main-campus.svc.cluster.local $ORDERER_HOST
+add_host ${peer_service[registrar]} ${peer_host[registrar]}
+add_host ${peer_service[faculty]} ${peer_host[faculty]}
+add_host ${peer_service[department]} ${peer_host[department]}"
+
+echo "[INFO] Verifying mounted admin MSP and TLS files..."
+for org in "${org_names[@]}"; do
+  exec_cli "test -f ${admin_msp[$org]}/signcerts/cert.pem && test -f ${admin_msp[$org]}/keystore/priv_sk && test -f ${peer_tls_ca[$org]}"
+done
+exec_cli "test -f $ORDERER_TLS_CA"
+
+echo "[INFO] Packaging chaincode connection profiles locally..."
+mkdir -p cc-pkg
+for org in "${org_names[@]}"; do
   cat <<EOF | tr -d '\r' > cc-pkg/connection.json
 {
-  "address": "${org}-chaincode.${NS}.svc.cluster.local:9999",
+  "address": "${org}-chaincode.${chaincode_ns[$org]}.svc.cluster.local:9999",
   "dial_timeout": "10s",
   "tls_required": true,
   "client_auth_required": false,
   "root_cert": "${ROOT_CERT}"
 }
 EOF
+
   cat <<EOF | tr -d '\r' > cc-pkg/metadata.json
 {
-    "type": "ccaas",
-    "label": "registrar_1.0"
+  "type": "ccaas",
+  "label": "${CHAINCODE_LABEL}"
 }
 EOF
+
   tar cfz cc-pkg/code.tar.gz -C cc-pkg connection.json
-  tar cfz ${org}.tar.gz -C cc-pkg code.tar.gz metadata.json
-  
+  tar cfz "${org}.tar.gz" -C cc-pkg code.tar.gz metadata.json
+
   echo "[INFO] Transferring ${org}.tar.gz to CLI pod..."
-  kubectl cp ${org}.tar.gz plv-main-campus/$CLI_POD:/tmp/${org}.tar.gz
+  kubectl cp "${org}.tar.gz" "plv-main-campus/${CLI_POD}:/tmp/${org}.tar.gz"
 done
-rm -rf cc-pkg *.tar.gz
+rm -rf cc-pkg ./*.tar.gz
 
 echo ""
-echo "[INFO] Executing installation across peers..."
-
-install_on_peer() {
-  local ORG=$1; local DOM=$2; local PORT=$3
-  echo "-> Installing on peer0.${DOM}..."
-  MSYS_NO_PATHCONV=1 kubectl exec $CLI_POD -n plv-main-campus -- bash -c "CORE_PEER_ADDRESS=peer0.${DOM}:${PORT} CORE_PEER_LOCALMSPID=${ORG}MSP CORE_PEER_TLS_ROOTCERT_FILE=/opt/fabric-config/network/crypto-config-final-v2/peerOrganizations/${DOM}/peers/peer0.${DOM}/tls/ca.crt CORE_PEER_MSPCONFIGPATH=/opt/fabric-config/network/crypto-config-final-v2/peerOrganizations/${DOM}/users/Admin@${DOM}/msp peer lifecycle chaincode install /tmp/${1,,}.tar.gz"
-}
-
-install_on_peer "Registrar" "registrar.capstone.com" "7051"
-install_on_peer "Faculty" "faculty.capstone.com" "9051"
-install_on_peer "Department" "department.capstone.com" "11051"
+echo "[INFO] Installing chaincode package on each peer..."
+for org in "${org_names[@]}"; do
+  echo "-> Installing on ${peer_host[$org]}..."
+  exec_cli "$(peer_env "$org") peer lifecycle chaincode install /tmp/${org}.tar.gz"
+done
 
 echo ""
-echo "[INFO] Querying Package ID..."
-PKG_ID=$(MSYS_NO_PATHCONV=1 kubectl exec $CLI_POD -n plv-main-campus -- bash -c "CORE_PEER_ADDRESS=peer0.registrar.capstone.com:7051 CORE_PEER_LOCALMSPID=RegistrarMSP CORE_PEER_TLS_ROOTCERT_FILE=/opt/fabric-config/network/crypto-config-final-v2/peerOrganizations/registrar.capstone.com/peers/peer0.registrar.capstone.com/tls/ca.crt CORE_PEER_MSPCONFIGPATH=/opt/fabric-config/network/crypto-config-final-v2/peerOrganizations/registrar.capstone.com/users/Admin@registrar.capstone.com/msp peer lifecycle chaincode queryinstalled" | grep "registrar_1.0" | awk '{print $3}' | sed 's/,//')
-echo "Identified Package ID: $PKG_ID"
+echo "[INFO] Querying package IDs per organization..."
+for org in "${org_names[@]}"; do
+  package_id[$org]=$(exec_cli "$(peer_env "$org") peer lifecycle chaincode queryinstalled" | awk -v label="$CHAINCODE_LABEL" '$0 ~ label { gsub(",", "", $3); print $3 }' | tail -n 1)
+  if [ -z "${package_id[$org]}" ]; then
+    echo "ERROR: Could not find package ID for ${org_label[$org]}MSP."
+    exit 1
+  fi
+  echo "-> ${org_label[$org]}MSP package ID: ${package_id[$org]}"
+done
 
 echo ""
 echo "[INFO] Approving chaincode for organizations..."
+for org in "${org_names[@]}"; do
+  echo "-> Approving for ${org_msp[$org]}..."
+  exec_cli "$(peer_env "$org") peer lifecycle chaincode approveformyorg -o $ORDERER_ADDRESS --ordererTLSHostnameOverride $ORDERER_HOST --tls --cafile $ORDERER_TLS_CA --channelID $CHANNEL_NAME --name $CHAINCODE_NAME --version $CHAINCODE_VERSION --package-id ${package_id[$org]} --sequence $CHAINCODE_SEQUENCE"
+done
 
-approve_org() {
-  local ORG=$1; local DOM=$2; local PORT=$3
-  echo "-> Approving for ${ORG}MSP..."
-  MSYS_NO_PATHCONV=1 kubectl exec $CLI_POD -n plv-main-campus -- bash -c "CORE_PEER_ADDRESS=peer0.${DOM}:${PORT} CORE_PEER_LOCALMSPID=${ORG}MSP CORE_PEER_TLS_ROOTCERT_FILE=/opt/fabric-config/network/crypto-config-final-v2/peerOrganizations/${DOM}/peers/peer0.${DOM}/tls/ca.crt CORE_PEER_MSPCONFIGPATH=/opt/fabric-config/network/crypto-config-final-v2/peerOrganizations/${DOM}/users/Admin@${DOM}/msp peer lifecycle chaincode approveformyorg -o orderer-1.plv-main-campus.svc.cluster.local:7053 --ordererTLSHostnameOverride orderer.capstone.com --tls --cafile /opt/fabric-config/network/crypto-config-final-v2/ordererOrganizations/capstone.com/orderers/orderer.capstone.com/tls/ca.crt --channelID registrar-channel --name registrar --version 1.0 --package-id $PKG_ID --sequence 1"
-}
-
-approve_org "Registrar" "registrar.capstone.com" "7051"
-approve_org "Faculty" "faculty.capstone.com" "9051"
-approve_org "Department" "department.capstone.com" "11051"
+echo ""
+echo "[INFO] Checking commit readiness..."
+exec_cli "$(peer_env registrar) peer lifecycle chaincode checkcommitreadiness --channelID $CHANNEL_NAME --name $CHAINCODE_NAME --version $CHAINCODE_VERSION --sequence $CHAINCODE_SEQUENCE --output json"
 
 echo ""
 echo "[INFO] Committing chaincode to ledger..."
-MSYS_NO_PATHCONV=1 kubectl exec $CLI_POD -n plv-main-campus -- bash -c "CORE_PEER_ADDRESS=peer0.registrar.capstone.com:7051 CORE_PEER_LOCALMSPID=RegistrarMSP CORE_PEER_TLS_ROOTCERT_FILE=/opt/fabric-config/network/crypto-config-final-v2/peerOrganizations/registrar.capstone.com/peers/peer0.registrar.capstone.com/tls/ca.crt CORE_PEER_MSPCONFIGPATH=/opt/fabric-config/network/crypto-config-final-v2/peerOrganizations/registrar.capstone.com/users/Admin@registrar.capstone.com/msp peer lifecycle chaincode commit -o orderer-1.plv-main-campus.svc.cluster.local:7053 --ordererTLSHostnameOverride orderer.capstone.com --tls --cafile /opt/fabric-config/network/crypto-config-final-v2/ordererOrganizations/capstone.com/orderers/orderer.capstone.com/tls/ca.crt --channelID registrar-channel --name registrar --version 1.0 --sequence 1 --peerAddresses peer0.registrar.capstone.com:7051 --tlsRootCertFiles /opt/fabric-config/network/crypto-config-final-v2/peerOrganizations/registrar.capstone.com/peers/peer0.registrar.capstone.com/tls/ca.crt --peerAddresses peer0.faculty.capstone.com:9051 --tlsRootCertFiles /opt/fabric-config/network/crypto-config-final-v2/peerOrganizations/faculty.capstone.com/peers/peer0.faculty.capstone.com/tls/ca.crt --peerAddresses peer0.department.capstone.com:11051 --tlsRootCertFiles /opt/fabric-config/network/crypto-config-final-v2/peerOrganizations/department.capstone.com/peers/peer0.department.capstone.com/tls/ca.crt"
+exec_cli "$(peer_env registrar) peer lifecycle chaincode commit -o $ORDERER_ADDRESS --ordererTLSHostnameOverride $ORDERER_HOST --tls --cafile $ORDERER_TLS_CA --channelID $CHANNEL_NAME --name $CHAINCODE_NAME --version $CHAINCODE_VERSION --sequence $CHAINCODE_SEQUENCE ${peer_args[*]}"
 
 echo ""
-echo "[INFO] Initializing Ledger Data..."
+echo "[INFO] Initializing ledger data..."
 sleep 3
-MSYS_NO_PATHCONV=1 kubectl exec $CLI_POD -n plv-main-campus -- bash -c "CORE_PEER_ADDRESS=peer0.registrar.capstone.com:7051 CORE_PEER_LOCALMSPID=RegistrarMSP CORE_PEER_TLS_ROOTCERT_FILE=/opt/fabric-config/network/crypto-config-final-v2/peerOrganizations/registrar.capstone.com/peers/peer0.registrar.capstone.com/tls/ca.crt CORE_PEER_MSPCONFIGPATH=/opt/fabric-config/network/crypto-config-final-v2/peerOrganizations/registrar.capstone.com/users/Admin@registrar.capstone.com/msp peer chaincode invoke -o orderer-1.plv-main-campus.svc.cluster.local:7053 --ordererTLSHostnameOverride orderer.capstone.com --tls --cafile /opt/fabric-config/network/crypto-config-final-v2/ordererOrganizations/capstone.com/orderers/orderer.capstone.com/tls/ca.crt -C registrar-channel -n registrar -c '{\"function\":\"InitLedger\",\"Args\":[]}' --peerAddresses peer0.registrar.capstone.com:7051 --tlsRootCertFiles /opt/fabric-config/network/crypto-config-final-v2/peerOrganizations/registrar.capstone.com/peers/peer0.registrar.capstone.com/tls/ca.crt --peerAddresses peer0.faculty.capstone.com:9051 --tlsRootCertFiles /opt/fabric-config/network/crypto-config-final-v2/peerOrganizations/faculty.capstone.com/peers/peer0.faculty.capstone.com/tls/ca.crt --peerAddresses peer0.department.capstone.com:11051 --tlsRootCertFiles /opt/fabric-config/network/crypto-config-final-v2/peerOrganizations/department.capstone.com/peers/peer0.department.capstone.com/tls/ca.crt"
+exec_cli "$(peer_env registrar) peer chaincode invoke -o $ORDERER_ADDRESS --ordererTLSHostnameOverride $ORDERER_HOST --tls --cafile $ORDERER_TLS_CA -C $CHANNEL_NAME -n $CHAINCODE_NAME -c '{\"function\":\"InitLedger\",\"Args\":[]}' ${peer_args[*]}"
 
 echo ""
 echo "============================================================"
-echo "✓ Chaincode Successfully Installed & Initialized!"
+echo "Chaincode successfully installed and initialized."
 echo "The entire PLV BlockGO Network is fully operational!"
 echo "============================================================"
