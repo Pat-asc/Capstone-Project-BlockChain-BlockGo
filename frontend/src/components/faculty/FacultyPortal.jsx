@@ -85,9 +85,11 @@ const REMARK_OPTIONS = [
   { value: "", label: "None", standing: STUDENT_STATUS_ACTIVE },
   { value: "D", label: "D - Dropped", standing: "dropped" },
   { value: "UD", label: "UD - Unofficially Dropped", standing: "unofficially_dropped" },
+  { value: "U", label: "U - Unknown Reason", standing: "unknown_reason" },
   { value: "INC", label: "INC - Incomplete", standing: "incomplete" },
   { value: "W", label: "W - Withdrawal", standing: "withdrawn" },
 ];
+const STUDENT_STANDING_OPTIONS = REMARK_OPTIONS.filter((option) => option.value !== "INC");
 const REMARK_STANDING_BY_VALUE = REMARK_OPTIONS.reduce((acc, option) => {
   acc[option.value] = option.standing;
   return acc;
@@ -122,6 +124,12 @@ const getDerivedStudentStanding = (student = {}) => {
 const getRemarkDisplayLabel = (remark = "") => {
   if (remark === "INC") return "INC - Incomplete";
   return REMARK_OPTIONS.find((option) => option.value === remark)?.label || "None";
+};
+const getFacultyRemarksLabel = (student = {}) => {
+  const explicitRemark = normalizeRemarkValue(student.remarks);
+  if (explicitRemark === "INC") return "INC - Incomplete";
+  if (hasMissingRequiredGrade(student)) return "Missing grade";
+  return "None";
 };
 const isIrregularStanding = (standing = "") =>
   String(standing || "").trim().toLowerCase().startsWith("irreg:");
@@ -1723,7 +1731,8 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
                     const explicitRemark = normalizeRemarkValue(stu.remarks);
                     const derivedStanding = getDerivedStudentStanding(stu);
                     const studentStatusLabel = getStudentStatusLabel(derivedStanding);
-                    const effectiveRemark = getEffectiveRemark(stu);
+                    const studentStandingValue = ["D", "UD", "U", "W"].includes(explicitRemark) ? explicitRemark : "";
+                    const remarksLabel = getFacultyRemarksLabel(stu);
                     const isStudentLocked = explicitRemark && derivedStanding !== STUDENT_STATUS_ACTIVE;
                     const isFlagged = isAutomaticallyFlagged(stu);
                     const rowState = rowSaveState[activeSection]?.[i] || 'idle';
@@ -1784,13 +1793,27 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
                           </span>
                         </td>
                         <td className="p-4 text-center">
-                          <span className={`inline-flex rounded-full px-3 py-1 text-[10px] font-bold uppercase ${
-                            studentStatusLabel === 'Regular' ? 'bg-emerald-100 text-emerald-700' :
-                            studentStatusLabel === 'Irregular' ? 'bg-slate-200 text-slate-700' :
-                            'bg-red-100 text-red-700'
-                          }`}>
-                            {studentStatusLabel}
-                          </span>
+                          <div className="flex min-w-[170px] flex-col items-center gap-2">
+                            <span className={`inline-flex rounded-full px-3 py-1 text-[10px] font-bold uppercase ${
+                              studentStatusLabel === 'Regular' ? 'bg-emerald-100 text-emerald-700' :
+                              studentStatusLabel === 'Irregular' ? 'bg-slate-200 text-slate-700' :
+                              'bg-red-100 text-red-700'
+                            }`}>
+                              {studentStatusLabel}
+                            </span>
+                            <select
+                              value={studentStandingValue}
+                              onChange={(e) => handleStudentRemarksChange(activeSection, i, e.target.value)}
+                              disabled={isGradeEncodingLocked || isClosed}
+                              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-xs font-semibold outline-none focus:border-[#003366] disabled:bg-slate-100 disabled:text-slate-400"
+                            >
+                              {STUDENT_STANDING_OPTIONS.map((option) => (
+                                <option key={option.value || 'regular'} value={option.value}>
+                                  {option.value ? option.label : 'Regular'}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
                         </td>
                         <td className="p-4 text-center">
                           <span className={`inline-flex rounded-full px-3 py-1 text-[10px] font-bold uppercase ${
@@ -1800,28 +1823,11 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
                           </span>
                         </td>
                         <td className="p-4 text-center">
-                          <div className="flex min-w-[180px] flex-col gap-2">
-                            <select
-                              value={explicitRemark}
-                              onChange={(e) => handleStudentRemarksChange(activeSection, i, e.target.value)}
-                              disabled={isGradeEncodingLocked || isClosed}
-                              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-xs font-semibold outline-none focus:border-[#003366] disabled:bg-slate-100 disabled:text-slate-400"
-                            >
-                              {explicitRemark === "INC" && (
-                                <option value="INC">INC - Incomplete</option>
-                              )}
-                              {REMARK_OPTIONS.map((option) => (
-                                <option key={option.value || 'none'} value={option.value}>
-                                  {option.label}
-                                </option>
-                              ))}
-                            </select>
-                            <span className={`mx-auto inline-flex rounded-full px-2.5 py-1 text-[10px] font-bold uppercase ${
-                              effectiveRemark ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'
-                            }`}>
-                              {effectiveRemark ? getRemarkDisplayLabel(effectiveRemark) : 'None'}
-                            </span>
-                          </div>
+                          <span className={`mx-auto inline-flex rounded-full px-2.5 py-1 text-[10px] font-bold uppercase ${
+                            remarksLabel === 'None' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'
+                          }`}>
+                            {remarksLabel}
+                          </span>
                         </td>
 
                       </tr>
