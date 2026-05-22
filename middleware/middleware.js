@@ -98,6 +98,156 @@ const resolveExistingPaths = (...candidates) => {
     return paths;
 };
 
+const readFirstExistingFile = (...candidates) => {
+    const [filePath] = resolveExistingPaths(...candidates);
+    if (!filePath) return '';
+    return fs.readFileSync(filePath, 'utf8');
+};
+
+const buildKubernetesConnectionProfile = () => {
+    const registrarTls = readFirstExistingFile(
+        process.env.FABRIC_REGISTRAR_PEER_TLS_CERT,
+        process.env.FABRIC_CA_REGISTRAR_TLS_CERT,
+        '/etc/hyperledger/fabric-ca-roots/registrar-tls-cert.pem',
+        '../network/fabric-ca/registrar/tls-cert.pem',
+        '../network/crypto-config-final-v2/peerOrganizations/registrar.capstone.com/peers/peer0.registrar.capstone.com/tls/ca.crt'
+    );
+    const facultyTls = readFirstExistingFile(
+        process.env.FABRIC_FACULTY_PEER_TLS_CERT,
+        process.env.FABRIC_CA_FACULTY_TLS_CERT,
+        '/etc/hyperledger/fabric-ca-roots/faculty-tls-cert.pem',
+        '../network/fabric-ca/faculty/tls-cert.pem',
+        '../network/crypto-config-final-v2/peerOrganizations/faculty.capstone.com/peers/peer0.faculty.capstone.com/tls/ca.crt'
+    );
+    const departmentTls = readFirstExistingFile(
+        process.env.FABRIC_DEPARTMENT_PEER_TLS_CERT,
+        process.env.FABRIC_CA_DEPARTMENT_TLS_CERT,
+        '/etc/hyperledger/fabric-ca-roots/department-tls-cert.pem',
+        '../network/fabric-ca/department/tls-cert.pem',
+        '../network/crypto-config-final-v2/peerOrganizations/department.capstone.com/peers/peer0.department.capstone.com/tls/ca.crt'
+    );
+
+    const peer = (url, pem, override) => ({
+        url,
+        tlsCACerts: { pem },
+        grpcOptions: { 'ssl-target-name-override': override }
+    });
+
+    return {
+        name: 'blockgo-k8s-network',
+        version: '1.0.0',
+        client: {
+            organization: 'Registrar',
+            connection: {
+                timeout: {
+                    peer: { endorser: '300' },
+                    orderer: '300'
+                }
+            }
+        },
+        channels: {
+            [process.env.CHANNEL_NAME || 'registrar-channel']: {
+                orderers: ['orderer.capstone.com'],
+                peers: {
+                    'peer0.registrar.capstone.com': { endorsingPeer: true, chaincodeQuery: true, ledgerQuery: true, eventSource: true },
+                    'peer0.faculty.capstone.com': { endorsingPeer: true, chaincodeQuery: true, ledgerQuery: true, eventSource: true },
+                    'peer0.department.capstone.com': { endorsingPeer: true, chaincodeQuery: true, ledgerQuery: true, eventSource: true }
+                }
+            }
+        },
+        organizations: {
+            Registrar: {
+                mspid: 'RegistrarMSP',
+                peers: ['peer0.registrar.capstone.com'],
+                certificateAuthorities: ['ca.registrar.capstone.com']
+            },
+            Faculty: {
+                mspid: 'FacultyMSP',
+                peers: ['peer0.faculty.capstone.com'],
+                certificateAuthorities: ['ca.faculty.capstone.com']
+            },
+            Department: {
+                mspid: 'DepartmentMSP',
+                peers: ['peer0.department.capstone.com'],
+                certificateAuthorities: ['ca.department.capstone.com']
+            }
+        },
+        orderers: {
+            'orderer.capstone.com': peer(
+                process.env.FABRIC_ORDERER_URL || 'grpcs://orderer-1.plv-main-campus.svc.cluster.local:7050',
+                registrarTls,
+                'orderer.capstone.com'
+            )
+        },
+        peers: {
+            'peer0.registrar.capstone.com': peer(
+                process.env.FABRIC_REGISTRAR_PEER_URL || 'grpcs://peer-registrar.plv-main-campus.svc.cluster.local:7051',
+                registrarTls,
+                'peer0.registrar.capstone.com'
+            ),
+            'peer0.faculty.capstone.com': peer(
+                process.env.FABRIC_FACULTY_PEER_URL || 'grpcs://peer-faculty.plv-annex-campus.svc.cluster.local:7051',
+                facultyTls,
+                'peer0.faculty.capstone.com'
+            ),
+            'peer0.department.capstone.com': peer(
+                process.env.FABRIC_DEPARTMENT_PEER_URL || 'grpcs://peer-department.plv-pubad-campus.svc.cluster.local:7051',
+                departmentTls,
+                'peer0.department.capstone.com'
+            )
+        },
+        certificateAuthorities: {
+            'ca.registrar.capstone.com': {
+                url: process.env.FABRIC_CA_REGISTRAR_URL || 'https://ca-registrar.plv-main-campus.svc.cluster.local:7054',
+                caName: 'ca-registrar',
+                tlsCACerts: { pem: registrarTls },
+                httpOptions: { verify: false }
+            },
+            'ca.faculty.capstone.com': {
+                url: process.env.FABRIC_CA_FACULTY_URL || 'https://ca-faculty.plv-annex-campus.svc.cluster.local:7054',
+                caName: 'ca-faculty',
+                tlsCACerts: { pem: facultyTls },
+                httpOptions: { verify: false }
+            },
+            'ca.department.capstone.com': {
+                url: process.env.FABRIC_CA_DEPARTMENT_URL || 'https://ca-department.plv-pubad-campus.svc.cluster.local:7054',
+                caName: 'ca-department',
+                tlsCACerts: { pem: departmentTls },
+                httpOptions: { verify: false }
+            }
+        }
+    };
+};
+
+const loadConnectionProfile = (isContainerized) => {
+    if (isContainerized) {
+        console.log('[Ledger Gateway] Using generated Kubernetes connection profile.');
+        return buildKubernetesConnectionProfile();
+    }
+
+    const candidates = resolveExistingPaths(
+        process.env.FABRIC_CONNECTION_PROFILE,
+        './connection-profile.json',
+        './connection.json',
+        './network/connection-profile.json',
+        '../network/connection-profile.json',
+        '../network/connection.json'
+    );
+
+    for (const ccpPath of candidates) {
+        const rawProfile = fs.readFileSync(ccpPath, 'utf8').trim();
+        if (!rawProfile) {
+            console.warn(`[Ledger Gateway] Skipping empty connection profile: ${ccpPath}`);
+            continue;
+        }
+
+        console.log(`[Ledger Gateway] Using connection profile: ${ccpPath}`);
+        return JSON.parse(rawProfile);
+    }
+
+    throw new Error('Fabric connection profile not found. Set FABRIC_CONNECTION_PROFILE or include connection.json in the middleware image.');
+};
+
 const getFileSignature = (filePath) => {
     const stat = fs.statSync(filePath);
     return `${filePath}:${stat.mtimeMs}:${stat.size}`;
@@ -583,8 +733,8 @@ async function getContractForUser(username, roleHint) {
         }
     }
 
-    const ccpPath = path.resolve(__dirname, '..', 'network', 'connection-profile.json');
-    const ccp = JSON.parse(fs.readFileSync(ccpPath, 'utf8'));
+    const isContainerized = fs.existsSync('/.dockerenv') || fs.existsSync('/var/run/secrets/kubernetes.io');
+    const ccp = loadConnectionProfile(isContainerized);
     
     let wallet = await getWallet(roleHint);
     let identity = await wallet.get(username);
@@ -618,7 +768,6 @@ async function getContractForUser(username, roleHint) {
     if (!ccp.client) ccp.client = {};
     ccp.client.organization = clientOrgName;
 
-    const isContainerized = fs.existsSync('/.dockerenv') || fs.existsSync('/var/run/secrets/kubernetes.io');
     // Inject full network routing to bypass broken Service Discovery on localhost
     if (!isContainerized) {
         const getPEM = (org, peer) => {
