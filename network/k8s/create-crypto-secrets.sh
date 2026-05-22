@@ -1,5 +1,5 @@
 #!/bin/bash
-set +e
+set -euo pipefail
 
 # MASTER ALIGNMENT: Match Docker Compose logic 1:1
 CRYPTO_DIR="./crypto-config-final-v2"
@@ -78,7 +78,17 @@ create_node_secret() {
         admincert=$(ls ${CRYPTO_DIR}/${type}Organizations/${domain}/users/Admin@${domain}/msp/signcerts/*.pem 2>/dev/null | head -n 1 || true)
     fi
 
-    kubectl delete secret ${secret_name} -n ${ns} 2>/dev/null || true
+    local missing=0
+    for file in "${path}/tls/server.crt" "${path}/tls/server.key" "${path}/tls/ca.crt" "${signcert}" "${keystore}" "${cacert}" "${admincert}"; do
+        if [ -z "$file" ] || [ ! -f "$file" ]; then
+            echo "ERROR: Missing crypto material for secret ${secret_name}: ${file:-<empty>}" >&2
+            missing=1
+        fi
+    done
+    if [ "$missing" -ne 0 ]; then
+        return 1
+    fi
+
     kubectl create secret generic ${secret_name} -n ${ns} \
         --from-file="server.crt=${path}/tls/server.crt" \
         --from-file="server.key=${path}/tls/server.key" \
@@ -86,7 +96,8 @@ create_node_secret() {
         --from-file="msp-cert.pem=${signcert}" \
         --from-file="msp-key.pem=${keystore}" \
         --from-file="msp-ca.pem=${cacert}" \
-        --from-file="admin-cert.pem=${admincert}"
+        --from-file="admin-cert.pem=${admincert}" \
+        --dry-run=client -o yaml | kubectl apply -f -
 }
 
 create_admin_secret() {
@@ -99,12 +110,23 @@ create_admin_secret() {
     if [ -z "$keystore" ]; then keystore="${path}/msp/keystore/priv_sk"; fi
     local cacert=$(ls ${path}/msp/cacerts/*.pem 2>/dev/null | head -n 1 || true)
 
-    kubectl delete secret ${secret_name} -n ${ns} 2>/dev/null || true
+    local missing=0
+    for file in "${signcert}" "${keystore}" "${cacert}"; do
+        if [ -z "$file" ] || [ ! -f "$file" ]; then
+            echo "ERROR: Missing crypto material for secret ${secret_name}: ${file:-<empty>}" >&2
+            missing=1
+        fi
+    done
+    if [ "$missing" -ne 0 ]; then
+        return 1
+    fi
+
     kubectl create secret generic ${secret_name} -n ${ns} \
         --from-file="msp-cert.pem=${signcert}" \
         --from-file="msp-key.pem=${keystore}" \
         --from-file="msp-ca.pem=${cacert}" \
-        --from-file="admin-cert.pem=${signcert}"
+        --from-file="admin-cert.pem=${signcert}" \
+        --dry-run=client -o yaml | kubectl apply -f -
 }
 
 create_chaincode_tls_secret() {
@@ -112,11 +134,22 @@ create_chaincode_tls_secret() {
     local secret_name="chaincode-${org}-tls"
     local path="${CRYPTO_DIR}/chaincode-tls"
 
-    kubectl delete secret ${secret_name} -n ${ns} 2>/dev/null || true
+    local missing=0
+    for file in "${path}/signcerts/server.crt" "${path}/keystore/server.key" "${path}/ca-bundle/ca-bundle.pem"; do
+        if [ -z "$file" ] || [ ! -f "$file" ]; then
+            echo "ERROR: Missing crypto material for secret ${secret_name}: ${file:-<empty>}" >&2
+            missing=1
+        fi
+    done
+    if [ "$missing" -ne 0 ]; then
+        return 1
+    fi
+
     kubectl create secret generic ${secret_name} -n ${ns} \
         --from-file="server.crt=${path}/signcerts/server.crt" \
         --from-file="server.key=${path}/keystore/server.key" \
-        --from-file="ca-bundle.pem=${path}/ca-bundle/ca-bundle.pem"
+        --from-file="ca-bundle.pem=${path}/ca-bundle/ca-bundle.pem" \
+        --dry-run=client -o yaml | kubectl apply -f -
 }
 
 # 1. CAs
