@@ -905,7 +905,7 @@ const Chat = ({
   return (
     <>
     <div
-      className="fixed bottom-5 right-5 z-[1000] flex flex-col rounded-2xl bg-white font-sans shadow-2xl overflow-hidden"
+      className="blockgo-chat-window fixed bottom-5 right-5 z-[1000] flex flex-col rounded-2xl bg-white font-sans shadow-2xl overflow-hidden"
       style={{ width: chatBoxWidth, height: chatBoxHeight }}
     >
       <div className="relative flex items-center justify-between border-b border-slate-200 p-5">
@@ -940,7 +940,7 @@ const Chat = ({
         </div>
       )}
 
-      <div className="flex-1 overflow-y-auto p-4">
+      <div className="blockgo-chat-messages flex-1 overflow-y-auto p-4">
         {!selectedUser ? (
           <div className="flex h-full items-center justify-center text-center">
             <p className="text-sm text-slate-400">Select a recipient to start chatting.</p>
@@ -1038,7 +1038,7 @@ const Chat = ({
         <div ref={messagesEndRef} />
       </div>
 
-      <div className="flex flex-col gap-2 p-4 pt-0">
+      <div className="blockgo-chat-recipient flex flex-col gap-2 p-4 pt-0">
         <div className="relative">
           <details
             className="w-full"
@@ -1163,7 +1163,7 @@ const Chat = ({
 
       </div>
 
-      <div className="flex gap-2 items-end p-4 pt-0">
+      <div className="blockgo-chat-composer flex gap-2 items-end p-4 pt-0">
         <input
           ref={fileInputRef}
           type="file"
@@ -1246,7 +1246,7 @@ const Chat = ({
       return (
         <div
           key={email}
-          className="fixed bottom-5 z-[999] flex flex-col overflow-hidden rounded-2xl bg-white font-sans shadow-2xl"
+          className="blockgo-chat-secondary-window fixed bottom-5 z-[999] flex flex-col overflow-hidden rounded-2xl bg-white font-sans shadow-2xl"
           style={{ width: chatBoxWidth, height: chatBoxHeight, right: rightOffset }}
         >
           <div className="flex items-center justify-between border-b border-slate-200 p-4">
@@ -1264,7 +1264,7 @@ const Chat = ({
             </button>
           </div>
 
-          <div ref={secondaryMessagesRef} className="flex-1 overflow-y-auto p-4">
+          <div ref={secondaryMessagesRef} className="blockgo-chat-messages flex-1 overflow-y-auto p-4">
             {secondaryMessages.length === 0 && !typingUsers[email] ? (
               <div className="flex h-full items-center justify-center text-center">
                 <p className="text-sm text-slate-400">No messages yet.</p>
@@ -1332,7 +1332,7 @@ const Chat = ({
             )}
           </div>
 
-          <div className="flex gap-2 p-4 pt-0">
+          <div className="blockgo-chat-composer flex gap-2 p-4 pt-0">
             <input
               type="text"
               value={draft}
