@@ -824,7 +824,7 @@ async function getContractForUser(username, roleHint) {
     await gateway.connect(ccp, {
         wallet,
         identity: username, 
-        discovery: { enabled: isContainerized, asLocalhost: !isContainerized }
+        discovery: { enabled: false, asLocalhost: false }
     });
 
     const network = await gateway.getNetwork(process.env.CHANNEL_NAME || 'registrar-channel');
