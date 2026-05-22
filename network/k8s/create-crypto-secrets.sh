@@ -65,11 +65,22 @@ create_node_secret() {
     local type=$1; local org=$2; local domain=$3; local ns=$4; local name=$5
     local secret_name="${type}-${org}-crypto"
     local path="${CRYPTO_DIR}/${type}Organizations/${domain}/${type}s/${name}"
+    local org_root="${CRYPTO_DIR}/${type}Organizations/${domain}"
     
     local signcert=$(ls ${path}/msp/signcerts/*.pem 2>/dev/null | head -n 1 || true)
     local keystore=$(ls ${path}/msp/keystore/*_sk 2>/dev/null | head -n 1 || true)
     if [ -z "$keystore" ]; then keystore="${path}/msp/keystore/priv_sk"; fi
     local cacert=$(ls ${path}/msp/cacerts/*.pem 2>/dev/null | head -n 1 || true)
+    local tls_cert="${path}/tls/server.crt"
+    local tls_key="${path}/tls/server.key"
+    local tls_ca="${path}/tls/ca.crt"
+
+    if [ ! -f "$tls_cert" ]; then tls_cert=$(ls ${path}/tls/signcerts/*.pem 2>/dev/null | head -n 1 || true); fi
+    if [ ! -f "$tls_key" ]; then tls_key=$(ls ${path}/tls/keystore/* 2>/dev/null | head -n 1 || true); fi
+    if [ ! -f "$tls_ca" ]; then tls_ca=$(ls ${path}/tls/tlscacerts/*.pem 2>/dev/null | head -n 1 || true); fi
+    if [ ! -f "$tls_ca" ]; then tls_ca=$(ls ${path}/tls/cacerts/*.pem 2>/dev/null | head -n 1 || true); fi
+    if [ ! -f "$tls_ca" ] && [ "$type" != "orderer" ]; then tls_ca=$(ls ${org_root}/msp/cacerts/*.pem 2>/dev/null | head -n 1 || true); fi
+    if [ ! -f "$tls_ca" ] && [ "$type" == "orderer" ]; then tls_ca=$(ls ${CRYPTO_DIR}/ordererOrganizations/${domain}/msp/cacerts/*.pem 2>/dev/null | head -n 1 || true); fi
     
     local admincert=""
     if [ "$type" == "orderer" ]; then
@@ -79,7 +90,7 @@ create_node_secret() {
     fi
 
     local missing=0
-    for file in "${path}/tls/server.crt" "${path}/tls/server.key" "${path}/tls/ca.crt" "${signcert}" "${keystore}" "${cacert}" "${admincert}"; do
+    for file in "${tls_cert}" "${tls_key}" "${tls_ca}" "${signcert}" "${keystore}" "${cacert}" "${admincert}"; do
         if [ -z "$file" ] || [ ! -f "$file" ]; then
             echo "ERROR: Missing crypto material for secret ${secret_name}: ${file:-<empty>}" >&2
             missing=1
@@ -90,9 +101,9 @@ create_node_secret() {
     fi
 
     kubectl create secret generic ${secret_name} -n ${ns} \
-        --from-file="server.crt=${path}/tls/server.crt" \
-        --from-file="server.key=${path}/tls/server.key" \
-        --from-file="ca.crt=${path}/tls/ca.crt" \
+        --from-file="server.crt=${tls_cert}" \
+        --from-file="server.key=${tls_key}" \
+        --from-file="ca.crt=${tls_ca}" \
         --from-file="msp-cert.pem=${signcert}" \
         --from-file="msp-key.pem=${keystore}" \
         --from-file="msp-ca.pem=${cacert}" \
@@ -133,9 +144,15 @@ create_chaincode_tls_secret() {
     local org=$1; local ns=$2
     local secret_name="chaincode-${org}-tls"
     local path="${CRYPTO_DIR}/chaincode-tls"
+    local tls_cert="${path}/signcerts/server.crt"
+    local tls_key="${path}/keystore/server.key"
+    local tls_ca="${path}/ca-bundle/ca-bundle.pem"
+
+    if [ ! -f "$tls_cert" ]; then tls_cert=$(ls ${path}/signcerts/*.pem 2>/dev/null | head -n 1 || true); fi
+    if [ ! -f "$tls_key" ]; then tls_key=$(ls ${path}/keystore/* 2>/dev/null | head -n 1 || true); fi
 
     local missing=0
-    for file in "${path}/signcerts/server.crt" "${path}/keystore/server.key" "${path}/ca-bundle/ca-bundle.pem"; do
+    for file in "${tls_cert}" "${tls_key}" "${tls_ca}"; do
         if [ -z "$file" ] || [ ! -f "$file" ]; then
             echo "ERROR: Missing crypto material for secret ${secret_name}: ${file:-<empty>}" >&2
             missing=1
@@ -146,9 +163,9 @@ create_chaincode_tls_secret() {
     fi
 
     kubectl create secret generic ${secret_name} -n ${ns} \
-        --from-file="server.crt=${path}/signcerts/server.crt" \
-        --from-file="server.key=${path}/keystore/server.key" \
-        --from-file="ca-bundle.pem=${path}/ca-bundle/ca-bundle.pem" \
+        --from-file="server.crt=${tls_cert}" \
+        --from-file="server.key=${tls_key}" \
+        --from-file="ca-bundle.pem=${tls_ca}" \
         --dry-run=client -o yaml | kubectl apply -f -
 }
 
