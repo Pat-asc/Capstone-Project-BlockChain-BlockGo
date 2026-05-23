@@ -756,7 +756,8 @@ namespace Client_app.Controllers
                 int userId = 0;
                 bool existingUser = false;
                 string existingRole = "";
-                using (var checkCmd = new NpgsqlCommand("SELECT id, COALESCE(role, '') FROM Users WHERE LOWER(email) = LOWER(@email) LIMIT 1", conn))
+                string existingStatus = "";
+                using (var checkCmd = new NpgsqlCommand("SELECT id, COALESCE(role, ''), COALESCE(status, '') FROM Users WHERE LOWER(email) = LOWER(@email) LIMIT 1", conn))
                 {
                     checkCmd.Parameters.AddWithValue("email", email);
                     using var reader = await checkCmd.ExecuteReaderAsync();
@@ -765,8 +766,11 @@ namespace Client_app.Controllers
                         existingUser = true;
                         userId = reader.GetInt32(0);
                         existingRole = reader.GetString(1);
+                        existingStatus = reader.GetString(2);
                     }
                 }
+
+                bool needsFabric = !existingUser || !string.Equals(existingStatus, "APPROVED", StringComparison.OrdinalIgnoreCase);
 
                 using var tx = await conn.BeginTransactionAsync();
 
@@ -855,7 +859,7 @@ namespace Client_app.Controllers
 
                 await tx.CommitAsync();
 
-                if (!existingUser)
+                if (needsFabric)
                 {
                     try
                     {
@@ -1159,11 +1163,15 @@ namespace Client_app.Controllers
                 var faculties = new List<object>();
 
                 using (var cmd = new NpgsqlCommand(@"
-                    SELECT u.id, fp.full_name, u.email, fp.department, fp.section, fp.year_level 
+                    SELECT u.id, fp.full_name, u.email, fp.department, 
+                           COALESCE(fp.section, (SELECT fs.section FROM FacultySections fs WHERE fs.user_id = u.id ORDER BY fs.assigned_at DESC LIMIT 1)) as section,
+                           COALESCE(fp.year_level, (SELECT fs.year_level FROM FacultySections fs WHERE fs.user_id = u.id ORDER BY fs.assigned_at DESC LIMIT 1)) as year_level
                     FROM Users u JOIN FacultyProfiles fp ON u.id = fp.user_id 
                     WHERE u.role = 'faculty' AND u.status = 'APPROVED'
                     UNION
-                    SELECT u.id, ap.full_name, u.email, ap.department, 'Unassigned' as section, 'Unassigned' as year_level 
+                    SELECT u.id, ap.full_name, u.email, ap.department, 
+                           (SELECT fs.section FROM FacultySections fs WHERE fs.user_id = u.id ORDER BY fs.assigned_at DESC LIMIT 1) as section,
+                           (SELECT fs.year_level FROM FacultySections fs WHERE fs.user_id = u.id ORDER BY fs.assigned_at DESC LIMIT 1) as year_level
                     FROM Users u JOIN AdminProfiles ap ON u.id = ap.user_id 
                     WHERE LOWER(REPLACE(REPLACE(u.role, ' ', '_'), '-', '_')) IN ('department_admin', 'dept_admin', 'deptadmin', 'department', 'admin', 'chairperson') 
                       AND u.status = 'APPROVED'", conn))
@@ -1219,9 +1227,11 @@ namespace Client_app.Controllers
                     }
                 }
 
-                string updateProfileQuery = "UPDATE FacultyProfiles SET department = @dept WHERE user_id = @id AND (department IS NULL OR department = 'Unassigned')";
+                string updateProfileQuery = "UPDATE FacultyProfiles SET department = @dept, section = @section, year_level = @year WHERE user_id = @id";
                 using var cmdProfile = new NpgsqlCommand(updateProfileQuery, conn);
                 cmdProfile.Parameters.AddWithValue("dept", (object?)request.Department?.Trim() ?? DBNull.Value);
+                cmdProfile.Parameters.AddWithValue("section", (object?)request.Section?.Trim() ?? DBNull.Value);
+                cmdProfile.Parameters.AddWithValue("year", (object?)request.YearLevel?.Trim() ?? DBNull.Value);
                 cmdProfile.Parameters.AddWithValue("id", id);
                 await cmdProfile.ExecuteNonQueryAsync();
 
@@ -1802,6 +1812,7 @@ namespace Client_app.Controllers
 
                         int existingUserId = 0;
                         string existingRole = "";
+                        string existingStatus = "";
                         bool existingStudentProfile = false;
 
                         using var checkCmd = new NpgsqlCommand(@"
@@ -1826,11 +1837,12 @@ namespace Client_app.Controllers
                             {
                                 existingUserId = existingReader.GetInt32(0);
                                 existingRole = existingReader.GetString(1);
-                                _ = existingReader.GetString(2);
+                                existingStatus = existingReader.GetString(2);
                                 existingStudentProfile = !existingReader.IsDBNull(3) && existingReader.GetBoolean(3);
                             }
                         }
                         bool exists = existingUserId > 0;
+                        bool needsFabric = !exists || !string.Equals(existingStatus, "APPROVED", StringComparison.OrdinalIgnoreCase);
 
                         using var tx = await conn.BeginTransactionAsync();
                         
@@ -1928,10 +1940,10 @@ namespace Client_app.Controllers
 
                         await tx.CommitAsync();
 
-                        if (!exists)
+                        if (needsFabric)
                         {
                             // Fabric Wallet Generation
-                            var payload = new { email = loginId, role = "student", password = password };
+                            var payload = new { email, role = "faculty", password = password };
                             var content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
                             var fabResponse = await httpClient.PostAsync($"{middlewareUrl}/api/fabric/register-user", content);
                             
@@ -2202,6 +2214,7 @@ namespace Client_app.Controllers
                             SELECT
                                 u.id,
                                 COALESCE(u.role, ''),
+                                COALESCE(u.status, ''),
                                 EXISTS (
                                     SELECT 1
                                     FROM FacultyProfiles fp
@@ -2217,11 +2230,13 @@ namespace Client_app.Controllers
                             {
                                 existingUserId = existingReader.GetInt32(0);
                                 existingRole = existingReader.GetString(1);
-                                existingFacultyProfile = !existingReader.IsDBNull(2) && existingReader.GetBoolean(2);
+                                existingStatus = existingReader.GetString(2);
+                                existingFacultyProfile = !existingReader.IsDBNull(3) && existingReader.GetBoolean(3);
                             }
                         }
 
                         var exists = existingUserId > 0;
+                        var needsFabric = !exists || !string.Equals(existingStatus, "APPROVED", StringComparison.OrdinalIgnoreCase);
 
                         using var tx = await conn.BeginTransactionAsync();
 
@@ -2327,7 +2342,7 @@ namespace Client_app.Controllers
 
                         await tx.CommitAsync();
 
-                        if (!exists)
+                        if (needsFabric)
                         {
                             var payload = new { email, role = "faculty", password };
                             var content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
@@ -2593,12 +2608,14 @@ namespace Client_app.Controllers
 
                         int existingUserId = 0;
                         string existingRole = "";
+                        string existingStatus = "";
                         bool existingAdminProfile = false;
 
                         using var checkCmd = new NpgsqlCommand(@"
                             SELECT
                                 u.id,
                                 COALESCE(u.role, ''),
+                                COALESCE(u.status, ''),
                                 EXISTS (
                                     SELECT 1
                                     FROM AdminProfiles ap
@@ -2614,11 +2631,13 @@ namespace Client_app.Controllers
                             {
                                 existingUserId = existingReader.GetInt32(0);
                                 existingRole = NormalizeSystemRole(existingReader.GetString(1));
-                                existingAdminProfile = !existingReader.IsDBNull(2) && existingReader.GetBoolean(2);
+                                existingStatus = existingReader.GetString(2);
+                                existingAdminProfile = !existingReader.IsDBNull(3) && existingReader.GetBoolean(3);
                             }
                         }
 
                         bool exists = existingUserId > 0;
+                        bool needsFabric = !exists || !string.Equals(existingStatus, "APPROVED", StringComparison.OrdinalIgnoreCase);
 
                         using var tx = await conn.BeginTransactionAsync();
 
@@ -2704,7 +2723,7 @@ namespace Client_app.Controllers
 
                         await tx.CommitAsync();
 
-                        if (!exists)
+                        if (needsFabric)
                         {
                             var payload = new { email, role = "department_admin", password };
                             var content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
@@ -3108,12 +3127,19 @@ namespace Client_app.Controllers
 
                         // 1. Resolve and Autocreate Faculty
                         int facultyUserId = 0;
-                        using (var checkFac = new NpgsqlCommand("SELECT id FROM Users WHERE LOWER(email) = LOWER(@email)", conn, tx))
+                        string facStatus = "";
+                        using (var checkFac = new NpgsqlCommand("SELECT id, status FROM Users WHERE LOWER(email) = LOWER(@email)", conn, tx))
                         {
                             checkFac.Parameters.AddWithValue("email", profLoginId);
-                            var fIdObj = await checkFac.ExecuteScalarAsync();
-                            if (fIdObj != null && fIdObj != DBNull.Value) facultyUserId = Convert.ToInt32(fIdObj);
+                            using var fReader = await checkFac.ExecuteReaderAsync();
+                            if (await fReader.ReadAsync())
+                            {
+                                facultyUserId = fReader.GetInt32(0);
+                                facStatus = fReader.IsDBNull(1) ? "" : fReader.GetString(1);
+                            }
                         }
+
+                        bool facNeedsFabric = facultyUserId == 0 || !string.Equals(facStatus, "APPROVED", StringComparison.OrdinalIgnoreCase);
 
                         if (facultyUserId == 0)
                         {
@@ -3127,17 +3153,24 @@ namespace Client_app.Controllers
                             cmdProfile.Parameters.AddWithValue("name", facultyName);
                             cmdProfile.Parameters.AddWithValue("dept", department);
                             await cmdProfile.ExecuteNonQueryAsync();
+                        }
+                        else
+                        {
+                            // Ensure existing faculty is approved
+                            using var updateFac = new NpgsqlCommand("UPDATE Users SET status = 'APPROVED' WHERE id = @id", conn, tx);
+                            updateFac.Parameters.AddWithValue("id", facultyUserId);
+                            await updateFac.ExecuteNonQueryAsync();
+                        }
 
-                            if (!createdFaculties.Contains(profLoginId.ToLower()))
-                            {
-                                try {
-                                    var payload = new { email = profLoginId, role = "faculty", password = "plvfaculty123" };
-                                    var content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
-                                    var fabResponse = await httpClient.PostAsync($"{middlewareUrl}/api/fabric/register-user", content);
-                                    if (!fabResponse.IsSuccessStatusCode) _logger.LogWarning("Fabric Faculty wallet creation failed (skipping): {Body}", await fabResponse.Content.ReadAsStringAsync());
-                                    createdFaculties.Add(profLoginId.ToLower());
-                                } catch (Exception ex) { _logger.LogError(ex, "Fabric communication error for faculty {E}", profLoginId); }
-                            }
+                        if (facNeedsFabric && !createdFaculties.Contains(profLoginId.ToLower()))
+                        {
+                            try {
+                                var payload = new { email = profLoginId, role = "faculty", password = "plvfaculty123" };
+                                var content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
+                                var fabResponse = await httpClient.PostAsync($"{middlewareUrl}/api/fabric/register-user", content);
+                                if (!fabResponse.IsSuccessStatusCode) _logger.LogWarning("Fabric Faculty wallet creation failed (skipping): {Body}", await fabResponse.Content.ReadAsStringAsync());
+                                createdFaculties.Add(profLoginId.ToLower());
+                            } catch (Exception ex) { _logger.LogError(ex, "Fabric communication error for faculty {E}", profLoginId); }
                         }
 
                         // 2. Create Section Mapping
@@ -3162,12 +3195,19 @@ namespace Client_app.Controllers
 
                         // 3. Resolve and Autocreate Student
                         int studentUserId = 0;
-                        using (var checkStu = new NpgsqlCommand("SELECT id FROM Users WHERE LOWER(email) = LOWER(@email)", conn, tx))
+                        string stuStatus = "";
+                        using (var checkStu = new NpgsqlCommand("SELECT id, status FROM Users WHERE LOWER(email) = LOWER(@email)", conn, tx))
                         {
                             checkStu.Parameters.AddWithValue("email", studentLoginId);
-                            var sIdObj = await checkStu.ExecuteScalarAsync();
-                            if (sIdObj != null && sIdObj != DBNull.Value) studentUserId = Convert.ToInt32(sIdObj);
+                            using var sReader = await checkStu.ExecuteReaderAsync();
+                            if (await sReader.ReadAsync())
+                            {
+                                studentUserId = sReader.GetInt32(0);
+                                stuStatus = sReader.IsDBNull(1) ? "" : sReader.GetString(1);
+                            }
                         }
+
+                        bool stuNeedsFabric = studentUserId == 0 || !string.Equals(stuStatus, "APPROVED", StringComparison.OrdinalIgnoreCase);
 
                         if (studentUserId == 0)
                         {
@@ -3186,17 +3226,6 @@ namespace Client_app.Controllers
                             cmdProfile.Parameters.AddWithValue("sec", fullSection);
                             cmdProfile.Parameters.AddWithValue("sex", !string.IsNullOrEmpty(sex) ? (object)sex : DBNull.Value);
                             await cmdProfile.ExecuteNonQueryAsync();
-
-                            if (!createdStudents.Contains(studentLoginId.ToLower()))
-                            {
-                                try {
-                                    var payload = new { email = studentLoginId, role = "student", password = studentPassword };
-                                    var content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
-                                    var fabResponse = await httpClient.PostAsync($"{middlewareUrl}/api/fabric/register-user", content);
-                                    if (!fabResponse.IsSuccessStatusCode) _logger.LogWarning("Fabric Student wallet creation failed (skipping): {Body}", await fabResponse.Content.ReadAsStringAsync());
-                                    createdStudents.Add(studentLoginId.ToLower());
-                                } catch (Exception ex) { _logger.LogError(ex, "Fabric communication error for student {E}", studentLoginId); }
-                            }
                         }
                         else
                         {
@@ -3208,6 +3237,22 @@ namespace Client_app.Controllers
                             updateProfile.Parameters.AddWithValue("sec", fullSection);
                             updateProfile.Parameters.AddWithValue("uid", studentUserId);
                             await updateProfile.ExecuteNonQueryAsync();
+
+                            // Ensure existing student is approved
+                            using var updateStu = new NpgsqlCommand("UPDATE Users SET status = 'APPROVED' WHERE id = @id", conn, tx);
+                            updateStu.Parameters.AddWithValue("id", studentUserId);
+                            await updateStu.ExecuteNonQueryAsync();
+                        }
+
+                        if (stuNeedsFabric && !createdStudents.Contains(studentLoginId.ToLower()))
+                        {
+                            try {
+                                var payload = new { email = studentLoginId, role = "student", password = studentPassword };
+                                var content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
+                                var fabResponse = await httpClient.PostAsync($"{middlewareUrl}/api/fabric/register-user", content);
+                                if (!fabResponse.IsSuccessStatusCode) _logger.LogWarning("Fabric Student wallet creation failed (skipping): {Body}", await fabResponse.Content.ReadAsStringAsync());
+                                createdStudents.Add(studentLoginId.ToLower());
+                            } catch (Exception ex) { _logger.LogError(ex, "Fabric communication error for student {E}", studentLoginId); }
                         }
 
                         await tx.CommitAsync();
@@ -3726,8 +3771,8 @@ namespace Client_app.Controllers
             "encodingPeriod",
             "facultyLoadResetAt",
             "sessionRecoveryDrafts",
-            "STUDENT_BATCHES_KEY",
-            "STUDENT_SUBMISSION_LOGS_KEY"
+            "chairpersonStudentBatches",
+            "chairpersonSubmissionLogs"
         };
 
         public class SharedClientStateRequest
