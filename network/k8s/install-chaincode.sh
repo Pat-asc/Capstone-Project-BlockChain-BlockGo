@@ -101,7 +101,9 @@ add_host() {
     echo \"ERROR: Cannot resolve \$service\" >&2
     exit 1
   fi
-  sed -i \"/[[:space:]]\$host\$/d\" /etc/hosts
+  if grep -q \"[[:space:]]\$host\$\" /etc/hosts; then
+    return 0
+  fi
   echo \"\$ip \$host\" >> /etc/hosts
 }
 add_host orderer-1.plv-main-campus.svc.cluster.local $ORDERER_HOST
