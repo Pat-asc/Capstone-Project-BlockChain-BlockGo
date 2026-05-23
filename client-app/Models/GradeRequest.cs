@@ -6,6 +6,9 @@ namespace BlockGo.Models
     {
         [JsonPropertyName("student_id")]
         public string StudentId { get; set; } = string.Empty;
+
+        [JsonPropertyName("student_name")]
+        public string StudentName { get; set; } = string.Empty;
         
         [JsonPropertyName("course")]
         public string Course { get; set; } = string.Empty;
@@ -22,6 +25,9 @@ namespace BlockGo.Models
         [JsonPropertyName("section")]
         public string Section { get; set; } = string.Empty;
 
+        [JsonPropertyName("year_level")]
+        public string YearLevel { get; set; } = string.Empty;
+
         [JsonPropertyName("grade")]
         public string Grade { get; set; } = string.Empty;
 
@@ -36,5 +42,8 @@ namespace BlockGo.Models
 
         [JsonPropertyName("date")]
         public string Date { get; set; } = string.Empty;
+
+        [JsonPropertyName("ipfs_cid")]
+        public string? IpfsCID { get; set; }
     }
 }

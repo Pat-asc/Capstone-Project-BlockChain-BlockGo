@@ -2,58 +2,101 @@ const FabricCAServices = require('fabric-ca-client');
 const { Wallets } = require('fabric-network');
 const fs = require('fs');
 const path = require('path');
+const { Pool } = require('pg');
+const bcrypt = require('bcrypt');
+const crypto = require('crypto');
 
-// Load .env file from network directory to get CouchDB credentials
 require('dotenv').config({ path: path.resolve(__dirname, '../network/.env'), override: true });
 
-/**
- * Gets the wallet implementation (CouchDB or FileSystem) based on .env configuration.
- * @returns {Promise<Wallet>} A promise that resolves to the wallet instance.
- */
-async function getWallet() {
-    let couchUrl = process.env.COUCHDB_WALLET_URL;
-    if (!couchUrl && process.env.COUCHDB_USER && process.env.COUCHDB_PASS) {
-        // Default to localhost and the port exposed in docker-compose
-        couchUrl = `http://${process.env.COUCHDB_USER}:${process.env.COUCHDB_PASS}@127.0.0.1:5989`;
+async function getWallet(role = 'registrar') {
+    const normalizedRole = String(role).toLowerCase();
+    let couchUrl;
+    const user = process.env.COUCHDB_USER || 'capstone';
+    const pass = process.env.COUCHDB_PASS || 'pass123';
+    const host = process.env.COUCHDB_HOST || '127.0.0.1';
+
+    if (normalizedRole === 'faculty') {
+        couchUrl = process.env.COUCHDB_WALLET_FACULTY_URL || `http://${user}:${pass}@${host}:6990`;
+    } else if (normalizedRole === 'department_admin' || normalizedRole === 'department') {
+        couchUrl = process.env.COUCHDB_WALLET_DEPARTMENT_URL || `http://${user}:${pass}@${host}:7990`;
+    } else {
+        couchUrl = process.env.COUCHDB_WALLET_REGISTRAR_URL || process.env.COUCHDB_WALLET_URL || `http://${user}:${pass}@${host}:5990`;
     }
 
     if (couchUrl) {
-        console.log(`\nConnecting to CouchDB wallet...`);
+        const walletSuffix = normalizedRole === 'faculty' ? 'faculty' : (normalizedRole === 'department_admin' || normalizedRole === 'department') ? 'department' : 'registrar';
+        const walletName = `fabric_wallet_${walletSuffix}`;
+        console.log(`\nConnecting to CouchDB wallet at ${couchUrl} [${walletName}]...`);
         try {
-            const wallet = await Wallets.newCouchDBWallet(couchUrl, 'fabric_wallet');
-            console.log('CouchDB wallet connection successful.');
+            const wallet = await Wallets.newCouchDBWallet(couchUrl, walletName);
+            console.log(`CouchDB wallet connection successful for ${walletName}.`);
+            
+            const encryptionKey = process.env.WALLET_ENCRYPTION_KEY;
+            if (encryptionKey) {
+                const originalPut = wallet.put.bind(wallet);
+                const originalGet = wallet.get.bind(wallet);
+
+                wallet.put = async (label, identity) => {
+                    const identityToStore = {
+                        ...identity,
+                        credentials: { ...identity?.credentials }
+                    };
+                    if (identityToStore.credentials && identityToStore.credentials.privateKey) {
+                        const salt = crypto.randomBytes(16);
+                        const key = crypto.scryptSync(encryptionKey, salt, 32);
+                        const iv = crypto.randomBytes(12);
+                        const cipher = crypto.createCipheriv('aes-256-gcm', key, iv);
+                        let encrypted = cipher.update(identityToStore.credentials.privateKey, 'utf8', 'hex');
+                        encrypted += cipher.final('hex');
+                        const authTag = cipher.getAuthTag().toString('hex');
+                        identityToStore.credentials.privateKey = `ENC:${salt.toString('hex')}:${iv.toString('hex')}:${authTag}:${encrypted}`;
+                    }
+                    return originalPut(label, identityToStore);
+                };
+
+                wallet.get = async (label) => {
+                    const identity = await originalGet(label);
+                    if (identity && identity.credentials && identity.credentials.privateKey && identity.credentials.privateKey.startsWith('ENC:')) {
+                        const parts = identity.credentials.privateKey.split(':');
+                        let key, ivHex, authTagHex, encryptedHex;
+                        if (parts.length === 5) {
+                            const [, saltHex, ivPart, authTagPart, encryptedPart] = parts;
+                            key = crypto.scryptSync(encryptionKey, Buffer.from(saltHex, 'hex'), 32);
+                            ivHex = ivPart; authTagHex = authTagPart; encryptedHex = encryptedPart;
+                        } else {
+                            throw new Error("Invalid encrypted private key format");
+                        }
+                        const decipher = crypto.createDecipheriv('aes-256-gcm', key, Buffer.from(ivHex, 'hex'));
+                        decipher.setAuthTag(Buffer.from(authTagHex, 'hex'));
+                        identity.credentials.privateKey = decipher.update(encryptedHex, 'hex', 'utf8') + decipher.final('utf8');
+                    }
+                    return identity;
+                };
+            }
             return wallet;
         } catch (error) {
             console.error(`Failed to connect to CouchDB wallet: ${error.message}`);
-            console.error('Please ensure the couchdb-wallet container is running and accessible via `docker ps`.');
             process.exit(1);
         }
     }
     
     console.log('\nUsing FileSystem wallet (fallback)...');
     const walletPath = path.resolve(__dirname, process.env.WALLET_PATH || 'wallet');
-    console.log(`Wallet path: ${walletPath}`);
     return await Wallets.newFileSystemWallet(walletPath);
 }
 
-/**
- * Enrolls a CA admin user and stores their identity in the wallet with a specific label.
- * @param {FabricCAServices} caClient The CA client instance.
- * @param {Wallet} wallet The wallet instance.
- * @param {string} orgMspId The MSP ID of the organization.
- * @param {string} enrollmentId The ID to use for enrollment (from CA config, e.g., 'admin').
- * @param {string} enrollmentSecret The secret for enrollment (from CA config, e.g., 'adminpw').
- * @param {string} walletLabel The label to store the identity under in the wallet (e.g., 'admin-registrar').
- */
 async function enrollCAAdmin(caClient, wallet, orgMspId, enrollmentId, enrollmentSecret, walletLabel) {
     try {
         const identity = await wallet.get(walletLabel);
         if (identity) {
-            console.log(`An identity for the admin user "${walletLabel}" already exists in the wallet.`);
-            return;
+            console.log(`[${walletLabel}] Stale identity found in CouchDB wallet. Removing for fresh deployment...`);
+            await wallet.remove(walletLabel); // FORCE WIPE GHOST KEYS
         }
 
-        const enrollment = await caClient.enroll({ enrollmentID: enrollmentId, enrollmentSecret: enrollmentSecret });
+        const enrollment = await caClient.enroll({
+            enrollmentID: enrollmentId,
+            enrollmentSecret: enrollmentSecret
+        });
         const x509Identity = {
             credentials: {
                 certificate: enrollment.certificate,
@@ -67,29 +110,134 @@ async function enrollCAAdmin(caClient, wallet, orgMspId, enrollmentId, enrollmen
 
     } catch (error) {
         console.error(`Failed to enroll admin user "${walletLabel}": ${error.message}`);
+        throw error; // Force failure so it doesn't cascade
+    }
+}
+
+async function bootstrapRootUser(wallet) {
+    console.log('\n--- Bootstrapping Root Registrar User ---');
+    const dbRead = new Pool({
+        user: process.env.POSTGRES_USER || 'postgres',
+        host: process.env.POSTGRES_HOST === 'postgres' ? '127.0.0.1' : (process.env.POSTGRES_HOST || '127.0.0.1'),
+        database: process.env.POSTGRES_DB || 'ActivityLogs',
+        password: process.env.POSTGRES_PASS || 'password',
+        port: process.env.POSTGRES_PORT || 5432,
+    });
+
+    let mainIp = process.env.MAIN_CAMPUS_IP;
+    if (mainIp === 'host-gateway') mainIp = '127.0.0.1';
+
+    const dbWrite = new Pool({
+        user: process.env.POSTGRES_USER || 'postgres',
+        host: mainIp || process.env.POSTGRES_HOST || '127.0.0.1',
+        database: process.env.POSTGRES_DB || 'ActivityLogs',
+        password: process.env.POSTGRES_PASS || 'password',
+        port: process.env.POSTGRES_PORT || 5432,
+    });
+
+    try {
+        const email = process.env.BOOTSTRAP_REGISTRAR_EMAIL || 'registrar@plv.edu.ph';
+        const pass = process.env.BOOTSTRAP_REGISTRAR_PASS || 'adminpw';
+
+        const userCheck = await dbRead.query('SELECT * FROM Users WHERE email = $1', [email]);
+        let identityExists = await wallet.get(email);
+
+        // If Postgres is empty but CouchDB isn't, CouchDB has stale data. Flush it.
+        if (userCheck.rows.length === 0 && identityExists) {
+            console.log(`Stale wallet identity found for ${email} without DB record. Removing...`);
+            await wallet.remove(email);
+            identityExists = false;
+        }
+
+        if (userCheck.rows.length > 0 && identityExists) {
+            console.log('Root registrar user already exists in DB and Wallet. Skipping bootstrap.');
+            return;
+        }
+
+        if (userCheck.rows.length === 0) {
+            console.log('Root registrar not found in database. Creating...');
+            const hash = await bcrypt.hash(pass, 10);
+            const userRes = await dbWrite.query("INSERT INTO Users (email, password_hash, role, status) VALUES ($1, $2, 'registrar', 'APPROVED') RETURNING id", [email, hash]);
+            await dbWrite.query("INSERT INTO AdminProfiles (user_id, full_name, admin_level) VALUES ($1, 'System Registrar', 'registrar')", [userRes.rows[0].id]);
+            console.log('Root registrar created in database.');
+        }
+
+        if (!identityExists) {
+            console.log('Root registrar wallet identity not found. Creating...');
+            const { caURL, caName, adminLabel, mspId } = { caURL: 'https://127.0.0.1:7054', caName: 'ca-registrar', adminLabel: 'admin-registrar', mspId: 'RegistrarMSP' };
+            
+            const ca = new FabricCAServices(caURL, { verify: false }, caName);
+            const adminIdentity = await wallet.get(adminLabel);
+            if (!adminIdentity) {
+                throw new Error(`Prerequisite failed: Blockchain Admin '${adminLabel}' not found in wallet.`);
+            }
+
+            const provider = wallet.getProviderRegistry().getProvider(adminIdentity.type);
+            const adminUser = await provider.getUserContext(adminIdentity, 'admin');
+
+            try {
+                await ca.register({
+                    enrollmentID: email,
+                    enrollmentSecret: pass,
+                    role: 'admin',
+                    attrs: [{ name: 'role', value: 'registrar', ecert: true }]
+                }, adminUser);
+            } catch (regErr) {
+                if (regErr.toString().includes('is already registered')) {
+                    console.log(`Identity ${email} already registered in CA. Forcing password update...`);
+                    const identityService = ca.newIdentityService();
+                    try {
+                        const forceDeleteUrl = identityService._client.getBaseURL() + '/api/v1/identities/' + email + '?force=true';
+                        await identityService._client.delete(forceDeleteUrl, adminUser);
+                        await ca.register({
+                            enrollmentID: email,
+                            enrollmentSecret: pass,
+                            role: 'admin',
+                            attrs: [{ name: 'role', value: 'registrar', ecert: true }]
+                        }, adminUser);
+                    } catch (e) {
+                        await identityService.update(email, { type: 'admin', secret: pass, max_enrollments: -1, attrs: [{ name: 'role', value: 'registrar', ecert: true }] }, adminUser);
+                    }
+                } else {
+                    throw regErr;
+                }
+            }
+
+        const enrollment = await ca.enroll({
+            enrollmentID: email,
+            enrollmentSecret: pass
+        });
+            const x509Identity = { credentials: { certificate: enrollment.certificate, privateKey: enrollment.key.toBytes() }, mspId: mspId, type: 'X.509' };
+            await wallet.put(email, x509Identity);
+            console.log('Root registrar wallet identity created successfully.');
+        }
+    } finally {
+        await dbRead.end();
+        await dbWrite.end();
     }
 }
 
 async function main() {
-    console.log('--- Running CA Admin Enrollment Script ---');
+    console.log('--- Running Decentralized CA Admin Enrollment Script ---');
     try {
-        const wallet = await getWallet();
+        const caAdminSecret = process.env.CA_ADMIN_PASS || process.env.BOOTSTRAP_REGISTRAR_PASS || 'adminpw';
+        
+        // 1. Registrar Wallet & Admin
+        const walletRegistrar = await getWallet('registrar');
+        const caRegistrar = new FabricCAServices(process.env.FABRIC_CA_REGISTRAR_URL || 'https://127.0.0.1:7054', { tlsCACerts: [], verify: false }, 'ca-registrar');
+        await enrollCAAdmin(caRegistrar, walletRegistrar, 'RegistrarMSP', 'admin', caAdminSecret, 'admin-registrar');
+        
+        // 2. Faculty Wallet & Admin
+        const walletFaculty = await getWallet('faculty');
+        const caFaculty = new FabricCAServices(process.env.FABRIC_CA_FACULTY_URL || 'https://127.0.0.1:8054', { tlsCACerts: [], verify: false }, 'ca-faculty');
+        await enrollCAAdmin(caFaculty, walletFaculty, 'FacultyMSP', 'admin', caAdminSecret, 'admin-faculty');
+        
+        // 3. Department Wallet & Admin
+        const walletDept = await getWallet('department');
+        const caDepartment = new FabricCAServices(process.env.FABRIC_CA_DEPARTMENT_URL || 'https://127.0.0.1:9054', { tlsCACerts: [], verify: false }, 'ca-department');
+        await enrollCAAdmin(caDepartment, walletDept, 'DepartmentMSP', 'admin', caAdminSecret, 'admin-department');
 
-        // The enrollment ID/secret comes from the respective fabric-ca-server-config.yaml files.
-        // The wallet label is what the middleware.js application expects.
-        // NOTE: This assumes all CA configs use 'admin'/'adminpw' as their bootstrap identity.
-
-        // --- Registrar Admin ---
-        const caRegistrar = new FabricCAServices('https://localhost:7054', { tlsCACerts: [], verify: false }, 'ca-registrar');
-        await enrollCAAdmin(caRegistrar, wallet, 'RegistrarMSP', 'admin', 'adminpw', 'admin-registrar');
-
-        // --- Faculty Admin ---
-        const caFaculty = new FabricCAServices('https://localhost:8054', { tlsCACerts: [], verify: false }, 'ca-faculty');
-        await enrollCAAdmin(caFaculty, wallet, 'FacultyMSP', 'admin', 'adminpw', 'admin-faculty');
-
-        // --- Department Admin ---
-        const caDepartment = new FabricCAServices('https://localhost:9054', { tlsCACerts: [], verify: false }, 'ca-department');
-        await enrollCAAdmin(caDepartment, wallet, 'DepartmentMSP', 'admin', 'adminpw', 'admin-department');
+        await bootstrapRootUser(walletRegistrar);
 
     } catch (error) {
         console.error(`\nEnrollment script failed: ${error}`);
@@ -97,5 +245,4 @@ async function main() {
     }
     console.log('\n--- Enrollment Script Finished ---');
 }
-
 main();

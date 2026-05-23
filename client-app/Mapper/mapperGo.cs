@@ -8,13 +8,14 @@ namespace BlockGo.Mappers
     {
         public static AcademicRecord ToBlockchainRecord(this GradeRequest request, string university = "PLV")
         {
-            string uniqueRecordId = $"{request.StudentId}-{request.SubjectCode}-{request.Semester}";
+            string uniqueRecordId = Guid.NewGuid().ToString(); // Use a unique ID for each record
             return new AcademicRecord
             {
                 Id = uniqueRecordId, 
                 StudentHash = request.StudentHash,
                 Section = request.Section,
-                Course = request.SubjectName,
+                YearLevel = request.YearLevel,
+                Course = request.Course ?? request.SubjectName,
                 SubjectCode = request.SubjectCode,
                 Grade = request.Grade,
                 Semester = request.Semester,
@@ -22,7 +23,8 @@ namespace BlockGo.Mappers
                 FacultyId = request.FacultyId,
                 Date = request.Date,
                 University = university,
-                Status = "RECORDED",
+                IpfsCid = request.IpfsCID ?? "",
+                Status = "FINALIZED",
                 Version = 1
             };
         }

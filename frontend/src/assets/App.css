@@ -1,3 +1,7 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 /* 1. VARIABLES & GLOBAL RESETS */
 :root {
   --plv-blue: #003366;
@@ -13,6 +17,7 @@ body, html {
   margin: 0;
   padding: 0;
   font-family: 'Inter', sans-serif;
+  min-height: 100%;
 }
 
 .main-app-wrapper {
@@ -24,8 +29,9 @@ body, html {
 /* 2. LOGIN PAGE STYLES */
 .login-container {
   display: flex;
-  height: 100vh;
+  min-height: 100vh;
   width: 100%;
+  background: linear-gradient(135deg, #eaf1f8 0%, #f8fafc 48%, #eef4fb 100%);
 }
 
 .login-image-section {
@@ -63,16 +69,26 @@ body, html {
   display: flex;
   justify-content: center;
   align-items: center;
+  padding: 32px 24px;
+  box-sizing: border-box;
 }
 
 .login-card {
   width: 100%;
-  max-width: 350px;
+  max-width: 420px;
   text-align: center;
+  padding: 0;
+  background: transparent;
+  border-radius: 0;
+  box-shadow: none;
+  box-sizing: border-box;
 }
 
 .plv-logo {
   width: 100px;
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
   margin-bottom: 10px;
 }
 
@@ -80,6 +96,15 @@ body, html {
   color: var(--plv-blue);
   font-size: 1.8rem;
   margin-bottom: 25px;
+}
+
+.auth-link {
+  color: var(--plv-blue);
+  transition: color 0.2s ease;
+}
+
+.auth-link:hover {
+  color: var(--plv-gold);
 }
 
 .input-group {
@@ -102,6 +127,15 @@ body, html {
   box-sizing: border-box;
 }
 
+.input-group select {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  box-sizing: border-box;
+  background: #fff;
+}
+
 .sign-in-btn {
   width: 100%;
   padding: 12px;
@@ -116,6 +150,89 @@ body, html {
 
 .sign-in-btn:hover {
   background-color: #002244;
+}
+
+.login-form {
+  width: 100%;
+}
+
+@media (max-width: 1024px) {
+  .login-container {
+    min-height: 100dvh;
+  }
+
+  .login-image-section {
+    display: none;
+  }
+
+  .login-form-section {
+    min-height: 100dvh;
+    padding: 24px 20px 32px;
+  }
+
+  .login-card {
+    max-width: 680px;
+  }
+}
+
+@media (max-width: 768px) {
+  .login-container {
+    min-height: 100dvh;
+  }
+
+  .login-image-section {
+    display: none;
+  }
+
+  .login-form-section {
+    align-items: center;
+    justify-content: center;
+    min-height: 100dvh;
+    padding: 16px 16px 28px;
+  }
+
+  .login-card {
+    max-width: 100%;
+    padding: 0;
+    border-radius: 0;
+  }
+
+  .plv-logo {
+    width: 84px;
+  }
+
+  .welcome-text {
+    font-size: 1.55rem;
+    margin-bottom: 18px;
+  }
+}
+
+@media (max-width: 480px) {
+  .login-form-section {
+    min-height: 100dvh;
+    padding: 12px 12px 20px;
+  }
+
+  .login-card {
+    padding: 0;
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  .input-group {
+    margin-bottom: 1rem;
+  }
+
+  .input-group input,
+  .input-group select,
+  .sign-in-btn {
+    padding: 11px;
+    font-size: 16px;
+  }
+
+  .welcome-text {
+    font-size: 1.4rem;
+  }
 }
 
 /* 3. STUDENT PORTAL STYLES */

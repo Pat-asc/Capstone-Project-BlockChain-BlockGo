@@ -1,61 +1,84 @@
+# =========================
+# GLOBAL OS & IDE TEMP FILES
+# =========================
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+*.swp
+*.swo
+*~
+.idea/
+.vscode/
+*.user
+*.suo
+.project
+.classpath
+.c9/
+tmp/
+temp/
+.cache/
+*.cache
+*.cache.json
+
+# =========================
+# GLOBAL DEPENDENCIES & BUILD
+# =========================
 node_modules/
 **/node_modules/
-bin/
-obj/
 *.dll
 *.exe
 *.pdb
-*.user
-*.suo
-.env
-.env.bak
-.fake
+.venv/
+venv/
+ENV/
 __pycache__/
 *.pyc
+.Python
 
-# Ignore generated certs but keep the directory (requires an empty .gitkeep file inside)
-network/crypto-config/*
-!network/crypto-config/.gitkeep
+# =========================
+# GLOBAL SECRETS & LOGS
+# =========================
+.env
+.env.*
+*.bak
+appsettings.*.json
+.fake
 
-network/fabric-ca/*/msp/
-network/fabric-ca/*/tls/
-network/fabric-ca/**/*.db
-network/fabric-ca/**/*.pem
-network/fabric-ca/**/Issuer*
-client-app/bin/
-client-app/obj/
-*.cache
-*.cache.json
+# =========================
+# GLOBAL DATABASES
+# =========================
+*.db
+*.sqlite
+*.sqlite3
+*.mdb
+
+# =========================
+# DOCKER & DEPLOYMENT
+# =========================
+docker-compose.override.yml
+network/.tmp-k8s/
+network/k8s/.tmp-k8s/
+# =========================
+# BLOCKCHAIN NETWORK SPECIFIC
+# =========================
+fabric_deploy_*/
 network/postgres-data/
 network/ipfs/
 
-# Ignore downloaded binaries but keep the directory
-network/bin/*
-!network/bin/.gitkeep
-
-network/*.block
-network/*.tar.gz
-
-# Chaincode dynamically generated variables
+# Dynamic Chaincode Env
 chaincode/.env
 
-network/ env.bak
+# Ignore Cryptogen materials but KEEP directories
+!network/crypto-config-final-v2/.gitkeep
 
-# Build output
-frontend/build/
+# Ignore Artifacts but KEEP directory
+!network/channel-artifacts-final/.gitkeep
 
-# Logs
-*.log
-client-app/logs/
-
-# Hyperledger Fabric & Application Generated Artifacts
-network/channel-artifacts/*
-!network/channel-artifacts/.gitkeep
-
-middleware/wallet/
-network/fabric-samples/
-
-# OS & Editor specific (good practice)
-.vscode/
-.idea/
-.DS_Store
+# Ignore Binaries but KEEP directory
+network/bin/*
+!network/bin/.gitkeep

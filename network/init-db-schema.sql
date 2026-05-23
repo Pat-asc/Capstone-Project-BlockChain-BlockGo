@@ -1,6 +1,4 @@
 -- BlockGO Database Schema Initialization
--- PostgreSQL 14+
--- NOTE: All table names are lowercase (PostgreSQL default, case-sensitive)
 
 -- Create Users table (core authentication)
 CREATE TABLE IF NOT EXISTS users (
@@ -132,7 +130,7 @@ CREATE TABLE IF NOT EXISTS audit_logs (
     ip_address VARCHAR(50),
     timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
-CREATE TABLE GradeTemplates (
+CREATE TABLE IF NOT EXISTS gradetemplates (
     id SERIAL PRIMARY KEY,
     template_name VARCHAR(255) NOT NULL,
     department VARCHAR(100) NOT NULL,
@@ -140,23 +138,69 @@ CREATE TABLE GradeTemplates (
     status VARCHAR(50) DEFAULT 'Pending',
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
-CREATE TABLE FacultySections (
+CREATE TABLE IF NOT EXISTS facultysections (
     id SERIAL PRIMARY KEY,
-    user_id INT REFERENCES Users(id) ON DELETE CASCADE,
+    user_id INT REFERENCES users(id) ON DELETE CASCADE,
     department VARCHAR(100) NOT NULL,
     section VARCHAR(50) NOT NULL,
     year_level VARCHAR(50),
+    subject VARCHAR(100),
     assigned_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
--- Optional: Prevent assigning the exact same section twice to the same professor
-CREATE UNIQUE INDEX idx_unique_faculty_section ON FacultySections(user_id, department, section);
-
--- Optional: Create an index on the department for faster lookups
+CREATE UNIQUE INDEX idx_unique_faculty_section ON FacultySections(user_id, department, section, subject);
 CREATE INDEX idx_gradetemplates_department ON GradeTemplates(department);
 
 
--- Create Indexes for performance
+ALTER TABLE studentprofiles ADD COLUMN IF NOT EXISTS date_of_birth DATE;
+ALTER TABLE studentprofiles ADD COLUMN IF NOT EXISTS phone VARCHAR(50);
+ALTER TABLE studentprofiles ADD COLUMN IF NOT EXISTS sex VARCHAR(20);
+ALTER TABLE studentprofiles ADD COLUMN IF NOT EXISTS middle_name VARCHAR(100);
+
+-- Chat Messages table
+CREATE TABLE IF NOT EXISTS chat_messages (
+    id SERIAL PRIMARY KEY,
+    sender_email VARCHAR(100) NOT NULL,
+    receiver_email VARCHAR(100) NOT NULL,
+    message TEXT NOT NULL,
+    timestamp TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    is_read BOOLEAN DEFAULT false,
+    FOREIGN KEY (sender_email) REFERENCES users(email),
+    FOREIGN KEY (receiver_email) REFERENCES users(email)
+);
+
+-- Online Status table  
+CREATE TABLE IF NOT EXISTS online_status (
+    email VARCHAR(100) PRIMARY KEY,
+    is_online BOOLEAN DEFAULT false,
+    last_seen TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (email) REFERENCES users(email)
+);
+
+-- Indexes for chat performance
+CREATE INDEX IF NOT EXISTS idx_chat_messages_sender ON chat_messages(sender_email);
+CREATE INDEX IF NOT EXISTS idx_chat_messages_receiver ON chat_messages(receiver_email);
+CREATE INDEX IF NOT EXISTS idx_chat_messages_timestamp ON chat_messages(timestamp);
+
+-- Bulk Grade Staging table (for validation before ledger entry)
+CREATE TABLE IF NOT EXISTS bulk_grade_staging (
+    staging_id SERIAL PRIMARY KEY,
+    batch_id VARCHAR(100) NOT NULL,
+    student_hash VARCHAR(100) NOT NULL,
+    course VARCHAR(100),
+    subject_code VARCHAR(50),
+    subject_name VARCHAR(255),
+    grade VARCHAR(10),
+    semester VARCHAR(20),
+    school_year VARCHAR(20),
+    year_level VARCHAR(10),
+    section VARCHAR(50),
+    faculty_id VARCHAR(100),
+    status VARCHAR(50) DEFAULT 'PENDING_APPROVAL',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Indexes for performance
 CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
 CREATE INDEX IF NOT EXISTS idx_users_role ON users(role);
 CREATE INDEX IF NOT EXISTS idx_users_status ON users(status);
@@ -166,6 +210,3 @@ CREATE INDEX IF NOT EXISTS idx_academic_records_semester ON academic_records(sem
 CREATE INDEX IF NOT EXISTS idx_grade_records_status ON grade_records(status);
 CREATE INDEX IF NOT EXISTS idx_audit_logs_user ON audit_logs(user_id);
 CREATE INDEX IF NOT EXISTS idx_audit_logs_timestamp ON audit_logs(timestamp);
-
--- Grant permissions (optional - adjust as needed)
--- GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO blockgo;

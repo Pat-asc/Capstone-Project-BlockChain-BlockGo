@@ -1,0 +1,165 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: client-app
+  namespace: plv-fabric
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: client-app
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 0
+      maxUnavailable: 1
+  template:
+    metadata:
+      labels:
+        app: client-app
+    spec:
+      containers:
+      - name: client-app
+        image: registry.example.com/plv-repo/client-app:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 5000
+        envFrom:
+        - secretRef:
+            name: blockgo-secrets
+        env:
+        - name: ASPNETCORE_URLS
+          value: "http://+:5000"
+        - name: ENABLE_FILE_LOGGING
+          value: "false"
+        - name: ENABLE_REQUEST_LOGGING
+          value: "false"
+        - name: DOTNET_ThreadPool_MinThreads
+          value: "16"
+        - name: Jwt__Key
+          valueFrom:
+            secretKeyRef:
+              name: blockgo-secrets
+              key: JWT_SECRET
+        - name: Jwt__Secret
+          valueFrom:
+            secretKeyRef:
+              name: blockgo-secrets
+              key: JWT_SECRET
+        - name: JwtSettings__Key
+          valueFrom:
+            secretKeyRef:
+              name: blockgo-secrets
+              key: JWT_SECRET
+        - name: JwtSettings__Secret
+          valueFrom:
+            secretKeyRef:
+              name: blockgo-secrets
+              key: JWT_SECRET
+        - name: IpfsEncryptionKey
+          valueFrom:
+            secretKeyRef:
+              name: blockgo-secrets
+              key: IPFS_ENCRYPTION_KEY
+        - name: VaultPassword
+          valueFrom:
+            secretKeyRef:
+              name: blockgo-secrets
+              key: BOOTSTRAP_REGISTRAR_PASS
+        - name: MIDDLEWARE_URL
+          value: "http://middleware-api.plv-fabric.svc.cluster.local:4000"
+        - name: MiddlewareUrl
+          value: "http://middleware-api.plv-fabric.svc.cluster.local:4000"
+        - name: MiddlewareApiUrl
+          value: "http://middleware-api.plv-fabric.svc.cluster.local:4000"
+        - name: InternalApiKey
+          valueFrom:
+            secretKeyRef:
+              name: blockgo-secrets
+              key: INTERNAL_API_KEY
+        - name: INTERNAL_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: blockgo-secrets
+              key: INTERNAL_API_KEY
+        - name: IPFS_HOST
+          value: "ipfs-api.plv-fabric.svc.cluster.local"
+        - name: IpfsUrl
+          value: "http://ipfs-api.plv-fabric.svc.cluster.local:5001"
+        - name: IpfsGatewayUrl
+          value: "http://ipfs-gateway.plv-fabric.svc.cluster.local:8080"
+        - name: IPFS_PEER_NODES
+          value: "ipfs-node-0.ipfs-node.plv-fabric.svc.cluster.local,ipfs-node-1.ipfs-node.plv-fabric.svc.cluster.local,ipfs-node-2.ipfs-node.plv-fabric.svc.cluster.local"
+        - name: POSTGRES_DB
+          value: "ActivityLogs"
+        - name: POSTGRES_USER
+          valueFrom:
+            secretKeyRef:
+              name: blockgo-secrets
+              key: POSTGRES_USER
+        - name: POSTGRES_PASS
+          valueFrom:
+            secretKeyRef:
+              name: blockgo-secrets
+              key: POSTGRES_PASS
+        - name: ConnectionStrings__MasterConnection
+          value: "Host=postgres.plv-main-campus.svc.cluster.local;Port=5432;Database=$(POSTGRES_DB);Username=$(POSTGRES_USER);Password=$(POSTGRES_PASS)"
+        - name: ConnectionStrings__ReplicaConnection
+          value: "Host=postgres.plv-main-campus.svc.cluster.local;Port=5432;Database=$(POSTGRES_DB);Username=$(POSTGRES_USER);Password=$(POSTGRES_PASS)"
+        - name: ConnectionStrings__PostgresConnection
+          value: "Host=postgres.plv-main-campus.svc.cluster.local;Port=5432;Database=$(POSTGRES_DB);Username=$(POSTGRES_USER);Password=$(POSTGRES_PASS)"
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "768Mi"
+            cpu: "1000m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: client-app-service
+  namespace: plv-fabric
+  annotations:
+    cloud.google.com/neg: '{"ingress": true}'
+    cloud.google.com/backend-config: '{"ports":{"5000":"client-app-backend-config"}}'
+spec:
+  selector:
+    app: client-app
+  ports:
+  - protocol: TCP
+    port: 5000
+    targetPort: 5000
+---
+apiVersion: cloud.google.com/v1
+kind: BackendConfig
+metadata:
+  name: client-app-backend-config
+  namespace: plv-fabric
+spec:
+  timeoutSec: 3600
+  healthCheck:
+    type: HTTP
+    requestPath: /health
+    port: 5000
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: client-app-hpa
+  namespace: plv-fabric
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: client-app
+  minReplicas: 1
+  maxReplicas: 1
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70

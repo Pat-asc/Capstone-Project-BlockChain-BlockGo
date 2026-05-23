@@ -5,48 +5,120 @@ using System.Threading.RateLimiting;
 using Client_app.Services;
 using Client_app.Middleware;
 using Client_app.Models;
+using Client_app.Controllers;
 using For_Testing_Only_Capstone.Models;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
+using System.Text;
+using Microsoft.AspNetCore.HttpOverrides;
 
 AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
 
-Log.Logger = new LoggerConfiguration()
+var loggerConfig = new LoggerConfiguration()
     .MinimumLevel.Information()
     .WriteTo.Console()
-    .WriteTo.File(
+    .Enrich.FromLogContext();
+
+if (string.Equals(Environment.GetEnvironmentVariable("ENABLE_FILE_LOGGING"), "true", StringComparison.OrdinalIgnoreCase))
+{
+    loggerConfig = loggerConfig.WriteTo.File(
         "logs/app-.txt",
         rollingInterval: RollingInterval.Day,
-        outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {Message:lj}{NewLine}{Exception}")
-    .Enrich.FromLogContext()
-    .CreateLogger();
+        outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {Message:lj}{NewLine}{Exception}");
+}
+
+Log.Logger = loggerConfig.CreateLogger();
 
 try
 {
     Log.Information("Application starting up...");
     
-    var envPath = Path.Combine(Directory.GetCurrentDirectory(), "..", "network", ".env");
-    if (File.Exists(envPath))
+    string[] envPaths = { 
+        Path.Combine(Directory.GetCurrentDirectory(), ".env"),
+        Path.Combine(Directory.GetCurrentDirectory(), "..", "network", ".env"),
+        Path.Combine(Directory.GetCurrentDirectory(), "..", "middleware", ".env")
+    };
+
+    foreach (var envPath in envPaths)
     {
-        foreach (var line in File.ReadAllLines(envPath))
+        if (File.Exists(envPath))
         {
-            var parts = line.Split('=', 2, StringSplitOptions.RemoveEmptyEntries);
-            if (parts.Length == 2 && !line.StartsWith("#"))
+            foreach (var line in File.ReadAllLines(envPath))
             {
-                Environment.SetEnvironmentVariable(parts[0].Trim(), parts[1].Trim().Trim('"', '\''));
+                var trimmedLine = line.Trim();
+                if (string.IsNullOrWhiteSpace(trimmedLine) || trimmedLine.StartsWith("#")) continue;
+                if (trimmedLine.StartsWith("export ")) trimmedLine = trimmedLine.Substring(7).Trim();
+                
+                var parts = trimmedLine.Split('=', 2, StringSplitOptions.RemoveEmptyEntries);
+                if (parts.Length == 2)
+                {
+                    var key = parts[0].Trim();
+                    var value = parts[1].Split('#')[0].Trim().Trim('"', '\'');
+                    
+                    if (value.Contains("prefer-standby", StringComparison.OrdinalIgnoreCase)) 
+                        value = System.Text.RegularExpressions.Regex.Replace(value, @"(?i)prefer-standby", "PreferStandby");
+                    value = System.Text.RegularExpressions.Regex.Replace(value, @"(?i)target[\s_]*session[\s_]*attributes\s*=\s*[^;]+;?", "");
+                    
+                    if (string.IsNullOrEmpty(Environment.GetEnvironmentVariable(key)))
+                    {
+                        Environment.SetEnvironmentVariable(key, value);
+                    }
+                }
             }
         }
     }
 
+    foreach (System.Collections.DictionaryEntry env in Environment.GetEnvironmentVariables())
+    {
+        var key = env.Key?.ToString();
+        var value = env.Value?.ToString();
+        if (!string.IsNullOrEmpty(key) && !string.IsNullOrEmpty(value))
+        {
+            bool mutated = false;
+            if (value.IndexOf("prefer-standby", StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                value = System.Text.RegularExpressions.Regex.Replace(value, @"(?i)prefer-standby", "PreferStandby");
+                mutated = true;
+            }
+            if (value.IndexOf("target", StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                var newVal = System.Text.RegularExpressions.Regex.Replace(value, @"(?i)target[\s_]*session[\s_]*attributes\s*=\s*[^;]+;?", "");
+                if (newVal != value) { value = newVal; mutated = true; }
+            }
+            if (mutated) Environment.SetEnvironmentVariable(key, value);
+        }
+    }
+
+    Environment.SetEnvironmentVariable("PGTARGETSESSIONATTRS", null);
+    Environment.SetEnvironmentVariable("PGTARGETSESSIONATTR", null);
+
     var builder = WebApplication.CreateBuilder(args);
-builder.WebHost.UseUrls("http://0.0.0.0:5000");    
+    builder.WebHost.UseUrls("http://0.0.0.0:5000");
     builder.Host.UseSerilog();
+
+
+    var masterConn = builder.Configuration.GetConnectionString("MasterConnection");
+    var replicaConn = builder.Configuration.GetConnectionString("ReplicaConnection");
+    var postgresConn = builder.Configuration.GetConnectionString("PostgresConnection");
+    var stripRegex = new System.Text.RegularExpressions.Regex(@"(?i)target[\s_]*session[\s_]*attributes\s*=\s*[^;]+;?");
+    var configOverrides = new Dictionary<string, string?>();
+    if (!string.IsNullOrEmpty(masterConn)) configOverrides["ConnectionStrings:MasterConnection"] = stripRegex.Replace(masterConn, "");
+    if (!string.IsNullOrEmpty(replicaConn)) configOverrides["ConnectionStrings:ReplicaConnection"] = stripRegex.Replace(replicaConn, "");
+    if (!string.IsNullOrEmpty(postgresConn)) configOverrides["ConnectionStrings:PostgresConnection"] = stripRegex.Replace(postgresConn, "");
+
+    var internalApiKey = Environment.GetEnvironmentVariable("INTERNAL_API_KEY");
+    if (!string.IsNullOrEmpty(internalApiKey)) configOverrides["InternalApiKey"] = internalApiKey;
+
+    builder.Configuration.AddInMemoryCollection(configOverrides);
 
     builder.Services.AddCors(options =>
     {
         options.AddPolicy("AllowFrontend", policy =>
         {
-            policy.AllowAnyOrigin()
-                  .AllowAnyMethod()
-                  .AllowAnyHeader();
+            policy.SetIsOriginAllowed(origin => true) // Allow dynamic cloud public IPs/Domains
+                  .WithMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
+                  .WithHeaders("Content-Type", "Authorization", "x-user-identity", "x-api-key")
+                  .AllowCredentials();
         });
     });
 
@@ -54,9 +126,60 @@ builder.WebHost.UseUrls("http://0.0.0.0:5000");
     builder.Services.AddMemoryCache();
     builder.Services.AddEndpointsApiExplorer();
     builder.Services.AddSwaggerGen();
+    var signalRBuilder = builder.Services.AddSignalR(options =>
+    {
+        options.MaximumReceiveMessageSize = 8 * 1024 * 1024;
+    });
+
+    var redisConnectionString = Environment.GetEnvironmentVariable("REDIS_CONNECTION_STRING")
+        ?? builder.Configuration["Redis:ConnectionString"];
+    if (!string.IsNullOrWhiteSpace(redisConnectionString))
+    {
+        signalRBuilder.AddStackExchangeRedis(redisConnectionString);
+        Log.Information("SignalR Redis backplane enabled.");
+    }
+    else
+    {
+        Log.Warning("SignalR Redis backplane disabled because Redis connection string is not configured.");
+    }
 
     builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
     builder.Services.AddProblemDetails();
+
+    var jwtSecret = Environment.GetEnvironmentVariable("JWT_SECRET") ?? throw new InvalidOperationException("JWT_SECRET environment variable is required.");
+    jwtSecret = jwtSecret.Trim().PadRight(32, '0').Substring(0, 32);
+    var jwtKey = Encoding.UTF8.GetBytes(jwtSecret);
+
+    builder.Services.AddAuthorization();
+    builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        options.RequireHttpsMetadata = false;
+        options.SaveToken = true;
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuerSigningKey = true,
+            IssuerSigningKey = new SymmetricSecurityKey(jwtKey),
+            ValidateIssuer = false,
+            ValidateAudience = false,
+            NameClaimType = "username",
+            RoleClaimType = "dbRole"
+        };
+        options.Events = new JwtBearerEvents
+        {
+            OnMessageReceived = context =>
+            {
+                var accessToken = context.Request.Query["access_token"];
+                var path = context.HttpContext.Request.Path;
+                if (!string.IsNullOrEmpty(accessToken) && 
+                    (path.StartsWithSegments("/chatHub") || path.StartsWithSegments("/api/chatHub") || path.StartsWithSegments("/api/Grades/view-ipfs")))
+                {
+                    context.Token = accessToken;
+                }
+                return Task.CompletedTask;
+            }
+        };
+    });
 
     var rateLimitOptions = builder.Configuration.GetSection("RateLimiting");
     var permitLimit = int.Parse(rateLimitOptions["PermitLimit"] ?? "10");
@@ -85,8 +208,10 @@ builder.WebHost.UseUrls("http://0.0.0.0:5000");
     });
 
     builder.Services.AddHttpClient<IBlockchainService, BlockchainService>();
+    builder.Services.AddHostedService<LedgerSyncWorker>();
     builder.Services.AddScoped<IFabricCaAuthService, FabricCaAuthService>();
     builder.Services.AddScoped<IEmailService, EmailService>();
+    builder.Services.AddSingleton<IChatMessageEncryption, ChatMessageEncryption>();
 
     builder.Services.AddHttpClient("FabricCAClient")
     .ConfigurePrimaryHttpMessageHandler(() =>
@@ -111,36 +236,62 @@ builder.WebHost.UseUrls("http://0.0.0.0:5000");
         return handler;
     });
 
-    builder.Services.AddDbContext<RegistrarDbContext>(options =>
+    builder.Services.AddDbContext<RegistrarWriteDbContext>(options =>
     {
-        var connectionString = builder.Configuration.GetConnectionString("PostgresConnection");
+        var connectionString = builder.Configuration.GetConnectionString("MasterConnection");
+        
         if (string.IsNullOrEmpty(connectionString))
         {
-            throw new InvalidOperationException("PostgreSQL connection string 'PostgresConnection' not found in configuration.");
+            throw new InvalidOperationException("PostgreSQL connection string 'MasterConnection' not found in configuration.");
         }
         options.UseNpgsql(connectionString, npgsqlOptions => npgsqlOptions.CommandTimeout((int)TimeSpan.FromMinutes(5).TotalSeconds));
     });
 
+    builder.Services.AddDbContext<RegistrarReadDbContext>(options =>
+    {
+        var connectionString = builder.Configuration.GetConnectionString("ReplicaConnection");
+        
+        if (string.IsNullOrEmpty(connectionString))
+        {
+            throw new InvalidOperationException("PostgreSQL connection string 'ReplicaConnection' not found in configuration.");
+        }
+        options.UseNpgsql(connectionString, npgsqlOptions => npgsqlOptions.CommandTimeout((int)TimeSpan.FromMinutes(5).TotalSeconds));
+    });
+
+    builder.Services.AddScoped<RegistrarDbContext>(provider => provider.GetRequiredService<RegistrarWriteDbContext>());
+
+    builder.Services.AddSingleton<IChatCache, ChatCache>(); 
+
     var app = builder.Build();
 
-    app.UseSerilogRequestLogging();
+    app.UseForwardedHeaders(); // Must be first in the pipeline for Ingress
+
+    app.UseExceptionHandler();
+    if (string.Equals(Environment.GetEnvironmentVariable("ENABLE_REQUEST_LOGGING"), "true", StringComparison.OrdinalIgnoreCase))
+    {
+        app.UseSerilogRequestLogging();
+    }
     app.UseSwagger();
     app.UseSwaggerUI();
     app.UseCors("AllowFrontend");
 
-    app.UseExceptionHandler(_ => { });
     app.UseRateLimiter();
-
+    
     if (!app.Environment.IsDevelopment())
     {
         app.UseHsts();
         Log.Information("HSTS enabled (HTTPS Redirection disabled for Nginx)");
     }
 
+    app.UseAuthentication();
     app.UseAuthorization();
+    app.MapGet("/health", () => Results.Ok(new { status = "healthy", service = "blockgo-backend" }));
+    app.MapGet("/api/backend/health", () => Results.Ok(new { status = "healthy", service = "blockgo-backend" }));
     app.MapControllers();
     Log.Information("Application configured successfully");
     Log.Information("Listening on {Urls}", string.Join(", ", app.Urls));
+    app.MapHub<ChatHub>("/chatHub");
+    app.MapHub<ChatHub>("/api/chatHub");
 
     app.Run();
 }
