@@ -10,6 +10,7 @@ import {
 import {
   assignFacultyLoadToBackend,
   fetchApprovedFaculties,
+  assignStudent,
 } from "../../services/api";
 import { downloadTemplateButtonClass } from "../shared/downloadButtonStyles";
 import { pushAssignmentsSharedState } from "../../utils/sharedClientState";
@@ -374,6 +375,26 @@ function AcademicAssignment({ chairpersonDepartment = "" }) {
       );
       setSharedDataVersion((v) => v + 1);
       pushAssignmentsSharedState();
+
+      // Officialy sync student enrollments to Database
+      if (Array.isArray(rosterStudents)) {
+        rosterStudents.forEach((student) => {
+          // Resolve DB ID: rosterStudents might be from CSV (studentId) or from state (id/studentno)
+          const dbStudent = students.find(s => 
+            (s.studentno && s.studentno === student.studentId) || 
+            (s.id && s.id === student.id)
+          );
+          const targetId = dbStudent?.id || student.id;
+
+          if (targetId) {
+            assignStudent(targetId, {
+              Department: selectedProgram,
+              Section: selectedSection.section
+            }).catch(err => console.error(`[AcademicAssignment] Failed to sync enrollment for student ${targetId}:`, err));
+          }
+        });
+      }
+
       syncFacultyLoadToBackend(newAssignment);
 
       alert("Section distributed to faculty successfully.");
