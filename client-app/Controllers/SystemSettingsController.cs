@@ -6,6 +6,7 @@ using System;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Microsoft.AspNetCore.SignalR;
+using System.Text.Json;
 
 namespace Client_app.Controllers
 {
@@ -174,9 +175,24 @@ namespace Client_app.Controllers
                         'studentSections',
                         'irregularSubjectAssignments',
                         'chairpersonStudentBatches',
-                        'chairpersonSectionReviews'
+                        'chairpersonSectionReviews',
+                        'sessionRecoveryDrafts'
                     );", conn, tx);
                 await cmdClearSharedSectioningState.ExecuteNonQueryAsync();
+
+                var resetTimestamp = DateTime.UtcNow;
+                var resetTimestampJson = JsonSerializer.Serialize(resetTimestamp.ToString("O"));
+                using var cmdSetFacultyLoadResetToken = new NpgsqlCommand(@"
+                    INSERT INTO shared_client_state (key, value, updated_at, updated_by)
+                    VALUES ('facultyLoadResetAt', @value::jsonb, @updatedAt, @updatedBy)
+                    ON CONFLICT (key)
+                    DO UPDATE SET value = EXCLUDED.value,
+                                  updated_at = EXCLUDED.updated_at,
+                                  updated_by = EXCLUDED.updated_by;", conn, tx);
+                cmdSetFacultyLoadResetToken.Parameters.AddWithValue("value", resetTimestampJson);
+                cmdSetFacultyLoadResetToken.Parameters.AddWithValue("updatedAt", resetTimestamp);
+                cmdSetFacultyLoadResetToken.Parameters.AddWithValue("updatedBy", (object?)User.Identity?.Name ?? DBNull.Value);
+                await cmdSetFacultyLoadResetToken.ExecuteNonQueryAsync();
 
                 using var cmdClearTemporaryStudents = new NpgsqlCommand(@"
                     WITH temp_users AS (
@@ -195,7 +211,17 @@ namespace Client_app.Controllers
                     WHERE id IN (SELECT id FROM temp_users);", conn, tx);
                 var temporaryStudentsCleared = await cmdClearTemporaryStudents.ExecuteNonQueryAsync();
 
-                const string resetEncodingPeriod = "{\"semester\":\"2nd Semester\",\"startDate\":\"\",\"endDate\":\"\",\"term\":\"midterm\"}";
+                var today = DateTime.Now;
+                var startYear = today.Month < 6 ? today.Year - 1 : today.Year;
+                var defaultSchoolYear = $"{startYear}-{startYear + 1}";
+                var resetEncodingPeriod = JsonSerializer.Serialize(new
+                {
+                    schoolYear = defaultSchoolYear,
+                    semester = "2nd Semester",
+                    startDate = "",
+                    endDate = "",
+                    term = "midterm"
+                });
                 using var cmdResetEncodingPeriod = new NpgsqlCommand(@"
                     INSERT INTO SystemSettings (key, value) VALUES ('encoding_period', @value)
                     ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value", conn, tx);
@@ -211,11 +237,18 @@ namespace Client_app.Controllers
                     Value = resetEncodingPeriod,
                     UpdatedAt = DateTime.UtcNow
                 });
+                await _chatHubContext.Clients.All.SendAsync("AcademicDataChanged", new
+                {
+                    Reason = "encoding_season_reset",
+                    Department = (string?)null,
+                    Actor = User.Identity?.Name,
+                    UpdatedAt = resetTimestamp
+                });
 
                 return Ok(new
                 {
                     status = "Success",
-                    message = $"Encoding season reset. Sections, faculty loads, pending grades, temporary students, and sectioning state were cleared. Temporary students removed: {temporaryStudentsCleared}."
+                    message = $"Encoding season reset. Sections,faculty loads, pending grades, temporary students, and sectioning state were cleared. Temporary students removed: {temporaryStudentsCleared}."
                 });
             }
             catch (Exception ex)

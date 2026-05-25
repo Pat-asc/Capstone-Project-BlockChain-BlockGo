@@ -11,19 +11,25 @@ import { CHAIRPERSON_REVIEW_KEY } from "./chairpersonHelpers";
 import { STUDENT_PUBLISHED_GRADES_KEY } from "./publishedGradesHelpers";
 
 export const SHARED_CLIENT_STATE_KEYS = [
+  "facultyLoadResetAt",
   STUDENT_BATCHES_KEY,
   STUDENT_SUBMISSION_LOGS_KEY,
   "studentMasterlist",
   "studentSections",
-  "registrarAssignments",
   CHAIRPERSON_REVIEW_KEY,
   STUDENT_PUBLISHED_GRADES_KEY,
   "graduatingStudents",
   "irregularSubjectAssignments",
   "encodingPeriod",
-  "facultyLoadResetAt",
   "STUDENT_BATCHES_KEY",
   "STUDENT_SUBMISSION_LOGS_KEY",
+];
+
+const RESET_SEASON_SHARED_KEYS = [
+  STUDENT_BATCHES_KEY,
+  "studentSections",
+  CHAIRPERSON_REVIEW_KEY,
+  "irregularSubjectAssignments",
 ];
 
 const parseLocalValue = (key) => {
@@ -72,36 +78,63 @@ export const pushSectioningSharedState = () =>
     "irregularSubjectAssignments",
   ]).catch((error) => console.warn("Shared sectioning sync failed:", error));
 
-export const pushAssignmentsSharedState = () =>
-  pushSharedClientState(["registrarAssignments"]).catch((error) =>
-    console.warn("Shared assignment sync failed:", error)
-  );
-
 export const pullSharedClientState = async (keys = SHARED_CLIENT_STATE_KEYS) => {
-  const results = await Promise.allSettled(
-    keys.map(async (key) => {
-      const response = await fetchSharedClientState(key);
-      const localValue = parseLocalValue(key);
-      if (
-        response?.value === null ||
-        response?.value === undefined ||
-        (!hasMeaningfulLocalValue(response.value) &&
-          hasMeaningfulLocalValue(localValue))
-      ) {
-        if (hasMeaningfulLocalValue(localValue)) {
-          await saveSharedClientState(key, localValue);
-          return key;
-        }
-        return null;
-      }
-      storeLocalValue(key, response.value);
-      return key;
-    })
+  const responses = await Promise.allSettled(
+    keys.map(async (key) => ({
+      key,
+      response: await fetchSharedClientState(key),
+    }))
   );
 
-  const updatedKeys = results
-    .filter((result) => result.status === "fulfilled" && result.value)
-    .map((result) => result.value);
+  const responseMap = new Map(
+    responses
+      .filter((result) => result.status === "fulfilled" && result.value?.key)
+      .map((result) => [result.value.key, result.value.response])
+  );
+
+  const remoteFacultyLoadResetAt = responseMap.get("facultyLoadResetAt")?.value;
+  const localFacultyLoadResetAt = parseLocalValue("facultyLoadResetAt");
+  const remoteResetTimestamp = Date.parse(String(remoteFacultyLoadResetAt || ""));
+  const localResetTimestamp = Date.parse(String(localFacultyLoadResetAt || ""));
+  const hasRemoteResetToken =
+    Number.isFinite(remoteResetTimestamp) &&
+    (!Number.isFinite(localResetTimestamp) ||
+      remoteResetTimestamp > localResetTimestamp);
+
+  const updatedKeys = [];
+
+  if (hasRemoteResetToken) {
+    RESET_SEASON_SHARED_KEYS.forEach((key) => {
+      localStorage.removeItem(key);
+      updatedKeys.push(key);
+    });
+  }
+
+  for (const key of keys) {
+    const response = responseMap.get(key);
+    const localValue = parseLocalValue(key);
+
+    if (!response) continue;
+
+    if (
+      response?.value === null ||
+      response?.value === undefined ||
+      (!hasMeaningfulLocalValue(response.value) &&
+        hasMeaningfulLocalValue(localValue))
+    ) {
+      if (
+        hasMeaningfulLocalValue(localValue) &&
+        !(hasRemoteResetToken && RESET_SEASON_SHARED_KEYS.includes(key))
+      ) {
+        await saveSharedClientState(key, localValue);
+        updatedKeys.push(key);
+      }
+      continue;
+    }
+
+    storeLocalValue(key, response.value);
+    updatedKeys.push(key);
+  }
 
   if (updatedKeys.includes(STUDENT_BATCHES_KEY)) {
     const batches = parseLocalValue(STUDENT_BATCHES_KEY);
@@ -113,10 +146,10 @@ export const pullSharedClientState = async (keys = SHARED_CLIENT_STATE_KEYS) => 
   if (updatedKeys.length) {
     window.dispatchEvent(
       new CustomEvent("blockgo:shared-client-state-changed", {
-        detail: { keys: updatedKeys },
+        detail: { keys: [...new Set(updatedKeys)] },
       })
     );
   }
 
-  return updatedKeys;
+  return [...new Set(updatedKeys)];
 };

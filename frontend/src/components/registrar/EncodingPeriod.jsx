@@ -1,8 +1,26 @@
 import React, { useEffect, useState } from "react";
 import { getSystemSetting, updateSystemSetting } from "../../services/api";
 
+const getDefaultSchoolYear = () => {
+  const today = new Date();
+  const month = today.getMonth();
+  const startYear = month < 6 ? today.getFullYear() - 1 : today.getFullYear();
+  return `${startYear}-${startYear + 1}`;
+};
+
+const buildSchoolYearOptions = () => {
+  const defaultSchoolYear = getDefaultSchoolYear();
+  const [baseYear] = defaultSchoolYear.split("-").map(Number);
+
+  return Array.from({ length: 8 }, (_, index) => {
+    const startYear = baseYear - 3 + index;
+    return `${startYear}-${startYear + 1}`;
+  });
+};
+
 function EncodingPeriod({ onResetEncodingSeason }) {
   const [period, setPeriod] = useState({
+    schoolYear: getDefaultSchoolYear(),
     semester: "2nd Semester",
     startDate: "",
     endDate: "",
@@ -15,6 +33,7 @@ function EncodingPeriod({ onResetEncodingSeason }) {
     statusMessage === "Encoding period saved successfully." ||
     statusMessage ===
       "Encoding season reset successfully. Sections, faculty assignments, temporary students, and pending grades were cleared.";
+  const schoolYearOptions = buildSchoolYearOptions();
 
   useEffect(() => {
     const loadSavedPeriod = async () => {
@@ -23,6 +42,7 @@ function EncodingPeriod({ onResetEncodingSeason }) {
         if (res.status === "Success" && res.value) {
           const savedPeriod = JSON.parse(res.value);
           setPeriod({
+            schoolYear: savedPeriod?.schoolYear || getDefaultSchoolYear(),
             semester: savedPeriod?.semester || "2nd Semester",
             startDate: savedPeriod?.startDate || "",
             endDate: savedPeriod?.endDate || "",
@@ -37,7 +57,7 @@ function EncodingPeriod({ onResetEncodingSeason }) {
     loadSavedPeriod();
   }, []);
 
-  const { semester, startDate, endDate, term } = period;
+  const { schoolYear, semester, startDate, endDate, term } = period;
 
   const updatePeriod = (field, value) => {
     setPeriod((current) => ({ ...current, [field]: value }));
@@ -97,6 +117,7 @@ function EncodingPeriod({ onResetEncodingSeason }) {
       setIsResettingSeason(true);
       await onResetEncodingSeason?.();
       setPeriod({
+        schoolYear: getDefaultSchoolYear(),
         semester: "2nd Semester",
         startDate: "",
         endDate: "",
@@ -152,7 +173,24 @@ function EncodingPeriod({ onResetEncodingSeason }) {
           </p>
         )}
 
-        <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-4">
+        <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-5">
+          <div>
+            <label className="mb-2 block text-sm font-medium text-slate-700">
+              School Year
+            </label>
+            <select
+              value={schoolYear}
+              onChange={(e) => updatePeriod("schoolYear", e.target.value)}
+              className="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-[#003366]"
+            >
+              {schoolYearOptions.map((option) => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
+              ))}
+            </select>
+          </div>
+
           <div>
             <label className="mb-2 block text-sm font-medium text-slate-700">
               Semester
@@ -228,7 +266,12 @@ function EncodingPeriod({ onResetEncodingSeason }) {
       <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
         <h3 className="text-lg font-bold text-[#003366]">Current Schedule</h3>
 
-        <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-5">
+        <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-6">
+          <div className="rounded-xl bg-slate-50 p-4">
+            <p className="text-sm text-slate-500">School Year</p>
+            <p className="mt-1 font-semibold text-slate-800">{schoolYear}</p>
+          </div>
+
           <div className="rounded-xl bg-slate-50 p-4">
             <p className="text-sm text-slate-500">Semester</p>
             <p className="mt-1 font-semibold text-slate-800">{semester}</p>

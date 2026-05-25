@@ -56,6 +56,21 @@ const getOptionalAssignmentValue = (value) => {
   return normalizedValue || "Not Available";
 };
 
+const parseTimestamp = (value) => {
+  const parsed = Date.parse(String(value || ""));
+  return Number.isFinite(parsed) ? parsed : 0;
+};
+
+const filterAssignmentsAfterReset = (assignments = []) => {
+  const resetAt = parseTimestamp(localStorage.getItem("facultyLoadResetAt"));
+  if (!resetAt) return Array.isArray(assignments) ? assignments : [];
+
+  return (Array.isArray(assignments) ? assignments : []).filter((assignment) => {
+    const uploadedAt = parseTimestamp(assignment?.uploadedAt);
+    return uploadedAt >= resetAt;
+  });
+};
+
 const FacultyPortal = ({ onLogout, allGrades, setAllGrades }) => {
   const [activeTab, setActiveTab] = useRecoveredState("pageFaculty:activeTab", "All Sections");
   const [selectedProgram, setSelectedProgram] = useRecoveredState("pageFaculty:selectedProgram", "");
@@ -132,6 +147,7 @@ const FacultyPortal = ({ onLogout, allGrades, setAllGrades }) => {
     const refreshSharedData = (event) => {
       const keys = event.detail?.keys || [];
       if (
+        keys.includes("facultyLoadResetAt") ||
         keys.includes("registrarAssignments") ||
         keys.includes("studentSections") ||
         keys.includes("irregularSubjectAssignments")
@@ -140,13 +156,33 @@ const FacultyPortal = ({ onLogout, allGrades, setAllGrades }) => {
       }
     };
 
-    window.addEventListener("blockgo:shared-client-state-changed", refreshSharedData);
+    const handleFacultyLoadReset = () => {
+      localStorage.setItem("registrarAssignments", JSON.stringify([]));
+      setSelectedSection(null);
+      setSharedDataVersion((current) => current + 1);
+    };
 
-    return () =>
+    const handleStorage = (event) => {
+      if (
+        event.key === "facultyLoadResetAt" ||
+        event.key === "registrarAssignments"
+      ) {
+        setSharedDataVersion((current) => current + 1);
+      }
+    };
+
+    window.addEventListener("blockgo:shared-client-state-changed", refreshSharedData);
+    window.addEventListener("blockgo:faculty-load-reset", handleFacultyLoadReset);
+    window.addEventListener("storage", handleStorage);
+
+    return () => {
       window.removeEventListener(
         "blockgo:shared-client-state-changed",
         refreshSharedData
       );
+      window.removeEventListener("blockgo:faculty-load-reset", handleFacultyLoadReset);
+      window.removeEventListener("storage", handleStorage);
+    };
   }, []);
 
   const systemTerm =
@@ -156,7 +192,7 @@ const FacultyPortal = ({ onLogout, allGrades, setAllGrades }) => {
 
   const assignments = useMemo(() => {
     const saved = localStorage.getItem("registrarAssignments");
-    return saved ? JSON.parse(saved) : [];
+    return saved ? filterAssignmentsAfterReset(JSON.parse(saved)) : [];
   }, [sharedDataVersion]);
 
   const studentSections = useMemo(() => {

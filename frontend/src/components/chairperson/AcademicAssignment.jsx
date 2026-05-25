@@ -12,7 +12,6 @@ import {
   fetchApprovedFaculties,
 } from "../../services/api";
 import { downloadTemplateButtonClass } from "../shared/downloadButtonStyles";
-import { pushAssignmentsSharedState } from "../../utils/sharedClientState";
 
 const SEMESTER_OPTIONS = ["1st Semester", "2nd Semester", "Summer"];
 const DAY_OPTIONS = [
@@ -37,14 +36,6 @@ const getFacultyKey = (faculty = {}) =>
   String(faculty.id || faculty.email || getFacultyDisplayName(faculty));
 const getFacultyDepartment = (faculty = {}) =>
   faculty.department || faculty.program || "";
-const buildFacultyLoadingKey = (item = {}) =>
-  [
-    normalizeText(item.facultyId || item.id),
-    normalizeText(item.sectionName || item.section),
-    normalizeText(item.schoolYear),
-    normalizeText(item.semester),
-    normalizeText(item.subjectCode || item.subject),
-  ].join("|");
 const getCsvRowValue = (row = {}, acceptedHeaders = []) => {
   for (const header of acceptedHeaders) {
     const value = row[normalizeHeader(header)];
@@ -79,7 +70,7 @@ const mapFacultyLoadingRows = (csvText = "") => {
 const syncFacultyLoadToBackend = (assignment) => {
   assignFacultyLoadToBackend(assignment).catch((error) => {
     console.warn(
-      "Backend faculty load assignment failed; local assignment was still saved.",
+      "Backend faculty load assignment failed.",
       error
     );
   });
@@ -102,36 +93,6 @@ function AcademicAssignment({ chairpersonDepartment = "" }) {
   const [facultyLoadingErrors, setFacultyLoadingErrors] = useState([]);
   const [facultyLoadingSummary, setFacultyLoadingSummary] = useState(null);
   const [approvedFaculties, setApprovedFaculties] = useState([]);
-
-  const [savedAssignments, setSavedAssignments] = useState(() => {
-    const saved = localStorage.getItem("registrarAssignments");
-    return saved ? JSON.parse(saved) : [];
-  });
-
-  useEffect(() => {
-    const handleSharedStateChanged = (event) => {
-      const keys = event.detail?.keys || [];
-      if (!keys.includes("registrarAssignments")) return;
-
-      try {
-        const saved = localStorage.getItem("registrarAssignments");
-        setSavedAssignments(saved ? JSON.parse(saved) : []);
-      } catch (error) {
-        console.warn("Failed to refresh assignments from shared state.", error);
-      }
-    };
-
-    window.addEventListener(
-      "blockgo:shared-client-state-changed",
-      handleSharedStateChanged
-    );
-
-    return () =>
-      window.removeEventListener(
-        "blockgo:shared-client-state-changed",
-        handleSharedStateChanged
-      );
-  }, []);
 
   const studentSections =
     JSON.parse(localStorage.getItem("studentSections")) || [];
@@ -198,6 +159,8 @@ function AcademicAssignment({ chairpersonDepartment = "" }) {
   const selectedProgram = chairpersonDepartment;
 
   useEffect(() => {
+    localStorage.removeItem("registrarAssignments");
+
     const loadApprovedFaculty = async () => {
       try {
         const response = await fetchApprovedFaculties();
@@ -293,22 +256,7 @@ function AcademicAssignment({ chairpersonDepartment = "" }) {
     }
 
     const saveAssignment = (rosterStudents, rosterFileName = "Created section roster") => {
-      const alreadyExists = savedAssignments.some(
-        (item) =>
-          String(item.facultyId) === String(selectedFacultyId) &&
-          item.sectionName === selectedSectionName &&
-          item.schoolYear === selectedSection.schoolYear &&
-          normalizeText(item.semester) === normalizeText(semester) &&
-          normalizeText(item.subjectCode) === normalizeText(subjectCode)
-      );
-
-      if (alreadyExists) {
-        alert("This faculty section distribution already exists.");
-        return;
-      }
-
       const newAssignment = {
-        id: Date.now(),
         facultyId: selectedFacultyId,
         facultyName: getFacultyDisplayName(selectedFaculty),
         program: selectedProgram,
@@ -328,13 +276,6 @@ function AcademicAssignment({ chairpersonDepartment = "" }) {
         uploadedAt: new Date().toISOString(),
       };
 
-      const updatedAssignments = [...savedAssignments, newAssignment];
-      setSavedAssignments(updatedAssignments);
-      localStorage.setItem(
-        "registrarAssignments",
-        JSON.stringify(updatedAssignments)
-      );
-      pushAssignmentsSharedState();
       syncFacultyLoadToBackend(newAssignment);
 
       alert("Section distributed to faculty successfully.");
@@ -498,16 +439,13 @@ function AcademicAssignment({ chairpersonDepartment = "" }) {
         return;
       }
 
-      const duplicateKey = buildFacultyLoadingKey({
-        facultyId: getFacultyKey(faculty),
-        sectionName: section.section,
-        schoolYear: section.schoolYear,
-        semester: rowSemester,
-        subjectCode: rowSubjectCode,
-      });
-      const existingAssignment = savedAssignments.find(
-        (item) => buildFacultyLoadingKey(item) === duplicateKey
-      );
+      const duplicateKey = [
+        normalizeText(getFacultyKey(faculty)),
+        normalizeText(section.section),
+        normalizeText(section.schoolYear),
+        normalizeText(rowSemester),
+        normalizeText(rowSubjectCode),
+      ].join("|");
 
       if (duplicateKeys.has(duplicateKey)) {
         errors.push(`Row ${rowNumber}: duplicate row in this CSV skipped.`);
@@ -532,7 +470,6 @@ function AcademicAssignment({ chairpersonDepartment = "" }) {
         loadMode: "Faculty Loading",
         rosterFileName: "Created section roster",
         rosterStudents: section.students || [],
-        existingAssignmentId: existingAssignment?.id || null,
       });
     });
 
@@ -621,25 +558,10 @@ function AcademicAssignment({ chairpersonDepartment = "" }) {
       return;
     }
 
-    const timestamp = Date.now();
-    const importedAssignments = facultyLoadingPreview.map((item, index) => ({
+    const importedAssignments = facultyLoadingPreview.map((item) => ({
       ...item,
-      id: item.existingAssignmentId || timestamp + index,
       uploadedAt: new Date().toISOString(),
     }));
-    const assignmentMap = new Map(
-      savedAssignments.map((item) => [buildFacultyLoadingKey(item), item])
-    );
-
-    importedAssignments.forEach((item) => {
-      assignmentMap.set(buildFacultyLoadingKey(item), item);
-    });
-
-    const updatedAssignments = Array.from(assignmentMap.values());
-
-    setSavedAssignments(updatedAssignments);
-    localStorage.setItem("registrarAssignments", JSON.stringify(updatedAssignments));
-    pushAssignmentsSharedState();
     importedAssignments.forEach(syncFacultyLoadToBackend);
     setFacultyLoadingFile(null);
     setFacultyLoadingPreview([]);
@@ -651,31 +573,6 @@ function AcademicAssignment({ chairpersonDepartment = "" }) {
       } distributed.`
     );
   };
-
-  const handleDeleteAssignment = (id) => {
-    const updatedAssignments = savedAssignments.filter((item) => item.id !== id);
-    setSavedAssignments(updatedAssignments);
-    localStorage.setItem(
-      "registrarAssignments",
-      JSON.stringify(updatedAssignments)
-    );
-    pushAssignmentsSharedState();
-  };
-
-  const assignmentRows = useMemo(
-    () =>
-      savedAssignments.filter(
-        (assignment) =>
-          !selectedProgram || assignment.program === selectedProgram
-      ),
-    [savedAssignments, selectedProgram]
-  );
-  const automaticLoadCount = assignmentRows.filter(
-    (assignment) => assignment.loadMode === "Faculty Loading"
-  ).length;
-  const manualLoadCount = assignmentRows.filter(
-    (assignment) => assignment.loadMode !== "Faculty Loading"
-  ).length;
 
   return (
     <div className="space-y-6">
@@ -1021,99 +918,6 @@ function AcademicAssignment({ chairpersonDepartment = "" }) {
         >
           Distribute Section to Faculty
         </button>
-      </div>
-
-      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-          <div>
-            <h3 className="text-lg font-bold text-[#003366]">
-              Distributed Faculty Loading Records
-            </h3>
-            <p className="mt-1 text-sm text-slate-500">
-              Automatic and manual faculty loads appear here with their subject,
-              section, and schedule details.
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-2 text-sm font-semibold">
-            <span className="rounded-full bg-blue-50 px-3 py-1 text-[#003366]">
-              Faculty Loading: {automaticLoadCount}
-            </span>
-            <span className="rounded-full bg-slate-100 px-3 py-1 text-slate-700">
-              Manual Distribution: {manualLoadCount}
-            </span>
-          </div>
-        </div>
-
-        <div className="mt-4 overflow-x-auto">
-          <table className="min-w-full">
-            <thead>
-              <tr className="bg-[#003366] text-white">
-                <th className="px-4 py-3 text-left text-sm">Mode</th>
-                <th className="px-4 py-3 text-left text-sm">Faculty</th>
-                <th className="px-4 py-3 text-left text-sm">Section</th>
-                <th className="px-4 py-3 text-left text-sm">Students</th>
-                <th className="px-4 py-3 text-left text-sm">CSV File</th>
-                <th className="px-4 py-3 text-left text-sm">Subject</th>
-                <th className="px-4 py-3 text-left text-sm">Units</th>
-                <th className="px-4 py-3 text-left text-sm">Semester</th>
-                <th className="px-4 py-3 text-left text-sm">Date</th>
-                <th className="px-4 py-3 text-left text-sm">Time</th>
-                <th className="px-4 py-3 text-left text-sm">Day</th>
-                <th className="px-4 py-3 text-left text-sm">Action</th>
-              </tr>
-            </thead>
-
-            <tbody>
-              {assignmentRows.length > 0 ? (
-                assignmentRows.map((item) => (
-                  <tr key={item.id} className="border-b">
-                    <td className="px-4 py-3">
-                      <span
-                        className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                          item.loadMode === "Faculty Loading"
-                            ? "bg-blue-50 text-[#003366]"
-                            : "bg-slate-100 text-slate-700"
-                        }`}
-                      >
-                        {item.loadMode === "Faculty Loading"
-                          ? "Faculty Loading"
-                          : "Manual Distribution"}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3">{item.facultyName}</td>
-                    <td className="px-4 py-3">{item.sectionName}</td>
-                    <td className="px-4 py-3">
-                      {item.rosterStudents?.length || 0}
-                    </td>
-                    <td className="px-4 py-3">{item.rosterFileName || "--"}</td>
-                    <td className="px-4 py-3">
-                      {item.subjectCode} - {item.subjectTitle}
-                    </td>
-                    <td className="px-4 py-3">{item.units || "--"}</td>
-                    <td className="px-4 py-3">{item.semester || "--"}</td>
-                    <td className="px-4 py-3">{item.date || "--"}</td>
-                    <td className="px-4 py-3">{item.schedule || "--"}</td>
-                    <td className="px-4 py-3">{item.day || "--"}</td>
-                    <td className="px-4 py-3">
-                      <button
-                        onClick={() => handleDeleteAssignment(item.id)}
-                        className="rounded-lg border border-red-200 px-3 py-1 text-sm font-medium text-red-600 hover:bg-red-50"
-                      >
-                        Remove
-                      </button>
-                    </td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan="12" className="py-6 text-center text-slate-500">
-                    No faculty loading records yet.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
       </div>
     </div>
   );

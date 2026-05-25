@@ -209,11 +209,24 @@ const splitBackendFullName = (fullName = "") => {
 const buildBackendBatch = (department, approvedStudents = [], academicSections = []) => {
   if (!department) return null;
 
+  const validSectionCodes = new Set(
+    academicSections
+      .filter((section) => section.department === department)
+      .map((section) =>
+        normalizeSectionCode(
+          `${section.yearLevel}-${section.sectionNum}`,
+          normalizeYearLevelLabel(section.yearLevel)
+        )
+      )
+      .filter(Boolean)
+  );
+
   const students = approvedStudents
     .filter((student) => student.department === department)
     .map((student) => {
       const inferredYearLevel = normalizeYearLevelLabel(student.yearLevel || student.section);
-      const sectionCode = normalizeSectionCode(student.section, inferredYearLevel);
+      const rawSectionCode = normalizeSectionCode(student.section, inferredYearLevel);
+      const sectionCode = validSectionCodes.has(rawSectionCode) ? rawSectionCode : "";
       const names = splitBackendFullName(student.fullname || student.fullName);
 
       return {
@@ -250,16 +263,6 @@ const buildBackendBatch = (department, approvedStudents = [], academicSections =
         yearLevel,
       });
     });
-
-  students.forEach((student) => {
-    if (!student.sectionCode || sectionPlansByCode.has(student.sectionCode)) return;
-    sectionPlansByCode.set(student.sectionCode, {
-      id: `student-${student.sectionCode}`,
-      sectionCode: student.sectionCode,
-      sectionName: student.sectionName || getDefaultSectionName(department, student.sectionCode),
-      yearLevel: student.yearLevel,
-    });
-  });
 
   const sectionPlans = [...sectionPlansByCode.values()].sort((left, right) =>
     String(left.sectionCode || "").localeCompare(String(right.sectionCode || ""))

@@ -83,6 +83,9 @@ namespace BlockGo.Controllers
 
         private sealed class EncodingPeriodSetting
         {
+            [JsonPropertyName("schoolYear")]
+            public string SchoolYear { get; set; } = string.Empty;
+
             [JsonPropertyName("semester")]
             public string Semester { get; set; } = string.Empty;
 
@@ -99,7 +102,8 @@ namespace BlockGo.Controllers
         private async Task<(bool Allowed, string? Message)> ValidateEncodingPeriodAsync(
             NpgsqlConnection conn,
             string? requestedTerm = null,
-            string? requestedSemester = null)
+            string? requestedSemester = null,
+            string? requestedSchoolYear = null)
         {
             using var cmd = new NpgsqlCommand("SELECT value FROM SystemSettings WHERE key = 'encoding_period' LIMIT 1", conn);
             var rawValue = await cmd.ExecuteScalarAsync() as string;
@@ -156,6 +160,13 @@ namespace BlockGo.Controllers
                 return (false, $"Encoding is currently open only for {setting.Semester}.");
             }
 
+            if (!string.IsNullOrWhiteSpace(requestedSchoolYear) &&
+                !string.IsNullOrWhiteSpace(setting.SchoolYear) &&
+                !string.Equals(setting.SchoolYear.Trim(), requestedSchoolYear.Trim(), StringComparison.OrdinalIgnoreCase))
+            {
+                return (false, $"Encoding is currently open only for SY {setting.SchoolYear}.");
+            }
+
             return (true, null);
         }
 
@@ -203,7 +214,10 @@ namespace BlockGo.Controllers
                 using var conn = new NpgsqlConnection(_connectionString);
                 await conn.OpenAsync();
 
-                var encodingValidation = await ValidateEncodingPeriodAsync(conn);
+                var encodingValidation = await ValidateEncodingPeriodAsync(
+                    conn,
+                    requestedSemester: request.Semester,
+                    requestedSchoolYear: request.SchoolYear);
                 if (!encodingValidation.Allowed)
                 {
                     return StatusCode(403, new { status = "Error", message = encodingValidation.Message });
@@ -869,8 +883,6 @@ namespace BlockGo.Controllers
             var rawAverage = activeTerm == "finals"
                 ? (midterm > 0 ? (midterm + finals) / 2 : finals)
                 : midterm;
-            var hasMissingRequiredGrade = midterm <= 0 || finals <= 0;
-
             return JsonSerializer.Serialize(new
             {
                 midterm = midterm > 0 ? midterm.ToString("0.##") : "",
@@ -879,9 +891,9 @@ namespace BlockGo.Controllers
                 attendance = "not applicable",
                 midtermAttendance = NormalizeAttendanceValue(rawMidtermAttendance),
                 finalAttendance = NormalizeAttendanceValue(rawFinalAttendance),
-                standing = hasMissingRequiredGrade ? "irreg:INC" : "active",
-                flagged = hasMissingRequiredGrade,
-                remarks = hasMissingRequiredGrade ? "INC" : ""
+                standing = "active",
+                flagged = false,
+                remarks = ""
             });
         }
 
@@ -1148,7 +1160,7 @@ namespace BlockGo.Controllers
                 using (var periodConn = new NpgsqlConnection(_connectionString))
                 {
                     await periodConn.OpenAsync();
-                    var encodingValidation = await ValidateEncodingPeriodAsync(periodConn, term, semester);
+                    var encodingValidation = await ValidateEncodingPeriodAsync(periodConn, term, semester, schoolYear);
                     if (!encodingValidation.Allowed)
                     {
                         return StatusCode(403, new { status = "Error", message = encodingValidation.Message });
@@ -2769,8 +2781,72 @@ namespace BlockGo.Controllers
                 var buffer = new byte[4];
                 if (decryptedData.Length >= 4) Array.Copy(decryptedData, 0, buffer, 0, 4);
                 bool isPdf = (buffer[0] == 0x25 && buffer[1] == 0x50 && buffer[2] == 0x44 && buffer[3] == 0x46);
-                
-                var textContent = System.Text.Encoding.UTF8.GetString(decryptedData);
+                bool isZipContainer = decryptedData.Length >= 2 && decryptedData[0] == 0x50 && decryptedData[1] == 0x4B;
+                bool isExcelWorkbook = false;
+                string? workbookPreviewHtml = null;
+                string? workbookDownloadUrl = null;
+
+                if (isZipContainer)
+                {
+                    try
+                    {
+                        using var workbookStream = new MemoryStream(decryptedData);
+                        using var workbook = new XLWorkbook(workbookStream);
+                        var worksheet = workbook.Worksheets.FirstOrDefault();
+                        if (worksheet != null)
+                        {
+                            isExcelWorkbook = true;
+                            var usedRange = worksheet.RangeUsed();
+                            var workbookFileName = $"Decrypted_Record_{cid}.xlsx";
+                            workbookDownloadUrl =
+                                "data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64," +
+                                Convert.ToBase64String(decryptedData);
+
+                            if (usedRange != null)
+                            {
+                                var previewBuilder = new StringBuilder();
+                                previewBuilder.Append("<div style='padding: 1rem 1.5rem; border-bottom: 1px solid #e2e8f0; background: #f8fafc;'>");
+                                previewBuilder.Append($"<div style='font-weight: 700; color: #0f172a;'>Workbook Preview: {System.Net.WebUtility.HtmlEncode(worksheet.Name)}</div>");
+                                previewBuilder.Append("<div style='font-size: 0.8rem; color: #64748b; margin-top: 0.25rem;'>Showing the first worksheet from the decrypted Excel grading sheet.</div>");
+                                previewBuilder.Append($"<div style='margin-top: 0.75rem;'><a href='{workbookDownloadUrl}' download='{System.Net.WebUtility.HtmlEncode(workbookFileName)}' class='btn btn-primary'>Download Excel File</a></div>");
+                                previewBuilder.Append("</div>");
+                                previewBuilder.Append("<table><tbody>");
+
+                                foreach (var row in usedRange.Rows())
+                                {
+                                    previewBuilder.Append("<tr>");
+                                    foreach (var cell in row.Cells(usedRange.FirstColumn().ColumnNumber(), usedRange.LastColumn().ColumnNumber()))
+                                    {
+                                        var cellValue = "";
+                                        try
+                                        {
+                                            cellValue = cell.HasFormula
+                                                ? cell.CachedValue.ToString()
+                                                : cell.GetFormattedString();
+                                        }
+                                        catch
+                                        {
+                                            cellValue = cell.Value.ToString();
+                                        }
+
+                                        var cellTag = row.RowNumber() == usedRange.FirstRow().RowNumber() ? "th" : "td";
+                                        previewBuilder.Append($"<{cellTag}>{System.Net.WebUtility.HtmlEncode(cellValue)}</{cellTag}>");
+                                    }
+                                    previewBuilder.Append("</tr>");
+                                }
+
+                                previewBuilder.Append("</tbody></table>");
+                                workbookPreviewHtml = previewBuilder.ToString();
+                            }
+                        }
+                    }
+                    catch
+                    {
+                        isExcelWorkbook = false;
+                    }
+                }
+
+                var textContent = isExcelWorkbook ? string.Empty : System.Text.Encoding.UTF8.GetString(decryptedData);
                 
                 // --- CLOUD VIEWER HTML ---
                 var viewerHtml = $@"
@@ -2798,6 +2874,8 @@ namespace BlockGo.Controllers
                         .btn {{ padding: 0.5rem 1rem; border-radius: 0.5rem; font-weight: bold; text-decoration: none; font-size: 0.75rem; transition: all 0.2s; cursor: pointer; border: none; }}
                         .btn-white {{ background: rgba(255,255,255,0.1); color: white; border: 1px solid rgba(255,255,255,0.2); }}
                         .btn-white:hover {{ background: rgba(255,255,255,0.2); }}
+                        .btn-primary {{ background: #003366; color: white; border: 1px solid #003366; display: inline-flex; align-items: center; }}
+                        .btn-primary:hover {{ background: #00264d; border-color: #00264d; }}
                     </style>
                 </head>
                 <body>
@@ -2815,6 +2893,10 @@ namespace BlockGo.Controllers
                 {
                     var base64Pdf = Convert.ToBase64String(decryptedData);
                     viewerHtml += $@"<embed src='data:application/pdf;base64,{base64Pdf}' type='application/pdf' />";
+                }
+                else if (isExcelWorkbook)
+                {
+                    viewerHtml += workbookPreviewHtml ?? "<div style='padding: 2rem; color: #475569;'>The decrypted Excel workbook was detected, but no preview data was available.</div>";
                 }
                 else if (textContent.Contains(",") || textContent.Contains("\t"))
                 {

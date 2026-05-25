@@ -1400,7 +1400,19 @@ namespace Client_app.Controllers
                     SELECT fs.department, fs.section, fs.year_level, fs.subject 
                     FROM FacultySections fs 
                     JOIN Users u ON fs.user_id = u.id 
-                    WHERE LOWER(u.email) = LOWER(@email) AND u.status = 'APPROVED'
+                    WHERE LOWER(u.email) = LOWER(@email)
+                      AND u.status = 'APPROVED'
+                      AND EXISTS (
+                        SELECT 1
+                        FROM AcademicSections ac
+                        WHERE LOWER(TRIM(ac.department)) = LOWER(TRIM(fs.department))
+                          AND (
+                            TRIM(fs.section) = TRIM(ac.section_num::text)
+                            OR LOWER(TRIM(fs.section)) = LOWER(TRIM(CONCAT(ac.department, ' ', ac.year_level, '-', ac.section_num)))
+                            OR LOWER(TRIM(fs.section)) = LOWER(TRIM(CONCAT(ac.department, ac.year_level, '-', ac.section_num)))
+                            OR LOWER(TRIM(fs.section)) LIKE LOWER(TRIM(CONCAT('%', ac.year_level, '-', ac.section_num, '%')))
+                          )
+                      )
                     ORDER BY fs.department, fs.year_level, fs.section", conn);
                 
                 cmd.Parameters.AddWithValue("email", email);
@@ -1477,6 +1489,17 @@ namespace Client_app.Controllers
                         WHERE fu.email = @email
                           AND fu.status = 'APPROVED'
                           AND LOWER(TRIM(sp.department)) = LOWER(TRIM(fs.department))
+                          AND EXISTS (
+                            SELECT 1
+                            FROM AcademicSections ac
+                            WHERE LOWER(TRIM(ac.department)) = LOWER(TRIM(fs.department))
+                              AND (
+                                TRIM(fs.section) = TRIM(ac.section_num::text)
+                                OR LOWER(TRIM(fs.section)) = LOWER(TRIM(CONCAT(ac.department, ' ', ac.year_level, '-', ac.section_num)))
+                                OR LOWER(TRIM(fs.section)) = LOWER(TRIM(CONCAT(ac.department, ac.year_level, '-', ac.section_num)))
+                                OR LOWER(TRIM(fs.section)) LIKE LOWER(TRIM(CONCAT('%', ac.year_level, '-', ac.section_num, '%')))
+                              )
+                          )
                           AND (
                             LOWER(TRIM(sp.section)) = LOWER(TRIM(fs.section))
                             OR LOWER(TRIM(sp.section)) = LOWER(TRIM(CONCAT(fs.year_level, fs.section)))
@@ -3660,7 +3683,15 @@ namespace Client_app.Controllers
 
                 using var tx = await conn.BeginTransactionAsync();
 
-                using var cmdFac = new NpgsqlCommand("DELETE FROM FacultySections WHERE department = @dept AND year_level = @year AND section = @sec", conn, tx);
+                using var cmdFac = new NpgsqlCommand(@"
+                    DELETE FROM FacultySections
+                    WHERE LOWER(TRIM(department)) = LOWER(TRIM(@dept))
+                      AND (
+                        TRIM(section) = TRIM(@sec)
+                        OR LOWER(TRIM(section)) = LOWER(TRIM(CONCAT(@dept, ' ', @year, '-', @sec)))
+                        OR LOWER(TRIM(section)) = LOWER(TRIM(CONCAT(@dept, @year, '-', @sec)))
+                        OR LOWER(TRIM(section)) LIKE LOWER(TRIM(CONCAT('%', @year, '-', @sec, '%')))
+                      )", conn, tx);
                 cmdFac.Parameters.AddWithValue("dept", dept);
                 cmdFac.Parameters.AddWithValue("year", year);
                 cmdFac.Parameters.AddWithValue("sec", secNum);
@@ -3708,7 +3739,6 @@ namespace Client_app.Controllers
             "chairpersonSubmissionLogs",
             "studentMasterlist",
             "studentSections",
-            "registrarAssignments",
             "chairpersonSectionReviews",
             "studentPublishedGrades",
             "graduatingStudents",

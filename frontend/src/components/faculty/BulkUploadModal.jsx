@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { downloadTemplateButtonClass } from "../shared/downloadButtonStyles";
+import { downloadSimpleXlsx } from "../../utils/excelWorkbook";
 
 const BulkUploadModal = ({
   isOpen,
@@ -38,44 +39,46 @@ const BulkUploadModal = ({
   ];
 
   const handleDownloadTemplate = () => {
-    const header = `${getTemporarySheetHeader().join(",")}\n`;
-    const rows = sectionData.students
-      .map((student, index) => {
+    const workbookRows = [
+      getTemporarySheetHeader(),
+      ...sectionData.students.map((student, index) => {
         const rowNumber = index + 2;
-        const midtermFormula = `"=IF(E${rowNumber}="""",ROUND(((C${rowNumber}*20%)+(D${rowNumber}*10%)+(F${rowNumber}*60%))/90%,2),ROUND((C${rowNumber}*20%)+(D${rowNumber}*10%)+(E${rowNumber}*10%)+(F${rowNumber}*60%),2))"`;
-        const finalFormula = `"=IF(J${rowNumber}="""",ROUND(((H${rowNumber}*20%)+(I${rowNumber}*10%)+(K${rowNumber}*60%))/90%,2),ROUND((H${rowNumber}*20%)+(I${rowNumber}*10%)+(J${rowNumber}*10%)+(K${rowNumber}*60%),2))"`;
-        const finalRatingFormula = `"=ROUND(AVERAGE(G${rowNumber},L${rowNumber}),2)"`;
         const studentName =
           student.name ||
           [student.lastName, student.firstName].filter(Boolean).join(", ");
 
         return [
-          student.id,
-          `"${studentName}"`,
+          student.studentNo || student.id || "",
+          studentName,
           "",
           "",
           "",
           "",
-          midtermFormula,
+          {
+            type: "formula",
+            formula: `IF(E${rowNumber}="",ROUND(((C${rowNumber}*20%)+(D${rowNumber}*10%)+(F${rowNumber}*60%))/90%,2),ROUND((C${rowNumber}*20%)+(D${rowNumber}*10%)+(E${rowNumber}*10%)+(F${rowNumber}*60%),2))`,
+          },
           "",
           "",
           "",
           "",
-          finalFormula,
-          finalRatingFormula,
-        ].join(",");
-      })
-      .join("\n");
+          {
+            type: "formula",
+            formula: `IF(J${rowNumber}="",ROUND(((H${rowNumber}*20%)+(I${rowNumber}*10%)+(K${rowNumber}*60%))/90%,2),ROUND((H${rowNumber}*20%)+(I${rowNumber}*10%)+(J${rowNumber}*10%)+(K${rowNumber}*60%),2))`,
+          },
+          {
+            type: "formula",
+            formula: `ROUND(AVERAGE(G${rowNumber},L${rowNumber}),2)`,
+          },
+        ];
+      }),
+    ];
 
-    const blob = new Blob([header + rows], { type: "text/csv" });
-    const url = URL.createObjectURL(blob);
-
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${sectionData.sectionName}_temporary_grading_sheet.csv`;
-    a.click();
-
-    URL.revokeObjectURL(url);
+    downloadSimpleXlsx({
+      fileName: `${sectionData.sectionName}_temporary_grading_sheet.xlsx`,
+      sheetName: String(sectionData.sectionName || "GradingSheet").slice(0, 31),
+      rows: workbookRows,
+    });
   };
 
   const parseLinesToGrades = (text) => {
@@ -223,7 +226,7 @@ const BulkUploadModal = ({
                   onClick={handleDownloadTemplate}
                   className={downloadTemplateButtonClass}
                 >
-                  Download Temporary Grading Sheet
+                  Download Excel Grading Sheet
                 </button>
               </div>
             </div>

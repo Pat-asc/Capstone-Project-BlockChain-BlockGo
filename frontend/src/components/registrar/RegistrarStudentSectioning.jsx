@@ -618,6 +618,14 @@ function RegistrarStudentSectioning({
     onSectioningSaved?.();
   };
 
+  const getCurrentSelectedBatch = () => {
+    if (!activeBatchKey) return null;
+
+    return (
+      batchesRef.current.find((batch) => batch.key === activeBatchKey) || null
+    );
+  };
+
   const handleBatchYearChange = (value) => {
     const nextBatchYear = value.replace(/\D/g, "").slice(0, 4);
 
@@ -1090,7 +1098,12 @@ function RegistrarStudentSectioning({
   };
 
   const handleAddStudent = () => {
-    if (!selectedBatch) return;
+    const activeBatch = getCurrentSelectedBatch() || selectedBatch;
+
+    if (!activeBatch) {
+      alert("Please create or choose a section first.");
+      return;
+    }
 
     const studentId = studentForm.studentId.trim();
 
@@ -1105,7 +1118,19 @@ function RegistrarStudentSectioning({
       return;
     }
 
-    const duplicateStudent = students.some(
+    const activeStudents = activeBatch.students || [];
+    const activeSectionPlans = activeBatch.sectionPlans || [];
+    const activeYearSectionPlans = activeSectionPlans.filter((section) =>
+      sectionMatchesYearLevel(section, selectedYearLevel)
+    );
+    const activeSelectedSection =
+      activeYearSectionPlans.find(
+        (section) => section.sectionCode === selectedSectionCode
+      ) ||
+      activeYearSectionPlans[0] ||
+      null;
+
+    const duplicateStudent = activeStudents.some(
       (student) => student.studentId.toLowerCase() === studentId.toLowerCase()
     );
 
@@ -1114,7 +1139,7 @@ function RegistrarStudentSectioning({
       return;
     }
 
-    const targetSection = selectedSection || yearSectionPlans[0] || null;
+    const targetSection = activeSelectedSection;
     const nextStudent = {
       studentId,
       sex: studentForm.sex,
@@ -1126,15 +1151,26 @@ function RegistrarStudentSectioning({
       sectionCode: targetSection?.sectionCode || "",
       sectionName: targetSection
         ? targetSection.sectionName ||
-          getDefaultSectionName(selectedBatch.program, targetSection.sectionCode)
+          getDefaultSectionName(activeBatch.program, targetSection.sectionCode)
         : "",
     };
 
-    updateSelectedBatch((batch) => ({
-      ...batch,
-      students: [...(batch.students || []), nextStudent],
-      lastSectionedAt: new Date().toISOString(),
-    }));
+    const batchKey = activeBatch.key || activeBatchKey;
+    const nextBatches = batchesRef.current.map((batch) =>
+      batch.key === batchKey
+        ? {
+            ...batch,
+            students: [...(batch.students || []), nextStudent],
+            lastSectionedAt: new Date().toISOString(),
+          }
+        : batch
+    );
+
+    persistBatches(nextBatches);
+    setSelectedBatchKey(batchKey);
+    if (targetSection?.sectionCode) {
+      setSelectedSectionCode(targetSection.sectionCode);
+    }
 
     setStudentForm({
       studentId: "",

@@ -6,6 +6,8 @@ import FacultyHeader from './FacultyHeader';
 import YearTabs from './YearTabs';
 import ProgramCard from './ProgramCard';
 import { useRecoveredState } from '../../utils/sessionRecovery';
+import { downloadSimpleXlsx } from '../../utils/excelWorkbook';
+import { pullSharedClientState } from '../../utils/sharedClientState';
 
 const normalizeYearLabel = (value) => {
   const raw = String(value || '').trim();
@@ -59,18 +61,6 @@ const parseTimestamp = (value) => {
   const parsed = new Date(value).getTime();
   return Number.isFinite(parsed) ? parsed : 0;
 };
-const buildFacultyAssignmentLookupKey = ({
-  program = "",
-  sectionName = "",
-  subjectCode = "",
-  yearLevel = "",
-} = {}) =>
-  [
-    normalizeText(program),
-    normalizeText(sectionName),
-    normalizeText(subjectCode),
-    normalizeText(yearLevel),
-  ].join("|");
 
 const STUDENT_STATUS_ACTIVE = "active";
 const NON_ACTIVE_STATUSES = [
@@ -82,7 +72,7 @@ const NON_ACTIVE_STATUSES = [
   "inactive",
 ];
 const REMARK_OPTIONS = [
-  { value: "", label: "None", standing: STUDENT_STATUS_ACTIVE },
+  { value: "", label: "Active", standing: STUDENT_STATUS_ACTIVE },
   { value: "D", label: "D - Dropped", standing: "dropped" },
   { value: "UD", label: "UD - Unofficially Dropped", standing: "unofficially_dropped" },
   { value: "INC", label: "INC - Incomplete", standing: "incomplete" },
@@ -103,25 +93,22 @@ const hasNoRequiredGrades = (student = {}) =>
   !hasEncodedGrade(student.midterm) && !hasEncodedGrade(student.finals);
 const getEffectiveRemark = (student = {}) => {
   const explicitRemark = normalizeRemarkValue(student.remarks);
-  return explicitRemark || (hasMissingRequiredGrade(student) ? "INC" : "");
+  return explicitRemark;
 };
 const isAutomaticallyFlagged = (student = {}) => {
   const remark = getEffectiveRemark(student);
-  return hasMissingRequiredGrade(student) || ["D", "UD", "U", "W"].includes(remark);
+  return ["D", "UD", "U", "W"].includes(remark);
 };
 const getDerivedStudentStanding = (student = {}) => {
   const explicitRemark = normalizeRemarkValue(student.remarks);
-  if (hasMissingRequiredGrade(student)) {
-    return `irreg:${explicitRemark || "INC"}`;
-  }
-  if (explicitRemark && explicitRemark !== "INC") {
+  if (explicitRemark) {
     return REMARK_STANDING_BY_VALUE[explicitRemark] || STUDENT_STATUS_ACTIVE;
   }
   return STUDENT_STATUS_ACTIVE;
 };
 const getRemarkDisplayLabel = (remark = "") => {
   if (remark === "INC") return "INC - Incomplete";
-  return REMARK_OPTIONS.find((option) => option.value === remark)?.label || "None";
+  return REMARK_OPTIONS.find((option) => option.value === remark)?.label || "Active";
 };
 const isIrregularStanding = (standing = "") =>
   String(standing || "").trim().toLowerCase().startsWith("irreg:");
@@ -164,6 +151,12 @@ const createDefaultSectionTermStatuses = () => ({
   finals: "draft",
 });
 const normalizeEncodingTerm = (term) => (term === "finals" ? "finals" : "midterm");
+const getDefaultSchoolYear = () => {
+  const today = new Date();
+  const month = today.getMonth();
+  const startYear = month < 6 ? today.getFullYear() - 1 : today.getFullYear();
+  return `${startYear}-${startYear + 1}`;
+};
 const normalizeSectionStatusValue = (status) => {
   const normalized = normalizeText(status);
   if (REGISTRAR_REJECTED_SECTION_STATUSES.includes(normalized)) return "registrar_rejected";
@@ -218,6 +211,26 @@ const buildFacultyGradeSnapshotKey = (facultyEmail = "") =>
   `facultySectionGrades:${normalizeText(facultyEmail || "faculty")}`;
 const buildFacultyBulkUploadKey = (facultyEmail = "") =>
   `facultyBulkUploads:${normalizeText(facultyEmail || "faculty")}`;
+const clearFacultyLocalCache = ({
+  sectionStatusStorageKey,
+  facultyGradeSnapshotStorageKey,
+  facultyBulkUploadStorageKey,
+}) => {
+  localStorage.removeItem(sectionStatusStorageKey);
+  localStorage.removeItem(facultyGradeSnapshotStorageKey);
+  localStorage.removeItem(facultyBulkUploadStorageKey);
+  Object.keys(localStorage)
+    .filter(
+      (key) =>
+        key.startsWith("blockgo:recovery:state:") &&
+        (
+          key.endsWith(":faculty:activeSection") ||
+          key.endsWith(":faculty:activeTab") ||
+          key.endsWith(":faculty:searchQuery")
+        )
+    )
+    .forEach((key) => localStorage.removeItem(key));
+};
 const getFacultyResetToken = () => localStorage.getItem("facultyLoadResetAt") || "";
 const loadResetAwareLocalData = (storageKey) => {
   try {
@@ -354,6 +367,7 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
   const [encodingEnd, setEncodingEnd] = useState(null);
   const [encodingTerm, setEncodingTerm] = useState("midterm");
   const [encodingSemester, setEncodingSemester] = useState("2nd Semester");
+  const [encodingSchoolYear, setEncodingSchoolYear] = useState(getDefaultSchoolYear());
 
   useEffect(() => {
     const parseLocalDate = (value, endOfDay = false) => {
@@ -369,6 +383,7 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
     const applyEncodingPeriod = (value) => {
       if (!value) return;
       const parsed = typeof value === 'string' ? JSON.parse(value) : value;
+      setEncodingSchoolYear(parsed.schoolYear || getDefaultSchoolYear());
       setEncodingSemester(parsed.semester || "2nd Semester");
       setEncodingTerm(parsed.term === "finals" ? "finals" : "midterm");
       setEncodingStart(parseLocalDate(parsed.startDate));
@@ -477,10 +492,28 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
     }
   }, [bulkUploadedSections, facultyBulkUploadStorageKey]);
 
+  useEffect(() => {
+    if (!activeSection) return;
+    if (sections[activeSection]) return;
+
+    const fallbackSection = Object.keys(sections)[0] || null;
+    setActiveSection(fallbackSection);
+  }, [activeSection, sections, setActiveSection]);
+
   const loadFacultyData = useCallback(async (isBackground = false) => {
     if (!isBackground) setIsLoadingData(true);
 
     try {
+      localStorage.removeItem("registrarAssignments");
+
+      await pullSharedClientState([
+        "facultyLoadResetAt",
+        "studentSections",
+        "irregularSubjectAssignments",
+      ]).catch((error) =>
+        console.warn("Failed to refresh shared faculty assignment state.", error)
+      );
+
       const sectionsData = await fetchFacultySections(facultyData.email).catch(() => null);
       const studentsData = await fetchFacultyStudents(facultyData.email).catch(() => null);
       const gradesData = await fetchAllGrades(facultyData.email).catch(() => null);
@@ -493,15 +526,6 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
           .filter((student) => String(student.studentno || '').trim())
           .map((student) => [String(student.studentno || '').trim(), student])
       );
-      const savedAssignments = (() => {
-        try {
-          const saved = localStorage.getItem("registrarAssignments");
-          return saved ? JSON.parse(saved) : [];
-        } catch (error) {
-          console.warn("Failed to parse saved registrar assignments.", error);
-          return [];
-        }
-      })();
       const savedGradeSnapshots = (() => {
         try {
           return loadResetAwareLocalData(facultyGradeSnapshotStorageKey) || {};
@@ -518,22 +542,6 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
           return {};
         }
       })();
-      const facultyLoadResetAt = parseTimestamp(
-        localStorage.getItem("facultyLoadResetAt")
-      );
-
-      const savedAssignmentsBySection = new Map(
-        savedAssignments.map((assignment) => [
-          buildFacultyAssignmentLookupKey({
-            program: assignment.program,
-            sectionName: assignment.sectionName,
-            subjectCode: assignment.subjectCode,
-            yearLevel: assignment.yearLevel,
-          }),
-          assignment,
-        ])
-      );
-
       const newSections = {};
       const nextSectionStatuses = {};
       const nextBulkUploadedSections = {};
@@ -684,41 +692,15 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
       );
 
       actualSections.forEach(sec => {
-        const matchedAssignment =
-          savedAssignmentsBySection.get(
-            buildFacultyAssignmentLookupKey({
-              program: sec.department,
-              sectionName: sec.section,
-              subjectCode: sec.subject,
-              yearLevel: sec.yearLevel,
-            })
-          ) ||
-          savedAssignments.find((assignment) =>
-            normalizeText(assignment.program) === normalizeText(sec.department) &&
-            normalizeText(assignment.sectionName) === normalizeText(sec.section) &&
-            normalizeText(assignment.subjectCode) === normalizeText(sec.subject)
-          ) ||
-          null;
-        const assignmentUploadedAt = parseTimestamp(matchedAssignment?.uploadedAt);
-
-        if (
-          facultyLoadResetAt > 0 &&
-          (!matchedAssignment || assignmentUploadedAt < facultyLoadResetAt)
-        ) {
-          return;
-        }
         const sectionKey = `${sec.department} ${sec.section}${sec.subject ? ` (${sec.subject})` : ''}`; 
         const savedSectionSnapshot = savedGradeSnapshots[sectionKey] || {};
         const sectionGrades = actualGrades.filter((grade) => {
           const gradeSubjectKey = normalizeText(getGradeSubjectKey(grade));
           const gradeRecordSectionKey = getGradeRecordSectionKey(grade);
           const gradeDisplaySectionKey = grade.section || grade.Section || "";
-          const expectedSubjectCode = normalizeText(
-            matchedAssignment?.subjectCode || sec.subject
-          );
+          const expectedSubjectCode = normalizeText(sec.subject);
           const expectedSectionKeys = [
             sectionKey,
-            matchedAssignment?.sectionName,
             sec.section,
           ]
             .map((value) => normalizeText(value))
@@ -748,12 +730,7 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
           (String(s.section) === String(sec.section) || String(s.sectionNum) === String(sec.section)) && 
           (s.assignmentStatus === 'Enrolled' || s.enrollmentStatus === 'Enrolled')
         );
-        const rosterSource =
-          Array.isArray(matchedAssignment?.rosterStudents) &&
-          matchedAssignment.rosterStudents.length
-            ? matchedAssignment.rosterStudents
-            : backendStudents;
-        const enrolledStudents = rosterSource.map(studentRecord => {
+        const enrolledStudents = backendStudents.map(studentRecord => {
           const preferredStudentNo =
             studentRecord.studentno ||
             studentRecord.studentNo ||
@@ -849,21 +826,29 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
         });
 
         newSections[sectionKey] = {
-          year: normalizeYearLabel(matchedAssignment?.yearLevel || sec.yearLevel),
-          subjectCode: matchedAssignment?.subjectCode || sec.subject || `${sec.department}-${sec.section}`, 
-          subjectTitle: matchedAssignment?.subjectTitle || sec.subject || `Assigned Subject (${sec.department})`, 
+          year: normalizeYearLabel(sec.yearLevel),
+          subjectCode: sec.subject || `${sec.department}-${sec.section}`, 
+          subjectTitle: sec.subject || `Assigned Subject (${sec.department})`, 
           sectionCourse: sec.department,
-          canonicalSection: matchedAssignment?.sectionName || sec.section || sectionKey,
-          units: matchedAssignment?.units || "Not Available",
-          schedule: getOptionalAssignmentValue(matchedAssignment?.schedule),
-          day: getOptionalAssignmentValue(matchedAssignment?.day),
-          date: getOptionalAssignmentValue(matchedAssignment?.date),
-          schoolYear: matchedAssignment?.schoolYear || "Not Available",
-          semester: matchedAssignment?.semester || encodingSemester || "Not Available",
+          canonicalSection: sec.section || sectionKey,
+          units: "Not Available",
+          schedule: getOptionalAssignmentValue(""),
+          day: getOptionalAssignmentValue(""),
+          date: getOptionalAssignmentValue(""),
+          schoolYear: encodingSchoolYear || "Not Available",
+          semester: encodingSemester || "Not Available",
           reviewNote: sectionReviewState.note,
           students: enrolledStudents
         };
       });
+
+      if (actualSections.length === 0) {
+        clearFacultyLocalCache({
+          sectionStatusStorageKey,
+          facultyGradeSnapshotStorageKey,
+          facultyBulkUploadStorageKey,
+        });
+      }
 
       setSections((previousSections) => {
         const mergedSections = {};
@@ -899,18 +884,21 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
               const nextFinals = hasEncodedGrade(student.finals)
                 ? student.finals
                 : previousStudent.finals;
-              const nextStanding =
-                student.standing && student.standing !== STUDENT_STATUS_ACTIVE
-                  ? student.standing
-                  : previousStudent.standing || student.standing || STUDENT_STATUS_ACTIVE;
+              const nextStanding = student.standing || STUDENT_STATUS_ACTIVE;
+              const nextRemarks = normalizeRemarkValue(student.remarks);
 
               return {
                 ...student,
                 midterm: nextMidterm ?? "",
                 finals: nextFinals ?? "",
                 standing: nextStanding,
-                flagged: isAutomaticallyFlagged({ ...previousStudent, ...student }),
-                remarks: normalizeRemarkValue(student.remarks || previousStudent.remarks),
+                flagged: isAutomaticallyFlagged({
+                  ...previousStudent,
+                  ...student,
+                  standing: nextStanding,
+                  remarks: nextRemarks,
+                }),
+                remarks: nextRemarks,
                 customGrades: previousStudent.customGrades || student.customGrades || {},
               };
             }),
@@ -954,9 +942,11 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
       setSections({});
       setActiveSection(null);
       setSectionStatus({});
-      localStorage.removeItem(sectionStatusStorageKey);
-      localStorage.removeItem(facultyGradeSnapshotStorageKey);
-      localStorage.removeItem(facultyBulkUploadStorageKey);
+      clearFacultyLocalCache({
+        sectionStatusStorageKey,
+        facultyGradeSnapshotStorageKey,
+        facultyBulkUploadStorageKey,
+      });
       loadFacultyData();
     };
     const handleStorageChanged = (event) => {
@@ -1206,49 +1196,47 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
     const sectionData = sections[sectionName];
     if (!sectionData || !sectionData.students) return;
 
-    const header = `${getTemporarySheetHeader().join(",")}\n`;
-    const rows = sectionData.students
-      .map((student, index) => {
+    const safeSectionName = String(sectionName || "section").replace(/[^a-zA-Z0-9-]/g, "_");
+    const workbookRows = [
+      getTemporarySheetHeader(),
+      ...sectionData.students.map((student, index) => {
         const rowNumber = index + 2;
-        const midtermFormula = `"=IF(E${rowNumber}="""",ROUND(((C${rowNumber}*20%)+(D${rowNumber}*10%)+(F${rowNumber}*60%))/90%,2),ROUND((C${rowNumber}*20%)+(D${rowNumber}*10%)+(E${rowNumber}*10%)+(F${rowNumber}*60%),2))"`;
-        const finalFormula = `"=IF(J${rowNumber}="""",ROUND(((H${rowNumber}*20%)+(I${rowNumber}*10%)+(K${rowNumber}*60%))/90%,2),ROUND((H${rowNumber}*20%)+(I${rowNumber}*10%)+(J${rowNumber}*10%)+(K${rowNumber}*60%),2))"`;
-        const finalRatingFormula = `"=ROUND(AVERAGE(G${rowNumber},L${rowNumber}),2)"`;
         const studentName =
           student.name ||
           [student.lastName, student.firstName].filter(Boolean).join(", ");
 
         return [
           student.studentNo || student.id || "",
-          `"${studentName}"`,
+          studentName,
           "",
           "",
           "",
           "",
-          midtermFormula,
+          {
+            type: "formula",
+            formula: `IF(E${rowNumber}="",ROUND(((C${rowNumber}*20%)+(D${rowNumber}*10%)+(F${rowNumber}*60%))/90%,2),ROUND((C${rowNumber}*20%)+(D${rowNumber}*10%)+(E${rowNumber}*10%)+(F${rowNumber}*60%),2))`,
+          },
           "",
           "",
           "",
           "",
-          finalFormula,
-          finalRatingFormula,
-        ].join(",");
-      })
-      .join("\n");
+          {
+            type: "formula",
+            formula: `IF(J${rowNumber}="",ROUND(((H${rowNumber}*20%)+(I${rowNumber}*10%)+(K${rowNumber}*60%))/90%,2),ROUND((H${rowNumber}*20%)+(I${rowNumber}*10%)+(J${rowNumber}*10%)+(K${rowNumber}*60%),2))`,
+          },
+          {
+            type: "formula",
+            formula: `ROUND(AVERAGE(G${rowNumber},L${rowNumber}),2)`,
+          },
+        ];
+      }),
+    ];
 
-    const blob = new Blob([header + rows], { type: "text/csv;charset=utf-8;" });
-    const url = window.URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    const safeSectionName = String(sectionName || "section").replace(/[^a-zA-Z0-9-]/g, "_");
-
-    link.href = url;
-    link.setAttribute(
-      "download",
-      `${safeSectionName}_temporary_grading_sheet.csv`
-    );
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    window.URL.revokeObjectURL(url);
+    downloadSimpleXlsx({
+      fileName: `${safeSectionName}_temporary_grading_sheet.xlsx`,
+      sheetName: safeSectionName.slice(0, 31) || "GradingSheet",
+      rows: workbookRows,
+    });
   };
 
   const handleFileUpload = async (sectionName, e) => {
@@ -1257,7 +1245,7 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
 
     const sectionData = sections[sectionName];
     const semester = encodingSemester; 
-    const schoolYear = "2024";
+    const schoolYear = encodingSchoolYear;
     const course = sectionData.subjectCode || sectionData.sectionCourse || sectionName;
     const canonicalSection = sectionData.canonicalSection || sectionName;
 
@@ -1319,7 +1307,7 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
             accessRevoked: gradeMeta.accessRevoked,
           }),
           semester: encodingSemester,
-          school_year: "2024",
+          school_year: encodingSchoolYear,
           faculty_id: facultyData.email,
           date: new Date().toISOString().split('T')[0]
       };
@@ -1370,7 +1358,7 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
                 accessRevoked: gradeMeta.accessRevoked,
               }),
               semester: encodingSemester,
-              school_year: "2024",
+              school_year: encodingSchoolYear,
               faculty_id: facultyData.email,
               date: new Date().toISOString().split('T')[0],
               status: "Issued"
@@ -1398,11 +1386,12 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
     const missingRows = students
       .map((student, index) => ({ student, index }))
       .filter(({ student }) => hasMissingRequiredGrade(student));
+    const remarkedMissingRows = missingRows.filter(({ student }) => normalizeRemarkValue(student.remarks) !== "");
     
-    if (missingRows.length > 0) {
+    if (remarkedMissingRows.length > 0) {
       setSections((previousSections) => {
         const updated = JSON.parse(JSON.stringify(previousSections));
-        missingRows.forEach(({ index }) => {
+        remarkedMissingRows.forEach(({ index }) => {
           if (updated[sectionName]?.students?.[index]) {
             const student = updated[sectionName].students[index];
             student.standing = getDerivedStudentStanding(student);
@@ -1415,7 +1404,7 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
         sectionName,
         hasMissingGrades: true,
         finalConfirm: false,
-        missingCount: missingRows.length,
+        missingCount: remarkedMissingRows.length,
       });
       return;
     }
@@ -1454,6 +1443,10 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
   };
 
   const currentStatus = activeSection ? getSectionTermStatus(activeSection) : null;
+  const activeSectionData = activeSection ? sections[activeSection] || null : null;
+  const activeSectionStudents = Array.isArray(activeSectionData?.students)
+    ? activeSectionData.students
+    : [];
   const isFinalized = currentStatus === 'finalized' || currentStatus === 'forwarded';
   const isSubmittedToChairperson = isLockedSectionStatus(currentStatus);
   const isGradeEncodingLocked = isSubmittedToChairperson;
@@ -1596,6 +1589,11 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
             Back to Sections
           </button>
 
+          {!activeSectionData ? (
+            <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center text-slate-500 shadow-sm">
+              This section is no longer available. Returning you to the latest assigned section list.
+            </div>
+          ) : (
           <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
             <div className="flex flex-col items-start justify-between gap-4 border-b border-slate-200 bg-slate-50 p-6 md:flex-row md:items-center">
               <div>
@@ -1667,7 +1665,7 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
               </div>
             )}
 
-            {(currentStatus === 'returned' || currentStatus === 'registrar_rejected') && sections[activeSection]?.reviewNote ? (
+            {(currentStatus === 'returned' || currentStatus === 'registrar_rejected') && activeSectionData?.reviewNote ? (
               <div className={`border-b p-4 text-sm ${
                 currentStatus === 'registrar_rejected'
                   ? 'border-rose-200 bg-rose-50 text-rose-700'
@@ -1676,7 +1674,7 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
                 <p className="font-semibold">
                   {currentStatus === 'registrar_rejected' ? 'Rejected by registrar' : 'Returned by chairperson'}
                 </p>
-                <p className="mt-1">{sections[activeSection].reviewNote}</p>
+                <p className="mt-1">{activeSectionData.reviewNote}</p>
               </div>
             ) : null}
 
@@ -1695,23 +1693,20 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
                   </tr>
                 </thead>
                 <tbody>
-                  {sections[activeSection].students.map((stu, i) => {
+                  {activeSectionStudents.map((stu, i) => {
                     const finalAverage = calculateFinalAverage(stu);
                     const finalGradeText = finalAverage === null ? '-' : finalAverage.toFixed(2);
                     const gradeEquivalent = finalAverage === null ? '-' : getGradeEquivalent(finalAverage);
                     const academicStatus = getAcademicStatus(stu);
                     const explicitRemark = normalizeRemarkValue(stu.remarks);
                     const derivedStanding = getDerivedStudentStanding(stu);
-                    const effectiveRemark = getEffectiveRemark(stu);
                     const isStudentLocked = explicitRemark && derivedStanding !== STUDENT_STATUS_ACTIVE;
-                    const isFlagged = isAutomaticallyFlagged(stu);
-                    const isAccessRevoked = shouldRevokeStudentAccess(stu);
                     const rowState = rowSaveState[activeSection]?.[i] || 'idle';
                     const errors = validationErrors[activeSection]?.[i] || {};
                     const hasError = errors.midterm || errors.finals;
 
                     return (
-                      <tr key={`${stu.id}-${i}`} className={`border-b border-slate-100 hover:bg-slate-50 ${hasError ? 'bg-red-50' : rowState === 'saved' ? 'bg-green-50' : ''} ${isFlagged ? 'bg-amber-50' : ''}`}>
+                      <tr key={`${stu.id}-${i}`} className={`border-b border-slate-100 hover:bg-slate-50 ${hasError ? 'bg-red-50' : rowState === 'saved' ? 'bg-green-50' : ''}`}>
                         <td className="p-4 font-semibold text-slate-700">{stu.studentNo || stu.id}</td>
                         <td className="p-4 font-medium text-slate-800">{stu.name}</td>
                         
@@ -1763,7 +1758,7 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
                           </span>
                         </td>
                         <td className="p-4 text-center">
-                          <div className="flex min-w-[180px] flex-col gap-2">
+                          <div className="min-w-[180px]">
                             <select
                               value={explicitRemark}
                               onChange={(e) => handleStudentRemarksChange(activeSection, i, e.target.value)}
@@ -1779,34 +1774,13 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
                                 </option>
                               ))}
                             </select>
-                            <div className="flex flex-wrap justify-center gap-2">
-                              {effectiveRemark ? (
-                                <span className="rounded-full bg-amber-100 px-2.5 py-1 text-[10px] font-bold uppercase text-amber-700">
-                                  {getRemarkDisplayLabel(effectiveRemark)}
-                                </span>
-                              ) : (
-                                <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-[10px] font-bold uppercase text-emerald-700">
-                                  Clear
-                                </span>
-                              )}
-                              {isFlagged && (
-                                <span className="rounded-full bg-red-100 px-2.5 py-1 text-[10px] font-bold uppercase text-red-700">
-                                  Auto Flagged
-                                </span>
-                              )}
-                              {isAccessRevoked && (
-                                <span className="rounded-full bg-slate-200 px-2.5 py-1 text-[10px] font-bold uppercase text-slate-700">
-                                  Irregular
-                                </span>
-                              )}
-                            </div>
                           </div>
                         </td>
 
                       </tr>
                     );
                   })}
-                  {sections[activeSection].students.length === 0 && (
+                  {activeSectionStudents.length === 0 && (
                     <tr>
                       <td colSpan="8" className="p-8 text-center text-slate-500 bg-slate-50 rounded-b-xl text-base">
                         No students are assigned to this section yet.
@@ -1817,12 +1791,7 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
               </table>
             </div>
             
-            <div className="flex flex-wrap items-center justify-between gap-4 border-t border-slate-200 bg-slate-50 p-4">
-              <div className="flex items-center gap-3">
-                <div className="h-3 w-3 rounded-full bg-red-50 border border-red-200" title="Has Error" /> <span className="text-xs text-slate-500">Error</span>
-                <div className="h-3 w-3 rounded-full bg-amber-50 border border-amber-200" title="Flagged" /> <span className="text-xs text-slate-500">Flagged</span>
-                <div className="h-3 w-3 rounded-full bg-green-50 border border-green-200" title="Saved" /> <span className="text-xs text-slate-500">Saved</span>
-              </div>
+            <div className="flex flex-wrap items-center justify-end gap-4 border-t border-slate-200 bg-slate-50 p-4">
               <div className="flex gap-3">
                 <button
                   onClick={() => handleSaveAll(activeSection)}
@@ -1841,6 +1810,7 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
               </div>
             </div>
           </div>
+          )}
         </div>
       )}
 
@@ -1853,7 +1823,7 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
                 you should add a remarks on some of the student
               </p>
               <p className="text-sm text-slate-600">
-                {submitContext.missingCount} student record(s) have missing midterm or final grades. The system will automatically mark them as incomplete, and records with both grades missing will be inactive with access revocation.
+                {submitContext.missingCount} student record(s) have missing midterm or final grades and a non-active remark. Review those remarks before submission.
               </p>
             </>
           ) : submitContext.hasMissingGrades ? (
@@ -1862,7 +1832,7 @@ const FacultyPortal = ({ facultyData, onLogout }) => {
                 Are you sure you still want to submit these without remarks?
               </p>
               <p className="text-sm text-slate-600">
-                Missing-grade records will keep their automatic remarks and flagged status in the Chairperson review queue.
+                Missing-grade records with `Active` status can be submitted as-is.
               </p>
             </>
           ) : (

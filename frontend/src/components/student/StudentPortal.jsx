@@ -105,7 +105,10 @@ const StudentPortal = ({ studentData, onLogout }) => {
       if (!value) return;
       try {
         const parsed = typeof value === 'string' ? JSON.parse(value) : value;
-        setActiveSemester(parsed?.semester ? `${parsed.semester} Grades` : 'Semester Grades');
+        const semesterLabel = parsed?.semester || '';
+        const schoolYearLabel = parsed?.schoolYear || '';
+        const activeLabel = [schoolYearLabel, semesterLabel].filter(Boolean).join(' - ');
+        setActiveSemester(activeLabel ? `${activeLabel} Grades` : 'Semester Grades');
       } catch (error) {
         console.error('Failed to parse encoding period for student portal:', error);
       }
