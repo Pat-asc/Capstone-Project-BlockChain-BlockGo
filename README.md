@@ -58,7 +58,7 @@ Traditional grading systems suffer from critical vulnerabilities:
 | Microservices | Scalable architecture separating Web2 operations from Web3 blockchain logic |
 | Kubernetes Ready | Production-grade K8s deployment with HPA, RBAC, and network policies |
 | Enterprise Security | TLS 1.3, JWT auth, bcrypt hashing, ABAC, and full audit logging |
-| Multi-User Dashboard | Tailored interfaces for Students, Faculty, Deans, and Registrar |
+| Multi-User Dashboard | Tailored interfaces for Students, Faculty, Dept admins, and Registrar |
 | Automated Workflows | Waitlist → Approval → Enrollment → Grade Issuance → Finalization |
 
 ---
@@ -119,7 +119,7 @@ This system utilizes a **clean separation of concerns**, splitting traditional d
 ```
 
 ### 1. Frontend (React.js)
-- **Purpose:** User interface for Students, Faculty, Department Admins (Deans), and the Registrar
+- **Purpose:** User interface for Students, Faculty, Department Admins (Dept admins), and the Registrar
 - **Security:** Hosted behind Nginx Reverse Proxy with SSL/TLS encryption
 - **Authentication:** JWT-based authorization with role-based dashboards
 - **Performance:** Static file serving, SPA routing with React Router
@@ -237,7 +237,7 @@ http {
 - Student Assignment – Routes approved students to departments/sections
 - Grade Finalization – Commits approved grades permanently to blockchain
 
-### 2. Department Admin (Dean)
+### 2. Department Admin (Dept admin)
 **Responsibilities:**
 - Enrollment – Reviews students assigned by Registrar and officially enrolls them
 - Grade Verification – Reviews faculty grades and approves them for Registrar finalization
@@ -247,7 +247,7 @@ http {
 **Responsibilities:**
 - Grade Issuance – Creates new grade records using `IssueGrade` smart contract
 - Limited Visibility – Sees only their issued grades and department-related records
-- Grade Management – Can modify unfinalized grades before Dean approval
+- Grade Management – Can modify unfinalized grades before Dept admin approval
 
 ### 4. Student
 **Responsibilities:**
@@ -432,7 +432,7 @@ Content-Type: application/json
 }
 ```
 
-#### Approve Grade (Dean)
+#### Approve Grade (Dept admin)
 ```bash
 PUT /api/grades/{gradeId}/approve
 Authorization: Bearer <JWT_TOKEN>
