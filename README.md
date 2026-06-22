@@ -746,6 +746,7 @@ docker logs fabric-ca
 ```
 
 ### Database Backup & Recovery
+### DISCLAIMER: THIS IS ONLY FOR TESTING!!, IN REAL PRODUCTION USE CRON JOB FOR DATABASE BACKUPS
 
 **Create Backup:**
 ```bash
@@ -776,51 +777,13 @@ docker exec blockgo-peer0 peer channel getinfo -c grades-channel
 ---
 
 ## Production Deployment
-
-### Kubernetes Deployment
-
+ **CONFIDENTIAL**
+## Production Deployment
 #### Prerequisites
 - Kubernetes cluster (v1.24+)
 - `kubectl` configured and connected
 - Helm (optional, for package management)
 - 4+ CPU cores, 16GB+ RAM
-
-#### Deploy to K8s
-```bash
-cd network/k8s
-
-# Create namespaces
-kubectl apply -f 01-namespace.yaml
-
-# Deploy secrets & configs
-kubectl apply -f 02-configmap-secret.yaml
-
-# Deploy infrastructure
-kubectl apply -f 03-postgres.yaml
-kubectl apply -f 04-fabric-ca.yaml
-kubectl apply -f 05-fabric-peer.yaml
-kubectl apply -f 06-middleware-api.yaml
-kubectl apply -f 07-ipfs.yaml
-kubectl apply -f 08-ingress.yaml
-
-# Initialize Fabric channel
-./init-channel.sh
-
-# Install & instantiate chaincode
-./install-chaincode.sh
-```
-
-#### Verify Deployment
-```bash
-# Check all pods
-kubectl get pods --all-namespaces
-
-# View service endpoints
-kubectl get svc --all-namespaces
-
-# Monitor logs
-kubectl logs -f deployment/plv-middleware -n plv-fabric
-```
 
 ### Security Hardening (Production)
 
@@ -851,16 +814,6 @@ kubectl logs -f deployment/plv-middleware -n plv-fabric
    - Document RTO (Recovery Time Objective) & RPO (Recovery Point Objective)
 
 ---
-
-## Contributing
-
-We welcome contributions! Please follow these guidelines:
-
-1. **Fork** the repository
-2. **Create feature branch:** `git checkout -b feature/amazing-feature`
-3. **Commit changes:** `git commit -m 'Add amazing feature'`
-4. **Push to branch:** `git push origin feature/amazing-feature`
-5. **Open Pull Request** with detailed description
 
 ### Development Setup
 ```bash
