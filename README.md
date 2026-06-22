@@ -294,7 +294,7 @@ http {
 - **Runtime Environments:** Node.js (v20+), .NET 8.0 SDK
 - **CLI Tools:** kubectl (if deploying to Kubernetes)
 - **Resources:** 8GB+ RAM, 20GB+ disk space
-
+### WARNING: THIS IS ONLY FOR TESTING( QA AND DEVS ONLY HAVE ACCESS.)
 ### Step 1: Clone & Navigate
 ```bash
 git clone https://github.com/Pat-asc/Capstone-Project-BlockChain-BlockGo.git
