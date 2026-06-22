@@ -407,8 +407,8 @@ async function getWallet(role = 'registrar') {
     if (!role) role = 'registrar';
     const normalizedRole = String(role).toLowerCase();
     let couchUrl;
-    const user = process.env.COUCHDB_USER || 'capstone';
-    const pass = process.env.COUCHDB_PASS || 'pass123';
+    const user = process.env.COUCHDB_USER || 'example';
+    const pass = process.env.COUCHDB_PASS || 'example123';
     const host = (fs.existsSync('/.dockerenv') || fs.existsSync('/var/run/secrets/kubernetes.io')) ? 'host.docker.internal' : '127.0.0.1';
 
     if (normalizedRole === 'faculty') {
