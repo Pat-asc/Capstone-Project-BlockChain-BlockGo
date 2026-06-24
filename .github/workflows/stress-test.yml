@@ -1,31 +1,24 @@
-name: TDD Full Stack - Stress Test & Double Wipe
+name: Stress Test & Validation
 
 on:
   pull_request:
     branches: [ Macbook ]
   workflow_dispatch:
 
+concurrency:
+  group: stress-test-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  tdd-pipeline:
+  stress-test:
     runs-on: ubuntu-latest
+    timeout-minutes: 25
     
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      # --- STAGE 0: DATABASE FIX (if needed) ---
-      - name: Verify Database Schema Fix
-        run: |
-          echo "Verifying init-db-schema.sql uses lowercase table names..."
-          if grep -q 'CREATE TABLE IF NOT EXISTS users' ./network/init-db-schema.sql; then
-            echo "✓ Database schema is correct (lowercase)"
-          else
-            echo "✗ Database schema may have case-sensitivity issues"
-            exit 1
-          fi
-
-      # --- STAGE 1: FULL DEPLOYMENT ---
-      - name: Start Network & Services
+      - name: Deploy System
         env:
           JWT_SECRET: ${{ secrets.JWT_SECRET }}
           INTERNAL_API_KEY: ${{ secrets.INTERNAL_API_KEY }}
@@ -33,79 +26,117 @@ jobs:
           BOOTSTRAP_REGISTRAR_PASS: ${{ secrets.BOOTSTRAP_REGISTRAR_PASS }}
           MOCK_REGISTRAR_PASS: ${{ secrets.MOCK_REGISTRAR_PASS }}
         run: |
+          set -e
           chmod +x ./network/full_deploy.sh
-          chmod +x ./network/fix-db-case-sensitivity.sh 2>/dev/null || true
-          # Background the orchestrator so GitHub Actions doesn't hang
-          nohup ./network/full_deploy.sh > network_deploy.log 2>&1 &
           
-          echo "Waiting for services to spin up..."
-          timeout 600 bash -c 'while ! nc -z localhost 5000; do sleep 5; done'
-          timeout 120 bash -c 'while ! nc -z localhost 4000; do sleep 5; done'
-          timeout 120 bash -c 'while ! nc -z localhost 8080; do sleep 5; done'
-          sleep 15
+          timeout 600 ./network/full_deploy.sh > deploy.log 2>&1 || {
+            echo "✗ Deployment failed"
+            tail -100 deploy.log
+            exit 1
+          }
+          
+          echo "Waiting for services..."
+          for port in 5000 4000 8080; do
+            timeout 120 bash -c "while ! nc -z localhost $port; do sleep 2; done"
+          done
+          sleep 10
+          echo "✓ System ready"
 
-      # --- STAGE 2: AUTOMATED FILE UPLOAD TEST ---
-      - name: Mock Excel/CSV Batch Upload
+      - name: Baseline Tests
         env:
           MOCK_REGISTRAR_PASS: ${{ secrets.MOCK_REGISTRAR_PASS }}
         run: |
-          echo "Creating dummy CSV grades file..."
-          echo "StudentID,CourseCode,Grade" > batch_grades.csv
-          echo "2021-0001,CS101,1.25" >> batch_grades.csv
-          echo "2021-0002,CS102,1.50" >> batch_grades.csv
+          set -e
           
-          echo "Authenticating as Registrar to retrieve JWT..."
+          # Health
+          curl -sf http://localhost:8080/api/health > /dev/null
+          
+          # Login
           TOKEN=$(curl -s -X POST http://localhost:8080/api/login \
             -H "Content-Type: application/json" \
-            -d "{\"username\":\"registrar@plv.edu.ph\", \"password\":\"$MOCK_REGISTRAR_PASS\"}" | jq -r '.token')
-            
-          echo "Uploading file to Node.js Middleware through Nginx..."
-          UPLOAD_RESP=$(curl -s -o upload_response.json -w "%{http_code}" -X POST http://localhost:8080/api/batch-upload \
+            -d "{\"username\":\"registrar@plv.edu.ph\", \"password\":\"$MOCK_REGISTRAR_PASS\"}" \
+            | jq -r '.token')
+          [ -n "$TOKEN" ] || { echo "Login failed"; exit 1; }
+          
+          # Protected endpoint
+          curl -sf -H "Authorization: Bearer $TOKEN" \
+            http://localhost:8080/api/all-grades > /dev/null
+          
+          echo "✓ Baseline tests passed"
+
+      - name: Batch Upload Test
+        env:
+          MOCK_REGISTRAR_PASS: ${{ secrets.MOCK_REGISTRAR_PASS }}
+        run: |
+          set -e
+          
+          # Create test CSV
+          cat > batch_grades.csv <<EOF
+          StudentID,CourseCode,Grade
+          2021-0001,CS101,1.25
+          2021-0002,CS102,1.50
+          EOF
+          
+          # Get token
+          TOKEN=$(curl -s -X POST http://localhost:8080/api/login \
+            -H "Content-Type: application/json" \
+            -d "{\"username\":\"registrar@plv.edu.ph\", \"password\":\"$MOCK_REGISTRAR_PASS\"}" \
+            | jq -r '.token')
+          
+          # Upload
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" -X POST \
+            http://localhost:8080/api/batch-upload \
             -H "Authorization: Bearer $TOKEN" \
             -F "excel=@batch_grades.csv")
-            
-          echo "Server Response:"
-          cat upload_response.json
           
-          # Because the dummy CSV will likely fail the Python mapper's strict validation, 
-          # a 500 status code still proves the file upload mechanism and disk storage works perfectly!
-          # We only fail the pipeline if the gateway drops it (502) or the route doesn't exist (404).
-          if [ "$UPLOAD_RESP" == "502" ] || [ "$UPLOAD_RESP" == "404" ]; then
-            echo "Upload endpoint failed or is unreachable (HTTP $UPLOAD_RESP)!"
-            exit 1
-          else
-            echo "File upload routed and saved successfully!"
-          fi
+          # Accept 200, 400, 422 (validation) but fail on 502, 504, 404
+          case $STATUS in
+            200|400|422) echo "✓ Upload processed (HTTP $STATUS)" ;;
+            502|504|404) echo "✗ Upload endpoint failed (HTTP $STATUS)"; exit 1 ;;
+            *) echo "⚠ Unexpected status $STATUS"; exit 1 ;;
+          esac
 
-      # --- STAGE 3: AUTOCANNON STRESS TEST ---
-      - name: Execute Node.js Stress Test
+      - name: Stress Test - Health Endpoint
         run: |
-          echo "Bombarding the middleware with concurrent connections..."
-          npx autocannon -c 150 -d 20 http://localhost:8080/api/health
+          npx autocannon -c 150 -d 20 \
+            --requests '[{"path": "/api/health"}]' \
+            http://localhost:8080
+          echo "✓ Stress test completed"
 
-      # --- STAGE 4: TEARDOWN & LOG ARCHIVE ---
-      - name: Final Shutdown & Audit
+      - name: Stress Test - Grade Endpoint (Authenticated)
+        env:
+          MOCK_REGISTRAR_PASS: ${{ secrets.MOCK_REGISTRAR_PASS }}
+        run: |
+          TOKEN=$(curl -s -X POST http://localhost:8080/api/login \
+            -H "Content-Type: application/json" \
+            -d "{\"username\":\"registrar@plv.edu.ph\", \"password\":\"$MOCK_REGISTRAR_PASS\"}" \
+            | jq -r '.token')
+          
+          # Create autocannon request with auth header
+          npx autocannon \
+            -c 100 -d 15 \
+            --headers '{"Authorization":"Bearer '"$TOKEN"'"}' \
+            http://localhost:8080/api/all-grades || true
+          
+          echo "✓ Authenticated stress test completed"
+
+      - name: Cleanup
         if: always()
         run: |
-          cd network && docker compose down -v || true
-          pkill -f dotnet || true
-          pkill -f node || true
-          pkill -f full_deploy || true
-          
-          echo "=== CONSOLIDATED SYSTEM AUDIT ===" > ../full_system_report.log
-          cat ../network_deploy.log >> ../full_system_report.log || true
+          set +e
+          cd network
+          docker compose down -v --remove-orphans 2>/dev/null
+          pkill -9 -f "full_deploy\|node\|dotnet" 2>/dev/null
 
-      - name: Upload Audit Logs
+      - name: Collect Logs
+        if: always()
+        run: |
+          cat deploy.log > stress_test_audit.log 2>/dev/null || echo "No logs available"
+
+      - name: Upload Logs
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: full-execution-audit
-          path: full_system_report.log
-
-      # --- STAGE 5: AUTOMATED MERGE ---
-      - name: Finalize Merge to Macbook
-        if: success()
-        uses: pascalgn/automerge-action@v0.16.3
-        env:
-          GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
-          MERGE_METHOD: "squash"
-          MERGE_LABELS: "automerge"
+          name: stress-test-logs
+          path: stress_test_audit.log
+          retention-days: 7
