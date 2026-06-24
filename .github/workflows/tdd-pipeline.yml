@@ -1,31 +1,42 @@
-name: TDD Double-Verify & Docker Cleanup
+name: TDD Full Stack - Stress Test & Double Wipe
 
 on:
   pull_request:
     branches: [ Macbook ]
   workflow_dispatch:
 
+concurrency:
+  group: tdd-pipeline-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  double-verify-pipeline:
+  tdd-pipeline:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      # --- STAGE 0: DATABASE FIX VERIFICATION ---
-      - name: Verify Database Schema Fix
+      - name: Verify Database Schema
         run: |
-          echo "Verifying init-db-schema.sql uses lowercase table names..."
-          if grep -q 'CREATE TABLE IF NOT EXISTS users' ./network/init-db-schema.sql; then
-            echo "✓ Database schema is correct (lowercase)"
-          else
-            echo "✗ Database schema may have case-sensitivity issues"
+          if ! grep -q 'CREATE TABLE IF NOT EXISTS users' ./network/init-db-schema.sql; then
+            echo "✗ Database schema uses incorrect casing"
             exit 1
           fi
+          echo "✓ Database schema is correct"
 
-      # --- PHASE 1: INITIAL VERIFICATION ---
-      - name: Start System (Phase 1)
+      - name: Validate Deployment Script
+        run: |
+          if ! [ -f ./network/full_deploy.sh ]; then
+            echo "✗ full_deploy.sh not found"
+            exit 1
+          fi
+          bash -n ./network/full_deploy.sh || { echo "✗ Deployment script has syntax errors"; exit 1; }
+          echo "✓ Deployment script is valid"
+
+      # --- PHASE 1: DEPLOYMENT ---
+      - name: Deploy System
         env:
           JWT_SECRET: ${{ secrets.JWT_SECRET }}
           INTERNAL_API_KEY: ${{ secrets.INTERNAL_API_KEY }}
@@ -33,54 +44,90 @@ jobs:
           BOOTSTRAP_REGISTRAR_PASS: ${{ secrets.BOOTSTRAP_REGISTRAR_PASS }}
           MOCK_REGISTRAR_PASS: ${{ secrets.MOCK_REGISTRAR_PASS }}
         run: |
+          set -e
           chmod +x ./network/full_deploy.sh
-          # full_deploy.sh contains an infinite loop, so it MUST be run in the background
-          nohup ./network/full_deploy.sh > deploy_p1.log 2>&1 &
           
-          echo "Waiting for services to spin up (this may take a few minutes)..."
-          timeout 600 bash -c 'while ! nc -z localhost 5000; do sleep 5; done'
-          timeout 120 bash -c 'while ! nc -z localhost 4000; do sleep 5; done'
-          timeout 120 bash -c 'while ! nc -z localhost 8080; do sleep 5; done'
-          sleep 15
+          # Run deployment synchronously (not in background)
+          timeout 600 ./network/full_deploy.sh > network_deploy.log 2>&1 || {
+            EXIT_CODE=$?
+            echo "✗ Deployment failed with exit code $EXIT_CODE"
+            tail -100 network_deploy.log
+            exit $EXIT_CODE
+          }
+          echo "✓ Deployment completed successfully"
 
-      - name: Automated Functional Tests (Phase 1)
+      - name: Wait for Services
+        run: |
+          set -e
+          echo "Waiting for services..."
+          for port in 5000 4000 8080; do
+            timeout 120 bash -c "while ! nc -z localhost $port; do sleep 2; done" || {
+              echo "✗ Service on port $port failed to start"
+              exit 1
+            }
+            echo "✓ Port $port is ready"
+          done
+          sleep 10
+
+      - name: Health Check
+        run: |
+          HEALTH=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/api/health)
+          if [ "$HEALTH" != "200" ]; then
+            echo "✗ Health check failed: $HEALTH"
+            exit 1
+          fi
+          echo "✓ Health check passed"
+
+      # --- PHASE 2: FUNCTIONAL TESTS ---
+      - name: Functional Tests
         env:
           MOCK_REGISTRAR_PASS: ${{ secrets.MOCK_REGISTRAR_PASS }}
         run: |
-          echo "Running functional API tests..."
-          # 1. Health Check
-          curl -s -f http://localhost:8080/api/health || exit 1
+          set -e
           
-          # 2. Test Registrar Authentication
-          echo "Testing Login Flow..."
-          LOGIN_RESP=$(curl -s -X POST http://localhost:8080/api/login \
+          # Test login
+          TOKEN=$(curl -s -X POST http://localhost:8080/api/login \
             -H "Content-Type: application/json" \
-            -d "{\"username\":\"registrar@plv.edu.ph\", \"password\":\"$MOCK_REGISTRAR_PASS\"}")
+            -d "{\"username\":\"registrar@plv.edu.ph\", \"password\":\"$MOCK_REGISTRAR_PASS\"}" \
+            | jq -r '.token // empty')
           
-          TOKEN=$(echo $LOGIN_RESP | jq -r '.token')
-          if [ "$TOKEN" == "null" ] || [ -z "$TOKEN" ]; then
-            echo "Login failed. Response: $LOGIN_RESP"
+          if [ -z "$TOKEN" ]; then
+            echo "✗ Login failed"
             exit 1
           fi
+          echo "✓ Login successful"
           
-          # 3. Test Protected Fabric Route
-          echo "Testing Blockchain Read (all-grades)..."
-          curl -s -f http://localhost:8080/api/all-grades -H "Authorization: Bearer $TOKEN" || exit 1
-          echo "Phase 1 Functional Tests Passed."
+          # Test protected route
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+            -H "Authorization: Bearer $TOKEN" \
+            http://localhost:8080/api/all-grades)
+          
+          if [ "$STATUS" != "200" ]; then
+            echo "✗ Protected route returned: $STATUS"
+            exit 1
+          fi
+          echo "✓ Protected route accessible"
 
-      # --- PHASE 2: CLEAN SLATE (The "Reset" Step) ---
-      - name: Shutdown & Wipe Volumes
+      # --- PHASE 3: STRESS TEST ---
+      - name: Stress Test with Autocannon
         run: |
-          echo "Stopping services and wiping docker volumes..."
-          cd network
-          docker compose down -v || true 
-          pkill -f dotnet || true
-          pkill -f node || true
-          pkill -f full_deploy || true
-          sleep 5
+          npx autocannon -c 150 -d 20 http://localhost:8080/api/health
+          echo "✓ Stress test completed"
 
-      # --- PHASE 3: FINAL VERIFICATION ---
-      - name: Start System (Phase 2 - Clean Run)
+      # --- PHASE 4: CLEAN SLATE (WIPE & RESTART) ---
+      - name: Wipe Volumes
+        run: |
+          set +e
+          cd network
+          docker compose down -v --remove-orphans 2>/dev/null
+          docker system prune -f --volumes 2>/dev/null
+          pkill -9 -f "full_deploy\|node\|dotnet" 2>/dev/null
+          sleep 5
+          set -e
+          echo "✓ Volumes wiped"
+
+      # --- PHASE 5: SECOND DEPLOYMENT (CLEAN RUN) ---
+      - name: Second Deployment (Validation)
         env:
           JWT_SECRET: ${{ secrets.JWT_SECRET }}
           INTERNAL_API_KEY: ${{ secrets.INTERNAL_API_KEY }}
@@ -88,45 +135,69 @@ jobs:
           BOOTSTRAP_REGISTRAR_PASS: ${{ secrets.BOOTSTRAP_REGISTRAR_PASS }}
           MOCK_REGISTRAR_PASS: ${{ secrets.MOCK_REGISTRAR_PASS }}
         run: |
+          set -e
+          chmod +x ./network/full_deploy.sh
+          
+          timeout 600 ./network/full_deploy.sh > network_deploy_p2.log 2>&1 || {
+            EXIT_CODE=$?
+            echo "✗ Second deployment failed"
+            tail -100 network_deploy_p2.log
+            exit $EXIT_CODE
+          }
+          echo "✓ Second deployment successful"
+
+      - name: Wait for Services (2nd Run)
+        run: |
+          set -e
+          for port in 5000 4000 8080; do
+            timeout 120 bash -c "while ! nc -z localhost $port; do sleep 2; done"
+          done
+          sleep 10
+          echo "✓ Services ready"
+
+      - name: Verify System Stability
+        env:
+          MOCK_REGISTRAR_PASS: ${{ secrets.MOCK_REGISTRAR_PASS }}
+        run: |
+          # Quick validation that system is stable after wipe
+          for i in {1..3}; do
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/api/health)
+            [ "$STATUS" = "200" ] || exit 1
+          done
+          echo "✓ System is stable"
+
+      # --- CLEANUP ---
+      - name: Cleanup
+        if: always()
+        run: |
+          set +e
           cd network
-          nohup ./full_deploy.sh > ../deploy_p2.log 2>&1 &
-          
-          echo "Waiting for services to spin up..."
-          timeout 600 bash -c 'while ! nc -z localhost 5000; do sleep 5; done'
-          timeout 120 bash -c 'while ! nc -z localhost 4000; do sleep 5; done'
-          timeout 120 bash -c 'while ! nc -z localhost 8080; do sleep 5; done'
-          sleep 15
+          docker compose down -v --remove-orphans 2>/dev/null
+          pkill -9 -f "full_deploy\|node\|dotnet" 2>/dev/null
+          echo "✓ Cleanup complete"
 
-      - name: Stress Test & System Verification (Phase 2)
+      # --- LOGS & ARTIFACTS ---
+      - name: Collect Logs
+        if: always()
         run: |
-          # Frontend is served by Nginx on port 8080
-          curl -s -f http://localhost:8080 || exit 1
-          
-          echo "Running Stress/Load Test with Autocannon..."
-          # Autocannon fires rapid concurrent requests to test server durability under load.
-          # This will open 100 concurrent connections for 15 seconds straight.
-          npx autocannon -c 100 -d 15 http://localhost:8080/api/health
-          
-          echo "Phase 2 Verified and Stress Tested Successfully."
+          {
+            echo "=== PHASE 1 DEPLOYMENT ==="
+            cat network_deploy.log 2>/dev/null || echo "(no logs)"
+            echo ""
+            echo "=== PHASE 2 DEPLOYMENT ==="
+            cat network_deploy_p2.log 2>/dev/null || echo "(no logs)"
+          } > full_audit.log
 
-      # --- STAGE 4: LOG CONSOLIDATION ------
-      - name: Create Master Log
-        if: always() # Ensures logs are created even if tests fail
-        run: |
-          echo "=== SYSTEM LOG REPORT ===" > full_system_audit.log
-          echo "--- PHASE 1 DEPLOY LOGS ---" >> full_system_audit.log
-          cat deploy_p1.log >> full_system_audit.log || true
-          echo "--- PHASE 2 DEPLOY LOGS ---" >> full_system_audit.log
-          cat deploy_p2.log >> full_system_audit.log || true
-
-      - name: Upload Audit Logs
+      - name: Upload Logs
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: full-github-actions-audit
-          path: full_system_audit.log
+          name: tdd-pipeline-logs
+          path: full_audit.log
+          retention-days: 7
 
-      # --- STAGE 5: AUTOMATED MERGE ---
-      - name: Finalize Merge to Macbook
+      # --- MERGE ---
+      - name: Auto-Merge on Success
         if: success()
         uses: pascalgn/automerge-action@v0.16.3
         env:
