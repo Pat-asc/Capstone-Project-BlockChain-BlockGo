@@ -65,11 +65,11 @@ jobs:
       - name: Deploy services to Kubernetes
         env:
           # Use GitHub secrets if available, otherwise use test defaults
-          JWT_SECRET: ${{ secrets.JWT_SECRET || 'test-jwt-secret-min-32-chars-long-12345' }}
-          INTERNAL_API_KEY: ${{ secrets.INTERNAL_API_KEY || 'test-internal-api-key-min-32-chars-long' }}
-          POSTGRES_PASS: ${{ secrets.POSTGRES_PASS || 'test-postgres-password-123456' }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET || 'aa2db985f92bd8ea2e49bef80eca06fb79deaa08' }}
+          INTERNAL_API_KEY: ${{ secrets.INTERNAL_API_KEY || '4a52e64555b345686592257761b13a978fb02649' }}
+          POSTGRES_PASS: ${{ secrets.POSTGRES_PASS || 'test1234567897643' }}
           BOOTSTRAP_REGISTRAR_PASS: ${{ secrets.BOOTSTRAP_REGISTRAR_PASS || 'adminpw' }}
-          MOCK_REGISTRAR_PASS: ${{ secrets.MOCK_REGISTRAR_PASS || 'mockpass' }}
+          MOCK_REGISTRAR_PASS: ${{ secrets.MOCK_REGISTRAR_PASS || 'mockpass12345' }}
         run: |
           # Create namespaces
           kubectl create namespace plv-fabric || true
@@ -158,7 +158,7 @@ jobs:
         run: |
           echo "Waiting for test-api deployment..."
           kubectl rollout status deployment/test-api -n plv-fabric --timeout=5m || {
-            echo "❌ Deployment failed. Getting diagnostics..."
+            echo " <X> Deployment failed. Getting diagnostics..."
             echo ""
             echo "=== Pod Status ==="
             kubectl describe pods -n plv-fabric
@@ -177,7 +177,7 @@ jobs:
           sleep 2
           
           timeout 60 bash -c 'until curl -f http://localhost:4000/api/health 2>/dev/null; do sleep 2; done' || {
-            echo "❌ API health check failed"
+            echo " <X> API health check failed"
             kill $PF_PID 2>/dev/null || true
             exit 1
           }
