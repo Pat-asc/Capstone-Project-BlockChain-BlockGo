@@ -64,11 +64,12 @@ jobs:
       # --- STAGE 3: DEPLOY TO KUBERNETES ---
       - name: Deploy services to Kubernetes
         env:
-          JWT_SECRET: ${{ secrets.JWT_SECRET }}
-          INTERNAL_API_KEY: ${{ secrets.INTERNAL_API_KEY }}
-          POSTGRES_PASS: ${{ secrets.POSTGRES_PASS }}
-          BOOTSTRAP_REGISTRAR_PASS: ${{ secrets.BOOTSTRAP_REGISTRAR_PASS }}
-          MOCK_REGISTRAR_PASS: ${{ secrets.MOCK_REGISTRAR_PASS }}
+          # Use GitHub secrets if available, otherwise use test defaults
+          JWT_SECRET: ${{ secrets.JWT_SECRET || 'test-jwt-secret-min-32-chars-long-12345' }}
+          INTERNAL_API_KEY: ${{ secrets.INTERNAL_API_KEY || 'test-internal-api-key-min-32-chars-long' }}
+          POSTGRES_PASS: ${{ secrets.POSTGRES_PASS || 'test-postgres-password-123456' }}
+          BOOTSTRAP_REGISTRAR_PASS: ${{ secrets.BOOTSTRAP_REGISTRAR_PASS || 'adminpw' }}
+          MOCK_REGISTRAR_PASS: ${{ secrets.MOCK_REGISTRAR_PASS || 'mockpass' }}
         run: |
           # Create namespaces
           kubectl create namespace plv-fabric || true
@@ -78,12 +79,17 @@ jobs:
           
           # Create secrets from environment variables
           kubectl create secret generic blockgo-secrets \
-            --from-literal=JWT_SECRET="${JWT_SECRET:-test-secret}" \
-            --from-literal=INTERNAL_API_KEY="${INTERNAL_API_KEY:-test-key}" \
-            --from-literal=POSTGRES_PASS="${POSTGRES_PASS:-test-pass}" \
-            --from-literal=BOOTSTRAP_REGISTRAR_PASS="${BOOTSTRAP_REGISTRAR_PASS:-adminpw}" \
-            --from-literal=MOCK_REGISTRAR_PASS="${MOCK_REGISTRAR_PASS:-mockpass}" \
+            --from-literal=JWT_SECRET="${JWT_SECRET}" \
+            --from-literal=INTERNAL_API_KEY="${INTERNAL_API_KEY}" \
+            --from-literal=POSTGRES_PASS="${POSTGRES_PASS}" \
+            --from-literal=BOOTSTRAP_REGISTRAR_PASS="${BOOTSTRAP_REGISTRAR_PASS}" \
+            --from-literal=MOCK_REGISTRAR_PASS="${MOCK_REGISTRAR_PASS}" \
             -n plv-fabric || true
+          
+          echo "Environment variables set:"
+          echo "  JWT_SECRET: ${#JWT_SECRET} chars"
+          echo "  INTERNAL_API_KEY: ${#INTERNAL_API_KEY} chars"
+          echo "  POSTGRES_PASS: ${#POSTGRES_PASS} chars"
           
           echo "Deploying K8s test deployment..."
           # Create a simple test deployment to verify cluster connectivity
@@ -120,6 +126,11 @@ jobs:
                       secretKeyRef:
                         name: blockgo-secrets
                         key: INTERNAL_API_KEY
+                  - name: POSTGRES_PASS
+                    valueFrom:
+                      secretKeyRef:
+                        name: blockgo-secrets
+                        key: POSTGRES_PASS
                   livenessProbe:
                     httpGet:
                       path: /api/health
@@ -148,9 +159,11 @@ jobs:
           echo "Waiting for test-api deployment..."
           kubectl rollout status deployment/test-api -n plv-fabric --timeout=5m || {
             echo "❌ Deployment failed. Getting diagnostics..."
-            echo "Pod status:"
+            echo ""
+            echo "=== Pod Status ==="
             kubectl describe pods -n plv-fabric
-            echo "Pod logs:"
+            echo ""
+            echo "=== Pod Logs ==="
             kubectl logs -n plv-fabric -l app=test-api --all-containers=true || true
             exit 1
           }
@@ -175,7 +188,7 @@ jobs:
       # --- STAGE 5: AUTOMATED FILE UPLOAD TEST ---
       - name: Mock Excel/CSV Batch Upload
         env:
-          MOCK_REGISTRAR_PASS: ${{ secrets.MOCK_REGISTRAR_PASS }}
+          MOCK_REGISTRAR_PASS: ${{ secrets.MOCK_REGISTRAR_PASS || 'mockpass' }}
         run: |
           echo "Creating dummy CSV grades file..."
           echo "StudentID,CourseCode,Grade" > batch_grades.csv
