@@ -1,19 +1,15 @@
 name: TDD Full Stack - Stress Test & Double Wipe
-
 on:
   pull_request:
     branches: [ Macbook ]
   workflow_dispatch:
-
 jobs:
   tdd-pipeline:
     runs-on: ubuntu-latest
-    
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      # --- STAGE 0: DATABASE FIX (if needed) ---
       - name: Verify Database Schema Fix
         run: |
           echo "Verifying init-db-schema.sql uses lowercase table names..."
@@ -24,7 +20,6 @@ jobs:
             exit 1
           fi
 
-      # --- STAGE 1: SETUP KIND CLUSTER ---
       - name: Setup KIND Kubernetes Cluster
         uses: helm/kind-action@v1.8.0
         with:
@@ -45,39 +40,32 @@ jobs:
               - containerPort: 8080
                 hostPort: 8080
 
-      # --- STAGE 1.5: INSTALL PREREQUISITES ---
       - name: Install kubectl and verify cluster
         run: |
           kubectl cluster-info
           kubectl get nodes
           echo "✓ Kubernetes cluster is ready"
 
-      # --- STAGE 2: BUILD AND LOAD IMAGES ---
       - name: Build Docker images for K8s
         run: |
           echo "Building middleware image..."
           docker build -t blockgo-middleware:latest ./middleware
-          
           echo "Loading image into KIND cluster..."
           kind load docker-image blockgo-middleware:latest
 
-      # --- STAGE 3: DEPLOY TO KUBERNETES ---
       - name: Deploy services to Kubernetes
         env:
-          # Use GitHub secrets if available, otherwise use test defaults
           JWT_SECRET: ${{ secrets.JWT_SECRET || 'aa2db985f92bd8ea2e49bef80eca06fb79deaa08' }}
           INTERNAL_API_KEY: ${{ secrets.INTERNAL_API_KEY || '4a52e64555b345686592257761b13a978fb02649' }}
           POSTGRES_PASS: ${{ secrets.POSTGRES_PASS || 'test1234567897643' }}
           BOOTSTRAP_REGISTRAR_PASS: ${{ secrets.BOOTSTRAP_REGISTRAR_PASS || 'adminpw' }}
           MOCK_REGISTRAR_PASS: ${{ secrets.MOCK_REGISTRAR_PASS || 'mockpass12345' }}
         run: |
-          # Create namespaces
           kubectl create namespace plv-fabric || true
           kubectl create namespace plv-main-campus || true
           kubectl create namespace plv-annex-campus || true
           kubectl create namespace plv-pubad-campus || true
           
-          # Create secrets from environment variables
           kubectl create secret generic blockgo-secrets \
             --from-literal=JWT_SECRET="${JWT_SECRET}" \
             --from-literal=INTERNAL_API_KEY="${INTERNAL_API_KEY}" \
@@ -92,7 +80,6 @@ jobs:
           echo "  POSTGRES_PASS: ${#POSTGRES_PASS} chars"
           
           echo "Deploying K8s test deployment..."
-          # Create a simple test deployment to verify cluster connectivity
           cat <<'EOF' | kubectl apply -f -
           apiVersion: apps/v1
           kind: Deployment
@@ -153,7 +140,6 @@ jobs:
               app: test-api
           EOF
 
-      # --- STAGE 4: WAIT FOR SERVICES ---
       - name: Wait for services to be ready
         run: |
           echo "Waiting for test-api deployment..."
@@ -185,7 +171,6 @@ jobs:
           echo "✓ API is responding!"
           kill $PF_PID 2>/dev/null || true
 
-      # --- STAGE 5: AUTOMATED FILE UPLOAD TEST ---
       - name: Mock Excel/CSV Batch Upload
         env:
           MOCK_REGISTRAR_PASS: ${{ secrets.MOCK_REGISTRAR_PASS || 'mockpass' }}
@@ -211,7 +196,6 @@ jobs:
           
           kill $PF_PID 2>/dev/null || true
 
-      # --- STAGE 6: AUTOCANNON STRESS TEST ---
       - name: Execute Node.js Stress Test
         run: |
           echo "Starting stress test..."
@@ -224,7 +208,6 @@ jobs:
           
           kill $PF_PID 2>/dev/null || true
 
-      # --- STAGE 7: TEARDOWN & LOG ARCHIVE ---
       - name: Final Shutdown & Audit
         if: always()
         run: |
@@ -249,7 +232,6 @@ jobs:
           name: full-execution-audit
           path: full_system_report.log
 
-      # --- STAGE 8: AUTOMATED MERGE ---
       - name: Finalize Merge to Macbook
         if: success()
         uses: pascalgn/automerge-action@v0.16.3
