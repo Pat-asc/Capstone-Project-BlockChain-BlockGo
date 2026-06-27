@@ -14,9 +14,9 @@ jobs:
         run: |
           echo "Verifying init-db-schema.sql uses lowercase table names..."
           if grep -q 'CREATE TABLE IF NOT EXISTS users' ./network/init-db-schema.sql; then
-            echo "✓ Database schema is correct (lowercase)"
+            echo "Database schema is correct (lowercase)"
           else
-            echo "✗ Database schema may have case-sensitivity issues"
+            echo " <Fail> Database schema may have case-sensitivity issues"
             exit 1
           fi
 
@@ -51,7 +51,7 @@ jobs:
         run: |
           kubectl cluster-info
           kubectl get nodes
-          echo "✓ Kubernetes cluster is ready"
+          echo "Kubernetes cluster is ready"
 
       - name: Build Docker images for K8s
         run: |
@@ -161,7 +161,7 @@ jobs:
             exit 1
           }
           
-          echo "✓ Deployment ready!"
+          echo "Deployment ready!"
           kubectl get svc -n plv-fabric
           
           echo "Waiting for API endpoint..."
@@ -175,7 +175,7 @@ jobs:
             exit 1
           }
           
-          echo "✓ API is responding!"
+          echo " <Complete> API is responding!"
           kill $PF_PID 2>/dev/null || true
 
       - name: Mock Excel/CSV Batch Upload
@@ -196,9 +196,9 @@ jobs:
           echo "API Health Status: $HEALTH"
           
           if [ "$HEALTH" = "200" ]; then
-            echo "✓ File upload test passed (API responsive)"
+            echo " <Running> File upload test passed (API responsive)"
           else
-            echo "⚠ API returned $HEALTH, but container is running"
+            echo "<Error> API returned $HEALTH, but container is running"
           fi
           
           kill $PF_PID 2>/dev/null || true
@@ -230,7 +230,7 @@ jobs:
           echo "Pod Logs:" >> full_system_report.log
           kubectl logs -n plv-fabric -l app=test-api --all-containers=true >> full_system_report.log 2>&1 || true
           
-          echo "✓ Audit log created"
+          echo " <Complete> Audit log created"
 
       - name: Upload Audit Logs
         uses: actions/upload-artifact@v4
