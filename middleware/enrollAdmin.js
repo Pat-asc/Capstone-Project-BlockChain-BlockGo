@@ -11,8 +11,8 @@ require('dotenv').config({ path: path.resolve(__dirname, '../network/.env'), ove
 async function getWallet(role = 'registrar') {
     const normalizedRole = String(role).toLowerCase();
     let couchUrl;
-    const user = process.env.COUCHDB_USER || 'capstone';
-    const pass = process.env.COUCHDB_PASS || 'pass123';
+    const user = process.env.COUCHDB_USER || 'hidden';
+    const pass = process.env.COUCHDB_PASS || 'hidden';
     const host = process.env.COUCHDB_HOST || '127.0.0.1';
 
     if (normalizedRole === 'faculty') {
